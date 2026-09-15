@@ -10,7 +10,7 @@ class BusinessSelectorScreen extends StatefulWidget {
     super.key,
     required this.onConfigLoaded,
     this.showBack = false,
-    this.apiBaseUrl = 'http://192.168.1.15:3001',
+    this.apiBaseUrl = 'https://passionate-grace-production-98ad.up.railway.app',
   });
 
   final void Function(TenantConfig) onConfigLoaded;

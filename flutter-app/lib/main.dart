@@ -38,7 +38,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
   AuthService? _auth;
   String? _error;
   bool _needsTenantSelection = false;
-  String _selectorApiBase = 'http://192.168.1.15:3001';
+  String _selectorApiBase = 'https://passionate-grace-production-98ad.up.railway.app';
 
   @override
   void initState() {

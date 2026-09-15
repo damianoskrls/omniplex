@@ -85,7 +85,7 @@ async function bootstrapSchema() {
     );
     console.log('✓ Schema: προστέθηκε messages.message_type');
   } catch (err) {
-    if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+    if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_NO_SUCH_TABLE') throw err;
   }
 
   try {
@@ -94,7 +94,7 @@ async function bootstrapSchema() {
     );
     console.log('✓ Schema: προστέθηκε messages.attachment_url');
   } catch (err) {
-    if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+    if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_NO_SUCH_TABLE') throw err;
   }
 
   // ── Entrance check-in token per user ────────────────────────
