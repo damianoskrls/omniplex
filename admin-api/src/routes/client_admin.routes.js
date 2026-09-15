@@ -2702,12 +2702,12 @@ router.get('/expiring-memberships', requireClientAdmin, async (req, res) => {
         u.full_name,
         u.phone,
         u.email,
-        p.name  AS plan_name,
-        p.price AS plan_price,
+        p.name       AS plan_name,
+        p.price_cents AS plan_price,
         sv.name AS service_name
       FROM user_memberships m
       JOIN users u ON u.id = m.user_id
-      LEFT JOIN plans p ON p.id = m.plan_id
+      LEFT JOIN business_plans p ON p.id = m.plan_id
       LEFT JOIN services sv ON sv.id = m.service_id
       WHERE m.business_id = ?
         AND m.membership_status NOT IN ('trial', 'cancelled')
