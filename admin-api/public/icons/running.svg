@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <style>
+    @keyframes run {
+      0%   { transform: rotate(-8deg); }
+      50%  { transform: rotate(8deg); }
+      100% { transform: rotate(-8deg); }
+    }
+    @keyframes bob {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-4px); }
+    }
+    .body { transform-origin: 50px 50px; animation: bob 0.5s ease-in-out infinite; fill: #6366f1; }
+    .leg1 { transform-origin: 50px 62px; animation: run 0.5s ease-in-out infinite; fill: #4f46e5; }
+    .leg2 { transform-origin: 50px 62px; animation: run 0.5s ease-in-out infinite reverse; fill: #4f46e5; }
+    .arm1 { transform-origin: 48px 48px; animation: run 0.5s ease-in-out infinite reverse; fill: #818cf8; }
+    .arm2 { transform-origin: 52px 48px; animation: run 0.5s ease-in-out infinite; fill: #818cf8; }
+  </style>
+  <!-- head -->
+  <circle class="body" cx="50" cy="22" r="10" fill="#6366f1"/>
+  <!-- torso -->
+  <rect class="body" x="43" y="32" width="14" height="22" rx="5"/>
+  <!-- arms -->
+  <rect class="arm1" x="28" y="34" width="18" height="6" rx="3"/>
+  <rect class="arm2" x="54" y="34" width="18" height="6" rx="3"/>
+  <!-- legs -->
+  <rect class="leg1" x="43" y="54" width="7" height="24" rx="3"/>
+  <rect class="leg2" x="50" y="54" width="7" height="24" rx="3"/>
+</svg>

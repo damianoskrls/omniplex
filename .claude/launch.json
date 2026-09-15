@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gym-admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--host"],
+      "port": 5174,
+      "cwd": "/Users/damianoskaralis/Projects/bookup/gym-admin"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+# Environment & secrets
+.env
+.env.local
+.env.production
+*.env
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Uploads (user data - not in repo)
+admin-api/uploads/
+
+# Build artifacts
+dist/
+build/
+.next/
+out/
+
+# Flutter
+flutter-app/build/
+flutter-app/.dart_tool/
+flutter-app/.flutter-plugins
+flutter-app/.flutter-plugins-dependencies
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Claude Code session files
+.claude/settings.local.json
+
+# Logs
+*.log
+logs/

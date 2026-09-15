@@ -1,0 +1,2 @@
+-- Legacy shared threads kept trainer/nutritionist messages under peer_role=admin.
+-- Run once after 049: node scripts/split-legacy-messages.js

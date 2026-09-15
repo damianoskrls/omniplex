@@ -1,0 +1,15 @@
+{
+  "business_id": "",
+  "slug": "",
+  "app_name": "ergonhub",
+  "bundle_id": "com.ergonhub.app",
+  "api_base_url": "http://192.168.1.15:3001",
+  "primary_color": "#6200EE",
+  "secondary_color": "#03DAC6",
+  "accent_color": "#FF6D00",
+  "feature_online_booking": 1,
+  "feature_loyalty_points": 0,
+  "feature_memberships": 0,
+  "feature_nutrition": 0,
+  "label_overrides": {}
+}

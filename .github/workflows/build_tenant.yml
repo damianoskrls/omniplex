@@ -1,0 +1,133 @@
+# ============================================================
+# BookUp CI/CD — White-Label Tenant Build
+# FILE: .github/workflows/build_tenant.yml
+#
+# Trigger: Manual (workflow_dispatch) from GitHub Actions UI
+#          or via GitHub API / Admin Panel "Build" button
+# ============================================================
+
+name: White-Label Tenant Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenant_id:
+        description: 'Tenant UUID or slug (e.g. acme-gym)'
+        required: true
+      platform:
+        description: 'Target platform'
+        required: true
+        default: 'android'
+        type: choice
+        options:
+          - android
+          - ios
+          - both
+
+jobs:
+  build:
+    name: Build ${{ inputs.platform }} for ${{ inputs.tenant_id }}
+    # iOS requires macOS; Android works on ubuntu — auto-select
+    runs-on: ${{ (inputs.platform == 'ios' || inputs.platform == 'both') && 'macos-latest' || 'ubuntu-latest' }}
+    timeout-minutes: 60
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Flutter ───────────────────────────────────────────
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          channel: 'stable'
+          cache: true
+
+      # ── Python (for build script) ─────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install Pillow requests
+
+      # ── Java (Android only) ───────────────────────────────
+      - name: Set up Java
+        if: ${{ inputs.platform != 'ios' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # ── Android signing keystore ──────────────────────────
+      - name: Decode Android keystore
+        if: ${{ inputs.platform != 'ios' }}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > flutter-app/android/app/release.jks
+          cat > flutter-app/android/key.properties <<EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=release.jks
+          EOF
+
+      # ── iOS code signing ──────────────────────────────────
+      - name: Install Apple certificate and provisioning profile
+        if: ${{ inputs.platform != 'android' }}
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERT_BASE64 }}
+          P12_PASSWORD:             ${{ secrets.APPLE_CERT_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD:        ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERT_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security import $CERT_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      # ── Run the build script ──────────────────────────────
+      - name: Run build_tenant.py
+        env:
+          ADMIN_API_BASE_URL: ${{ secrets.ADMIN_API_BASE_URL }}
+          ADMIN_API_SECRET:   ${{ secrets.ADMIN_API_SECRET }}
+          FLUTTER_ROOT:       ${{ github.workspace }}/flutter-app
+        run: |
+          python build-scripts/build_tenant.py \
+            --tenant-id "${{ inputs.tenant_id }}" \
+            --platform  "${{ inputs.platform }}" \
+            --output-dir ./dist
+
+      # ── Upload artifacts ──────────────────────────────────
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.tenant_id }}-${{ inputs.platform }}-${{ github.run_number }}
+          path: ./dist/${{ inputs.tenant_id }}/
+          retention-days: 30
+
+      # ── Notify Admin API that build is done ───────────────
+      - name: Notify build complete
+        if: always()
+        run: |
+          curl -s -X POST "${{ secrets.ADMIN_API_BASE_URL }}/admin/builds/webhook" \
+            -H "X-Admin-Secret: ${{ secrets.ADMIN_API_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "tenant_id": "${{ inputs.tenant_id }}",
+              "platform":  "${{ inputs.platform }}",
+              "status":    "${{ job.status }}",
+              "run_id":    "${{ github.run_id }}"
+            }'
