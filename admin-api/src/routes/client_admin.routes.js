@@ -2237,7 +2237,7 @@ router.get('/notification-settings', requireClientAdmin, async (req, res) => {
     booking_reminder_1h: row?.booking_reminder_1h !== 0,
     auto_payment_reminders: !!row?.auto_payment_reminders,
     payment_reminder_days: row?.payment_reminder_days ?? 3,
-    fcm_configured: !!process.env.FCM_SERVER_KEY,
+    fcm_configured: !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FCM_SERVER_KEY),
   });
 });
 
@@ -2295,7 +2295,7 @@ router.patch('/notification-settings', requireClientAdmin, async (req, res) => {
     booking_reminder_1h: row?.booking_reminder_1h !== 0,
     auto_payment_reminders: !!row?.auto_payment_reminders,
     payment_reminder_days: row?.payment_reminder_days ?? 3,
-    fcm_configured: !!process.env.FCM_SERVER_KEY,
+    fcm_configured: !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FCM_SERVER_KEY),
   });
 });
 
@@ -2362,7 +2362,7 @@ router.post('/notifications/broadcast', requireClientAdmin, async (req, res) => 
       ok: true,
       sent,
       message: `Η ανακοίνωση στάλθηκε σε ${sent} πελάτες`,
-      push_note: process.env.FCM_SERVER_KEY
+      push_note: (process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FCM_SERVER_KEY)
         ? 'Push εστάλη όπου υπάρχει εγγεγραμμένη συσκευή.'
         : 'FCM δεν είναι ρυθμισμένο — οι ειδοποιήσεις αποθηκεύτηκαν στην εφαρμογή.',
     });
