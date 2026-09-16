@@ -18,6 +18,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   String? _error;
   final Map<String, int> _cart = {};
   bool _ordering = false;
+  Map<String, bool> _paymentMethods = {'cash': true, 'pickup': true};
 
   @override
   void initState() {
@@ -29,8 +30,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final api = context.read<AuthService>().api;
-      final products = await api.fetchMarketplaceProducts();
-      setState(() => _products = products);
+      final results = await Future.wait([
+        api.fetchMarketplaceProducts(),
+        api.fetchMarketplaceSettings(),
+      ]);
+      final products = results[0] as List<Map<String, dynamic>>;
+      final settings = results[1] as Map<String, dynamic>;
+      final pm = settings['payment_methods'] as Map<String, dynamic>? ?? {};
+      setState(() {
+        _products = products;
+        _paymentMethods = pm.map((k, v) => MapEntry(k, v == true));
+      });
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -49,14 +59,40 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   int get _cartItemCount => _cart.values.fold(0, (a, b) => a + b);
 
-  void _add(String id) => setState(() => _cart[id] = (_cart[id] ?? 0) + 1);
+  void _add(String id) {
+    final wasZero = (_cart[id] ?? 0) == 0;
+    setState(() => _cart[id] = (_cart[id] ?? 0) + 1);
+    if (wasZero && mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Προστέθηκε στο καλάθι'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: AppColors.surface,
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Καλάθι →',
+            textColor: AppColors.lime,
+            onPressed: _showCart,
+          ),
+        ),
+      );
+    }
+  }
 
   void _remove(String id) => setState(() {
     final q = (_cart[id] ?? 0) - 1;
     if (q <= 0) _cart.remove(id); else _cart[id] = q;
   });
 
-  Future<void> _placeOrder() async {
+  Future<void> _placeOrder({
+    required String paymentMethod,
+    required String deliveryMethod,
+    required String customerName,
+    required String customerPhone,
+    String? shippingAddress,
+    String? notes,
+  }) async {
     if (_cart.isEmpty) return;
     setState(() => _ordering = true);
     try {
@@ -64,16 +100,24 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       final items = _cart.entries
           .map((e) => {'product_id': e.key, 'qty': e.value})
           .toList();
-      await api.placeMarketplaceOrder(items);
+      await api.placeMarketplaceOrder(
+        items,
+        paymentMethod: paymentMethod,
+        deliveryMethod: deliveryMethod,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        shippingAddress: shippingAddress,
+        notes: notes,
+      );
       setState(() => _cart.clear());
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(context); // close checkout sheet
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
             backgroundColor: AppColors.surface,
-            title: const Text('Παραγγελία καταχωρήθηκε!'),
-            content: const Text('Το γυμναστήριο θα επεξεργαστεί την παραγγελία σου σύντομα.'),
+            title: const Text('Παραγγελία καταχωρήθηκε! 🎉'),
+            content: const Text('Θα λάβεις ειδοποίηση όταν είναι έτοιμη.'),
             actions: [
               FilledButton(
                 onPressed: () => Navigator.pop(context),
@@ -118,9 +162,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           products: _products,
           cart: _cart,
           ordering: _ordering,
+          paymentMethods: _paymentMethods,
           onAdd: (id) { _add(id); setInner(() {}); },
           onRemove: (id) { _remove(id); setInner(() {}); },
-          onOrder: _placeOrder,
+          onCheckout: (data) => _placeOrder(
+            paymentMethod: data['payment_method'] as String,
+            deliveryMethod: data['delivery_method'] as String,
+            customerName: data['customer_name'] as String,
+            customerPhone: data['customer_phone'] as String,
+            shippingAddress: data['shipping_address'] as String?,
+            notes: data['notes'] as String?,
+          ),
         ),
       ),
     );
@@ -587,32 +639,99 @@ class _ProductPageState extends State<_ProductPage> {
 
 // ── Cart Sheet ────────────────────────────────────────────────────────────────
 
-class _CartSheet extends StatelessWidget {
+class _CartSheet extends StatefulWidget {
   const _CartSheet({
     required this.products, required this.cart, required this.ordering,
-    required this.onAdd, required this.onRemove, required this.onOrder,
+    required this.paymentMethods,
+    required this.onAdd, required this.onRemove, required this.onCheckout,
   });
   final List<Map<String, dynamic>> products;
   final Map<String, int> cart;
   final bool ordering;
+  final Map<String, bool> paymentMethods;
   final void Function(String) onAdd, onRemove;
-  final VoidCallback onOrder;
+  final void Function(Map<String, dynamic>) onCheckout;
+
+  @override
+  State<_CartSheet> createState() => _CartSheetState();
+}
+
+class _CartSheetState extends State<_CartSheet> {
+  bool _showCheckout = false;
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
+  String _deliveryMethod = 'pickup';
+  String? _paymentMethod;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill from auth if available
+    final auth = context.read<AuthService>();
+    if (auth.isLoggedIn) {
+      _nameCtrl.text = auth.user?.fullName ?? '';
+      _phoneCtrl.text = auth.user?.phone ?? '';
+    }
+    // Set default payment method to first enabled one
+    final enabled = widget.paymentMethods.entries.where((e) => e.value).toList();
+    if (enabled.isNotEmpty) _paymentMethod = enabled.first.key;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose(); _phoneCtrl.dispose();
+    _addressCtrl.dispose(); _notesCtrl.dispose();
+    super.dispose();
+  }
 
   String _eur(int cents) => '€${(cents / 100).toStringAsFixed(2)}';
 
   int get _total {
     int t = 0;
-    for (final e in cart.entries) {
-      final p = products.firstWhere((x) => x['id'] == e.key, orElse: () => {});
+    for (final e in widget.cart.entries) {
+      final p = widget.products.firstWhere((x) => x['id'] == e.key, orElse: () => {});
       t += ((p['price_cents'] as int? ?? 0) * e.value);
     }
     return t;
   }
 
+  String _paymentLabel(String key) {
+    switch (key) {
+      case 'cash': return 'Μετρητά';
+      case 'card': return 'Κάρτα';
+      case 'pickup': return 'Παραλαβή από κατάστημα';
+      case 'stripe': return 'Online πληρωμή';
+      case 'bank': return 'Τραπεζική μεταφορά';
+      default: return key;
+    }
+  }
+
+  IconData _paymentIcon(String key) {
+    switch (key) {
+      case 'cash': return Icons.payments_outlined;
+      case 'card': return Icons.credit_card_outlined;
+      case 'pickup': return Icons.store_outlined;
+      case 'stripe': return Icons.credit_card;
+      case 'bank': return Icons.account_balance_outlined;
+      default: return Icons.payment;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final items = cart.entries
-        .map((e) => MapEntry(products.firstWhere((p) => p['id'] == e.key, orElse: () => {}), e.value))
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: _showCheckout ? _buildCheckout() : _buildCartList(),
+    );
+  }
+
+  Widget _buildCartList() {
+    final items = widget.cart.entries
+        .map((e) => MapEntry(widget.products.firstWhere((p) => p['id'] == e.key, orElse: () => {}), e.value))
         .where((e) => e.key.isNotEmpty)
         .toList();
 
@@ -638,7 +757,6 @@ class _CartSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
           ...items.map((e) {
             final product = e.key;
             final qty = e.value;
@@ -650,65 +768,50 @@ class _CartSheet extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: SizedBox(
-                      width: 52, height: 52,
-                      child: _NetworkImage(url: imageUrl),
-                    ),
+                    child: SizedBox(width: 52, height: 52, child: _NetworkImage(url: imageUrl)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(product['name'] as String? ?? '',
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
-                        Text(_eur(price),
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(product['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(_eur(price), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                   ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _CircleBtn(icon: Icons.remove, onTap: () => onRemove(product['id'] as String)),
+                      _CircleBtn(icon: Icons.remove, onTap: () => widget.onRemove(product['id'] as String)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('$qty',
-                            style: const TextStyle(fontWeight: FontWeight.w800,
-                                color: AppColors.lime, fontSize: 15)),
+                        child: Text('$qty', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.lime, fontSize: 15)),
                       ),
-                      _CircleBtn(icon: Icons.add, onTap: () => onAdd(product['id'] as String)),
+                      _CircleBtn(icon: Icons.add, onTap: () => widget.onAdd(product['id'] as String)),
                     ],
                   ),
                   const SizedBox(width: 12),
-                  Text(_eur(price * qty),
-                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.lime)),
+                  Text(_eur(price * qty), style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.lime)),
                 ],
               ),
             );
           }),
-
           const Divider(height: 24),
-
           Row(
             children: [
               const Text('Σύνολο', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
               const Spacer(),
-              Text(_eur(_total),
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: AppColors.lime)),
+              Text(_eur(_total), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: AppColors.lime)),
             ],
           ),
           const SizedBox(height: 20),
-
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: ordering ? null : onOrder,
-              icon: ordering
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                  : const Icon(Icons.check_circle_outline),
-              label: Text(ordering ? 'Υποβολή...' : 'Ολοκλήρωση παραγγελίας · ${_eur(_total)}'),
+              onPressed: () => setState(() => _showCheckout = true),
+              icon: const Icon(Icons.arrow_forward),
+              label: Text('Συνέχεια · ${_eur(_total)}'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.lime,
                 foregroundColor: AppColors.bg,
@@ -718,6 +821,240 @@ class _CartSheet extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCheckout() {
+    final enabledPayments = widget.paymentMethods.entries.where((e) => e.value).toList();
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(context).padding.bottom + 24),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+              )),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _showCheckout = false),
+                    child: const Icon(Icons.arrow_back_ios, size: 18, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('Ολοκλήρωση', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  Text(_eur(_total), style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 18)),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Contact info
+              _SectionTitle('Στοιχεία επικοινωνίας'),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: _inputDecoration('Ονοματεπώνυμο', Icons.person_outline),
+                validator: (v) => v == null || v.trim().isEmpty ? 'Απαιτείται' : null,
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _phoneCtrl,
+                decoration: _inputDecoration('Τηλέφωνο', Icons.phone_outlined),
+                keyboardType: TextInputType.phone,
+                validator: (v) => v == null || v.trim().isEmpty ? 'Απαιτείται' : null,
+              ),
+              const SizedBox(height: 24),
+
+              // Delivery method
+              _SectionTitle('Τρόπος παραλαβής'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: _DeliveryOption(
+                    icon: Icons.store_outlined,
+                    label: 'Από το κατάστημα',
+                    selected: _deliveryMethod == 'pickup',
+                    onTap: () => setState(() { _deliveryMethod = 'pickup'; }),
+                  )),
+                  const SizedBox(width: 10),
+                  Expanded(child: _DeliveryOption(
+                    icon: Icons.local_shipping_outlined,
+                    label: 'Αποστολή',
+                    selected: _deliveryMethod == 'delivery',
+                    onTap: () => setState(() { _deliveryMethod = 'delivery'; }),
+                  )),
+                ],
+              ),
+              if (_deliveryMethod == 'delivery') ...[
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _addressCtrl,
+                  decoration: _inputDecoration('Διεύθυνση αποστολής', Icons.location_on_outlined),
+                  validator: (v) => _deliveryMethod == 'delivery' && (v == null || v.trim().isEmpty) ? 'Απαιτείται' : null,
+                  maxLines: 2,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+              ],
+              const SizedBox(height: 24),
+
+              // Payment method
+              if (enabledPayments.isNotEmpty) ...[
+                _SectionTitle('Τρόπος πληρωμής'),
+                const SizedBox(height: 10),
+                ...enabledPayments.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _paymentMethod = e.key),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: _paymentMethod == e.key ? AppColors.lime.withValues(alpha: 0.12) : AppColors.bg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _paymentMethod == e.key ? AppColors.lime : AppColors.border,
+                          width: _paymentMethod == e.key ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(_paymentIcon(e.key), color: _paymentMethod == e.key ? AppColors.lime : AppColors.textSecondary, size: 20),
+                          const SizedBox(width: 12),
+                          Text(_paymentLabel(e.key), style: TextStyle(
+                            fontWeight: _paymentMethod == e.key ? FontWeight.w700 : FontWeight.w500,
+                            color: _paymentMethod == e.key ? AppColors.lime : AppColors.textPrimary,
+                          )),
+                          const Spacer(),
+                          if (_paymentMethod == e.key)
+                            const Icon(Icons.check_circle, color: AppColors.lime, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                )),
+                const SizedBox(height: 16),
+              ],
+
+              // Notes
+              TextFormField(
+                controller: _notesCtrl,
+                decoration: _inputDecoration('Σημειώσεις παραγγελίας (προαιρετικό)', Icons.notes_outlined),
+                maxLines: 2,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: 24),
+
+              // Order summary
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    const Text('Σύνολο παραγγελίας', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    Text(_eur(_total), style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 20)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: widget.ordering ? null : _submit,
+                  icon: widget.ordering
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
+                      : const Icon(Icons.check_circle_outline),
+                  label: Text(widget.ordering ? 'Υποβολή...' : 'Υποβολή παραγγελίας'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.lime,
+                    foregroundColor: AppColors.bg,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_paymentMethod == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Επίλεξε τρόπο πληρωμής')));
+      return;
+    }
+    widget.onCheckout({
+      'payment_method': _paymentMethod!,
+      'delivery_method': _deliveryMethod,
+      'customer_name': _nameCtrl.text.trim(),
+      'customer_phone': _phoneCtrl.text.trim(),
+      'shipping_address': _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
+      'notes': _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+    });
+  }
+
+  InputDecoration _inputDecoration(String hint, IconData icon) => InputDecoration(
+    hintText: hint,
+    prefixIcon: Icon(icon, size: 18, color: AppColors.textSecondary),
+    filled: true,
+    fillColor: AppColors.bg,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.lime, width: 1.5)),
+    errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.pink)),
+    focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.pink, width: 1.5)),
+    hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+  );
+}
+
+class _DeliveryOption extends StatelessWidget {
+  const _DeliveryOption({required this.icon, required this.label, required this.selected, required this.onTap});
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.lime.withValues(alpha: 0.12) : AppColors.bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? AppColors.lime : AppColors.border, width: selected ? 1.5 : 1),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: selected ? AppColors.lime : AppColors.textSecondary, size: 22),
+            const SizedBox(height: 6),
+            Text(label, textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                    color: selected ? AppColors.lime : AppColors.textSecondary)),
+          ],
+        ),
       ),
     );
   }

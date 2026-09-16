@@ -138,6 +138,8 @@ class PushService {
     final type = data['type']?.toString() ?? '';
     final bookingId = data['booking_id']?.toString() ?? '';
     final notifId = data['notification_id']?.toString() ?? '';
+    final postId = data['post_id']?.toString() ?? '';
+    final threadId = data['thread_id']?.toString() ?? '';
 
     if (type == 'workout_complete' && bookingId.isNotEmpty) {
       return 'complete:$bookingId';
@@ -145,8 +147,11 @@ class PushService {
     if (type == 'checkin_reminder' && bookingId.isNotEmpty) {
       return 'complete:$bookingId';
     }
+    if ((type == 'community_mention' || type == 'community_comment') && postId.isNotEmpty) {
+      return 'community:$postId';
+    }
     if (type == 'message' || data['action']?.toString() == 'open_messages') {
-      return 'messages:open';
+      return threadId.isNotEmpty ? 'messages:$threadId' : 'messages:open';
     }
     if (bookingId.isNotEmpty) {
       return 'prep:$bookingId';

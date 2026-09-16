@@ -9,13 +9,26 @@ const db = require('../db');
 const { authenticate } = require('../middleware/auth');
 const { requireActiveCustomer } = require('../lib/customer_auth');
 
+const { r2Multer, isConfigured: r2Ready, R2_PUBLIC_URL } = require('../lib/r2_upload');
+
+const _productR2 = r2Ready() ? r2Multer({
+  keyFn: (req) => `products/${uuidv4()}${path.extname(req.file?.originalname || '.jpg').toLowerCase()}`,
+  allowedMimes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  maxSizeMb: 5,
+}) : null;
+
+// Fallback local storage if R2 not configured
 const uploadDir = path.resolve(process.env.UPLOAD_DIR || './uploads', 'products');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, `${uuidv4()}${path.extname(file.originalname)}`),
+const _localUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, `${uuidv4()}${path.extname(file.originalname)}`),
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+const upload = { single: (f) => (_productR2 ?? _localUpload).single(f) };
 
 function softAuth(req, res, next) {
   const header = req.headers.authorization;
@@ -27,6 +40,8 @@ function softAuth(req, res, next) {
   next();
 }
 const { createPaymentIntent } = require('../lib/online_payments');
+const { sendFcm, getUserFcmTokens } = require('../lib/push');
+const { createUserNotification } = require('../lib/user_notifications');
 
 const router = express.Router();
 
@@ -98,9 +113,9 @@ router.get('/:bizId/products/:productId', softAuth, async (req, res) => {
 // ── Mobile: place order ──────────────────────────────────────────────────────
 
 // POST /api/marketplace/:bizId/orders
-// Body: { items: [{ product_id, qty }], notes? }
+// Body: { items: [{ product_id, qty }], payment_method?, customer_name?, customer_phone?, shipping_address?, delivery_method?, notes? }
 router.post('/:bizId/orders', softAuth, requireActiveCustomer, async (req, res) => {
-  const { items, notes } = req.body;
+  const { items, notes, payment_method, customer_name, customer_phone, shipping_address, delivery_method } = req.body;
   if (!items?.length) return res.status(400).json({ error: 'Απαιτούνται items' });
 
   const conn = await db.getConnection();
@@ -140,9 +155,11 @@ router.post('/:bizId/orders', softAuth, requireActiveCustomer, async (req, res) 
     // Create order
     const orderId = uuidv4();
     await conn.query(`
-      INSERT INTO orders (id, business_id, user_id, status, total_cents, notes)
-      VALUES (?, ?, ?, 'pending', ?, ?)
-    `, [orderId, req.params.bizId, req.user.userId, totalCents, notes || null]);
+      INSERT INTO orders (id, business_id, user_id, status, total_cents, notes, payment_method, customer_name, customer_phone, shipping_address, delivery_method, source)
+      VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, 'app')
+    `, [orderId, req.params.bizId, req.user.userId, totalCents, notes || null,
+        payment_method || 'pickup', customer_name || null, customer_phone || null,
+        shipping_address || null, delivery_method || 'pickup']);
 
     for (const { product, qty } of lineItems) {
       await conn.query(`
@@ -319,6 +336,24 @@ router.patch('/:bizId/admin/orders/:orderId/status', authenticate, async (req, r
       [status, req.params.orderId],
     );
 
+    // Send FCM push when order is ready/fulfilled
+    if (status === 'fulfilled' && order.status !== 'fulfilled') {
+      const [[fullOrder]] = await conn.query(
+        'SELECT user_id, total_cents FROM orders WHERE id = ?', [req.params.orderId]
+      );
+      if (fullOrder?.user_id) {
+        createUserNotification(conn, {
+          businessId: req.params.bizId,
+          userId: fullOrder.user_id,
+          type: 'order_ready',
+          title: '📦 Η παραγγελία σου είναι έτοιμη!',
+          body: `Η παραγγελία αξίας €${(fullOrder.total_cents / 100).toFixed(2)} είναι έτοιμη για παραλαβή.`,
+          payload: { order_id: req.params.orderId },
+          sendPush: true,
+        }).catch(() => {});
+      }
+    }
+
     // Restore stock if cancelled
     if (status === 'cancelled' && order.status !== 'cancelled') {
       const [items] = await conn.query(
@@ -343,10 +378,21 @@ router.patch('/:bizId/admin/orders/:orderId/status', authenticate, async (req, r
   }
 });
 
+// GET /api/marketplace/:bizId/admin/products/:productId/images
+router.get('/:bizId/admin/products/:productId/images', authenticate, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT id, image_url, sort_order FROM product_images WHERE product_id = ? ORDER BY sort_order ASC',
+      [req.params.productId],
+    );
+    return res.json({ images: rows });
+  } catch (err) { return res.status(500).json({ error: err.message }); }
+});
+
 // POST /api/marketplace/:bizId/admin/products/:productId/image
 router.post('/:bizId/admin/products/:productId/image', authenticate, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Δεν στάλθηκε αρχείο' });
-  const url = `/uploads/products/${req.file.filename}`;
+  const url = req.file.publicUrl || `/uploads/products/${req.file.filename}`;
   try {
     await db.query('UPDATE products SET image_url = ? WHERE id = ? AND business_id = ?',
       [url, req.params.productId, req.params.bizId]);
@@ -359,7 +405,7 @@ router.post('/:bizId/admin/products/:productId/image', authenticate, upload.sing
 // POST /api/marketplace/:bizId/admin/products/:productId/images (add extra image)
 router.post('/:bizId/admin/products/:productId/images', authenticate, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Δεν στάλθηκε αρχείο' });
-  const url = `/uploads/products/${req.file.filename}`;
+  const url = req.file.publicUrl || `/uploads/products/${req.file.filename}`;
   try {
     const [[maxRow]] = await db.query(
       'SELECT COALESCE(MAX(sort_order),0)+1 AS next FROM product_images WHERE product_id = ?',
@@ -491,6 +537,18 @@ router.delete('/:bizId/admin/categories/:catId', authenticate, async (req, res) 
     await db.query('DELETE FROM marketplace_categories WHERE id = ? AND business_id = ?',
       [req.params.catId, req.params.bizId]);
     return res.json({ ok: true });
+  } catch (err) { return res.status(500).json({ error: err.message }); }
+});
+
+// ── Mobile: marketplace settings (payment methods for checkout) ──────────────
+router.get('/:bizId/mobile-settings', async (req, res) => {
+  try {
+    const [[row]] = await db.query(
+      'SELECT payment_methods_json, shipping_json FROM marketplace_settings WHERE business_id = ?',
+      [req.params.bizId],
+    );
+    const paymentMethods = row?.payment_methods_json ? JSON.parse(row.payment_methods_json) : { cash: true, pickup: true };
+    return res.json({ payment_methods: paymentMethods });
   } catch (err) { return res.status(500).json({ error: err.message }); }
 });
 

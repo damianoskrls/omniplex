@@ -29,7 +29,7 @@ class HomeScreen extends StatefulWidget {
 
   static void openNotifications() => _HomeScreenState.openNotifications();
 
-  static void openMessages() => _HomeScreenState.openMessages();
+  static void openMessages({String? threadId}) => _HomeScreenState.openMessages(threadId: threadId);
 
   static void openCommunityPost(String? postId) => _HomeScreenState.openCommunityPost(postId);
 
@@ -42,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   late int _index;
   int _unreadCount = 0;
+  int _messageUnreadCount = 0;
   bool _hasNutritionAccess = false;
   Timer? _unreadTimer;
 
@@ -57,10 +58,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     state._showNotifications();
   }
 
-  static void openMessages() {
+  static void openMessages({String? threadId}) {
     final state = _active;
     if (state == null || !state.mounted) return;
-    state._showMessages();
+    state._showMessages(threadId: threadId);
   }
 
   static void openCommunityPost(String? postId) {
@@ -207,11 +208,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!auth.isLoggedIn) return;
     try {
       final notifResult = await auth.api.fetchNotifications();
-      if (mounted) {
-        setState(() {
-          _unreadCount = notifResult.unreadCount;
-        });
-      }
+      if (mounted) setState(() => _unreadCount = notifResult.unreadCount);
+    } on ApiException catch (_) {}
+    try {
+      final msgCount = await context.read<AuthService>().api.fetchMessageUnreadCount();
+      if (mounted) setState(() => _messageUnreadCount = msgCount);
     } on ApiException catch (_) {}
   }
 
@@ -247,13 +248,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } on ApiException catch (_) {}
   }
 
-  void _showMessages() {
+  void _showMessages({String? threadId}) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => MessagesScreen(
+          initialThreadId: threadId,
           onUnreadChanged: (count) {
-            if (mounted) setState(() {});
+            if (mounted) setState(() => _messageUnreadCount = count);
           },
         ),
       ),
@@ -345,8 +347,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onLogoTap: _openGymInfo,
               onAvatarTap: _openProfile,
               onCheckinTap: _openCheckin,
+              onMessagesTap: _showMessages,
               onNotificationsTap: _showNotifications,
               notificationCount: _unreadCount,
+              messageCount: _messageUnreadCount,
             ),
             Expanded(child: tabs[_index].screen),
           ],

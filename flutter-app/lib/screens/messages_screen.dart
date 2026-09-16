@@ -17,11 +17,14 @@ class MessagesScreen extends StatefulWidget {
     super.key,
     this.onUnreadChanged,
     this.initialPeer,
+    this.initialThreadId,
   });
 
   final ValueChanged<int>? onUnreadChanged;
   // If set, automatically opens a conversation with this peer on mount.
   final Map<String, dynamic>? initialPeer;
+  // If set, automatically opens this thread on mount.
+  final String? initialThreadId;
 
   @override
   State<MessagesScreen> createState() => _MessagesScreenState();
@@ -48,7 +51,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   @override
   void initState() {
     super.initState();
-    _loadThreads(thenOpenPeer: widget.initialPeer);
+    _loadThreads(thenOpenPeer: widget.initialPeer, thenOpenThreadId: widget.initialThreadId);
     _listPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (_activeThread == null && !_showNew) _loadThreads(silent: true);
     });
@@ -100,7 +103,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadThreads({bool silent = false, Map<String, dynamic>? thenOpenPeer}) async {
+  Future<void> _loadThreads({bool silent = false, Map<String, dynamic>? thenOpenPeer, String? thenOpenThreadId}) async {
     if (!silent) setState(() => _loading = true);
     try {
       final results = await Future.wait([
@@ -113,7 +116,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
         _peers = results[1];
       });
       await _refreshUnread();
-      if (thenOpenPeer != null && mounted) {
+      if (thenOpenThreadId != null && mounted) {
+        await _openThread(thenOpenThreadId);
+      } else if (thenOpenPeer != null && mounted) {
         await _startPeerChat(thenOpenPeer);
       }
     } on ApiException catch (e) {

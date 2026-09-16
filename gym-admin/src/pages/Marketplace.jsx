@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 // ─── helpers ──────────────────────────────────────────────────
-const API_BASE = 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://passionate-grace-production-98ad.up.railway.app';
 function imgSrc(url) {
   if (!url) return null;
   return url.startsWith('/') ? `${API_BASE}${url}` : url;
@@ -37,9 +37,19 @@ function ProductModal({ product: initProduct, categories, onClose, onSave, bizId
   const [saved, setSaved]       = useState(!!initProduct);
   const [pendingFile, setPendingFile] = useState(null);
   const [pendingPreview, setPendingPreview] = useState(null);
+  const [extraImages, setExtraImages] = useState(initProduct?.extra_images || []);
+  const [uploadingExtra, setUploadingExtra] = useState(false);
   const fileRef = useRef();
+  const extraFileRef = useRef();
 
   const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
+
+  useEffect(() => {
+    if (!initProduct?.id) return;
+    api.get(`/marketplace/${bizId}/admin/products/${initProduct.id}/images`)
+      .then(r => setExtraImages(r.data.images || []))
+      .catch(() => {});
+  }, [initProduct?.id]);
 
   const uploadImage = async (file, productId) => {
     setUploading(true);
@@ -52,6 +62,28 @@ function ProductModal({ product: initProduct, categories, onClose, onSave, bizId
       toast.success('Εικόνα ανέβηκε');
     } catch (e) { toast.error(e.response?.data?.error || 'Σφάλμα upload'); }
     finally { setUploading(false); }
+  };
+
+  const uploadExtraImage = async (file) => {
+    if (!product?.id) return;
+    setUploadingExtra(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const r = await api.post(`/marketplace/${bizId}/admin/products/${product.id}/images`, fd);
+      setExtraImages(prev => [...prev, { id: r.data.id, image_url: r.data.url }]);
+      toast.success('Εικόνα προστέθηκε');
+    } catch (e) { toast.error(e.response?.data?.error || 'Σφάλμα upload'); }
+    finally { setUploadingExtra(false); }
+  };
+
+  const deleteExtraImage = async (imgId) => {
+    if (!product?.id) return;
+    try {
+      await api.delete(`/marketplace/${bizId}/admin/products/${product.id}/images/${imgId}`);
+      setExtraImages(prev => prev.filter(i => i.id !== imgId));
+      toast.success('Εικόνα διαγράφηκε');
+    } catch (e) { toast.error(e.response?.data?.error || 'Σφάλμα διαγραφής'); }
   };
 
   const handleFileSelect = (file) => {
@@ -210,6 +242,36 @@ function ProductModal({ product: initProduct, categories, onClose, onSave, bizId
             <span style={{ fontWeight:500, color:'#475569', fontSize:'0.875rem' }}>Ενεργό</span>
           </label>
         </div>
+
+        {/* Extra images gallery — shown only after product is saved */}
+        {product?.id && (
+          <div className="form-group">
+            <label className="form-label">Επιπλέον εικόνες</label>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:10, alignItems:'flex-start' }}>
+              {extraImages.map(img => (
+                <div key={img.id} style={{ position:'relative', width:80, height:80, borderRadius:10, overflow:'hidden', border:'1px solid #e2e8f0' }}>
+                  <img src={imgSrc(img.image_url)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                  <button
+                    onClick={() => deleteExtraImage(img.id)}
+                    style={{ position:'absolute', top:2, right:2, background:'rgba(0,0,0,0.55)', border:'none', borderRadius:6, padding:'2px 5px', cursor:'pointer', color:'#fff', fontSize:12 }}>
+                    <X size={12}/>
+                  </button>
+                </div>
+              ))}
+              <div
+                onClick={() => !uploadingExtra && extraFileRef.current?.click()}
+                style={{
+                  width:80, height:80, borderRadius:10, border:'2px dashed #e2e8f0',
+                  background:'#f8fafc', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                  cursor: uploadingExtra ? 'default' : 'pointer', fontSize:11, color:'#94a3b8', gap:4,
+                }}>
+                {uploadingExtra ? '⏳' : <><Image size={20}/><span>+ Εικόνα</span></>}
+              </div>
+              <input ref={extraFileRef} type="file" accept="image/*" style={{ display:'none' }}
+                onChange={e => e.target.files[0] && uploadExtraImage(e.target.files[0])}/>
+            </div>
+          </div>
+        )}
 
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>{saved && !initProduct ? 'Κλείσιμο' : 'Άκυρο'}</button>

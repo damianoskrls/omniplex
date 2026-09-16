@@ -95,7 +95,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
       HomeScreen.openNotifications();
     } else if (action == 'messages') {
       nav.popUntil((route) => route.isFirst);
-      HomeScreen.openMessages();
+      HomeScreen.openMessages(threadId: parts.length > 1 && parts[1] != 'open' ? parts[1] : null);
     } else if (action == 'community') {
       nav.popUntil((route) => route.isFirst);
       final postId = parts.length > 1 ? parts[1] : null;

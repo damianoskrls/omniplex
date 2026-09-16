@@ -717,11 +717,28 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> placeMarketplaceOrder(
-      List<Map<String, dynamic>> items, {String? notes}) async {
+      List<Map<String, dynamic>> items, {
+        String? notes,
+        String? paymentMethod,
+        String? customerName,
+        String? customerPhone,
+        String? shippingAddress,
+        String? deliveryMethod,
+      }) async {
     final res = await _post('/api/marketplace/$bizId/orders', {
       'items': items,
-      if (notes != null) 'notes': notes,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+      if (paymentMethod != null) 'payment_method': paymentMethod,
+      if (customerName != null && customerName.isNotEmpty) 'customer_name': customerName,
+      if (customerPhone != null && customerPhone.isNotEmpty) 'customer_phone': customerPhone,
+      if (shippingAddress != null && shippingAddress.isNotEmpty) 'shipping_address': shippingAddress,
+      if (deliveryMethod != null) 'delivery_method': deliveryMethod,
     });
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> fetchMarketplaceSettings() async {
+    final res = await _get('/api/marketplace/$bizId/mobile-settings');
     return _decode(res) as Map<String, dynamic>;
   }
 
