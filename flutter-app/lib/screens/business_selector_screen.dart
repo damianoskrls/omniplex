@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../config/tenant_config.dart';
+import '../theme/app_colors.dart';
 
 class BusinessSelectorScreen extends StatefulWidget {
   const BusinessSelectorScreen({
@@ -43,30 +43,45 @@ class _SearchResult {
     name:         j['name']          as String,
     appName:      j['app_name']      as String,
     businessType: j['business_type'] as String,
-    primaryColor: j['primary_color'] as String? ?? '#6200EE',
+    primaryColor: j['primary_color'] as String? ?? '#B8F55E',
     logoUrl:      j['logo_url']      as String?,
   );
 }
 
-class _BusinessSelectorScreenState extends State<BusinessSelectorScreen> {
+class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
+    with SingleTickerProviderStateMixin {
   final _searchCtrl = TextEditingController();
   final _focusNode  = FocusNode();
+  late final AnimationController _entry;
+  late final Animation<double> _entryOpacity;
+  late final Animation<Offset> _entrySlide;
 
   List<_SearchResult> _results  = [];
   bool _searching   = false;
   bool _connecting  = false;
   String? _error;
   Timer? _debounce;
+  bool _searchFocused = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.requestFocus();
+    _entry = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))
+      ..forward();
+    _entryOpacity = CurvedAnimation(parent: _entry, curve: const Interval(0, 0.7, curve: Curves.easeOut));
+    _entrySlide = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _entry, curve: const Interval(0, 0.7, curve: Curves.easeOutCubic)));
+
+    _focusNode.addListener(() => setState(() => _searchFocused = _focusNode.hasFocus));
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) _focusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _entry.dispose();
     _searchCtrl.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -97,10 +112,7 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen> {
       }
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Δεν βρέθηκε server στο ${widget.apiBaseUrl}.\nΕπέλεξε "Προχωρημένες" για να αλλάξεις IP.';
-        _searching = false;
-      });
+      setState(() { _error = 'Αδύνατη η σύνδεση. Έλεγξε τη σύνδεσή σου.'; _searching = false; });
     }
   }
 
@@ -121,7 +133,7 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen> {
 
   Color _parseColor(String hex) {
     try { return Color(int.parse(hex.replaceFirst('#', '0xFF'))); }
-    catch (_) { return const Color(0xFF6200EE); }
+    catch (_) { return AppColors.lime; }
   }
 
   String _typeLabel(String t) {
@@ -137,223 +149,448 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ergonhub wordmark
-                  Row(
-                    children: [
-                      Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF6200EE), Color(0xFF03DAC6)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.hub_outlined, color: Colors.white, size: 18),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'ergonhub',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'Βρες την επιχείρησή σου',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Αναζήτησε με το όνομα του γυμναστηρίου ή κέντρου σου.',
-                    style: TextStyle(color: Colors.white54, fontSize: 14, height: 1.5),
-                  ),
-                  const SizedBox(height: 20),
+      backgroundColor: const Color(0xFF09090E),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Ambient background
+          CustomPaint(painter: _BackgroundPainter()),
 
-                  // Search field
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A2E),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: TextField(
-                      controller: _searchCtrl,
-                      focusNode: _focusNode,
-                      onChanged: _onSearchChanged,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                      decoration: InputDecoration(
-                        hintText: 'π.χ. Handstand, FitLife...',
-                        hintStyle: const TextStyle(color: Colors.white30),
-                        prefixIcon: _searching
-                            ? const Padding(
-                                padding: EdgeInsets.all(14),
-                                child: SizedBox(
-                                  width: 20, height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(Colors.white38),
-                                  ),
-                                ),
-                              )
-                            : const Icon(Icons.search, color: Colors.white38, size: 22),
-                        suffixIcon: _searchCtrl.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.white38, size: 18),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() { _results = []; _error = null; });
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Error
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
-                  ),
-                  child: Text(_error!,
-                    style: const TextStyle(color: Color(0xFFFF6B6B), fontSize: 13, height: 1.5)),
-                ),
-              ),
-
-            // Results list
-            Expanded(
-              child: _results.isEmpty && _searchCtrl.text.trim().length >= 2 && !_searching
-                  ? Center(
+          // Main content
+          SafeArea(
+            child: SlideTransition(
+              position: _entrySlide,
+              child: FadeTransition(
+                opacity: _entryOpacity,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header zone
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.search_off, color: Colors.white24, size: 48),
-                          const SizedBox(height: 12),
-                          const Text('Δεν βρέθηκαν αποτελέσματα',
-                              style: TextStyle(color: Colors.white38, fontSize: 15)),
-                          const SizedBox(height: 6),
-                          Text('Δοκίμασε διαφορετική αναζήτηση',
-                              style: TextStyle(color: Colors.white24, fontSize: 13)),
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                      itemCount: _results.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (ctx, i) {
-                        final biz   = _results[i];
-                        final color = _parseColor(biz.primaryColor);
-                        final logoUrl = biz.logoUrl != null
-                            ? '${widget.apiBaseUrl}${biz.logoUrl}'
-                            : null;
+                          // Logo + wordmark
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 36, height: 36,
+                                child: Image.asset(
+                                  'assets/logo.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => _OmniplexMark(size: 36),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 2.5,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: 'OMNI',
+                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                                    ),
+                                    const TextSpan(
+                                      text: 'PLEX',
+                                      style: TextStyle(color: AppColors.lime),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
 
-                        return GestureDetector(
-                          onTap: _connecting ? null : () => _selectBusiness(biz),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF12121C),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: Colors.white10),
-                            ),
-                            child: Row(
+                          const SizedBox(height: 40),
+
+                          // Hero headline
+                          RichText(
+                            text: TextSpan(
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                                letterSpacing: -0.5,
+                              ),
                               children: [
-                                // Logo / avatar
-                                Container(
-                                  width: 52, height: 52,
-                                  decoration: BoxDecoration(
-                                    color: color.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: color.withValues(alpha: 0.3)),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(13),
-                                    child: logoUrl != null
-                                        ? Image.network(logoUrl, fit: BoxFit.contain,
-                                            errorBuilder: (_, __, ___) => Icon(Icons.business_center_outlined, color: color, size: 24))
-                                        : Icon(Icons.business_center_outlined, color: color, size: 24),
-                                  ),
+                                TextSpan(
+                                  text: 'Βρες τον\n',
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.95)),
                                 ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(biz.appName,
-                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
-                                      const SizedBox(height: 3),
-                                      Text(_typeLabel(biz.businessType),
-                                          style: const TextStyle(color: Colors.white54, fontSize: 13)),
-                                    ],
-                                  ),
+                                const TextSpan(
+                                  text: 'χώρο σου.',
+                                  style: TextStyle(color: AppColors.lime),
                                 ),
-                                if (_connecting)
-                                  const SizedBox(
-                                    width: 20, height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white38)),
-                                  )
-                                else
-                                  Icon(Icons.arrow_forward_ios, color: color, size: 16),
                               ],
                             ),
                           ),
-                        );
-                      },
-                    ),
-            ),
 
-            // Footer
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              child: Column(
-                children: [
-                  if (_searchCtrl.text.isEmpty)
-                    const Text(
-                      'Πληκτρολόγησε τουλάχιστον 2 γράμματα για αναζήτηση',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white24, fontSize: 12),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Αναζήτησε γυμναστήριο ή κέντρο',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.32),
+                              fontSize: 14,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+
+                          const SizedBox(height: 28),
+
+                          // Search field — custom minimal design
+                          _SearchField(
+                            controller: _searchCtrl,
+                            focusNode: _focusNode,
+                            focused: _searchFocused,
+                            searching: _searching,
+                            onChanged: _onSearchChanged,
+                            onClear: () {
+                              _searchCtrl.clear();
+                              setState(() { _results = []; _error = null; });
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  const SizedBox(height: 16),
-                  const Text('Powered by ergonhub',
-                      style: TextStyle(color: Colors.white12, fontSize: 11, letterSpacing: 1)),
-                ],
+
+                    const SizedBox(height: 8),
+
+                    // Error
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(28, 8, 28, 0),
+                        child: _ErrorBanner(message: _error!),
+                      ),
+
+                    // Results
+                    Expanded(
+                      child: _buildResults(),
+                    ),
+
+                    // Footer
+                    _Footer(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Connecting overlay
+          if (_connecting) _ConnectingOverlay(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResults() {
+    final hasQuery = _searchCtrl.text.trim().length >= 2;
+
+    if (!hasQuery) {
+      return _EmptyState(
+        icon: Icons.search_rounded,
+        message: 'Ξεκίνα πληκτρολογώντας\nτο όνομα του χώρου σου',
+      );
+    }
+
+    if (!_searching && _results.isEmpty) {
+      return _EmptyState(
+        icon: Icons.search_off_rounded,
+        message: 'Δεν βρέθηκαν αποτελέσματα\nΔοκίμασε διαφορετική αναζήτηση',
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(28, 12, 28, 24),
+      itemCount: _results.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (ctx, i) {
+        final biz   = _results[i];
+        final color = _parseColor(biz.primaryColor);
+        final logoUrl = biz.logoUrl != null
+            ? '${widget.apiBaseUrl}${biz.logoUrl}'
+            : null;
+        return _ResultCard(
+          biz: biz,
+          color: color,
+          logoUrl: logoUrl,
+          onTap: () => _selectBusiness(biz),
+          typeLabel: _typeLabel(biz.businessType),
+        );
+      },
+    );
+  }
+}
+
+// ── Search field ──────────────────────────────────────────────────────────────
+class _SearchField extends StatelessWidget {
+  const _SearchField({
+    required this.controller,
+    required this.focusNode,
+    required this.focused,
+    required this.searching,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool focused;
+  final bool searching;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131319),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: focused
+              ? AppColors.lime.withValues(alpha: 0.4)
+              : Colors.white.withValues(alpha: 0.07),
+          width: 1.5,
+        ),
+        boxShadow: focused
+            ? [BoxShadow(color: AppColors.lime.withValues(alpha: 0.06), blurRadius: 20)]
+            : [],
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 20, height: 20,
+            child: searching
+                ? CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    valueColor: AlwaysStoppedAnimation(Colors.white.withValues(alpha: 0.35)),
+                  )
+                : Icon(
+                    Icons.search_rounded,
+                    color: focused
+                        ? AppColors.lime.withValues(alpha: 0.8)
+                        : Colors.white.withValues(alpha: 0.28),
+                    size: 20,
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              onChanged: onChanged,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              cursorColor: AppColors.lime,
+              decoration: InputDecoration(
+                hintText: 'π.χ. Handstand, FitLife...',
+                hintStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.22),
+                  fontWeight: FontWeight.w400,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+          ),
+          if (controller.text.isNotEmpty) ...[
+            GestureDetector(
+              onTap: onClear,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                child: Icon(
+                  Icons.close_rounded,
+                  color: Colors.white.withValues(alpha: 0.3),
+                  size: 16,
+                ),
+              ),
+            ),
+          ] else
+            const SizedBox(width: 14),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Result card ───────────────────────────────────────────────────────────────
+class _ResultCard extends StatefulWidget {
+  const _ResultCard({
+    required this.biz,
+    required this.color,
+    required this.logoUrl,
+    required this.onTap,
+    required this.typeLabel,
+  });
+
+  final _SearchResult biz;
+  final Color color;
+  final String? logoUrl;
+  final VoidCallback onTap;
+  final String typeLabel;
+
+  @override
+  State<_ResultCard> createState() => _ResultCardState();
+}
+
+class _ResultCardState extends State<_ResultCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 100),
+        opacity: _pressed ? 0.7 : 1.0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _pressed
+                ? const Color(0xFF1C1C28)
+                : const Color(0xFF111118),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _pressed
+                  ? widget.color.withValues(alpha: 0.25)
+                  : Colors.white.withValues(alpha: 0.06),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Logo
+              Container(
+                width: 50, height: 50,
+                decoration: BoxDecoration(
+                  color: widget.color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: widget.color.withValues(alpha: 0.2)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: widget.logoUrl != null
+                      ? Image.network(
+                          widget.logoUrl!,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => _LogoFallback(color: widget.color, name: widget.biz.appName),
+                        )
+                      : _LogoFallback(color: widget.color, name: widget.biz.appName),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.biz.appName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          width: 5, height: 5,
+                          decoration: BoxDecoration(
+                            color: widget.color.withValues(alpha: 0.7),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.typeLabel,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.40),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(
+                  color: widget.color.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: widget.color.withValues(alpha: 0.8),
+                  size: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Logo fallback ─────────────────────────────────────────────────────────────
+class _LogoFallback extends StatelessWidget {
+  const _LogoFallback({required this.color, required this.name});
+  final Color color;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final letter = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    return Center(
+      child: Text(
+        letter,
+        style: TextStyle(
+          color: color,
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.icon, required this.message});
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white.withValues(alpha: 0.10), size: 48),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.22),
+                fontSize: 14,
+                height: 1.6,
               ),
             ),
           ],
@@ -362,3 +599,171 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen> {
     );
   }
 }
+
+// ── Error banner ──────────────────────────────────────────────────────────────
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E0E0E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, color: Colors.red.withValues(alpha: 0.7), size: 16),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: Color(0xFFFF6B6B), fontSize: 13, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+class _Footer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(width: 20, height: 1, color: Colors.white.withValues(alpha: 0.06)),
+          const SizedBox(width: 10),
+          Text(
+            'OMNIPLEX',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.10),
+              fontSize: 10,
+              letterSpacing: 3,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(width: 20, height: 1, color: Colors.white.withValues(alpha: 0.06)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Connecting overlay ────────────────────────────────────────────────────────
+class _ConnectingOverlay extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.6),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 40, height: 40,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(AppColors.lime.withValues(alpha: 0.8)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'ΣΥΝΔΕΣΗ',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 11,
+                letterSpacing: 3,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Omniplex mark (fallback for logo asset) ───────────────────────────────────
+class _OmniplexMark extends StatelessWidget {
+  const _OmniplexMark({required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size, height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFF131319),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          'O',
+          style: TextStyle(
+            color: AppColors.lime,
+            fontSize: size * 0.5,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Background painter ────────────────────────────────────────────────────────
+class _BackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Top-right subtle glow
+    canvas.drawCircle(
+      Offset(size.width, 0),
+      size.width * 0.5,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            AppColors.lime.withValues(alpha: 0.035),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromCircle(center: Offset(size.width, 0), radius: size.width * 0.5)),
+    );
+
+    // Bottom-left purple glow
+    canvas.drawCircle(
+      Offset(0, size.height),
+      size.width * 0.55,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            AppColors.purple.withValues(alpha: 0.06),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromCircle(center: Offset(0, size.height), radius: size.width * 0.55)),
+    );
+
+    // Fine grid pattern
+    final gridPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.025)
+      ..strokeWidth = 0.5;
+
+    const step = 60.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BackgroundPainter _) => false;
+}
+
