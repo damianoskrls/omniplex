@@ -2953,3 +2953,88 @@ select option { background: var(--surface-2); color: var(--text); }
 }
 
 .order-status-select:focus { outline: none; border-color: var(--accent); }
+
+/* ── Bookings filter scroll row ─────────────────────────────── */
+.bk-filter-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.bk-filter-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Client bookings section ────────────────────────────────── */
+.cb-bookings-split {
+  display: flex;
+  gap: 20px;
+}
+@media (max-width: 700px) {
+  .cb-bookings-split { flex-direction: column; }
+}
+
+.cb-bookings-col { flex: 1; min-width: 0; }
+
+.cb-bookings-col-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.cb-booking-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.cb-booking-row:last-child { border-bottom: none; }
+
+.cb-booking-row-main { flex: 1; min-width: 0; }
+
+.cb-booking-row-time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--text-2);
+  margin-bottom: 2px;
+}
+
+.cb-booking-row-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cb-booking-row-meta {
+  font-size: 0.76rem;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+.cb-booking-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cb-attendance-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--warning-dim);
+  border: 1px solid rgba(255,178,36,0.25);
+  color: var(--text);
+  font-size: 0.875rem;
+  margin-bottom: 14px;
+}
