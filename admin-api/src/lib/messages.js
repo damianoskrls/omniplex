@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { createAdminNotification } = require('./notifications');
 const { validateAttachmentUrl } = require('./message_upload');
 const { assertImageUploadAllowed } = require('./message_attachments');
+const { sendFcm, getUserFcmTokens } = require('./push');
 
 function buildMessagePreview({ body, message_type: messageType, attachment_url: attachmentUrl }) {
   if (messageType === 'image') {
@@ -722,6 +723,19 @@ async function sendStaffMessage(conn, actor, { threadId, body, attachment_url: a
     created_at: new Date(),
     is_mine: true,
   };
+
+  // FCM push to the client (fire-and-forget)
+  try {
+    const tokens = await getUserFcmTokens(conn, thread.client_user_id);
+    if (tokens.length > 0) {
+      const preview = type === 'image' ? '📷 Φωτογραφία' : (text.length > 100 ? text.slice(0, 100) + '…' : text);
+      await sendFcm(tokens, {
+        title: sender.sender_name,
+        body: preview,
+        data: { type: 'message', thread_id: threadId },
+      });
+    }
+  } catch (_) {}
 
   return { message, thread_id: threadId };
 }

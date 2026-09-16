@@ -54,14 +54,23 @@ async function sendFcm(tokens, { title, body, data = {}, imageUrl }) {
         token,
         notification: { title, body, ...(absImage ? { imageUrl: absImage } : {}) },
         data: stringData,
-        android: { priority: 'high' },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'bookup_push',
+            sound: 'default',
+            priority: 'high',
+          },
+        },
         apns: { payload: { aps: { sound: 'default' } } },
       });
       sent++;
     } catch (e) {
+      console.error('FCM send error:', e.message, 'token prefix:', token?.slice(0, 20));
       failure++;
     }
   }
+  console.log(`FCM: sent=${sent} failure=${failure} tokens=${unique.length}`);
   return { sent, failure, skipped: false };
 }
 
