@@ -143,8 +143,8 @@ class NotificationService {
       body,
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'bookup_instant',
-          'Ειδοποιήσεις',
+          'bookup_push',
+          'Push ειδοποιήσεις',
           importance: Importance.high,
           priority: Priority.high,
         ),
