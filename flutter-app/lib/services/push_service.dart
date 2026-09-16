@@ -153,6 +153,10 @@ class PushService {
     if (type == 'message' || data['action']?.toString() == 'open_messages') {
       return threadId.isNotEmpty ? 'messages:$threadId' : 'messages:open';
     }
+    final orderId = data['order_id']?.toString() ?? '';
+    if ((type == 'order_ready' || type == 'order_status') && orderId.isNotEmpty) {
+      return 'order:$orderId';
+    }
     if (bookingId.isNotEmpty) {
       return 'prep:$bookingId';
     }

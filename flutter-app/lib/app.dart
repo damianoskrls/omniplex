@@ -4,6 +4,7 @@ import 'config/tenant_config.dart';
 import 'models/booking.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/my_orders_screen.dart';
 import 'screens/workout_complete_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
@@ -100,6 +101,9 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
       nav.popUntil((route) => route.isFirst);
       final postId = parts.length > 1 ? parts[1] : null;
       HomeScreen.openCommunityPost(postId);
+    } else if (action == 'order') {
+      nav.popUntil((route) => route.isFirst);
+      nav.push(MaterialPageRoute(builder: (_) => const MyOrdersScreen()));
     } else if (action == 'prep' || action == 'open') {
       nav.popUntil((route) => route.isFirst);
       HomeScreen.selectTab(1);

@@ -337,19 +337,27 @@ router.patch('/:bizId/admin/orders/:orderId/status', authenticate, async (req, r
       [status, req.params.orderId],
     );
 
-    // Send FCM push when order is ready/fulfilled
-    if (status === 'fulfilled' && order.status !== 'fulfilled') {
+    // Send FCM push on order status changes
+    const notifMap = {
+      paid:        { type: 'order_status', title: '✅ Πληρωμή επιβεβαιώθηκε',    body: 'Η πληρωμή της παραγγελίας σου επιβεβαιώθηκε.' },
+      processing:  { type: 'order_status', title: '⚙️ Παραγγελία σε επεξεργασία', body: 'Η παραγγελία σου ετοιμάζεται.' },
+      fulfilled:   { type: 'order_ready',  title: '📦 Η παραγγελία σου είναι έτοιμη!', body: 'Μπορείς να την παραλάβεις.' },
+      cancelled:   { type: 'order_status', title: '❌ Παραγγελία ακυρώθηκε',      body: 'Η παραγγελία σου ακυρώθηκε.' },
+      refunded:    { type: 'order_status', title: '💸 Επιστροφή χρημάτων',         body: 'Η παραγγελία σου επιστράφηκε.' },
+    };
+    if (notifMap[status] && order.status !== status) {
       const [[fullOrder]] = await conn.query(
         'SELECT user_id, total_cents FROM orders WHERE id = ?', [req.params.orderId]
       );
       if (fullOrder?.user_id) {
+        const n = notifMap[status];
         createUserNotification(conn, {
           businessId: req.params.bizId,
           userId: fullOrder.user_id,
-          type: 'order_ready',
-          title: '📦 Η παραγγελία σου είναι έτοιμη!',
-          body: `Η παραγγελία αξίας €${(fullOrder.total_cents / 100).toFixed(2)} είναι έτοιμη για παραλαβή.`,
-          payload: { order_id: req.params.orderId },
+          type: n.type,
+          title: n.title,
+          body: n.body,
+          payload: { order_id: req.params.orderId, type: n.type },
           sendPush: true,
         }).catch(() => {});
       }
