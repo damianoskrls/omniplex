@@ -36,23 +36,22 @@ class UserNotificationSync {
     await PushService.instance.registerWithAuth(auth);
   }
 
+  final Set<String> _shownIds = {};
+
   Future<void> _poll() async {
     final auth = _auth;
     if (auth == null || !auth.isLoggedIn) return;
     try {
       final result = await auth.api.fetchNotifications();
-      final since = _since;
       for (final n in result.notifications) {
         final isRead = n['is_read'] == 1 || n['is_read'] == true;
         if (isRead) continue;
-        final createdRaw = n['created_at'] as String?;
-        if (createdRaw == null || since == null) continue;
-        final created = DateTime.parse(createdRaw).toUtc();
-        if (!created.isAfter(since)) continue;
+        final id = n['id'] as String? ?? '';
+        if (_shownIds.contains(id)) continue;
+        _shownIds.add(id);
 
         final type = n['type'] as String? ?? 'notice';
         final bookingId = n['booking_id'] as String?;
-        final id = n['id'] as String? ?? '';
         String payload = 'notif:$id';
         if (type == 'workout_complete' && bookingId != null) {
           payload = 'complete:$bookingId';
@@ -75,7 +74,6 @@ class UserNotificationSync {
           payload: payload,
         );
       }
-      _since = DateTime.now().toUtc();
     } catch (e) {
       debugPrint('Notification poll failed: $e');
     }

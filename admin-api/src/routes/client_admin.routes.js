@@ -2255,12 +2255,7 @@ router.post('/notifications/broadcast', requireClientAdmin, async (req, res) => 
 
   let imageUrl = null;
   if (image_url?.trim()) {
-    const normalized = String(image_url).trim();
-    const expectedPrefix = `/uploads/${bizId}/notifications/`;
-    if (!normalized.startsWith(expectedPrefix)) {
-      return res.status(400).json({ error: 'Μη έγκυρη εικόνα ανακοίνωσης' });
-    }
-    imageUrl = normalized;
+    imageUrl = String(image_url).trim();
   }
 
   let userSql = `SELECT id FROM users WHERE business_id = ? AND ${sqlActiveClients()}`;
