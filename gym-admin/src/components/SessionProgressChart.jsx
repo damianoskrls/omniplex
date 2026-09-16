@@ -16,9 +16,9 @@ export function SessionProgressRing({ used = 0, total, label, size = 100, unlimi
     return (
       <div className="sess-ring" style={{ width: dim }}>
         <svg width={dim} height={dim} viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r={r} fill="none" stroke="#dcfce7" strokeWidth="12" />
-          <circle cx="50" cy="50" r={r} fill="none" stroke="#76C043" strokeWidth="12" strokeDasharray={`${c} 0`} transform="rotate(-90 50 50)" />
-          <text x="50" y="54" textAnchor="middle" fontSize="20" fontWeight="800" fill="#166534">∞</text>
+          <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(184,245,94,0.15)" strokeWidth="12" />
+          <circle cx="50" cy="50" r={r} fill="none" stroke="#B8F55E" strokeWidth="12" strokeDasharray={`${c} 0`} transform="rotate(-90 50 50)" />
+          <text x="50" y="54" textAnchor="middle" fontSize="20" fontWeight="800" fill="#B8F55E">∞</text>
         </svg>
         {label && <div className="sess-ring-label">{label}</div>}
         <div className="sess-ring-sub">Απεριόριστες συνεδρίες</div>
@@ -29,19 +29,19 @@ export function SessionProgressRing({ used = 0, total, label, size = 100, unlimi
   return (
     <div className="sess-ring" style={{ width: dim }}>
       <svg width={dim} height={dim} viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="#f1f5f9" strokeWidth="12" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="12" />
         <circle
           cx="50"
           cy="50"
           r={r}
           fill="none"
-          stroke="#76C043"
+          stroke="#B8F55E"
           strokeWidth="12"
           strokeDasharray={`${usedDash} ${c - usedDash}`}
           transform="rotate(-90 50 50)"
         />
-        <text x="50" y="50" textAnchor="middle" fontSize="18" fontWeight="800" fill="#0f172a">{remaining}</text>
-        <text x="50" y="64" textAnchor="middle" fontSize="9" fill="#64748b">απομένουν</text>
+        <text x="50" y="50" textAnchor="middle" fontSize="18" fontWeight="800" fill="#fff">{remaining}</text>
+        <text x="50" y="64" textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.5)">απομένουν</text>
       </svg>
       {label && <div className="sess-ring-label">{label}</div>}
       <div className="sess-ring-sub">{used}/{total} χρησιμοποιήθηκαν · {pct}%</div>

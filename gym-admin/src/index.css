@@ -3038,3 +3038,32 @@ select option { background: var(--surface-2); color: var(--text); }
   font-size: 0.875rem;
   margin-bottom: 14px;
 }
+
+/* ── Session progress rings ─────────────────────────────────── */
+.sess-charts-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.sess-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.sess-ring-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 6px;
+  max-width: 110px;
+}
+
+.sess-ring-sub {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  margin-top: 2px;
+  max-width: 120px;
+}
