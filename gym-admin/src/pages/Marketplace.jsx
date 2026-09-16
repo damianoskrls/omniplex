@@ -16,11 +16,12 @@ function imgSrc(url) {
 }
 
 const ORDER_STATUS = {
-  pending:   { label: 'Εκκρεμεί',    cls: 'badge-yellow' },
-  paid:      { label: 'Πληρώθηκε',   cls: 'badge-blue' },
-  fulfilled: { label: 'Παραδόθηκε',  cls: 'badge-green' },
-  cancelled: { label: 'Ακυρώθηκε',   cls: 'badge-red' },
-  refunded:  { label: 'Επιστράφηκε', cls: 'badge-gray' },
+  pending:    { label: 'Εκκρεμεί',       cls: 'badge-yellow' },
+  paid:       { label: 'Πληρώθηκε',      cls: 'badge-blue' },
+  processing: { label: 'Σε επεξεργασία', cls: 'badge-purple' },
+  fulfilled:  { label: 'Παραδόθηκε',     cls: 'badge-green' },
+  cancelled:  { label: 'Ακυρώθηκε',      cls: 'badge-red' },
+  refunded:   { label: 'Επιστράφηκε',    cls: 'badge-gray' },
 };
 
 // ─── ProductModal ─────────────────────────────────────────────
@@ -411,6 +412,7 @@ export default function Marketplace() {
   // orders
   const [orders, setOrders]           = useState([]);
   const [ordLoading, setOrdLoading]   = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   // categories
   const [cats, setCats]               = useState([]);
@@ -455,7 +457,8 @@ export default function Marketplace() {
   const updateOrderStatus = async (orderId, status) => {
     try {
       await api.patch(`/marketplace/${bizId}/admin/orders/${orderId}/status`, { status });
-      setOrders(orders.map(o => o.id === orderId ? { ...o, status } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+      setSelectedOrder(prev => prev?.id === orderId ? { ...prev, status } : prev);
       toast.success('Status ενημερώθηκε');
     } catch (e) { toast.error(e.response?.data?.error || 'Σφάλμα'); }
   };
@@ -535,19 +538,19 @@ export default function Marketplace() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display:'flex', gap:2, borderBottom:'2px solid #e2e8f0', marginBottom:20, overflowX:'auto' }}>
+      <div style={{ display:'flex', gap:2, borderBottom:'1px solid var(--border)', marginBottom:20, overflowX:'auto' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => nav(t.path)} style={{
             display:'flex', alignItems:'center', gap:6, padding:'10px 16px',
             border:'none', background:'none', cursor:'pointer', whiteSpace:'nowrap',
-            borderBottom:`2px solid ${activeTab === t.id ? 'var(--hs-primary)' : 'transparent'}`,
-            marginBottom:-2,
-            color: activeTab === t.id ? 'var(--hs-primary)' : '#64748b',
+            borderBottom:`2px solid ${activeTab === t.id ? 'var(--accent)' : 'transparent'}`,
+            marginBottom:-1,
+            color: activeTab === t.id ? 'var(--accent)' : 'var(--text-2)',
             fontWeight: activeTab === t.id ? 700 : 500, fontSize:'0.875rem',
           }}>
             <t.icon size={14}/> {t.label}
             {t.id === 'orders' && pendingOrders > 0 && (
-              <span style={{ background:'#dc2626', color:'#fff', borderRadius:10, padding:'1px 6px', fontSize:'0.7rem', fontWeight:700 }}>
+              <span style={{ background:'var(--danger)', color:'#fff', borderRadius:10, padding:'1px 6px', fontSize:'0.7rem', fontWeight:700 }}>
                 {pendingOrders}
               </span>
             )}
@@ -628,70 +631,179 @@ export default function Marketplace() {
       {/* ── ORDERS ── */}
       {activeTab === 'orders' && (
         ordLoading ? <div className="loading">Φόρτωση…</div> : (
-          <div className="card" style={{ padding:0, overflow:'hidden' }}>
-            {orders.length === 0 ? (
-              <div className="bk-empty">
-                <ClipboardList size={40} style={{ margin:'0 auto 12px', display:'block', color:'#94a3b8' }}/>
-                <div style={{ fontWeight:700, color:'#1e293b' }}>Δεν υπάρχουν παραγγελίες</div>
-              </div>
-            ) : (
-              <div style={{ overflowX:'auto' }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Πελάτης / Πηγή</th>
-                      <th>Προϊόντα</th>
-                      <th>Σύνολο</th>
-                      <th>Πληρωμή</th>
-                      <th>Status</th>
-                      <th>Ημερομηνία</th>
-                      <th>Ενέργεια</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map(o => {
-                      const st = ORDER_STATUS[o.status] || { label: o.status, cls: 'badge-gray' };
-                      const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
-                      const isInStore = o.source === 'in_store';
-                      return (
-                        <tr key={o.id}>
-                          <td>
-                            {isInStore
-                              ? <span className="badge badge-blue" style={{ display:'inline-flex', alignItems:'center', gap:4 }}><Store size={11}/> Κατάστημα</span>
-                              : <strong>{o.user_name || '—'}</strong>}
-                            {o.user_phone && !isInStore && <div className="text-muted">{o.user_phone}</div>}
-                          </td>
-                          <td className="text-muted" style={{ fontSize:'0.8rem', maxWidth:220 }}>
-                            {items.map(i => `${i.name} ×${i.qty}`).join(', ')}
-                          </td>
-                          <td><strong>€{(o.total_cents / 100).toFixed(2)}</strong></td>
-                          <td className="text-muted" style={{ fontSize:'0.8rem' }}>
-                            {o.payment_method === 'cash' ? 'Μετρητά' : o.payment_method === 'card' ? 'Κάρτα' : o.provider || '—'}
-                          </td>
-                          <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
-                          <td className="text-muted">{new Date(o.created_at).toLocaleDateString('el-GR')}</td>
-                          <td>
-                            <div style={{ display:'flex', gap:4 }}>
-                              {o.status === 'paid' && (
-                                <button className="btn btn-primary btn-sm" onClick={() => updateOrderStatus(o.id, 'fulfilled')}>
-                                  <Check size={13}/> Παράδοση
-                                </button>
-                              )}
-                              {(o.status === 'pending' || o.status === 'paid') && (
-                                <button className="btn btn-danger btn-sm" onClick={() => updateOrderStatus(o.id, 'cancelled')}>
-                                  <X size={13}/> Ακύρωση
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <>
+            <div className="card" style={{ padding:0, overflow:'hidden' }}>
+              {orders.length === 0 ? (
+                <div className="bk-empty">
+                  <ClipboardList size={40} style={{ margin:'0 auto 12px', display:'block', color:'var(--text-2)' }}/>
+                  <div style={{ fontWeight:700 }}>Δεν υπάρχουν παραγγελίες</div>
+                </div>
+              ) : (
+                <div style={{ overflowX:'auto' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Πελάτης / Πηγή</th>
+                        <th>Προϊόντα</th>
+                        <th>Σύνολο</th>
+                        <th>Πληρωμή</th>
+                        <th>Status</th>
+                        <th>Ημερομηνία</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map(o => {
+                        const st = ORDER_STATUS[o.status] || { label: o.status, cls: 'badge-gray' };
+                        const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+                        const isInStore = o.source === 'in_store';
+                        return (
+                          <tr key={o.id} style={{ cursor:'pointer' }} onClick={() => setSelectedOrder(o)}>
+                            <td>
+                              {isInStore
+                                ? <span className="badge badge-blue" style={{ display:'inline-flex', alignItems:'center', gap:4 }}><Store size={11}/> Κατάστημα</span>
+                                : <strong>{o.user_name || o.customer_name || '—'}</strong>}
+                              {(o.user_phone || o.customer_phone) && !isInStore && <div className="text-muted">{o.user_phone || o.customer_phone}</div>}
+                            </td>
+                            <td className="text-muted" style={{ fontSize:'0.8rem', maxWidth:220 }}>
+                              {items.map(i => `${i.name} ×${i.qty}`).join(', ')}
+                            </td>
+                            <td><strong>€{(o.total_cents / 100).toFixed(2)}</strong></td>
+                            <td className="text-muted" style={{ fontSize:'0.8rem' }}>
+                              {o.payment_method === 'cash' ? 'Μετρητά' : o.payment_method === 'card' ? 'Κάρτα' : o.provider || '—'}
+                            </td>
+                            <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
+                            <td className="text-muted">{new Date(o.created_at).toLocaleDateString('el-GR')}</td>
+                            <td onClick={e => e.stopPropagation()}>
+                              <div style={{ display:'flex', gap:4 }}>
+                                {o.status === 'paid' && (
+                                  <button className="btn btn-primary btn-sm" onClick={() => updateOrderStatus(o.id, 'processing')}>
+                                    <Check size={13}/> Σε επεξεργασία
+                                  </button>
+                                )}
+                                {o.status === 'processing' && (
+                                  <button className="btn btn-primary btn-sm" onClick={() => updateOrderStatus(o.id, 'fulfilled')}>
+                                    <Check size={13}/> Παράδοση
+                                  </button>
+                                )}
+                                {(o.status === 'pending' || o.status === 'paid') && (
+                                  <button className="btn btn-danger btn-sm" onClick={() => updateOrderStatus(o.id, 'cancelled')}>
+                                    <X size={13}/> Ακύρωση
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Order detail modal */}
+            {selectedOrder && (() => {
+              const o = selectedOrder;
+              const st = ORDER_STATUS[o.status] || { label: o.status, cls: 'badge-gray' };
+              const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+              const VALID_STATUSES = ['pending','paid','processing','fulfilled','cancelled','refunded'];
+              return (
+                <div className="modal-overlay" onClick={() => setSelectedOrder(null)}>
+                  <div className="modal modal--wide" onClick={e => e.stopPropagation()}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+                      <div>
+                        <div className="modal-title" style={{ margin:0 }}>
+                          Παραγγελία #{o.id.slice(0,8).toUpperCase()}
+                        </div>
+                        <div className="text-muted" style={{ marginTop:4 }}>
+                          {new Date(o.created_at).toLocaleString('el-GR')}
+                        </div>
+                      </div>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setSelectedOrder(null)}><X size={16}/></button>
+                    </div>
+
+                    {/* Status selector */}
+                    <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20, padding:'12px 16px', background:'var(--surface-2)', borderRadius:10, border:'1px solid var(--border)' }}>
+                      <span className={`badge ${st.cls}`}>{st.label}</span>
+                      <span style={{ color:'var(--text-2)', fontSize:'0.8rem' }}>Αλλαγή status:</span>
+                      <select
+                        className="order-status-select"
+                        value={o.status}
+                        onChange={e => updateOrderStatus(o.id, e.target.value)}
+                      >
+                        {VALID_STATUSES.map(s => {
+                          const ss = ORDER_STATUS[s] || { label: s };
+                          return <option key={s} value={s}>{ss.label}</option>;
+                        })}
+                      </select>
+                    </div>
+
+                    {/* Customer info */}
+                    <div style={{ marginBottom:20 }}>
+                      <div style={{ fontWeight:700, marginBottom:10, fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--text-2)' }}>Πελάτης</div>
+                      <div className="order-detail-row">
+                        <span className="order-detail-label">Όνομα</span>
+                        <span className="order-detail-value">{o.user_name || o.customer_name || '—'}</span>
+                      </div>
+                      <div className="order-detail-row">
+                        <span className="order-detail-label">Τηλέφωνο</span>
+                        <span className="order-detail-value">{o.user_phone || o.customer_phone || '—'}</span>
+                      </div>
+                      {o.delivery_method && (
+                        <div className="order-detail-row">
+                          <span className="order-detail-label">Τρόπος παράδοσης</span>
+                          <span className="order-detail-value">{o.delivery_method === 'pickup' ? 'Παραλαβή από κατάστημα' : 'Αποστολή'}</span>
+                        </div>
+                      )}
+                      {o.shipping_address && (
+                        <div className="order-detail-row">
+                          <span className="order-detail-label">Διεύθυνση</span>
+                          <span className="order-detail-value">{o.shipping_address}</span>
+                        </div>
+                      )}
+                      <div className="order-detail-row">
+                        <span className="order-detail-label">Πληρωμή</span>
+                        <span className="order-detail-value">
+                          {o.payment_method === 'cash' ? 'Μετρητά' : o.payment_method === 'card' ? 'Κάρτα' : o.provider || '—'}
+                          {o.provider_txn_id && <span className="text-muted" style={{ marginLeft:6, fontSize:'0.8rem' }}>· {o.provider_txn_id}</span>}
+                        </span>
+                      </div>
+                      {o.notes && (
+                        <div className="order-detail-row">
+                          <span className="order-detail-label">Σημειώσεις</span>
+                          <span className="order-detail-value">{o.notes}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Items */}
+                    <div>
+                      <div style={{ fontWeight:700, marginBottom:10, fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--text-2)' }}>Προϊόντα</div>
+                      <table className="order-items-table">
+                        <thead>
+                          <tr><th>Προϊόν</th><th>Τεμάχια</th><th>Τιμή</th><th>Σύνολο</th></tr>
+                        </thead>
+                        <tbody>
+                          {items.map((item, i) => (
+                            <tr key={i}>
+                              <td style={{ fontWeight:600 }}>{item.name}</td>
+                              <td>{item.qty}</td>
+                              <td>€{(item.price / 100).toFixed(2)}</td>
+                              <td><strong>€{((item.price * item.qty) / 100).toFixed(2)}</strong></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div style={{ textAlign:'right', marginTop:12, fontSize:'1.1rem', fontWeight:800, color:'var(--accent)' }}>
+                        Σύνολο: €{(o.total_cents / 100).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </>
         )
       )}
 

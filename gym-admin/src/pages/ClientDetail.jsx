@@ -440,7 +440,7 @@ export default function ClientDetail() {
       </div>
 
       {isDeleted && (
-        <div className="card" style={{ marginBottom: 16, background: '#f1f5f9', borderColor: '#cbd5e1' }}>
+        <div className="card" style={{ marginBottom: 16 }}>
           <strong>Στον κάδο</strong>
           <div className="text-muted" style={{ marginTop: 4 }}>
             Ο πελάτης δεν εμφανίζεται στη λίστα και δεν μπορεί να συνδεθεί στην εφαρμογή.
@@ -456,10 +456,10 @@ export default function ClientDetail() {
         className="card"
         style={{
           marginBottom: 16,
-          background: client.account_status === 'pending' ? '#fffbeb'
-            : client.account_status === 'suspended' ? '#fef2f2' : '#f0fdf4',
-          borderColor: client.account_status === 'pending' ? '#fde68a'
-            : client.account_status === 'suspended' ? '#fecaca' : '#bbf7d0',
+          background: client.account_status === 'pending' ? 'var(--warning-dim)'
+            : client.account_status === 'suspended' ? 'var(--danger-dim)' : 'var(--success-dim)',
+          borderColor: client.account_status === 'pending' ? 'rgba(255,178,36,0.25)'
+            : client.account_status === 'suspended' ? 'rgba(255,87,87,0.25)' : 'rgba(52,211,153,0.25)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -706,12 +706,9 @@ export default function ClientDetail() {
               const memBalance = membershipBalance(pending, c.id);
               const isPrepay = accessState === 'active' && daysLeft != null && daysLeft > 7 && !pending;
               const isDueRenewal = canRenewMembership(c) && !trial && !cancelled;
-              const borderColor = trial ? '#fde68a' : inGrace ? '#fb923c' : expired ? '#fca5a5' : cancelled ? '#e2e8f0' : pending ? '#fcd34d' : '#e2e8f0';
-              const bgColor = trial ? '#fffbeb' : inGrace ? '#fff7ed' : expired ? '#fef2f2' : cancelled ? '#f8fafc' : '#fff';
-
               return (
                 <div key={c.id} style={{
-                  borderTop: ci > 0 ? '1px solid #f1f5f9' : 'none',
+                  borderTop: ci > 0 ? '1px solid var(--border)' : 'none',
                   padding: '18px 0',
                 }}>
                   {/* Top row: service name + badges + action buttons */}
@@ -720,7 +717,7 @@ export default function ClientDetail() {
                       {/* Color accent strip + icon */}
                       <div style={{
                         width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                        background: trial ? '#fef3c7' : inGrace ? '#fed7aa' : expired ? '#fee2e2' : cancelled ? '#f1f5f9' : '#eff6ff',
+                        background: trial ? 'var(--warning-dim)' : inGrace ? 'rgba(255,130,0,0.12)' : expired ? 'var(--danger-dim)' : cancelled ? 'var(--surface-3)' : 'var(--info-dim)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                       }}>
                         {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ServiceIcon service={c} size={20} />}
@@ -734,27 +731,27 @@ export default function ClientDetail() {
                         </div>
                         {/* Period info */}
                         {!trial && c.valid_from && (
-                          <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-2)', marginTop: 4 }}>
                             <span style={{ fontWeight: 600 }}>{fmtDate(c.valid_from)}</span>
-                            <span style={{ margin: '0 4px', color: '#cbd5e1' }}>→</span>
-                            <span style={{ fontWeight: 600, color: inGrace || expired ? '#ef4444' : '#1e293b' }}>{fmtDate(c.valid_until)}</span>
+                            <span style={{ margin: '0 4px', color: 'var(--text-3)' }}>→</span>
+                            <span style={{ fontWeight: 600, color: inGrace || expired ? 'var(--danger)' : 'var(--text)' }}>{fmtDate(c.valid_until)}</span>
                             {inGrace && c.days_in_grace_left != null && (
-                              <span style={{ marginLeft: 8, color: '#d97706', fontWeight: 600 }}>· Χάρις {c.days_in_grace_left} ημ.</span>
+                              <span style={{ marginLeft: 8, color: 'var(--warning)', fontWeight: 600 }}>· Χάρις {c.days_in_grace_left} ημ.</span>
                             )}
                             {accessState === 'active' && daysLeft != null && daysLeft <= 7 && daysLeft > 0 && (
-                              <span style={{ marginLeft: 8, color: '#f59e0b', fontWeight: 600 }}>· Λήγει σε {daysLeft} ημ.</span>
+                              <span style={{ marginLeft: 8, color: 'var(--warning)', fontWeight: 600 }}>· Λήγει σε {daysLeft} ημ.</span>
                             )}
                           </div>
                         )}
                         {trial && c.trial_starts_at && (
-                          <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-2)', marginTop: 4 }}>
                             Προγραμματισμένο: {fmtDateTime(c.trial_starts_at)}
                           </div>
                         )}
                         {c.cancellation_reason && (
-                          <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 3 }}>Λόγος: {c.cancellation_reason}</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-2)', marginTop: 3 }}>Λόγος: {c.cancellation_reason}</div>
                         )}
-                        {c.notes && <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 3 }}>{c.notes}</div>}
+                        {c.notes && <div style={{ fontSize: '0.78rem', color: 'var(--text-2)', marginTop: 3 }}>{c.notes}</div>}
                       </div>
                     </div>
 
@@ -787,22 +784,22 @@ export default function ClientDetail() {
                   {/* Sessions progress bar */}
                   {!trial && !cancelled && sessionsPct !== null && (
                     <div style={{ marginTop: 10, paddingLeft: 56 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginBottom: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-2)', marginBottom: 4 }}>
                         <span>Συνεδρίες</span>
                         <span style={{ fontWeight: 700 }}>{sessionsUsed}/{sessionsTotal}</span>
                       </div>
-                      <div style={{ height: 6, borderRadius: 99, background: '#f1f5f9', overflow: 'hidden' }}>
+                      <div style={{ height: 6, borderRadius: 99, background: 'var(--surface-3)', overflow: 'hidden' }}>
                         <div style={{
                           height: '100%', borderRadius: 99,
                           width: `${sessionsPct}%`,
-                          background: sessionsPct >= 90 ? '#ef4444' : sessionsPct >= 70 ? '#f59e0b' : '#22c55e',
+                          background: sessionsPct >= 90 ? 'var(--danger)' : sessionsPct >= 70 ? 'var(--warning)' : 'var(--success)',
                           transition: 'width 0.4s',
                         }} />
                       </div>
                     </div>
                   )}
                   {!trial && !cancelled && isUnlimited && (
-                    <div style={{ marginTop: 6, paddingLeft: 56, fontSize: '0.75rem', color: '#94a3b8' }}>
+                    <div style={{ marginTop: 6, paddingLeft: 56, fontSize: '0.75rem', color: 'var(--text-2)' }}>
                       ∞ απεριόριστες συνεδρίες
                     </div>
                   )}
@@ -837,7 +834,7 @@ export default function ClientDetail() {
                             <RefreshCw size={13} /> Ανανέωση
                           </button>
                           {c.next_renewal && (
-                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-2)' }}>
                               → {fmtDate(c.next_renewal.period_start)} – {fmtDate(c.next_renewal.period_end)}
                             </span>
                           )}
@@ -849,7 +846,7 @@ export default function ClientDetail() {
                   {/* Payment history */}
                   {(linked.length > 0 || (!trial && !cancelled)) && (
                     <div style={{ marginTop: 12, paddingLeft: 56 }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-2)', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>Ιστορικό πληρωμών</span>
                         {!trial && !cancelled && linked.length === 0 && (
                           <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.72rem', padding: '2px 8px' }} onClick={() => openAddPayment(c)} title="Καταχώρηση νέας πληρωμής">
@@ -865,17 +862,17 @@ export default function ClientDetail() {
                           <div>
                             <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{(p.description || '').replace(/\s*\(.*?\)\s*$/, '')}</div>
                             {(p.period_start || p.period_end) && (
-                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>
                                 Περίοδος: {p.period_start ? fmtDate(p.period_start) : '—'} → {p.period_end ? fmtDate(p.period_end) : '—'}
                               </div>
                             )}
                             {p.payment_date && (
-                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>
                                 Πληρωμή: {fmtDate(p.payment_date)}
                               </div>
                             )}
                             {!p.payment_date && p.created_at && (
-                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>
                                 Καταχώρηση: {fmtDate(p.created_at.slice(0, 10))}
                               </div>
                             )}
@@ -928,7 +925,7 @@ export default function ClientDetail() {
           </button>
         </div>
         {clientPrograms.length === 0 ? (
-          <div style={{ color: '#94a3b8', fontSize: '0.85rem', padding: '8px 0' }}>
+          <div style={{ color: 'var(--text-2)', fontSize: '0.85rem', padding: '8px 0' }}>
             {allPrograms.length === 0 ? 'Δεν υπάρχουν προγράμματα — πήγαινε στα Προγράμματα για να φτιάξεις.' : 'Κανένα πρόγραμμα δεν έχει ανατεθεί.'}
           </div>
         ) : (
@@ -938,8 +935,8 @@ export default function ClientDetail() {
                 <Dumbbell size={14} color="#6366f1" />
                 <div style={{ flex: 1 }}>
                   <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{cp.program_name}</span>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: 8 }}>από {fmtDate(cp.assigned_at)}</span>
-                  {cp.notes && <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{cp.notes}</div>}
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', marginLeft: 8 }}>από {fmtDate(cp.assigned_at)}</span>
+                  {cp.notes && <div style={{ fontSize: '0.75rem', color: 'var(--text-2)' }}>{cp.notes}</div>}
                 </div>
                 <button className="btn btn-danger btn-sm" onClick={async () => {
                   if (!confirm('Αφαίρεση προγράμματος;')) return;
@@ -1076,7 +1073,7 @@ export default function ClientDetail() {
                 </div>
               </div>
               {addPaymentForm.period_start && addPaymentForm.period_end && (
-                <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: 12, padding: '6px 10px', background: '#f8fafc', borderRadius: 6 }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-2)', marginBottom: 12, padding: '6px 10px', background: 'var(--surface-3)', borderRadius: 6 }}>
                   Περίοδος: {fmtDate(addPaymentForm.period_start)} → {fmtDate(addPaymentForm.period_end)}
                 </div>
               )}

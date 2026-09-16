@@ -515,8 +515,8 @@ export default function Bookings() {
                       padding: '8px 12px',
                       marginBottom: 6,
                       borderRadius: 10,
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
+                      background: 'var(--surface-2)',
+                      border: '1px solid var(--border)',
                       borderLeft: `4px solid ${loc ? '#3b82f6' : (slot.color_hex || '#607D8B')}`,
                     }}
                   >
@@ -542,7 +542,7 @@ export default function Bookings() {
                             gap: 8,
                             padding: '6px 8px',
                             borderRadius: 8,
-                            background: '#fff',
+                            background: 'var(--surface-3)',
                           }}
                         >
                           <div style={{ flex: 1 }}>
@@ -583,8 +583,8 @@ export default function Bookings() {
                   padding: '8px 12px',
                   marginBottom: 6,
                   borderRadius: 10,
-                  background: '#fff7ed',
-                  border: '1px solid #fed7aa',
+                  background: 'var(--warning-dim)',
+                  border: '1px solid rgba(255,178,36,0.2)',
                 }}
               >
                 <div style={{ flex: 1 }}>
@@ -1015,7 +1015,7 @@ export default function Bookings() {
             </p>
 
             {/* Add form */}
-            <form onSubmit={addClosure} style={{ background: '#f8fafc', borderRadius: 10, padding: 14, marginBottom: 20 }}>
+            <form onSubmit={addClosure} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: 14, marginBottom: 20 }}>
               <div className="form-grid-2" style={{ marginBottom: 10 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Από ημερομηνία *</label>
@@ -1060,7 +1060,7 @@ export default function Bookings() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {closures.map(c => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca' }}>
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--danger-dim)', borderRadius: 8, border: '1px solid rgba(255,87,87,0.2)' }}>
                     <CalendarOff size={15} style={{ color: '#ef4444', flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>

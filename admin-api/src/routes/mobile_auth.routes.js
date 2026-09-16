@@ -561,7 +561,7 @@ router.get('/staff/schedule', requireMobileStaff, async (req, res) => {
     const [bookings] = await db.query(`
       SELECT b.id, b.starts_at, b.ends_at, b.status, b.attendance_confirmed,
              b.notes, b.is_trial,
-             s.name AS service_name, s.color_hex AS service_color, s.duration_minutes,
+             s.name AS service_name, s.color_hex AS service_color, s.duration_mins,
              u.full_name AS client_name, u.phone AS client_phone, u.avatar_url AS client_avatar,
              l.name AS location_name, r.name AS room_name
       FROM bookings b

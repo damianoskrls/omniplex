@@ -295,6 +295,7 @@ router.get('/:bizId/admin/orders', authenticate, async (req, res) => {
     const [orders] = await db.query(`
       SELECT o.id, o.status, o.total_cents, o.created_at, o.notes,
              o.provider_txn_id, o.mydata_mark, o.payment_method, o.source,
+             o.customer_name, o.customer_phone, o.shipping_address, o.delivery_method,
              u.full_name AS user_name, u.phone AS user_phone,
              JSON_ARRAYAGG(
                JSON_OBJECT('name', oi.product_name, 'qty', oi.qty, 'price', oi.unit_price_cents)
@@ -320,7 +321,7 @@ router.get('/:bizId/admin/orders', authenticate, async (req, res) => {
 // Body: { status: 'fulfilled' | 'cancelled' }
 router.patch('/:bizId/admin/orders/:orderId/status', authenticate, async (req, res) => {
   const { status } = req.body;
-  const VALID = ['pending','paid','fulfilled','cancelled','refunded'];
+  const VALID = ['pending','paid','processing','fulfilled','cancelled','refunded'];
   if (!VALID.includes(status)) return res.status(400).json({ error: 'Άκυρο status' });
   const conn = await db.getConnection();
   try {

@@ -195,7 +195,7 @@ export default function Clients() {
       </div>
 
       {inTrash && (
-        <div className="card" style={{ marginBottom: 16, background: '#f8fafc', borderColor: '#e2e8f0' }}>
+        <div className="card" style={{ marginBottom: 16 }}>
           <strong>Κάδος πελατών</strong>
           <div className="text-muted" style={{ marginTop: 4 }}>
             Οι πελάτες εδώ δεν εμφανίζονται στη λίστα και δεν μπορούν να συνδεθούν. Μπορείς να τους επαναφέρεις ή να τους διαγράψεις οριστικά.
@@ -204,7 +204,7 @@ export default function Clients() {
       )}
 
       {statusFilter === 'pending' && clients.length > 0 && (
-        <div className="card" style={{ marginBottom: 16, background: '#fffbeb', borderColor: '#fde68a' }}>
+        <div className="card" style={{ marginBottom: 16, background: 'var(--warning-dim)', borderColor: 'rgba(255,178,36,0.25)' }}>
           <strong>Εκκρεμείς εγγραφές από την εφαρμογή</strong>
           <div className="text-muted" style={{ marginTop: 4 }}>
             Οι πελάτες δεν μπορούν να συνδεθούν μέχρι να πατήσεις «Έγκριση».
