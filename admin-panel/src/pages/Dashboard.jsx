@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
+
+const API_BASE = import.meta.env.VITE_API_URL ?? '${API_BASE}';
 import {
   Building2, TrendingUp, AlertCircle, Euro, Users, Clock,
   CalendarClock, AlertTriangle, CheckCircle, ChevronRight, BarChart3,
@@ -180,7 +182,7 @@ export default function Dashboard() {
                     borderBottom:'1px solid #f1f5f9', cursor:'pointer' }}
                   className="hover-row">
                   {t.logo_url
-                    ? <img src={`http://localhost:3001${t.logo_url}`} alt="" style={{ width:30, height:30, borderRadius:6, objectFit:'contain', background:'#f8fafc', flexShrink:0 }}/>
+                    ? <img src={`${API_BASE}${t.logo_url}`} alt="" style={{ width:30, height:30, borderRadius:6, objectFit:'contain', background:'#f8fafc', flexShrink:0 }}/>
                     : <div style={{ width:30, height:30, borderRadius:6, background: t.primary_color || '#e2e8f0', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                         <Building2 size={14} style={{ color:'#fff' }}/>
                       </div>}
@@ -230,7 +232,7 @@ export default function Dashboard() {
                       borderBottom:'1px solid #f1f5f9', cursor:'pointer' }}
                     className="hover-row">
                     {t.logo_url
-                      ? <img src={`http://localhost:3001${t.logo_url}`} alt="" style={{ width:30, height:30, borderRadius:6, objectFit:'contain', background:'#f8fafc', flexShrink:0 }}/>
+                      ? <img src={`${API_BASE}${t.logo_url}`} alt="" style={{ width:30, height:30, borderRadius:6, objectFit:'contain', background:'#f8fafc', flexShrink:0 }}/>
                       : <div style={{ width:30, height:30, borderRadius:6, background: t.primary_color || '#e2e8f0', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                           <Building2 size={14} style={{ color:'#fff' }}/>
                         </div>}
@@ -301,7 +303,7 @@ export default function Dashboard() {
                     <td>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         {t.logo_url
-                          ? <img src={`http://localhost:3001${t.logo_url}`} alt="" style={{ width:28, height:28, borderRadius:6, objectFit:'contain', background:'#f1f5f9' }}/>
+                          ? <img src={`${API_BASE}${t.logo_url}`} alt="" style={{ width:28, height:28, borderRadius:6, objectFit:'contain', background:'#f1f5f9' }}/>
                           : <div style={{ width:28, height:28, borderRadius:6, background: t.primary_color || '#e2e8f0', display:'flex', alignItems:'center', justifyContent:'center' }}>
                               <Building2 size={14} style={{ color:'#fff' }}/>
                             </div>}

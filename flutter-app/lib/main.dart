@@ -84,7 +84,13 @@ class _AppBootstrapState extends State<AppBootstrap> {
     TenantConfig config;
 
     if (cached != null) {
-      // Load from cache immediately, refresh in background
+      // If cached URL is local/dev, clear cache and show selector
+      if (cached.apiUrl.contains('192.168') || cached.apiUrl.contains('localhost')) {
+        await TenantConfig.clearCachedTenant();
+        if (!mounted) return;
+        setState(() => _needsTenantSelection = true);
+        return;
+      }
       config = await TenantConfig.loadFromApi(
         slug: cached.slug,
         apiBaseUrl: cached.apiUrl,

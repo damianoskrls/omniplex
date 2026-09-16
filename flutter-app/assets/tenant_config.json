@@ -3,7 +3,7 @@
   "slug": "",
   "app_name": "ergonhub",
   "bundle_id": "com.ergonhub.app",
-  "api_base_url": "http://192.168.1.15:3001",
+  "api_base_url": "https://passionate-grace-production-98ad.up.railway.app",
   "primary_color": "#6200EE",
   "secondary_color": "#03DAC6",
   "accent_color": "#FF6D00",

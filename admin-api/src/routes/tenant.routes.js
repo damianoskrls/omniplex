@@ -14,46 +14,30 @@ const { authenticate, requireMasterAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// ── File upload config ────────────────────────────────────────
-const ALLOWED_IMAGE_TYPES = {
-  'image/png':  '.png',
-  'image/jpeg': '.jpg',
-  'image/webp': '.webp',
-  'image/svg+xml': '.svg',
-};
+const { r2Multer } = require('../lib/r2_upload');
 
-function makeStorage(filenameFn) {
-  return multer.diskStorage({
-    destination: (req, file, cb) => {
-      const dir = path.join(process.env.UPLOAD_DIR || './uploads', req.params.id, 'logo');
-      fs.mkdirSync(dir, { recursive: true });
-      cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-      const ext = ALLOWED_IMAGE_TYPES[file.mimetype] || '.png';
-      cb(null, filenameFn(ext));
-    },
-  });
-}
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 
-const imageFilter = (req, file, cb) => {
-  if (ALLOWED_IMAGE_TYPES[file.mimetype]) cb(null, true);
-  else cb(new Error('Only PNG, JPEG, WEBP or SVG images are allowed'));
-};
-
-const uploadLogo = multer({
-  storage: makeStorage(ext => `logo${ext}`),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: imageFilter,
+const uploadLogo = r2Multer({
+  keyFn: (req, file) => {
+    const extMap = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/svg+xml': '.svg' };
+    const ext = extMap[file.mimetype] || '.png';
+    return `uploads/${req.params.id}/logo/logo${ext}`;
+  },
+  allowedMimes: ALLOWED_IMAGE_TYPES,
+  maxSizeMb: 5,
 });
 
-const uploadIcon = multer({
-  storage: makeStorage(ext => `icon${ext}`),
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: imageFilter,
+const uploadIcon = r2Multer({
+  keyFn: (req, file) => {
+    const extMap = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/svg+xml': '.svg' };
+    const ext = extMap[file.mimetype] || '.png';
+    return `uploads/${req.params.id}/logo/icon${ext}`;
+  },
+  allowedMimes: ALLOWED_IMAGE_TYPES,
+  maxSizeMb: 2,
 });
 
-// Keep legacy alias used elsewhere
 const upload = uploadLogo;
 
 // ── Helper: default labels per business type ─────────────────
@@ -435,8 +419,7 @@ router.post('/:id/logo', authenticate, requireMasterAdmin, uploadLogo.single('lo
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-    const ext    = path.extname(req.file.filename);
-    const logoUrl = `/uploads/${req.params.id}/logo/logo${ext}`;
+    const logoUrl = req.file.publicUrl;
 
     await db.query(
       'UPDATE business_configs SET logo_url = ? WHERE business_id = ?',
@@ -457,8 +440,7 @@ router.post('/:id/icon', authenticate, requireMasterAdmin, uploadIcon.single('ic
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-    const ext     = path.extname(req.file.filename);
-    const iconUrl = `/uploads/${req.params.id}/logo/icon${ext}`;
+    const iconUrl = req.file.publicUrl;
 
     await db.query(
       'UPDATE business_configs SET icon_url = ? WHERE business_id = ?',

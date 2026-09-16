@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "807733628490",
+    "project_id": "omniplex-1a046",
+    "storage_bucket": "omniplex-1a046.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:807733628490:android:a5a027290f740bbb4e20b3",
+        "android_client_info": {
+          "package_name": "com.handstand.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-nwx-gt6alGH16B_jtMkzRWSNPavvTN0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

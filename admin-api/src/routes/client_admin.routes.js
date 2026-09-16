@@ -168,128 +168,59 @@ const BOOKING_ENRICHED_FROM = `
   LEFT JOIN rooms rm ON rm.id = COALESCE(b.room_id, sss.room_id)
 `;
 
-const staffPhotoStorage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const dir = path.join(process.env.UPLOAD_DIR || './uploads', req.admin.businessId, 'staff');
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
+const { r2Multer } = require('../lib/r2_upload');
+
+const IMAGE_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+
+const staffPhotoUpload = r2Multer({
+  keyFn: (req, file) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    cb(null, `${req.params.id}${ext}`);
+    return `uploads/${req.admin.businessId}/staff/${req.params.id}${ext}`;
   },
+  allowedMimes: IMAGE_MIMES,
+  maxSizeMb: 5,
 });
 
-const staffPhotoUpload = multer({
-  storage: staffPhotoStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (/^image\/(jpeg|jpg|png|webp|gif)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Μόνο εικόνες (JPEG, PNG, WebP) επιτρέπονται'));
-  },
-});
-
-const servicePhotoStorage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const dir = path.join(process.env.UPLOAD_DIR || './uploads', req.admin.businessId, 'services');
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
+const servicePhotoUpload = r2Multer({
+  keyFn: (req, file) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    cb(null, `${req.params.id}${ext}`);
+    return `uploads/${req.admin.businessId}/services/${req.params.id}${ext}`;
   },
+  allowedMimes: [...IMAGE_MIMES, 'image/svg+xml'],
+  maxSizeMb: 5,
 });
 
-const servicePhotoUpload = multer({
-  storage: servicePhotoStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (/^image\/(jpeg|jpg|png|webp|gif|svg\+xml)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Μόνο εικόνες (JPEG, PNG, WebP, SVG) επιτρέπονται'));
-  },
+const serviceSvgUpload = r2Multer({
+  keyFn: (req, file) => `uploads/${req.admin.businessId}/services/svg/${req.params.id}_icon.svg`,
+  allowedMimes: ['image/svg+xml'],
+  maxSizeMb: 2,
 });
 
-const serviceSvgStorage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const dir = path.join(process.env.UPLOAD_DIR || './uploads', req.admin.businessId, 'services', 'svg');
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${req.params.id}_icon.svg`);
-  },
-});
-
-const serviceSvgUpload = multer({
-  storage: serviceSvgStorage,
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype === 'image/svg+xml' || path.extname(file.originalname).toLowerCase() === '.svg') cb(null, true);
-    else cb(new Error('Μόνο SVG αρχεία επιτρέπονται'));
-  },
-});
-
-const notificationImageStorage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const dir = path.join(process.env.UPLOAD_DIR || './uploads', req.admin.businessId, 'notifications');
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
+const notificationImageUpload = r2Multer({
+  keyFn: (req, file) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    cb(null, `${uuidv4()}${ext}`);
+    return `uploads/${req.admin.businessId}/notifications/${uuidv4()}${ext}`;
   },
+  allowedMimes: IMAGE_MIMES,
+  maxSizeMb: 5,
 });
 
-const notificationImageUpload = multer({
-  storage: notificationImageStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (/^image\/(jpeg|jpg|png|webp|gif)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Μόνο εικόνες (JPEG, PNG, WebP, GIF) επιτρέπονται'));
-  },
-});
-
-const nutritionImageStorage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const dir = path.join(process.env.UPLOAD_DIR || './uploads', req.admin.businessId, 'nutrition');
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
+const nutritionImageUpload = r2Multer({
+  keyFn: (req, file) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    cb(null, `${uuidv4()}${ext}`);
+    return `uploads/${req.admin.businessId}/nutrition/${uuidv4()}${ext}`;
   },
-});
-const nutritionImageUpload = multer({
-  storage: nutritionImageStorage,
-  limits: { fileSize: 8 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (/^image\/(jpeg|jpg|png|webp|gif)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Μόνο εικόνες επιτρέπονται'));
-  },
+  allowedMimes: IMAGE_MIMES,
+  maxSizeMb: 8,
 });
 
-const roomPhotoStorage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const dir = path.join(process.env.UPLOAD_DIR || './uploads', req.admin.businessId, 'rooms');
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
+const roomPhotoUpload = r2Multer({
+  keyFn: (req, file) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    cb(null, `${req.params.id}${ext}`);
+    return `uploads/${req.admin.businessId}/rooms/${req.params.id}${ext}`;
   },
-});
-
-const roomPhotoUpload = multer({
-  storage: roomPhotoStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (/^image\/(jpeg|jpg|png|webp|gif)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Μόνο εικόνες (JPEG, PNG, WebP, GIF) επιτρέπονται'));
-  },
+  allowedMimes: IMAGE_MIMES,
+  maxSizeMb: 5,
 });
 
 // ── Auth middleware scoped to business ────────────────────────
@@ -2307,7 +2238,7 @@ router.post('/notifications/image', requireClientAdmin, (req, res, next) => {
 }, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε εικόνα' });
-    const imageUrl = `/uploads/${req.admin.businessId}/notifications/${req.file.filename}`;
+    const imageUrl = req.file.publicUrl;
     return res.json({ image_url: imageUrl });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -3595,7 +3526,7 @@ router.post('/services/:id/image', requireClientAdmin, (req, res, next) => {
 }, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε εικόνα' });
-    const imageUrl = `/uploads/${req.admin.businessId}/services/${req.file.filename}`;
+    const imageUrl = req.file.publicUrl;
     await db.query(
       'UPDATE services SET image_url = ? WHERE id = ? AND business_id = ?',
       [imageUrl, req.params.id, req.admin.businessId]
@@ -3613,7 +3544,7 @@ router.post('/services/:id/svg', requireClientAdmin, (req, res, next) => {
   });
 }, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε SVG' });
-  const svgUrl = `/uploads/${req.admin.businessId}/services/svg/${req.file.filename}`;
+  const svgUrl = req.file.publicUrl;
   await db.query(
     'UPDATE services SET icon_svg_url = ? WHERE id = ? AND business_id = ?',
     [svgUrl, req.params.id, req.admin.businessId]
@@ -3839,7 +3770,7 @@ router.post('/staff/:id/avatar', requireClientAdmin, (req, res, next) => {
 }, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε φωτογραφία' });
-    const avatarUrl = `/uploads/${req.admin.businessId}/staff/${req.file.filename}`;
+    const avatarUrl = req.file.publicUrl;
     await db.query(
       'UPDATE staff SET avatar_url = ? WHERE id = ? AND business_id = ?',
       [avatarUrl, req.params.id, req.admin.businessId]
@@ -4403,7 +4334,7 @@ router.post('/rooms/:id/image', requireClientAdmin, (req, res, next) => {
   });
 }, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Απαιτείται εικόνα' });
-  const imageUrl = `/uploads/${req.admin.businessId}/rooms/${req.file.filename}`;
+  const imageUrl = req.file.publicUrl;
   await db.query(
     'UPDATE rooms SET photo_url = ? WHERE id = ? AND business_id = ?',
     [imageUrl, req.params.id, req.admin.businessId],
@@ -4528,31 +4459,20 @@ router.patch('/settings', requireClientAdmin, async (req, res) => {
 });
 
 // Logo upload for gym settings
-const gymLogoStorage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const dir = path.join(process.env.UPLOAD_DIR || './uploads', req.admin.businessId, 'logo');
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
+const gymLogoUpload = r2Multer({
+  keyFn: (req, file) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.png';
-    cb(null, `logo${ext}`);
+    return `uploads/${req.admin.businessId}/logo/logo${ext}`;
   },
-});
-const gymLogoUpload = multer({
-  storage: gymLogoStorage,
-  limits: { fileSize: 3 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (/^image\/(jpeg|jpg|png|webp|svg\+xml)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Μόνο εικόνες επιτρέπονται'));
-  },
+  allowedMimes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'],
+  maxSizeMb: 3,
 });
 
 router.post('/settings/logo', requireClientAdmin, (req, res, next) => {
   gymLogoUpload.single('logo')(req, res, err => { if (err) return res.status(400).json({ error: err.message }); next(); });
 }, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε αρχείο' });
-  const logoUrl = `/uploads/${req.admin.businessId}/logo/${req.file.filename}`;
+  const logoUrl = req.file.publicUrl;
   await db.query('UPDATE business_configs SET logo_url=? WHERE business_id=?', [logoUrl, req.admin.businessId]);
   return res.json({ logo_url: logoUrl });
 });
@@ -5037,7 +4957,7 @@ router.post('/nutrition/upload', requireNutritionStaff, (req, res, next) => {
   });
 }, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε εικόνα' });
-  const imageUrl = `/uploads/${req.admin.businessId}/nutrition/${req.file.filename}`;
+  const imageUrl = req.file.publicUrl;
   return res.json({ image_url: imageUrl });
 });
 
@@ -5983,39 +5903,21 @@ router.delete('/exercises/:id', requireClientAdmin, async (req, res) => {
 });
 
 // Upload media (image/gif/video) for an exercise
-router.post('/exercises/:id/media', requireClientAdmin, async (req, res) => {
-  const multer = require('multer');
-  const path = require('path');
-  const uploadRoot = process.env.UPLOAD_DIR || './uploads';
-  const dir = path.join(uploadRoot, req.admin.businessId, 'exercises');
-  require('fs').mkdirSync(dir, { recursive: true });
-
-  const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, dir),
-    filename: (_req, file, cb) => {
+router.post('/exercises/:id/media', requireClientAdmin, (req, res, next) => {
+  const upload = r2Multer({
+    keyFn: (req2, file) => {
       const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `${req.params.id}-${Date.now()}${ext}`);
+      return `uploads/${req2.admin.businessId}/exercises/${req2.params.id}-${Date.now()}${ext}`;
     },
+    maxSizeMb: 100,
   });
-  const upload = multer({
-    storage,
-    limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB
-    fileFilter: (_req, file, cb) => {
-      const ok = /^(image|video)\//i.test(file.mimetype);
-      cb(ok ? null : new Error('Επιτρέπονται μόνο εικόνες και βίντεο'), ok);
-    },
-  }).single('media');
-
-  upload(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: 'Δεν ανέβηκε αρχείο' });
-
-    const url = `/uploads/${req.admin.businessId}/exercises/${req.file.filename}`;
-    const field = req.file.mimetype.startsWith('video/') ? 'animation_url' : 'animation_url';
-    await db.query(`UPDATE exercises SET ${field}=? WHERE id=? AND business_id=?`,
-      [url, req.params.id, req.admin.businessId]);
-    res.json({ url });
-  });
+  upload.single('media')(req, res, next);
+}, async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Δεν ανέβηκε αρχείο' });
+  const url = req.file.publicUrl;
+  await db.query('UPDATE exercises SET animation_url=? WHERE id=? AND business_id=?',
+    [url, req.params.id, req.admin.businessId]);
+  res.json({ url });
 });
 
 // --- Programs ---

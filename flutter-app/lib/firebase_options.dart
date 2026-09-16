@@ -37,20 +37,20 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: _placeholder,
-    appId: _placeholder,
-    messagingSenderId: _placeholder,
-    projectId: _placeholder,
+    apiKey: 'AIzaSyD-nwx-gt6alGH16B_jtMkzRWSNPavvTN0',
+    appId: '1:807733628490:android:a5a027290f740bbb4e20b3',
+    messagingSenderId: '807733628490',
+    projectId: 'omniplex-1a046',
+    storageBucket: 'omniplex-1a046.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: _placeholder,
-    appId: _placeholder,
-    messagingSenderId: _placeholder,
-    projectId: _placeholder,
+    apiKey: 'AIzaSyBrCreWyF2y9HpJCwb49rrlLlk0Yu01Zg8',
+    appId: '1:807733628490:ios:4634e9ef9b18ddf54e20b3',
+    messagingSenderId: '807733628490',
+    projectId: 'omniplex-1a046',
+    storageBucket: 'omniplex-1a046.firebasestorage.app',
     iosBundleId: 'com.handstand.app',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: _placeholder,
     appId: _placeholder,

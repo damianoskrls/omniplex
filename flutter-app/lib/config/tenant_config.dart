@@ -82,7 +82,7 @@ class TenantConfig {
         // Cache for next launch
         await prefs.setString(_prefKeyConfig, jsonEncode(json));
         await prefs.setString(_prefKeySlug, slug);
-        await prefs.setString(_prefKeyApiUrl, apiBaseUrl);
+        await prefs.setString(_prefKeyApiUrl, resolved);
         return TenantConfig.fromJson(json);
       }
     } catch (_) {

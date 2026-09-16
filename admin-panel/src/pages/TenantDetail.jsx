@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
+
+const API_BASE = import.meta.env.VITE_API_URL ?? '${API_BASE}';
 import {
   ArrowLeft, Save, Upload, Copy, Smartphone, ExternalLink,
   Key, Eye, EyeOff, RefreshCw, ShoppingBag, CreditCard,
@@ -159,13 +161,13 @@ export default function TenantDetail() {
   const set = (k, v) => setConfig(c => ({ ...c, [k]: v }));
   const setFlag = (k, v) => setConfig(c => ({ ...c, [k]: v ? 1 : 0 }));
 
-  const publicConfigUrl = `http://localhost:3001/api/tenants/public/${data?.slug}`;
-  const buildCmd = `python build-scripts/build_tenant.py --tenant-id ${data?.slug || id} --platform both --api-base http://localhost:3001`;
+  const publicConfigUrl = `${API_BASE}/api/tenants/public/${data?.slug}`;
+  const buildCmd = `python build-scripts/build_tenant.py --tenant-id ${data?.slug || id} --platform both --api-base ${API_BASE}`;
 
   if (!data) return <Layout title="Loading…"><div className="loading">Loading…</div></Layout>;
 
-  const logoSrc = data.logo_url ? `http://localhost:3001${data.logo_url}?t=${Date.now()}` : null;
-  const iconSrc = data.icon_url ? `http://localhost:3001${data.icon_url}?t=${Date.now()}` : null;
+  const logoSrc = data.logo_url ? `${API_BASE}${data.logo_url}?t=${Date.now()}` : null;
+  const iconSrc = data.icon_url ? `${API_BASE}${data.icon_url}?t=${Date.now()}` : null;
 
   return (
     <Layout title={data.name}>
@@ -433,7 +435,7 @@ export default function TenantDetail() {
             <button className="btn btn-secondary btn-sm" onClick={() => copyText(buildCmd)}>
               <Copy size={13}/> Αντιγραφή
             </button>
-            <a className="btn btn-secondary btn-sm" href={`http://localhost:3001/api/tenants/${data.slug}/build-config`} target="_blank" rel="noopener noreferrer">
+            <a className="btn btn-secondary btn-sm" href={`${API_BASE}/api/tenants/${data.slug}/build-config`} target="_blank" rel="noopener noreferrer">
               <ExternalLink size={13}/> Build Config JSON
             </a>
           </div>
@@ -444,7 +446,7 @@ export default function TenantDetail() {
           <div className="card-header"><span className="card-title">Admin Panel Credentials</span></div>
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {[
-              { label:'Admin URL',   value:'http://localhost:5174' },
+              { label:'Admin URL',   value: window.location.origin },
               { label:'Email',       value: bizInfo.owner_email || data.owner_email || '' },
               { label:'Business ID', value: data.id },
               { label:'Slug',        value: data.slug },
