@@ -250,18 +250,33 @@ router.get('/:bizId/analytics', authenticate, async (req, res) => {
   }
   const bizId = req.params.bizId;
   const now   = new Date();
-  const year  = parseInt(req.query.year  || now.getFullYear(), 10);
-  const month = parseInt(req.query.month || now.getMonth() + 1, 10);
 
-  const start = `${year}-${String(month).padStart(2,'0')}-01`;
-  const endDay = new Date(year, month, 0).getDate();
-  const end   = `${year}-${String(month).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`;
+  let start, end, prevStart, prevEnd;
 
-  const prevMonth = month === 1 ? 12 : month - 1;
-  const prevYear  = month === 1 ? year - 1 : year;
-  const prevStart = `${prevYear}-${String(prevMonth).padStart(2,'0')}-01`;
-  const prevEndDay = new Date(prevYear, prevMonth, 0).getDate();
-  const prevEnd   = `${prevYear}-${String(prevMonth).padStart(2,'0')}-${String(prevEndDay).padStart(2,'0')}`;
+  if (req.query.from_date && req.query.to_date) {
+    // Custom date range
+    start = req.query.from_date;
+    end   = req.query.to_date;
+    // Previous period = same duration before start
+    const ms = new Date(end) - new Date(start) + 86400000;
+    const prevEndDate = new Date(new Date(start) - 86400000);
+    const prevStartDate = new Date(prevEndDate - ms + 86400000);
+    const fmt = d => d.toISOString().slice(0, 10);
+    prevStart = fmt(prevStartDate);
+    prevEnd   = fmt(prevEndDate);
+  } else {
+    // Month/year mode
+    const year  = parseInt(req.query.year  || now.getFullYear(), 10);
+    const month = parseInt(req.query.month || now.getMonth() + 1, 10);
+    start = `${year}-${String(month).padStart(2,'0')}-01`;
+    const endDay = new Date(year, month, 0).getDate();
+    end   = `${year}-${String(month).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`;
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear  = month === 1 ? year - 1 : year;
+    prevStart = `${prevYear}-${String(prevMonth).padStart(2,'0')}-01`;
+    const prevEndDay = new Date(prevYear, prevMonth, 0).getDate();
+    prevEnd   = `${prevYear}-${String(prevMonth).padStart(2,'0')}-${String(prevEndDay).padStart(2,'0')}`;
+  }
 
   const range = (s, e) => [`${s} 00:00:00`, `${e} 23:59:59`];
 

@@ -105,10 +105,33 @@ function Select({ value, onChange, children }) {
   );
 }
 
+function DateInput({ value, onChange, max }) {
+  return (
+    <input
+      type="date"
+      value={value}
+      max={max}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 10, padding: '8px 13px', fontSize: 13, fontWeight: 600,
+        color: 'var(--text)', cursor: 'pointer', outline: 'none',
+        colorScheme: 'light dark',
+      }}
+    />
+  );
+}
+
 export default function Analytics() {
   const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const [mode, setMode] = useState('month'); // 'month' | 'range'
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [fromDate, setFromDate] = useState(firstOfMonth);
+  const [toDate, setToDate] = useState(todayStr);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -116,11 +139,14 @@ export default function Analytics() {
     setLoading(true);
     const bizId = biz().id;
     if (!bizId) { setLoading(false); return; }
-    api.get(`/business/${bizId}/analytics`, { params: { year, month } })
+    const params = mode === 'range'
+      ? { from_date: fromDate, to_date: toDate }
+      : { year, month };
+    api.get(`/business/${bizId}/analytics`, { params })
       .then(r => setData(r.data))
       .catch(e => console.error('Analytics error:', e?.response?.data || e.message))
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, mode, fromDate, toDate]);
 
   const years = [now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2];
   const revTrend = data ? trend(data.revenue?.current, data.revenue?.previous) : null;
@@ -130,7 +156,7 @@ export default function Analytics() {
   return (
     <Layout>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
             width: 48, height: 48, borderRadius: 16,
@@ -145,13 +171,37 @@ export default function Analytics() {
             <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>Έσοδα, έξοδα & μετατροπές</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Select value={month} onChange={e => setMonth(Number(e.target.value))}>
-            {MONTHS_SHORT.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-          </Select>
-          <Select value={year} onChange={e => setYear(Number(e.target.value))}>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </Select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Mode toggle */}
+          <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 10, padding: 3, border: '1px solid var(--border)' }}>
+            {[{ v: 'month', label: 'Μήνας' }, { v: 'range', label: 'Εύρος' }].map(m => (
+              <button key={m.v} onClick={() => setMode(m.v)} style={{
+                padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                fontSize: 12.5, fontWeight: 600,
+                background: mode === m.v ? 'var(--surface)' : 'transparent',
+                color: mode === m.v ? 'var(--text)' : 'var(--text-3)',
+                boxShadow: mode === m.v ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.15s',
+              }}>{m.label}</button>
+            ))}
+          </div>
+
+          {mode === 'month' ? (
+            <>
+              <Select value={month} onChange={e => setMonth(Number(e.target.value))}>
+                {MONTHS_SHORT.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              </Select>
+              <Select value={year} onChange={e => setYear(Number(e.target.value))}>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </Select>
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <DateInput value={fromDate} onChange={setFromDate} max={toDate} />
+              <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500 }}>–</span>
+              <DateInput value={toDate} onChange={v => setToDate(v)} max={todayStr} />
+            </div>
+          )}
         </div>
       </div>
 
