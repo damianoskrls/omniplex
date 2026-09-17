@@ -22,7 +22,7 @@ export default function Trials() {
   const [rows, setRows] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showPast, setShowPast] = useState(false);
+  const [showPast, setShowPast] = useState(true);
   const [editId, setEditId] = useState(null);
 
   const reload = () => {
