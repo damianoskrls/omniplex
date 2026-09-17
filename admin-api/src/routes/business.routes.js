@@ -268,12 +268,12 @@ router.get('/:bizId/analytics', authenticate, async (req, res) => {
   try {
     // Revenue (paid payments — use payment_date for month bucketing)
     const [[rev]] = await db.query(
-      `SELECT COALESCE(SUM(paid_amount_cents),0) AS total FROM payments
-       WHERE business_id=? AND status='paid' AND payment_date BETWEEN ? AND ?`,
+      `SELECT COALESCE(SUM(COALESCE(paid_amount_cents, amount_cents)),0) AS total FROM payments
+       WHERE business_id=? AND status='paid' AND DATE(COALESCE(payment_date, created_at)) BETWEEN ? AND ?`,
       [bizId, start, end]);
     const [[revPrev]] = await db.query(
-      `SELECT COALESCE(SUM(paid_amount_cents),0) AS total FROM payments
-       WHERE business_id=? AND status='paid' AND payment_date BETWEEN ? AND ?`,
+      `SELECT COALESCE(SUM(COALESCE(paid_amount_cents, amount_cents)),0) AS total FROM payments
+       WHERE business_id=? AND status='paid' AND DATE(COALESCE(payment_date, created_at)) BETWEEN ? AND ?`,
       [bizId, prevStart, prevEnd]);
 
     // Expenses (from business_expenses table)
@@ -313,19 +313,21 @@ router.get('/:bizId/analytics', authenticate, async (req, res) => {
          AND m.valid_from >= b.starts_at`,
       [bizId, ...range(start, end)]);
 
-    // Revenue by service (JOIN services for name)
+    // Revenue by service — count completed bookings per service
     const [revByService] = await db.query(
       `SELECT sv.name AS service_name, COUNT(*) AS bookings_count,
-              COALESCE(SUM(p.paid_amount_cents),0) AS revenue_cents
+              COALESCE(SUM(p.paid_amount_cents), SUM(p.amount_cents), 0) AS revenue_cents
        FROM bookings b
        JOIN services sv ON sv.id = b.service_id
-       LEFT JOIN payments p ON p.booking_id = b.id AND p.status='paid'
+       LEFT JOIN payments p ON p.user_id = b.user_id AND p.business_id = b.business_id
+         AND p.status = 'paid'
+         AND DATE(p.created_at) BETWEEN ? AND ?
        WHERE b.business_id=? AND b.starts_at BETWEEN ? AND ?
          AND b.status IN ('completed','confirmed')
        GROUP BY b.service_id, sv.name
-       ORDER BY revenue_cents DESC
+       ORDER BY bookings_count DESC
        LIMIT 10`,
-      [bizId, ...range(start, end)]);
+      [start, end, bizId, ...range(start, end)]);
 
     // New members this month (users registered to this business)
     const [[newMembers]] = await db.query(
