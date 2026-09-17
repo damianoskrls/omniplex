@@ -644,7 +644,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading && _goals == null) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.lime));
+      return Center(child: const CircularProgressIndicator(color: AppColors.lime));
     }
 
     return RefreshIndicator(
@@ -661,7 +661,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
           if (_loading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: CircularProgressIndicator(color: AppColors.lime)),
+              child: Center(child: const CircularProgressIndicator(color: AppColors.lime)),
             )
           else ...[
             _buildDayMeals(),
@@ -793,7 +793,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
                     ),
                   if (hasLogs) ...[
                     const SizedBox(width: 8),
-                    Icon(Icons.check_circle, color: AppColors.lime, size: 20),
+                    const Icon(Icons.check_circle, color: AppColors.lime, size: 20),
                   ],
                 ],
               ),
@@ -935,7 +935,7 @@ class _PlanOptionTile extends StatelessWidget {
               if (logged)
                 const Padding(
                   padding: EdgeInsets.only(left: 8),
-                  child: Icon(Icons.check_circle, color: AppColors.lime, size: 20),
+                  child: const Icon(Icons.check_circle, color: AppColors.lime, size: 20),
                 ),
             ],
           ),
@@ -1069,7 +1069,7 @@ class _ShoppingListSheet extends StatelessWidget {
           if (loading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: CircularProgressIndicator(color: AppColors.lime)),
+              child: Center(child: const CircularProgressIndicator(color: AppColors.lime)),
             )
           else if (!hasPlan)
             Text(
@@ -1095,7 +1095,7 @@ class _ShoppingListSheet extends StatelessWidget {
                       : (item.amount != null ? '${item.amount} ${item.unit}' : item.unit);
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.check_box_outline_blank, size: 20, color: AppColors.lime),
+                    leading: Icon(Icons.check_box_outline_blank, size: 20, color: AppColors.lime),
                     title: Text(item.ingredient),
                     subtitle: item.suggestion != null
                         ? Text(item.suggestion!, style: Theme.of(context).textTheme.bodySmall)

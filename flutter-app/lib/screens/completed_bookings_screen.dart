@@ -75,7 +75,7 @@ class _CompletedBookingsScreenState extends State<CompletedBookingsScreen> {
         title: const Text('Ολοκληρωμένα'),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
               ? Center(
                   child: Column(

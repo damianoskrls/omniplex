@@ -115,7 +115,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                               height: 120,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: const LinearGradient(
+                                gradient: LinearGradient(
                                   colors: [AppColors.lime, Color(0xFF8AE62E)],
                                 ),
                                 boxShadow: [

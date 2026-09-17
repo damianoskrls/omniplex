@@ -210,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: Text('Είσοδος με $_biometricLabel'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.lime,
-                        side: const BorderSide(color: AppColors.lime),
+                        side: BorderSide(color: AppColors.lime),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),

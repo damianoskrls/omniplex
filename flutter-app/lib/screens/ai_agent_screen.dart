@@ -56,16 +56,13 @@ class _AiAgentScreenState extends State<AiAgentScreen> with TickerProviderStateM
     if (mounted) setState(() {});
   }
 
+  bool get _hasUserMessage => _messages.any((m) => m.role == 'user');
+
   void _addWelcome() {
-    final isEl = LanguageService.instance.isGreek;
-    final config = context.read<TenantConfig>();
-    final auth = context.read<AuthService>();
-    final name = auth.user?.fullName.split(' ').first ?? '';
-    final greeting = isEl
-        ? 'Γεια σου${name.isNotEmpty ? ', $name' : ''}! 👋 Είμαι ο AI βοηθός σου στο **${config.appName}**.\n\nΜπορώ να σε βοηθήσω με:\n• Κρατήσεις & ακυρώσεις\n• Διαθέσιμα μαθήματα\n• Ωράριο & πληροφορίες γυμναστηρίου\n\nΤι θέλεις να κάνεις;'
-        : 'Hey${name.isNotEmpty ? ', $name' : ''}! 👋 I\'m your AI assistant at **${config.appName}**.\n\nI can help you with:\n• Bookings & cancellations\n• Available classes\n• Schedule & gym info\n\nWhat would you like to do?';
-    _messages.add(_Msg(role: 'assistant', text: greeting));
+    // welcome message kept for history context but UI shows welcome card instead
   }
+
+  void _sendQuick(String text) => _send(text);
 
   Future<void> _send(String text) async {
     final trimmed = text.trim();
@@ -162,7 +159,9 @@ class _AiAgentScreenState extends State<AiAgentScreen> with TickerProviderStateM
   Widget build(BuildContext context) {
     final isEl = LanguageService.instance.isGreek;
     final config = context.read<TenantConfig>();
-    final agentName = '${config.appName} Βοηθός';
+    final agentName = 'AI ${config.appName}';
+    final hasChat = _hasUserMessage;
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -175,18 +174,7 @@ class _AiAgentScreenState extends State<AiAgentScreen> with TickerProviderStateM
         ),
         title: Row(
           children: [
-            Container(
-              width: 34, height: 34,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF7C5CFC), Color(0xFFE040FB)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
-            ),
+            const _AiAvatar(size: 34, small: true),
             const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,15 +195,21 @@ class _AiAgentScreenState extends State<AiAgentScreen> with TickerProviderStateM
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scroll,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              itemCount: _messages.length + (_loading ? 1 : 0),
-              itemBuilder: (_, i) {
-                if (i == _messages.length) return const _TypingBubble();
-                return _MessageBubble(msg: _messages[i]);
-              },
-            ),
+            child: hasChat
+                ? ListView.builder(
+                    controller: _scroll,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    itemCount: _messages.length + (_loading ? 1 : 0),
+                    itemBuilder: (_, i) {
+                      if (i == _messages.length) return const _TypingBubble();
+                      return _MessageBubble(msg: _messages[i]);
+                    },
+                  )
+                : _WelcomeCard(
+                    agentName: agentName,
+                    isEl: isEl,
+                    onQuick: _sendQuick,
+                  ),
           ),
           _InputBar(
             controller: _controller,
@@ -226,6 +220,178 @@ class _AiAgentScreenState extends State<AiAgentScreen> with TickerProviderStateM
             isEl: isEl,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── AI Avatar (cartoon girl) ──────────────────────────────────────────────────
+
+class _AiAvatar extends StatelessWidget {
+  const _AiAvatar({this.size = 72, this.small = false});
+  final double size;
+  final bool small;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF7C5CFC), Color(0xFFE040FB)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        shape: BoxShape.circle,
+        boxShadow: small ? [] : [
+          BoxShadow(
+            color: const Color(0xFF7C5CFC).withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: CustomPaint(
+        painter: _CartoonFacePainter(),
+      ),
+    );
+  }
+}
+
+class _CartoonFacePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width / 2;
+
+    // Face skin
+    final skinPaint = Paint()..color = const Color(0xFFFFDBAC);
+    canvas.drawCircle(Offset(cx, cy + r * 0.08), r * 0.62, skinPaint);
+
+    // Hair (dark, top arc)
+    final hairPaint = Paint()..color = const Color(0xFF2D1B00);
+    final hairRect = Rect.fromCircle(center: Offset(cx, cy - r * 0.05), radius: r * 0.62);
+    canvas.drawArc(hairRect, 3.14, 3.14, true, hairPaint);
+
+    // Hair sides
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx - r * 0.52, cy + r * 0.10), width: r * 0.28, height: r * 0.5),
+      hairPaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx + r * 0.52, cy + r * 0.10), width: r * 0.28, height: r * 0.5),
+      hairPaint,
+    );
+
+    // Eyes
+    final eyePaint = Paint()..color = const Color(0xFF1A1A2E);
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx - r * 0.22, cy + r * 0.02), width: r * 0.18, height: r * 0.22),
+      eyePaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx + r * 0.22, cy + r * 0.02), width: r * 0.18, height: r * 0.22),
+      eyePaint,
+    );
+
+    // Eye shine
+    final shinePaint = Paint()..color = Colors.white;
+    canvas.drawCircle(Offset(cx - r * 0.18, cy - r * 0.02), r * 0.05, shinePaint);
+    canvas.drawCircle(Offset(cx + r * 0.26, cy - r * 0.02), r * 0.05, shinePaint);
+
+    // Cheeks
+    final cheekPaint = Paint()..color = const Color(0xFFFFB3BA).withValues(alpha: 0.55);
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx - r * 0.34, cy + r * 0.22), width: r * 0.24, height: r * 0.14),
+      cheekPaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(cx + r * 0.34, cy + r * 0.22), width: r * 0.24, height: r * 0.14),
+      cheekPaint,
+    );
+
+    // Smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFFD97F6E)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = r * 0.055
+      ..strokeCap = StrokeCap.round;
+    final smilePath = Path();
+    smilePath.moveTo(cx - r * 0.18, cy + r * 0.28);
+    smilePath.quadraticBezierTo(cx, cy + r * 0.42, cx + r * 0.18, cy + r * 0.28);
+    canvas.drawPath(smilePath, smilePaint);
+  }
+
+  @override
+  bool shouldRepaint(_CartoonFacePainter oldDelegate) => false;
+}
+
+// ── Welcome card (shown before first user message) ─────────────────────────────
+
+class _WelcomeCard extends StatelessWidget {
+  const _WelcomeCard({
+    required this.agentName,
+    required this.isEl,
+    required this.onQuick,
+  });
+
+  final String agentName;
+  final bool isEl;
+  final void Function(String) onQuick;
+
+  @override
+  Widget build(BuildContext context) {
+    final quickEn = ['Book a class', 'My upcoming bookings', 'View schedule', 'Cancel a booking'];
+    final quickEl = ['Κλείσε μάθημα', 'Οι κρατήσεις μου', 'Δες πρόγραμμα', 'Ακύρωση κράτησης'];
+    final quick = isEl ? quickEl : quickEn;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _AiAvatar(size: 96),
+            const SizedBox(height: 20),
+            Text(
+              agentName,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isEl ? 'Πώς μπορώ να σε βοηθήσω;' : 'How can I help you?',
+              style: const TextStyle(fontSize: 15, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 32),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: quick.map((q) => GestureDetector(
+                onTap: () => onQuick(q),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    q,
+                    style: const TextStyle(fontSize: 13.5, color: AppColors.textPrimary),
+                  ),
+                ),
+              )).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -493,7 +659,7 @@ class _InputBar extends StatelessWidget {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.lime, width: 1.5),
+                  borderSide: BorderSide(color: AppColors.lime, width: 1.5),
                 ),
               ),
               maxLines: null,

@@ -198,7 +198,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   backgroundColor: AppColors.lime.withValues(alpha: 0.15),
                   child: Text(
                     (p['peer_name'] as String? ?? '?').isNotEmpty ? (p['peer_name'] as String)[0].toUpperCase() : '?',
-                    style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.bold),
                   ),
                 ),
                 title: Text(p['peer_name'] as String? ?? '', style: const TextStyle(color: AppColors.textPrimary)),
@@ -259,7 +259,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : RefreshIndicator(
               color: AppColors.lime,
               onRefresh: _load,
@@ -275,7 +275,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           child: TextButton.icon(
                             onPressed: _openNewPost,
                             icon: const Icon(Icons.add, color: AppColors.lime),
-                            label: const Text('Πρώτη ανάρτηση', style: TextStyle(color: AppColors.lime)),
+                            label: Text('Πρώτη ανάρτηση', style: TextStyle(color: AppColors.lime)),
                           ),
                         ),
                       ],
@@ -290,7 +290,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             child: Center(
                               child: _loadingMore
                                   ? const CircularProgressIndicator(color: AppColors.lime)
-                                  : TextButton(onPressed: _loadMore, child: const Text('Περισσότερα', style: TextStyle(color: AppColors.lime))),
+                                  : TextButton(onPressed: _loadMore, child: Text('Περισσότερα', style: TextStyle(color: AppColors.lime))),
                             ),
                           );
                         }
@@ -397,7 +397,7 @@ class _PostCard extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                               decoration: BoxDecoration(color: AppColors.lime.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-                              child: const Text('Staff', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.lime)),
+                              child: Text('Staff', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.lime)),
                             ),
                           ],
                         ],
@@ -469,7 +469,7 @@ class _PostCard extends StatelessWidget {
                     if (comments.length > 1)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text('+ ${comments.length - 1} ακόμα σχόλια', style: const TextStyle(fontSize: 12, color: AppColors.lime, fontWeight: FontWeight.w600)),
+                        child: Text('+ ${comments.length - 1} ακόμα σχόλια', style: TextStyle(fontSize: 12, color: AppColors.lime, fontWeight: FontWeight.w600)),
                       ),
                   ],
                 ),
@@ -763,9 +763,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                     return ListTile(
                       dense: true,
                       leading: CircleAvatar(radius: 14, backgroundColor: AppColors.lime.withValues(alpha: 0.15),
-                        child: Text((p['full_name'] as String? ?? '?')[0], style: const TextStyle(fontSize: 12, color: AppColors.lime, fontWeight: FontWeight.bold))),
+                        child: Text((p['full_name'] as String? ?? '?')[0], style: TextStyle(fontSize: 12, color: AppColors.lime, fontWeight: FontWeight.bold))),
                       title: Text(p['full_name'] as String? ?? '', style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-                      subtitle: p['staff_id'] != null ? const Text('Staff', style: TextStyle(color: AppColors.lime, fontSize: 11)) : null,
+                      subtitle: p['staff_id'] != null ? Text('Staff', style: TextStyle(color: AppColors.lime, fontSize: 11)) : null,
                       onTap: () => _insertMention(p),
                     );
                   },
@@ -793,7 +793,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                   const SizedBox(width: 8),
                   IconButton(
                     icon: _sending
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
+                        ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
                         : const Icon(Icons.send_rounded, color: AppColors.lime),
                     onPressed: _sending ? null : _send,
                   ),
@@ -887,9 +887,9 @@ class _NewPostSheetState extends State<_NewPostSheet> {
       builder: (_) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(leading: const Icon(Icons.photo_library, color: AppColors.lime), title: const Text('Από γκαλερί', style: TextStyle(color: AppColors.textPrimary)), onTap: () => Navigator.pop(context, 'gallery')),
-          ListTile(leading: const Icon(Icons.camera_alt, color: AppColors.lime), title: const Text('Κάμερα', style: TextStyle(color: AppColors.textPrimary)), onTap: () => Navigator.pop(context, 'camera')),
-          ListTile(leading: const Icon(Icons.videocam, color: AppColors.lime), title: const Text('Βίντεο', style: TextStyle(color: AppColors.textPrimary)), onTap: () => Navigator.pop(context, 'video')),
+          ListTile(leading: const Icon(Icons.photo_library, color: AppColors.lime), title: Text('Από γκαλερί', style: TextStyle(color: AppColors.textPrimary)), onTap: () => Navigator.pop(context, 'gallery')),
+          ListTile(leading: const Icon(Icons.camera_alt, color: AppColors.lime), title: Text('Κάμερα', style: TextStyle(color: AppColors.textPrimary)), onTap: () => Navigator.pop(context, 'camera')),
+          ListTile(leading: const Icon(Icons.videocam, color: AppColors.lime), title: Text('Βίντεο', style: TextStyle(color: AppColors.textPrimary)), onTap: () => Navigator.pop(context, 'video')),
           const SizedBox(height: 16),
         ],
       ),
@@ -956,8 +956,8 @@ class _NewPostSheetState extends State<_NewPostSheet> {
                 TextButton(
                   onPressed: _posting ? null : _post,
                   child: _posting
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
-                      : const Text('Δημοσίευση', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.lime)),
+                      ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
+                      : Text('Δημοσίευση', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.lime)),
                 ),
               ],
             ),
@@ -990,9 +990,9 @@ class _NewPostSheetState extends State<_NewPostSheet> {
                     return ListTile(
                       dense: true,
                       leading: CircleAvatar(radius: 14, backgroundColor: AppColors.lime.withValues(alpha: 0.15),
-                        child: Text((p['full_name'] as String? ?? '?')[0], style: const TextStyle(fontSize: 12, color: AppColors.lime, fontWeight: FontWeight.bold))),
+                        child: Text((p['full_name'] as String? ?? '?')[0], style: TextStyle(fontSize: 12, color: AppColors.lime, fontWeight: FontWeight.bold))),
                       title: Text(p['full_name'] as String? ?? '', style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-                      subtitle: p['staff_id'] != null ? const Text('Staff', style: TextStyle(color: AppColors.lime, fontSize: 11)) : null,
+                      subtitle: p['staff_id'] != null ? Text('Staff', style: TextStyle(color: AppColors.lime, fontSize: 11)) : null,
                       onTap: () => _insertMention(p),
                     );
                   },
@@ -1035,7 +1035,7 @@ class _NewPostSheetState extends State<_NewPostSheet> {
               children: [
                 IconButton(
                   icon: _uploading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
+                      ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
                       : const Icon(Icons.image_outlined, color: AppColors.lime),
                   onPressed: _uploading ? null : _pickMedia,
                   tooltip: 'Προσθήκη εικόνας/βίντεο',

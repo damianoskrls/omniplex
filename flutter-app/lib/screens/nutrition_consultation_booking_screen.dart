@@ -148,7 +148,7 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
         backgroundColor: AppColors.bg,
       ),
       body: _refreshing
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -288,7 +288,7 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
           const SizedBox(height: 16),
           Text('Ώρα', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
-          if (_loading) const Center(child: CircularProgressIndicator(color: AppColors.lime)),
+          if (_loading) Center(child: const CircularProgressIndicator(color: AppColors.lime)),
           if (!_loading && _slots.isEmpty)
             Text(_message ?? 'Δεν υπάρχουν διαθέσιμες ώρες', style: Theme.of(context).textTheme.bodyMedium),
           if (!_loading)

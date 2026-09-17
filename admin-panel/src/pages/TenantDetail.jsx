@@ -166,8 +166,13 @@ export default function TenantDetail() {
 
   if (!data) return <Layout title="Loading…"><div className="loading">Loading…</div></Layout>;
 
-  const logoSrc = data.logo_url ? `${API_BASE}${data.logo_url}?t=${Date.now()}` : null;
-  const iconSrc = data.icon_url ? `${API_BASE}${data.icon_url}?t=${Date.now()}` : null;
+  const resolveMedia = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return `${url}?t=${Date.now()}`;
+    return `${API_BASE}${url}?t=${Date.now()}`;
+  };
+  const logoSrc = resolveMedia(data.logo_url);
+  const iconSrc = resolveMedia(data.icon_url);
 
   return (
     <Layout title={data.name}>

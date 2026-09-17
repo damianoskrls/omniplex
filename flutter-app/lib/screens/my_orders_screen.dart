@@ -56,7 +56,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
               ? Center(
                   child: Column(
@@ -226,7 +226,7 @@ class _OrderCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Σύνολο', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                  Text(eur(totalCents), style: const TextStyle(color: AppColors.lime, fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text(eur(totalCents), style: TextStyle(color: AppColors.lime, fontSize: 15, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -261,7 +261,7 @@ class _OrderCard extends StatelessWidget {
       case 'processing':
         return _StatusConfig('Σε επεξεργασία', const Color(0xFFA78BFA), const Color(0x22A78BFA), Icons.settings_rounded);
       case 'fulfilled':
-        return _StatusConfig('Έτοιμη', AppColors.lime, const Color(0x22B8F55E), Icons.check_circle_rounded);
+        return _StatusConfig('Έτοιμη', AppColors.lime, Color(0x22B8F55E), Icons.check_circle_rounded);
       case 'cancelled':
         return _StatusConfig('Ακυρώθηκε', const Color(0xFFFF5757), const Color(0x22FF5757), Icons.cancel_rounded);
       case 'refunded':
@@ -432,7 +432,7 @@ class _OrderDetailSheet extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Σύνολο', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
-                      Text(eur(totalCents), style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 16)),
+                      Text(eur(totalCents), style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 16)),
                     ],
                   ),
                 ),

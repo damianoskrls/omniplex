@@ -293,7 +293,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(color: AppColors.lime),
+                child: const CircularProgressIndicator(color: AppColors.lime),
               ),
             )
           else if (_slots.isEmpty)

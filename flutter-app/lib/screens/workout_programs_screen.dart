@@ -207,7 +207,7 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
         await _load();
       },
       child: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
               ? _ErrorView(message: _error!, onRetry: () {
                   setState(() { _loading = true; _error = null; });

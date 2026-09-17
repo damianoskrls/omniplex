@@ -8,6 +8,7 @@ import 'screens/login_screen.dart';
 import 'screens/my_orders_screen.dart';
 import 'screens/workout_complete_screen.dart';
 import 'services/auth_service.dart';
+import 'services/language_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_service.dart';
 import 'services/user_notification_sync.dart';
@@ -38,6 +39,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
     super.initState();
     _wasLoggedIn = widget.auth.isLoggedIn;
     WidgetsBinding.instance.addObserver(this);
+    LanguageService.instance.addListener(_onLocaleChanged);
     NotificationService.instance.onTap = _handleNotificationTap;
     PushService.instance.onTap = _handleNotificationTap;
     widget.auth.addListener(_onAuthChanged);
@@ -48,10 +50,15 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
     }
   }
 
+  void _onLocaleChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     _splashTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    LanguageService.instance.removeListener(_onLocaleChanged);
     widget.auth.removeListener(_onAuthChanged);
     UserNotificationSync.instance.stop();
     super.dispose();
@@ -154,6 +161,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
               navigatorKey: appNavigatorKey,
               title: widget.config.appName,
               debugShowCheckedModeBanner: false,
+              locale: LanguageService.instance.locale,
               theme: AppTheme.fromConfig(widget.config),
               home: Consumer<AuthService>(
                 builder: (context, auth, _) {

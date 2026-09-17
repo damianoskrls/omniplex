@@ -75,7 +75,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Οι πληρωμές μου')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
               ? Center(child: Text(_error!))
               : RefreshIndicator(

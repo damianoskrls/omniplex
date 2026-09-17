@@ -107,7 +107,7 @@ class MessageBubbleContent extends StatelessWidget {
       }
       spans.add(TextSpan(
         text: seg.value,
-        style: const TextStyle(color: AppColors.lime, decoration: TextDecoration.underline),
+        style: TextStyle(color: AppColors.lime, decoration: TextDecoration.underline),
         recognizer: TapGestureRecognizer()..onTap = () => _openUrl(seg.value),
       ));
     }

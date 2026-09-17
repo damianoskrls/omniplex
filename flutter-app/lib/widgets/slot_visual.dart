@@ -5,7 +5,7 @@ import '../theme/app_colors.dart';
 import '../utils/media_url.dart';
 
 class AnimatedSlotIcon extends StatefulWidget {
-  const AnimatedSlotIcon({super.key, required this.iconKey, this.size = 44, this.color = AppColors.lime});
+  AnimatedSlotIcon({super.key, required this.iconKey, this.size = 44, this.color = AppColors.lime});
 
   final String iconKey;
   final double size;

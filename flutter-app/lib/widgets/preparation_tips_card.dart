@@ -36,7 +36,7 @@ class PreparationTipsCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('• ', style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.bold)),
+                  Text('• ', style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.bold)),
                   Expanded(child: Text(tip, style: Theme.of(context).textTheme.bodyMedium)),
                 ],
               ),

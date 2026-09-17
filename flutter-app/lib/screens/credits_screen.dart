@@ -187,7 +187,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.lime));
+      return Center(child: const CircularProgressIndicator(color: AppColors.lime));
     }
 
     if (_error != null) {

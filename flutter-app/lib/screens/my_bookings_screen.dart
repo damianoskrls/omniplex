@@ -65,11 +65,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     return active;
   }
 
+  // Pending bookings awaiting admin confirmation — upcoming only (time not yet passed)
+  List<Booking> get _pendingApproval {
+    final now = DateTime.now();
+    final list = _bookings
+        .where((b) => b.status == 'pending' && b.startsAt.isAfter(now))
+        .toList();
+    list.sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    return list;
+  }
+
   List<Booking> get _gymBookings =>
-      _sortedActive(_bookings.where((b) => !b.isNutritionConsultation).toList());
+      _sortedActive(_bookings.where((b) => !b.isNutritionConsultation && b.status != 'pending').toList());
 
   List<Booking> get _nutritionBookings =>
-      _sortedActive(_bookings.where((b) => b.isNutritionConsultation).toList());
+      _sortedActive(_bookings.where((b) => b.isNutritionConsultation && b.status != 'pending').toList());
 
   int get _completedCount => _bookings.where((b) => b.isCompleted).length;
 
@@ -458,7 +468,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.lime));
+      return Center(child: const CircularProgressIndicator(color: AppColors.lime));
     }
 
     if (_error != null) {
@@ -476,8 +486,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
     final gym = _gymBookings;
     final nutrition = _nutritionBookings;
+    final pendingApproval = _pendingApproval;
     final pendingAttendance = _pendingAttendance;
-    final hasActive = gym.isNotEmpty || nutrition.isNotEmpty || _waitlist.isNotEmpty;
+    final hasActive = gym.isNotEmpty || nutrition.isNotEmpty || _waitlist.isNotEmpty || pendingApproval.isNotEmpty;
     final upcoming = _upcomingCount;
 
     if (!hasActive && _completedCount == 0) {
@@ -494,9 +505,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
+          if (pendingApproval.isNotEmpty) ...[
+            _sectionHeader(
+              title: 'Αναμονή επιβεβαίωσης',
+              icon: Icons.pending_actions_rounded,
+              color: AppColors.orange,
+              count: pendingApproval.length,
+            ),
+            ...pendingApproval.asMap().entries.map((e) => _bookingCard(
+              e.value,
+              index: e.key,
+              isFirstUpcoming: false,
+            )),
+            const SizedBox(height: 8),
+          ],
           if (_waitlist.isNotEmpty) ...[
             _sectionHeader(
-              title: 'Σε αναμονή',
+              title: 'Λίστα αναμονής',
               icon: Icons.hourglass_top_rounded,
               color: AppColors.orange,
               count: _waitlist.length,

@@ -543,7 +543,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           if (next != null)
             TextButton(
               onPressed: () => Navigator.pop(ctx, 'book'),
-              child: Text('Κλείσε ${next.time}', style: const TextStyle(color: AppColors.lime)),
+              child: Text('Κλείσε ${next.time}', style: TextStyle(color: AppColors.lime)),
             ),
         ],
       ),
@@ -738,7 +738,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               if (next != null)
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, 'book'),
-                  child: Text('Κλείσε ${next.time}', style: const TextStyle(color: AppColors.lime)),
+                  child: Text('Κλείσε ${next.time}', style: TextStyle(color: AppColors.lime)),
                 ),
             ],
           ),
@@ -1400,7 +1400,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.schedule, size: 16, color: AppColors.lime),
+                        Icon(Icons.schedule, size: 16, color: AppColors.lime),
                         const SizedBox(width: 6),
                         Text(
                           _selectedTime!,
@@ -1549,7 +1549,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(color: AppColors.lime),
+                child: const CircularProgressIndicator(color: AppColors.lime),
               ),
             )
           else if (_needsLocationChoice) ...[
@@ -1751,7 +1751,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(color: AppColors.lime),
+                child: const CircularProgressIndicator(color: AppColors.lime),
               ),
             )
           else if (_slots.isEmpty)
@@ -1786,7 +1786,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       },
                       child: Text(
                         'Ή κλείσε την επόμενη διαθέσιμη (${_nextAvailableSlotAfter(_selectedTime!)!.time})',
-                        style: const TextStyle(color: AppColors.lime),
+                        style: TextStyle(color: AppColors.lime),
                       ),
                     ),
                   ],

@@ -135,7 +135,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : RefreshIndicator(
               color: AppColors.lime,
               onRefresh: () => _load(),

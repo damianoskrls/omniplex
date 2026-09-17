@@ -346,7 +346,7 @@ class _OrbPainter extends CustomPainter {
 
 // ── Fallback mark ─────────────────────────────────────────────────────────────
 class _FallbackMark extends StatelessWidget {
-  const _FallbackMark({required this.size, this.color = AppColors.lime});
+  _FallbackMark({required this.size, this.color = AppColors.lime});
   final double size;
   final Color color;
 

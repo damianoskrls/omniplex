@@ -99,7 +99,7 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
               ? Center(child: Text(_error!))
               : _leaves.isEmpty
@@ -133,7 +133,7 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                                       Text('$days', style: const TextStyle(
                                           fontWeight: FontWeight.w800, fontSize: 20, color: AppColors.lime, height: 1)),
                                       Text(days == 1 ? 'μέρα' : 'μέρες',
-                                          style: const TextStyle(fontSize: 9, color: AppColors.lime)),
+                                          style: TextStyle(fontSize: 9, color: AppColors.lime)),
                                     ],
                                   ),
                                 ),
@@ -205,7 +205,7 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
           : null,
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.dark(primary: AppColors.lime, surface: AppColors.surface),
+          colorScheme: ColorScheme.dark(primary: AppColors.lime, surface: AppColors.surface),
         ),
         child: child!,
       ),

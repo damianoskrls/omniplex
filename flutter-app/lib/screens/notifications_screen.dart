@@ -220,7 +220,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _buildList() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.lime));
+      return Center(child: const CircularProgressIndicator(color: AppColors.lime));
     }
     if (_items.isEmpty) {
       return const Center(

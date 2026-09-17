@@ -149,7 +149,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
             const SizedBox(height: 16),
             if (_bankDeclared)
               const Row(children: [
-                Icon(Icons.check_circle, color: AppColors.lime, size: 20),
+                const Icon(Icons.check_circle, color: AppColors.lime, size: 20),
                 SizedBox(width: 8),
                 Expanded(child: Text('Καταχωρήθηκε! Αναμένει επιβεβαίωση από το γυμναστήριο.',
                     style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w600))),
@@ -182,7 +182,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 border: Border.all(color: AppColors.border),
               ),
               child: const Row(children: [
-                Icon(Icons.info_outline, color: AppColors.lime, size: 20),
+                const Icon(Icons.info_outline, color: AppColors.lime, size: 20),
                 SizedBox(width: 10),
                 Expanded(child: Text(
                   'Η πληρωμή με κάρτα θα ολοκληρωθεί μέσω του ασφαλούς περιβάλλοντος Stripe.',
@@ -273,7 +273,7 @@ class BankRow extends StatelessWidget {
                   const SnackBar(content: Text('IBAN αντιγράφηκε'), duration: Duration(seconds: 1)),
                 );
               },
-              child: const Icon(Icons.copy, size: 16, color: AppColors.lime),
+              child: Icon(Icons.copy, size: 16, color: AppColors.lime),
             ),
         ],
       ),

@@ -218,7 +218,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
               ? Center(child: Text(_error!))
               : _products.isEmpty
@@ -325,7 +325,7 @@ class _ProductRow extends StatelessWidget {
                           style: TextStyle(fontSize: 12, color: AppColors.textSecondary))
                     else
                       Text(_eur(price),
-                          style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 15)),
+                          style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 15)),
                   ],
                 ),
               ),
@@ -499,7 +499,7 @@ class _ProductPageState extends State<_ProductPage> {
                       ),
                       const SizedBox(width: 16),
                       Text(_eur(price),
-                          style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 24)),
+                          style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 24)),
                     ],
                   ),
 
@@ -577,7 +577,7 @@ class _ProductPageState extends State<_ProductPage> {
                   if (_loading)
                     const Center(child: Padding(
                       padding: EdgeInsets.all(20),
-                      child: CircularProgressIndicator(color: AppColors.lime),
+                      child: const CircularProgressIndicator(color: AppColors.lime),
                     )),
                 ],
               ),
@@ -795,13 +795,13 @@ class _CartSheetState extends State<_CartSheet> {
                       _CircleBtn(icon: Icons.remove, onTap: () => widget.onRemove(product['id'] as String)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('$qty', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.lime, fontSize: 15)),
+                        child: Text('$qty', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.lime, fontSize: 15)),
                       ),
                       _CircleBtn(icon: Icons.add, onTap: () => widget.onAdd(product['id'] as String)),
                     ],
                   ),
                   const SizedBox(width: 12),
-                  Text(_eur(price * qty), style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.lime)),
+                  Text(_eur(price * qty), style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.lime)),
                 ],
               ),
             );
@@ -811,7 +811,7 @@ class _CartSheetState extends State<_CartSheet> {
             children: [
               const Text('Σύνολο', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
               const Spacer(),
-              Text(_eur(_total), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: AppColors.lime)),
+              Text(_eur(_total), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: AppColors.lime)),
             ],
           ),
           const SizedBox(height: 20),
@@ -864,7 +864,7 @@ class _CartSheetState extends State<_CartSheet> {
                   const SizedBox(width: 8),
                   Text('Ολοκλήρωση', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
                   const Spacer(),
-                  Text(_eur(_total), style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 18)),
+                  Text(_eur(_total), style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 18)),
                 ],
               ),
               const SizedBox(height: 24),
@@ -977,7 +977,7 @@ class _CartSheetState extends State<_CartSheet> {
                   children: [
                     const Text('Σύνολο παραγγελίας', style: TextStyle(fontWeight: FontWeight.w600)),
                     const Spacer(),
-                    Text(_eur(_total), style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 20)),
+                    Text(_eur(_total), style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 20)),
                   ],
                 ),
               ),
@@ -1030,7 +1030,7 @@ class _CartSheetState extends State<_CartSheet> {
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.border)),
-    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.lime, width: 1.5)),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.lime, width: 1.5)),
     errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.pink)),
     focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.pink, width: 1.5)),
     hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
@@ -1167,7 +1167,7 @@ class _NetworkImage extends StatelessWidget {
       loadingBuilder: (_, child, progress) => progress == null
           ? child
           : Container(color: AppColors.bg,
-              child: const Center(child: CircularProgressIndicator(color: AppColors.lime, strokeWidth: 2))),
+              child: Center(child: CircularProgressIndicator(color: AppColors.lime, strokeWidth: 2))),
       errorBuilder: (_, __, ___) => _placeholder(),
     );
   }

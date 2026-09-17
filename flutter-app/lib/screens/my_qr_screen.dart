@@ -40,7 +40,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Το QR μου')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
               ? Center(child: Text(_error!))
               : _QrBody(data: _data!),

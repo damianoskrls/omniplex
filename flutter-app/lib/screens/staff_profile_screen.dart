@@ -33,7 +33,7 @@ class StaffProfileScreen extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
                     if (user.staffRole != null && user.staffRole!.isNotEmpty)
                       Text(user.staffRole!,
-                          style: const TextStyle(fontSize: 13, color: AppColors.lime, fontWeight: FontWeight.w600)),
+                          style: TextStyle(fontSize: 13, color: AppColors.lime, fontWeight: FontWeight.w600)),
                     if (user.email.isNotEmpty)
                       Text(user.email,
                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
@@ -168,7 +168,7 @@ class _Avatar extends StatelessWidget {
   Widget _initials(String name) => Center(
     child: Text(
       name.isNotEmpty ? name[0].toUpperCase() : '?',
-      style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 22),
+      style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 22),
     ),
   );
 }

@@ -147,7 +147,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Στόχοι')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [

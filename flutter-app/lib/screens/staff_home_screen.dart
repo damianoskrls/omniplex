@@ -43,7 +43,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
     final auth   = context.watch<AuthService>();
     final config = context.read<TenantConfig>();
     final user   = auth.user;
-    if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.lime)));
+    if (user == null) return Scaffold(body: Center(child: const CircularProgressIndicator(color: AppColors.lime)));
 
     return Scaffold(
       body: SafeArea(
@@ -153,9 +153,9 @@ class _StaffHeader extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.badge_outlined, size: 13, color: AppColors.lime),
+                Icon(Icons.badge_outlined, size: 13, color: AppColors.lime),
                 const SizedBox(width: 4),
-                Text(gymName, style: const TextStyle(fontSize: 11, color: AppColors.lime, fontWeight: FontWeight.w600)),
+                Text(gymName, style: TextStyle(fontSize: 11, color: AppColors.lime, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -167,7 +167,7 @@ class _StaffHeader extends StatelessWidget {
   Widget _initials(String name) => Center(
     child: Text(
       name.isNotEmpty ? name[0].toUpperCase() : '?',
-      style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 18),
+      style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 18),
     ),
   );
 }

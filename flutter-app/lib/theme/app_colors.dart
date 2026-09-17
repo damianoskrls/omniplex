@@ -15,11 +15,9 @@ class AppColors {
   static const teal   = Color(0xFF4FD1C5);
   static const pink   = Color(0xFFFF6B9D);
 
-  // Default primary — updated at app startup from tenant config
-  // All 300+ references to AppColors.lime automatically use the tenant color
-  static Color _lime = const Color(0xFFB8F55E);
-  static Color get lime => _lime;
-  static void setTenantPrimary(Color color) { _lime = color; }
+  // Default primary — static const; tenant color is propagated via AppTheme and AppColorsTheme
+  static const Color lime = Color(0xFFB8F55E);
+  static void setTenantPrimary(Color color) { /* no-op: use context.tenantPrimary for dynamic color */ }
 
   static const cardGradients = [
     [Color(0xFF5B4FCF), Color(0xFF7C5CFC)],

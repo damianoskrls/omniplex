@@ -399,7 +399,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : RefreshIndicator(
               color: AppColors.lime,
               onRefresh: _loadThreads,
@@ -494,7 +494,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         title: const Text('Νέα συνομιλία'),
       ),
       body: _peers.isEmpty
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+          ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: _peers.length,
@@ -533,7 +533,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         children: [
           Expanded(
             child: _loadingChat
-                ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+                ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),

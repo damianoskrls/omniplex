@@ -50,7 +50,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
       lastDate: DateTime.now().add(const Duration(days: 180)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.dark(primary: AppColors.lime, surface: AppColors.surface),
+          colorScheme: ColorScheme.dark(primary: AppColors.lime, surface: AppColors.surface),
         ),
         child: child!,
       ),
@@ -131,7 +131,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
         // Bookings list
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
+              ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
               : _error != null
                   ? Center(child: Text(_error!))
                   : _bookings.isEmpty
