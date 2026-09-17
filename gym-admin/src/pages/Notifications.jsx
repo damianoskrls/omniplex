@@ -273,7 +273,7 @@ export default function Notifications() {
               onChange={e => setSettings(s => ({ ...s, booking_reminder_24h: e.target.checked }))}
             />
             <div>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>1 μέρα πριν την προπόνηση</div>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>1 μέρα πριν την κράτηση</div>
               <div className="text-muted" style={{ fontSize: '0.78rem' }}>Υπενθύμιση 24 ώρες πριν την κράτηση</div>
             </div>
           </label>
@@ -285,7 +285,7 @@ export default function Notifications() {
               onChange={e => setSettings(s => ({ ...s, booking_reminder_1h: e.target.checked }))}
             />
             <div>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>1 ώρα πριν την προπόνηση</div>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>1 ώρα πριν την κράτηση</div>
               <div className="text-muted" style={{ fontSize: '0.78rem' }}>Προετοιμασία + ώρα ραντεβού</div>
             </div>
           </label>

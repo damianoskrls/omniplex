@@ -2724,11 +2724,21 @@ tr:hover td { background: var(--surface-2); }
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  position: relative;
+}
+
+.messages-search svg {
+  position: absolute;
+  left: 23px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  pointer-events: none;
 }
 
 .messages-search input {
   width: 100%;
-  padding: 7px 11px;
+  padding: 7px 11px 7px 34px;
   border-radius: 8px;
   border: 1px solid var(--border-2);
   background: var(--surface-3);
@@ -2790,8 +2800,8 @@ tr:hover td { background: var(--surface-2); }
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  border-bottom: none;
   cursor: pointer;
   transition: background 0.1s;
   color: var(--text);

@@ -361,15 +361,15 @@ export default function Dashboard() {
             <section className="dash-widget dash-widget--wide">
               <div className="dash-widget__head">
                 <div>
-                  <h2 className="dash-widget__title"><Dumbbell size={18} /> Προπονήσεις σήμερα</h2>
-                  <p className="dash-widget__sub">{stats?.today_sessions?.length || 0} συνεδρίες στο πρόγραμμα</p>
+                  <h2 className="dash-widget__title"><Calendar size={18} /> Κρατήσεις σήμερα</h2>
+                  <p className="dash-widget__sub">{stats?.today_sessions?.length || 0} ραντεβού στο πρόγραμμα</p>
                 </div>
                 <Link to="/bookings" className="btn btn-secondary btn-sm">Όλες οι κρατήσεις</Link>
               </div>
               {!stats?.today_sessions?.length ? (
                 <div className="dash-empty">
                   <Calendar size={32} style={{ color: '#94a3b8', marginBottom: 8 }} />
-                  <p>Δεν υπάρχουν προπονήσεις σήμερα</p>
+                  <p>Δεν υπάρχουν κρατήσεις σήμερα</p>
                 </div>
               ) : (
                 <div className="dash-timeline">

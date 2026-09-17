@@ -12,72 +12,79 @@ import { useEffect, useState } from 'react';
 import api from '../api/client';
 import useMessagesUnreadCount from '../hooks/useMessagesUnreadCount';
 
-const NAV_GROUPS = [
-  {
-    key: 'main',
-    label: 'Κύρια',
-    links: [
-      { to: '/', end: true, icon: LayoutDashboard, label: 'Dashboard' },
-      { to: '/reports', icon: BarChart2, label: 'Αναφορές' },
-      { to: '/monthly-report', icon: TrendingUp, label: 'Αναφορά Αξίας' },
-    ],
-  },
-  {
-    key: 'clients',
-    label: 'Πελάτες & Κρατήσεις',
-    links: [
-      { to: '/bookings', icon: Calendar, label: 'Κρατήσεις' },
-      { to: '/clients', icon: Users, label: 'Πελάτες' },
-      { to: '/payments', icon: CreditCard, label: 'Πληρωμές' },
-      { to: '/at-risk', icon: AlertTriangle, label: 'Μέλη σε Κίνδυνο' },
-      { to: '/programs', icon: Dumbbell, label: 'Προγράμματα' },
-    ],
-  },
-  {
-    key: 'communication',
-    label: 'Επικοινωνία',
-    links: [
-      { to: '/messages', icon: MessageSquare, label: 'Μηνύματα' },
-      { to: '/community', icon: UsersRound, label: 'Κοινότητα' },
-      { to: '/notifications', icon: Bell, label: 'Ειδοποιήσεις' },
-    ],
-  },
-  {
-    key: 'setup',
-    label: 'Ρύθμιση',
-    links: [
-      { to: '/services', icon: Scissors, label: 'Υπηρεσίες' },
-      { to: '/plans', icon: Package, label: 'Πακέτα' },
-      { to: '/staff', icon: UserCog, label: 'Προσωπικό' },
-      { to: '/rooms', icon: DoorOpen, label: 'Αίθουσες' },
-      { to: '/locations', icon: MapPin, label: 'Τοποθεσίες' },
-      { to: '/waitlist-config', icon: ListOrdered, label: 'Λίστα Αναμονής' },
-      { to: '/trainer-fees', icon: UserCog, label: 'Αμοιβές Εκπαιδευτών' },
-      { to: '/expenses', icon: Receipt, label: 'Γενικά Έξοδα' },
-      { to: '/online-payments', icon: CreditCard, label: 'Online Πληρωμές' },
-    ],
-  },
-  {
-    key: 'marketplace',
-    label: 'Marketplace',
-    links: [
-      { to: '/marketplace', end: true, icon: Package, label: 'Προϊόντα' },
-      { to: '/marketplace/orders', icon: ClipboardList, label: 'Παραγγελίες' },
-      { to: '/marketplace/categories', icon: Tag, label: 'Κατηγορίες' },
-      { to: '/marketplace/shipping', icon: Truck, label: 'Τρόπος Αποστολής' },
-      { to: '/marketplace/payment-methods', icon: CreditCard, label: 'Τρόπος Πληρωμής' },
-    ],
-  },
-  {
-    key: 'other',
-    label: 'Άλλα',
-    links: [
-      { to: '/kiosk', icon: QrCode, label: 'QR Check-in', external: true },
-      { to: '/entrance-scanner', icon: DoorOpen, label: 'Scanner Εισόδου', external: true },
-      { to: '/settings', icon: Settings, label: 'Ρυθμίσεις' },
-    ],
-  },
-];
+function buildNavGroups({ features, featureNutrition }) {
+  return [
+    {
+      key: 'main',
+      label: 'Κύρια',
+      links: [
+        { to: '/', end: true, icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/reports', icon: BarChart2, label: 'Αναφορές' },
+        { to: '/monthly-report', icon: TrendingUp, label: 'Αναφορά Αξίας' },
+      ],
+    },
+    {
+      key: 'clients',
+      label: 'Πελάτες & Κρατήσεις',
+      links: [
+        { to: '/bookings', icon: Calendar, label: 'Κρατήσεις' },
+        { to: '/clients', icon: Users, label: 'Πελάτες' },
+        { to: '/payments', icon: CreditCard, label: 'Πληρωμές' },
+        { to: '/at-risk', icon: AlertTriangle, label: 'Πελάτες σε Κίνδυνο' },
+        ...(features.programs ? [{ to: '/programs', icon: Dumbbell, label: 'Προγράμματα Άσκησης' }] : []),
+      ],
+    },
+    {
+      key: 'communication',
+      label: 'Επικοινωνία',
+      links: [
+        { to: '/messages', icon: MessageSquare, label: 'Μηνύματα' },
+        { to: '/community', icon: UsersRound, label: 'Κοινότητα' },
+        { to: '/notifications', icon: Bell, label: 'Ειδοποιήσεις' },
+      ],
+    },
+    ...(featureNutrition ? [{
+      key: 'nutrition',
+      label: 'Διατροφολόγος',
+      links: NUTRITION_LINKS.filter(l => l.to !== '/messages'),
+    }] : []),
+    {
+      key: 'setup',
+      label: 'Ρύθμιση',
+      links: [
+        { to: '/services', icon: Scissors, label: 'Υπηρεσίες' },
+        { to: '/plans', icon: Package, label: 'Πακέτα' },
+        { to: '/staff', icon: UserCog, label: 'Προσωπικό' },
+        { to: '/rooms', icon: DoorOpen, label: 'Αίθουσες / Χώροι' },
+        { to: '/locations', icon: MapPin, label: 'Τοποθεσίες' },
+        { to: '/waitlist-config', icon: ListOrdered, label: 'Λίστα Αναμονής' },
+        ...(features.trainers ? [{ to: '/trainer-fees', icon: UserCog, label: 'Αμοιβές Συνεργατών' }] : []),
+        { to: '/expenses', icon: Receipt, label: 'Γενικά Έξοδα' },
+        { to: '/online-payments', icon: CreditCard, label: 'Online Πληρωμές' },
+      ],
+    },
+    {
+      key: 'marketplace',
+      label: 'Marketplace',
+      links: [
+        { to: '/marketplace', end: true, icon: Package, label: 'Προϊόντα' },
+        { to: '/marketplace/orders', icon: ClipboardList, label: 'Παραγγελίες' },
+        { to: '/marketplace/categories', icon: Tag, label: 'Κατηγορίες' },
+        { to: '/marketplace/shipping', icon: Truck, label: 'Τρόπος Αποστολής' },
+        { to: '/marketplace/payment-methods', icon: CreditCard, label: 'Τρόπος Πληρωμής' },
+      ],
+    },
+    {
+      key: 'other',
+      label: 'Άλλα',
+      links: [
+        { to: '/kiosk', icon: QrCode, label: 'QR Check-in', external: true },
+        { to: '/entrance-scanner', icon: DoorOpen, label: 'Scanner Εισόδου', external: true },
+        { to: '/settings', icon: Settings, label: 'Ρυθμίσεις' },
+      ],
+    },
+  ];
+}
 
 const NUTRITION_LINKS = [
   { to: '/messages', icon: MessageSquare, label: 'Μηνύματα' },
@@ -162,7 +169,7 @@ function AccordionGroup({ groupKey, label, links, unreadCount, defaultOpen }) {
 function TrainerNav({ unreadCount }) {
   return (
     <div className="sidebar-group sidebar-group--active">
-      <div className="sidebar-group__title"><Dumbbell size={16} /> Γυμναστής</div>
+      <div className="sidebar-group__title"><Dumbbell size={16} /> {staffLabel}</div>
       <div className="sidebar-group__items">
         {TRAINER_LINKS.map(link => (
           <NavItem key={link.to} link={link} unreadCount={unreadCount} className="sidebar-subnav-link" />
@@ -189,7 +196,7 @@ function NutritionNav({ isOwner, unreadCount }) {
 }
 
 export default function Layout({ children, title, variant }) {
-  const { logout, business, isNutritionist, isTrainer, isOwner } = useAuth();
+  const { logout, business, isNutritionist, isTrainer, isOwner, features } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
@@ -211,17 +218,9 @@ export default function Layout({ children, title, variant }) {
       .catch(() => {});
   }, [isTrainer, location.pathname]);
 
-  const ownerGroups = featureNutrition
-    ? [
-        ...NAV_GROUPS.slice(0, 2),
-        {
-          key: 'nutrition',
-          label: 'Διατροφολόγος',
-          links: NUTRITION_LINKS.filter(l => !l.ownerOnly || isOwner).filter(l => l.to !== '/messages'),
-        },
-        ...NAV_GROUPS.slice(2),
-      ]
-    : NAV_GROUPS;
+  const staffLabel = business?.type === 'gym' ? 'Γυμναστής' : 'Συνεργάτης';
+
+  const ownerGroups = buildNavGroups({ features: features || {}, featureNutrition });
 
   return (
     <div className={`layout ${variant === 'nutrition' || isNutritionist ? 'layout--nutrition' : ''} ${variant === 'trainer' || isTrainer ? 'layout--trainer' : ''}`}>
@@ -235,13 +234,13 @@ export default function Layout({ children, title, variant }) {
         {isTrainer ? (
           <div className="sidebar-trainer-identity">
             <Avatar
-              name={trainerStaff?.full_name || 'Γυμναστής'}
+              name={trainerStaff?.full_name || staffLabel}
               image={trainerStaff?.avatar_url}
               color={trainerStaff?.color_hex}
               size={72}
             />
             <div className="sidebar-business">
-              <div className="sidebar-business__role">{trainerStaff?.full_name || 'Γυμναστής'}</div>
+              <div className="sidebar-business__role">{trainerStaff?.full_name || staffLabel}</div>
             </div>
           </div>
         ) : isNutritionist ? (
@@ -304,10 +303,10 @@ export default function Layout({ children, title, variant }) {
                 className="topbar-trainer-avatar"
                 onClick={() => navigate('/trainer/profile')}
                 aria-label="Το προφίλ μου"
-                title={trainerStaff?.full_name || 'Γυμναστής'}
+                title={trainerStaff?.full_name || staffLabel}
               >
                 <Avatar
-                  name={trainerStaff?.full_name || 'Γυμναστής'}
+                  name={trainerStaff?.full_name || staffLabel}
                   image={trainerStaff?.avatar_url}
                   color={trainerStaff?.color_hex}
                   size={40}

@@ -261,16 +261,27 @@ function requireNutritionStaff(req, res, next) {
 // ============================================================
 async function businessLoginPayload(businessId, fallbackName, slug, type) {
   const [[cfg]] = await db.query(
-    'SELECT app_name, logo_url FROM business_configs WHERE business_id = ? LIMIT 1',
+    `SELECT app_name, logo_url,
+            feature_online_booking, feature_loyalty_points,
+            feature_memberships, feature_waitlist, feature_nutrition
+     FROM business_configs WHERE business_id = ? LIMIT 1`,
     [businessId],
   );
-  const displayName = (cfg?.app_name || fallbackName || 'Handstand').trim();
+  const displayName = (cfg?.app_name || fallbackName || '').trim();
+  const isGym = !type || type === 'gym';
   return {
     id: businessId,
     name: displayName,
     slug,
-    type,
+    type: type || 'gym',
     logo_url: cfg?.logo_url || null,
+    feature_programs: isGym ? 1 : 0,
+    feature_trainers: isGym ? 1 : 0,
+    feature_online_booking: cfg?.feature_online_booking ?? 1,
+    feature_loyalty_points: cfg?.feature_loyalty_points ?? 0,
+    feature_memberships: cfg?.feature_memberships ?? 1,
+    feature_waitlist: cfg?.feature_waitlist ?? 0,
+    feature_nutrition: cfg?.feature_nutrition ?? 0,
   };
 }
 

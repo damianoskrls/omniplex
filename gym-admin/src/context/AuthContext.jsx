@@ -36,6 +36,8 @@ export function AuthProvider({ children }) {
     setRole('client_admin');
   };
 
+  const isGym = !business?.type || business?.type === 'gym';
+
   return (
     <AuthContext.Provider value={{
       token,
@@ -47,6 +49,14 @@ export function AuthProvider({ children }) {
       isNutritionist: role === 'nutritionist',
       isTrainer: role === 'trainer',
       isOwner: role === 'client_admin',
+      isGym,
+      features: {
+        programs: isGym && (business?.feature_programs ?? 1),
+        trainers: isGym && (business?.feature_trainers ?? 1),
+        nutrition: business?.feature_nutrition ?? 0,
+        memberships: business?.feature_memberships ?? 1,
+        waitlist: business?.feature_waitlist ?? 0,
+      },
     }}>
       {children}
     </AuthContext.Provider>
