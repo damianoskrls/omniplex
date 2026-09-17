@@ -4401,12 +4401,49 @@ router.delete('/closures/:id', requireClientAdmin, async (req, res) => {
 });
 
 // ── Staff Leaves ──────────────────────────────────────────────
+// Ensure status column exists (migration-safe)
+(async () => {
+  try {
+    await db.query(`ALTER TABLE staff_leaves ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'approved'`);
+    await db.query(`ALTER TABLE staff_leaves ADD COLUMN IF NOT EXISTS admin_note TEXT`);
+    await db.query(`ALTER TABLE staff_leaves ADD COLUMN IF NOT EXISTS reviewed_at DATETIME`);
+    await db.query(`ALTER TABLE business_configs ADD COLUMN IF NOT EXISTS annual_leave_days INT NOT NULL DEFAULT 20`);
+  } catch (_) {}
+})();
+
+// GET all leave requests across all staff (admin overview)
+router.get('/staff-leaves', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const { status } = req.query;
+  const params = [bizId];
+  let where = 'sl.business_id = ?';
+  if (status) { where += ' AND sl.status = ?'; params.push(status); }
+  const [rows] = await db.query(`
+    SELECT sl.*, s.full_name AS staff_name, s.role AS staff_role,
+           DATEDIFF(sl.date_to, sl.date_from) + 1 AS days_count
+    FROM staff_leaves sl
+    JOIN staff s ON s.id = sl.staff_id
+    WHERE ${where}
+    ORDER BY sl.created_at DESC, sl.date_from DESC
+  `, params);
+  const [[cfg]] = await db.query(
+    'SELECT annual_leave_days FROM business_configs WHERE business_id=?', [bizId]);
+  return res.json({ leaves: rows, annual_leave_days: cfg?.annual_leave_days ?? 20 });
+});
+
 router.get('/staff/:id/leaves', requireClientAdmin, async (req, res) => {
   const [rows] = await db.query(
-    'SELECT * FROM staff_leaves WHERE staff_id=? AND business_id=? ORDER BY date_from',
+    `SELECT *, DATEDIFF(date_to, date_from) + 1 AS days_count
+     FROM staff_leaves WHERE staff_id=? AND business_id=? ORDER BY date_from DESC`,
     [req.params.id, req.admin.businessId]
   );
-  return res.json(rows);
+  const [[used]] = await db.query(
+    `SELECT COALESCE(SUM(DATEDIFF(date_to, date_from) + 1), 0) AS days_used
+     FROM staff_leaves WHERE staff_id=? AND business_id=? AND status='approved'
+     AND YEAR(date_from)=YEAR(CURDATE())`, [req.params.id, req.admin.businessId]);
+  const [[cfg]] = await db.query(
+    'SELECT annual_leave_days FROM business_configs WHERE business_id=?', [req.admin.businessId]);
+  return res.json({ leaves: rows, days_used: used.days_used, annual_leave_days: cfg?.annual_leave_days ?? 20 });
 });
 
 router.post('/staff/:id/leaves', requireClientAdmin, async (req, res) => {
@@ -4414,10 +4451,23 @@ router.post('/staff/:id/leaves', requireClientAdmin, async (req, res) => {
   if (!date_from || !date_to) return res.status(400).json({ error: 'Απαιτούνται ημερομηνίες' });
   const id = uuidv4();
   await db.query(
-    'INSERT INTO staff_leaves (id, staff_id, business_id, date_from, date_to, reason) VALUES (?,?,?,?,?,?)',
+    `INSERT INTO staff_leaves (id, staff_id, business_id, date_from, date_to, reason, status)
+     VALUES (?,?,?,?,?,?,'approved')`,
     [id, req.params.id, req.admin.businessId, date_from, date_to, reason || null]
   );
   return res.status(201).json({ id });
+});
+
+// PATCH approve/reject a leave request
+router.patch('/staff-leaves/:leaveId', requireClientAdmin, async (req, res) => {
+  const { status, admin_note } = req.body;
+  if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  await db.query(
+    `UPDATE staff_leaves SET status=?, admin_note=?, reviewed_at=NOW()
+     WHERE id=? AND business_id=?`,
+    [status, admin_note || null, req.params.leaveId, req.admin.businessId]
+  );
+  return res.json({ ok: true });
 });
 
 router.delete('/staff/:staffId/leaves/:leaveId', requireClientAdmin, async (req, res) => {
@@ -4426,6 +4476,54 @@ router.delete('/staff/:staffId/leaves/:leaveId', requireClientAdmin, async (req,
     [req.params.leaveId, req.params.staffId, req.admin.businessId]
   );
   return res.json({ ok: true });
+});
+
+// GET annual_leave_days setting
+router.get('/settings/annual-leave-days', requireClientAdmin, async (req, res) => {
+  const [[cfg]] = await db.query(
+    'SELECT annual_leave_days FROM business_configs WHERE business_id=?',
+    [req.admin.businessId]
+  );
+  return res.json({ annual_leave_days: cfg?.annual_leave_days ?? 20 });
+});
+
+// PATCH annual_leave_days setting
+router.patch('/settings/annual-leave-days', requireClientAdmin, async (req, res) => {
+  const days = req.body.annual_leave_days ?? req.body.days;
+  if (!days || days < 1) return res.status(400).json({ error: 'Invalid days' });
+  await db.query(
+    'UPDATE business_configs SET annual_leave_days=? WHERE business_id=?',
+    [days, req.admin.businessId]
+  );
+  return res.json({ ok: true });
+});
+
+// ── Reviews (post-workout feedback) ──────────────────────────
+router.get('/reviews', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const { page = 1, limit = 30, min_rating, service_id } = req.query;
+  const offset = (Number(page) - 1) * Number(limit);
+  const filters = ['b.business_id = ?', 'b.feedback_rating IS NOT NULL'];
+  const params  = [bizId];
+  if (min_rating) { filters.push('b.feedback_rating >= ?'); params.push(Number(min_rating)); }
+  if (service_id) { filters.push('b.service_id = ?'); params.push(service_id); }
+  const where = filters.join(' AND ');
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(*) AS total FROM bookings b WHERE ${where}`, params);
+  const [rows] = await db.query(`
+    SELECT b.id, b.feedback_rating, b.feedback_note, b.starts_at, b.service_name,
+           u.full_name AS member_name, s.full_name AS staff_name
+    FROM bookings b
+    LEFT JOIN users  u ON u.id = b.user_id
+    LEFT JOIN staff  s ON s.id = b.staff_id
+    WHERE ${where}
+    ORDER BY b.starts_at DESC
+    LIMIT ? OFFSET ?
+  `, [...params, Number(limit), offset]);
+  const [[avg]] = await db.query(
+    `SELECT ROUND(AVG(feedback_rating),1) AS avg_rating, COUNT(*) AS total_reviews
+     FROM bookings WHERE business_id=? AND feedback_rating IS NOT NULL`, [bizId]);
+  return res.json({ reviews: rows, total, avg_rating: avg.avg_rating, total_reviews: avg.total_reviews });
 });
 
 // ── Gym Settings ──────────────────────────────────────────────

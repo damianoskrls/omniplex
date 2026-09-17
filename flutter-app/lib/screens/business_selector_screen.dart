@@ -296,7 +296,7 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
         final biz   = _results[i];
         final color = _parseColor(biz.primaryColor);
         final logoUrl = biz.logoUrl != null
-            ? '${widget.apiBaseUrl}${biz.logoUrl}'
+            ? (biz.logoUrl!.startsWith('http') ? biz.logoUrl! : '${widget.apiBaseUrl}${biz.logoUrl}')
             : null;
         return _ResultCard(
           biz: biz,

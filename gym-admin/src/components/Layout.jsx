@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
@@ -20,7 +20,9 @@ function buildNavGroups({ features, featureNutrition }) {
       links: [
         { to: '/', end: true, icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/reports', icon: BarChart2, label: 'Αναφορές' },
+        { to: '/analytics', icon: Activity, label: 'Αναλυτικά' },
         { to: '/monthly-report', icon: TrendingUp, label: 'Αναφορά Αξίας' },
+        { to: '/reviews', icon: Star, label: 'Αξιολογήσεις' },
       ],
     },
     {
@@ -55,6 +57,7 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/services', icon: Scissors, label: 'Υπηρεσίες' },
         { to: '/plans', icon: Package, label: 'Πακέτα' },
         { to: '/staff', icon: UserCog, label: 'Προσωπικό' },
+        { to: '/staff-leaves', icon: CalendarOff, label: 'Άδειες Προσωπικού' },
         { to: '/rooms', icon: DoorOpen, label: 'Αίθουσες / Χώροι' },
         { to: '/locations', icon: MapPin, label: 'Τοποθεσίες' },
         { to: '/waitlist-config', icon: ListOrdered, label: 'Λίστα Αναμονής' },

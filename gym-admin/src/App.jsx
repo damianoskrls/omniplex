@@ -41,6 +41,9 @@ import TrainerFees from './pages/TrainerFees';
 import Expenses from './pages/Expenses';
 import OnlinePayments from './pages/OnlinePayments';
 import Marketplace from './pages/Marketplace';
+import Reviews from './pages/Reviews';
+import Analytics from './pages/Analytics';
+import StaffLeaves from './pages/StaffLeaves';
 
 function HomeRedirect() {
   const { isNutritionist, isTrainer } = useAuth();
@@ -100,6 +103,9 @@ export default function App() {
           <Route path="/marketplace/categories" element={<PrivateRoute ownerOnly><Marketplace /></PrivateRoute>} />
           <Route path="/marketplace/shipping" element={<PrivateRoute ownerOnly><Marketplace /></PrivateRoute>} />
           <Route path="/marketplace/payment-methods" element={<PrivateRoute ownerOnly><Marketplace /></PrivateRoute>} />
+          <Route path="/reviews" element={<PrivateRoute ownerOnly><Reviews /></PrivateRoute>} />
+          <Route path="/analytics" element={<PrivateRoute ownerOnly><Analytics /></PrivateRoute>} />
+          <Route path="/staff-leaves" element={<PrivateRoute ownerOnly><StaffLeaves /></PrivateRoute>} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
       </BrowserRouter>

@@ -622,41 +622,55 @@ router.patch('/staff/bookings/:id/attendance', requireMobileStaff, async (req, r
   }
 });
 
-// GET /api/mobile/staff/leaves
+// GET /api/mobile/staff/leaves — includes status and annual balance
 router.get('/staff/leaves', requireMobileStaff, async (req, res) => {
   try {
     const [leaves] = await db.query(
-      'SELECT id, date_from, date_to, reason FROM staff_leaves WHERE staff_id = ? AND business_id = ? ORDER BY date_from DESC',
+      `SELECT id, date_from, date_to, reason, status, admin_note, reviewed_at,
+              DATEDIFF(date_to, date_from) + 1 AS days_count
+       FROM staff_leaves WHERE staff_id = ? AND business_id = ? ORDER BY date_from DESC`,
       [req.staffId, req.businessId],
     );
-    return res.json({ leaves });
+    const [[used]] = await db.query(
+      `SELECT COALESCE(SUM(DATEDIFF(date_to, date_from) + 1), 0) AS days_used
+       FROM staff_leaves WHERE staff_id=? AND business_id=? AND status='approved'
+       AND YEAR(date_from)=YEAR(CURDATE())`,
+      [req.staffId, req.businessId],
+    );
+    const [[cfg]] = await db.query(
+      'SELECT annual_leave_days FROM business_configs WHERE business_id=?', [req.businessId]);
+    return res.json({
+      leaves,
+      days_used: used.days_used,
+      annual_leave_days: cfg?.annual_leave_days ?? 20,
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/mobile/staff/leaves
-// Body: { date_from, date_to, reason? }
+// POST /api/mobile/staff/leaves — submits a leave REQUEST (pending approval)
 router.post('/staff/leaves', requireMobileStaff, async (req, res) => {
   const { date_from, date_to, reason } = req.body;
   if (!date_from || !date_to) return res.status(400).json({ error: 'Απαιτούνται ημερομηνίες' });
   try {
     const id = uuidv4();
     await db.query(
-      'INSERT INTO staff_leaves (id, staff_id, business_id, date_from, date_to, reason) VALUES (?,?,?,?,?,?)',
+      `INSERT INTO staff_leaves (id, staff_id, business_id, date_from, date_to, reason, status)
+       VALUES (?,?,?,?,?,?,'pending')`,
       [id, req.staffId, req.businessId, date_from, date_to, reason || null],
     );
-    return res.json({ id, date_from, date_to, reason: reason || null });
+    return res.json({ id, date_from, date_to, reason: reason || null, status: 'pending' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE /api/mobile/staff/leaves/:id
+// DELETE /api/mobile/staff/leaves/:id — only pending leaves can be cancelled by staff
 router.delete('/staff/leaves/:id', requireMobileStaff, async (req, res) => {
   try {
     await db.query(
-      'DELETE FROM staff_leaves WHERE id = ? AND staff_id = ? AND business_id = ?',
+      `DELETE FROM staff_leaves WHERE id = ? AND staff_id = ? AND business_id = ? AND status = 'pending'`,
       [req.params.id, req.staffId, req.businessId],
     );
     return res.json({ ok: true });

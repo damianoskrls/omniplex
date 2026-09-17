@@ -240,6 +240,126 @@ router.get('/:bizId/stats', async (req, res) => {
 });
 
 // ============================================================
+// ANALYTICS — revenue, expenses, trial conversions
+// GET /api/business/:bizId/analytics?year=2026&month=9
+// ============================================================
+router.get('/:bizId/analytics', authenticate, async (req, res) => {
+  const bizId = req.params.bizId;
+  const now   = new Date();
+  const year  = parseInt(req.query.year  || now.getFullYear(), 10);
+  const month = parseInt(req.query.month || now.getMonth() + 1, 10);
+
+  const start = `${year}-${String(month).padStart(2,'0')}-01`;
+  const endDay = new Date(year, month, 0).getDate();
+  const end   = `${year}-${String(month).padStart(2,'0')}-${String(endDay).padStart(2,'0')}`;
+
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear  = month === 1 ? year - 1 : year;
+  const prevStart = `${prevYear}-${String(prevMonth).padStart(2,'0')}-01`;
+  const prevEndDay = new Date(prevYear, prevMonth, 0).getDate();
+  const prevEnd   = `${prevYear}-${String(prevMonth).padStart(2,'0')}-${String(prevEndDay).padStart(2,'0')}`;
+
+  const range = (s, e) => [`${s} 00:00:00`, `${e} 23:59:59`];
+
+  try {
+    // Revenue (paid payments)
+    const [[rev]] = await db.query(
+      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM payments
+       WHERE business_id=? AND status='paid' AND paid_at BETWEEN ? AND ?`,
+      [bizId, ...range(start, end)]);
+    const [[revPrev]] = await db.query(
+      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM payments
+       WHERE business_id=? AND status='paid' AND paid_at BETWEEN ? AND ?`,
+      [bizId, ...range(prevStart, prevEnd)]);
+
+    // Expenses
+    const [[exp]] = await db.query(
+      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM expenses
+       WHERE business_id=? AND expense_date BETWEEN ? AND ?`,
+      [bizId, start, end]);
+    const [[expPrev]] = await db.query(
+      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM expenses
+       WHERE business_id=? AND expense_date BETWEEN ? AND ?`,
+      [bizId, prevStart, prevEnd]);
+
+    // Expenses by category
+    const [expByCategory] = await db.query(
+      `SELECT category, COALESCE(SUM(amount_cents),0) AS total
+       FROM expenses WHERE business_id=? AND expense_date BETWEEN ? AND ?
+       GROUP BY category ORDER BY total DESC`,
+      [bizId, start, end]);
+
+    // Trial bookings
+    const [[trials]] = await db.query(
+      `SELECT COUNT(*) AS total FROM bookings
+       WHERE business_id=? AND is_trial=1 AND starts_at BETWEEN ? AND ?`,
+      [bizId, ...range(start, end)]);
+    const [[trialsPrev]] = await db.query(
+      `SELECT COUNT(*) AS total FROM bookings
+       WHERE business_id=? AND is_trial=1 AND starts_at BETWEEN ? AND ?`,
+      [bizId, ...range(prevStart, prevEnd)]);
+
+    // Trial conversions (had a trial then got a membership/payment afterwards)
+    const [[conversions]] = await db.query(
+      `SELECT COUNT(DISTINCT b.user_id) AS total
+       FROM bookings b
+       JOIN memberships m ON m.user_id = b.user_id AND m.business_id = b.business_id
+       WHERE b.business_id=? AND b.is_trial=1
+         AND b.starts_at BETWEEN ? AND ?
+         AND m.valid_from >= b.starts_at`,
+      [bizId, ...range(start, end)]);
+
+    // Revenue by service
+    const [revByService] = await db.query(
+      `SELECT b.service_name, COUNT(*) AS bookings_count,
+              COALESCE(SUM(p.amount_cents),0) AS revenue_cents
+       FROM bookings b
+       LEFT JOIN payments p ON p.booking_id = b.id AND p.status='paid'
+       WHERE b.business_id=? AND b.starts_at BETWEEN ? AND ?
+         AND b.status IN ('completed','confirmed')
+       GROUP BY b.service_id, b.service_name
+       ORDER BY revenue_cents DESC
+       LIMIT 10`,
+      [bizId, ...range(start, end)]);
+
+    // New members this month
+    const [[newMembers]] = await db.query(
+      `SELECT COUNT(*) AS total FROM users
+       WHERE business_id=? AND created_at BETWEEN ? AND ?`,
+      [bizId, ...range(start, end)]);
+    const [[newMembersPrev]] = await db.query(
+      `SELECT COUNT(*) AS total FROM users
+       WHERE business_id=? AND created_at BETWEEN ? AND ?`,
+      [bizId, ...range(prevStart, prevEnd)]);
+
+    // Total completed bookings
+    const [[completed]] = await db.query(
+      `SELECT COUNT(*) AS total FROM bookings
+       WHERE business_id=? AND status='completed' AND starts_at BETWEEN ? AND ?`,
+      [bizId, ...range(start, end)]);
+    const [[completedPrev]] = await db.query(
+      `SELECT COUNT(*) AS total FROM bookings
+       WHERE business_id=? AND status='completed' AND starts_at BETWEEN ? AND ?`,
+      [bizId, ...range(prevStart, prevEnd)]);
+
+    return res.json({
+      period: { year, month, start, end },
+      revenue:     { current: rev.total,       prev: revPrev.total },
+      expenses:    { current: exp.total,        prev: expPrev.total },
+      profit:      { current: rev.total - exp.total, prev: revPrev.total - expPrev.total },
+      trials:      { current: trials.total,     prev: trialsPrev.total },
+      conversions: { current: conversions.total, rate: trials.total > 0 ? Math.round((conversions.total / trials.total) * 100) : 0 },
+      completed:   { current: completed.total,  prev: completedPrev.total },
+      new_members: { current: newMembers.total, prev: newMembersPrev.total },
+      revenue_by_service: revByService,
+      expenses_by_category: expByCategory,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
 // AT-RISK MEMBERS
 // ============================================================
 
