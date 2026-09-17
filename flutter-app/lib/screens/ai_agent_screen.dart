@@ -161,6 +161,8 @@ class _AiAgentScreenState extends State<AiAgentScreen> with TickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final isEl = LanguageService.instance.isGreek;
+    final config = context.read<TenantConfig>();
+    final agentName = '${config.appName} Βοηθός';
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -190,7 +192,7 @@ class _AiAgentScreenState extends State<AiAgentScreen> with TickerProviderStateM
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isEl ? 'AI Βοηθός' : 'AI Assistant',
+                  agentName,
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
                 Text(

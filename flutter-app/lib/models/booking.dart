@@ -66,8 +66,12 @@ class Booking {
       status != 'no_show' &&
       !attendanceConfirmed;
 
-  bool get isActiveInList =>
-      !isCompleted && status != 'cancelled' && status != 'no_show';
+  bool get isActiveInList {
+    if (status == 'cancelled' || status == 'no_show' || isCompleted) return false;
+    // pending bookings whose slot has already passed are no longer relevant
+    if (status == 'pending' && startsAt.isBefore(DateTime.now())) return false;
+    return true;
+  }
 
   static List<String> _tipsFromJson(dynamic raw) {
     if (raw is! List) return [];

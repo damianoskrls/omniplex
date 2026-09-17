@@ -145,35 +145,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
-          SurfaceCard(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.lime.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.event_available, color: AppColors.lime, size: 22),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Διαθέσιμες υπηρεσίες', style: Theme.of(context).textTheme.titleMedium),
-                      Text(
-                        '${_bookableCount} από $_activeCount ενεργές',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
           if (_showNutritionCard) ...[
             GradientCard(
               colors: const [Color(0xFF0f766e), Color(0xFF134e4a)],

@@ -6,7 +6,20 @@
 const express  = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const db       = require('../db');
-const { authenticate } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
+
+function mobileAuth(req, res, next) {
+  const header = req.headers['authorization'];
+  if (!header) return res.status(401).json({ error: 'No token' });
+  const token = header.startsWith('Bearer ') ? header.slice(7) : header;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+}
 const { createOneBooking } = require('../lib/create_booking');
 
 const router = express.Router();
@@ -266,7 +279,8 @@ async function executeTool(name, input, bizId, userId) {
 function buildSystemPrompt(gymName, locale, userName) {
   const lang = locale === 'en' ? 'English' : 'Greek';
   const today_str = today();
-  return `You are the AI fitness assistant for ${gymName}. You help members with bookings, cancellations, schedules, and general gym questions.
+  const agentName = `${gymName} Βοηθός`;
+  return `You are ${agentName}, the AI assistant for ${gymName}. You help members with bookings, cancellations, schedules, and general questions.
 
 TODAY'S DATE: ${today_str}
 MEMBER NAME: ${userName || 'Member'}
@@ -289,7 +303,7 @@ IMPORTANT:
 
 // ── route ─────────────────────────────────────────────────────────────────────
 
-router.post('/:bizId/chat', authenticate, async (req, res) => {
+router.post('/:bizId/chat', mobileAuth, async (req, res) => {
 
   const { bizId } = req.params;
   const { messages = [], locale = 'el' } = req.body;
