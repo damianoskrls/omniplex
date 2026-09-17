@@ -3,8 +3,8 @@ import Layout from '../../components/Layout';
 import api from '../../api/client';
 import toast from 'react-hot-toast';
 import { Save, Upload } from 'lucide-react';
+import { API_BASE } from '../../utils/media';
 
-const API_BASE = 'http://localhost:3001';
 
 export default function TrainerProfile() {
   const [profile, setProfile] = useState(null);

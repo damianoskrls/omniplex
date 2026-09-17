@@ -5,8 +5,8 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import { Save, ChevronLeft, ChevronRight, Bell, Plus, Trash2, Upload, X, Download, Calendar, ShoppingCart, BookCopy, History, Sparkles, Eye } from 'lucide-react';
 import { TrendChart, VisitTimeline, BodyMeasurementsHero } from '../components/NutritionMeasurementCharts';
+import { mediaUrl } from '../utils/media';
 
-const BASE = 'http://localhost:3001';
 const DAYS = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
 const DAY_SHORT = ['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ', 'Κυρ'];
 const MEALS = [
@@ -441,7 +441,7 @@ function MealSlotModal({ open, day, meal, options, onClose, onSave }) {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 {opt.image_url ? (
                   <>
-                    <img src={`${BASE}${opt.image_url}`} alt="" style={{ height: 56, borderRadius: 8 }} />
+                    <img src={mediaUrl(opt.image_url)} alt="" style={{ height: 56, borderRadius: 8 }} />
                     <button type="button" className="btn btn-secondary btn-sm" onClick={() => updateOption(idx, { image_url: '' })}><X size={12} /></button>
                   </>
                 ) : (
@@ -860,7 +860,7 @@ function FoodDiaryPanel({ clientId, clientName }) {
                         {(o.portions || []).map((p, j) => (
                           <div key={j} style={{ fontSize: '0.75rem', color: '#64748b' }}>• {p.ingredient}{p.amount != null ? `: ${p.amount} ${p.unit}` : ''}</div>
                         ))}
-                        {o.image_url && <img src={`${BASE}${o.image_url}`} alt="" style={{ height: 48, marginTop: 4, borderRadius: 6 }} />}
+                        {o.image_url && <img src={mediaUrl(o.image_url)} alt="" style={{ height: 48, marginTop: 4, borderRadius: 6 }} />}
                       </div>
                     ))}
                   </div>
@@ -875,7 +875,7 @@ function FoodDiaryPanel({ clientId, clientName }) {
                     <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{log.meal_type_label}</div>
                     <div style={{ marginTop: 4 }}>{log.description}</div>
                     {log.plan_option_id && <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: 4 }}>✓ Από πρόγραμμα</div>}
-                    {log.photo_url && <img src={`${BASE}${log.photo_url}`} alt="" style={{ height: 72, marginTop: 6, borderRadius: 6 }} />}
+                    {log.photo_url && <img src={mediaUrl(log.photo_url)} alt="" style={{ height: 72, marginTop: 6, borderRadius: 6 }} />}
                     {log.logged_at && <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 4 }}>{new Date(log.logged_at).toLocaleString('el-GR')}</div>}
                   </div>
                 ))}

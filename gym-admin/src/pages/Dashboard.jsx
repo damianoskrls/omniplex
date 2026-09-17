@@ -342,7 +342,7 @@ export default function Dashboard() {
           />
 
           {(stats?.pending_bookings > 0) && (
-            <Link to="/bookings" className="dash-alert">
+            <Link to="/bookings?mode=all&status=pending" className="dash-alert">
               <AlertCircle size={18} />
               <span>{stats.pending_bookings} κράτηση/εις σε αναμονή επιβεβαίωσης</span>
               <ChevronRight size={16} />

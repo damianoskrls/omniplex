@@ -32,7 +32,7 @@ function groupMeta(booking, groupBy, catalogs) {
       id: booking.staff_id,
       label: booking.staff_name,
       image: booking.staff_avatar_url || member?.avatar_url,
-      subtitle: member?.role || 'Γυμναστής',
+      subtitle: member?.role || 'Προσωπικό',
       accent: booking.color_hex || member?.color_hex || '#607D8B',
     };
   }
@@ -311,7 +311,7 @@ export default function BookingsGroupedView({
 
   const groupLabels = {
     service: 'Υπηρεσία',
-    staff: 'Γυμναστής',
+    staff: 'Προσωπικό',
     room: 'Αίθουσα',
   };
 

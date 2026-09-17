@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { mediaUrl, API_BASE } from '../utils/media';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
@@ -533,7 +534,7 @@ function ExerciseForm({ initial, onSave, onClose }) {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const url = res.data?.url
-        ? (res.data.url.startsWith('http') ? res.data.url : `http://localhost:3001${res.data.url}`)
+        ? (res.data.url.startsWith('http') ? res.data.url : `${API_BASE}${res.data.url}`)
         : null;
       if (url) setForm(f => ({ ...f, animation_url: url }));
       toast.success('Το αρχείο ανέβηκε');

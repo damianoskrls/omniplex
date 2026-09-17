@@ -7,7 +7,7 @@ import TrialBookingModal from '../components/TrialBookingModal';
 import DropInBookingModal from '../components/DropInBookingModal';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { Pencil, ChevronLeft, ChevronRight, Plus, CalendarOff, Trash2, MapPin, Search, X, FlaskConical, Zap } from 'lucide-react';
+import { Pencil, ChevronLeft, ChevronRight, Plus, CalendarOff, Trash2, MapPin, Search, X, FlaskConical, Zap, AlertCircle } from 'lucide-react';
 import { groupBookingsBySlot, slotKey } from '../utils/groupBookingsBySlot';
 import ClientBookingsSection from '../components/ClientBookingsSection';
 
@@ -51,6 +51,7 @@ function bookingHour(startsAt) {
 export default function Bookings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState('grouped');
+  const [statusFilter, setStatusFilter] = useState('');
   const [groupBy, setGroupBy] = useState('service');
   const [groupFilter, setGroupFilter] = useState(null);
   const [date, setDate] = useState(localToday);
@@ -262,11 +263,13 @@ export default function Bookings() {
     const dateParam = searchParams.get('date');
     const bookingId = searchParams.get('id');
 
+    const statusParam = searchParams.get('status');
     if (modeParam) setMode(modeParam);
     if (dateParam) setDate(dateParam);
+    if (statusParam) setStatusFilter(statusParam);
 
     if (!bookingId) {
-      if (modeParam || dateParam) setSearchParams({}, { replace: true });
+      if (modeParam || dateParam || statusParam) setSearchParams({}, { replace: true });
       return;
     }
 
@@ -465,7 +468,9 @@ export default function Bookings() {
   const reassignmentPending = searchParams.get('reassignment') === 'pending';
   const visibleBookings = reassignmentPending
     ? bookings.filter((b) => b.staff_assignment_status === 'pending_reassignment')
-    : bookings;
+    : statusFilter
+      ? bookings.filter((b) => b.status === statusFilter)
+      : bookings;
 
   const todayBookings = visibleBookings.filter(b => !['cancelled', 'no_show'].includes(b.status));
 
@@ -668,6 +673,14 @@ export default function Bookings() {
         </div>
       </div>
 
+      {statusFilter && (
+        <div className="dash-alert" style={{ marginBottom: 16, borderColor: '#fbbf24', background: '#fffbeb' }}>
+          <AlertCircle size={16} color="#d97706" />
+          <span>Εμφανίζονται μόνο κρατήσεις σε αναμονή επιβεβαίωσης ({visibleBookings.length})</span>
+          <button type="button" className="cb-text-btn" onClick={() => setStatusFilter('')}>Εμφάνιση όλων</button>
+        </div>
+      )}
+
       {reassignmentPending && (
         <div className="dash-alert" style={{ marginBottom: 16 }}>
           <span>Εμφανίζονται μόνο κρατήσεις που χρειάζονται ανάθεση γυμναστή ({visibleBookings.length})</span>
@@ -840,7 +853,7 @@ export default function Bookings() {
                   <th>Ημερομηνία / Ώρα</th>
                   <th>Πελάτης</th>
                   <th>Υπηρεσία</th>
-                  <th>Γυμναστής</th>
+                  <th>Προσωπικό</th>
                   <th>Πηγή</th>
                   <th>Κατάσταση</th>
                   <th></th>
@@ -959,7 +972,7 @@ export default function Bookings() {
                 )}
               </div>
               <div className="form-group">
-                <label className="form-label">Γυμναστής *</label>
+                <label className="form-label">Προσωπικό *</label>
                 <select
                   className="form-select"
                   value={editForm.staff_id}

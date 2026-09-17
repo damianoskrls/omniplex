@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, Save, Upload, Plus, X, CalendarOff, KeyRound, Clock, Check, Trash2, Copy } from 'lucide-react';
 import LocationCheckboxes from '../components/LocationCheckboxes';
 import StaffDeleteModal from '../components/StaffDeleteModal';
+import { mediaUrl, API_BASE } from '../utils/media';
 import AvailabilityEditor from '../components/AvailabilityEditor';
 
 function StaffPortalSection({ staffId }) {
@@ -157,7 +158,6 @@ function PendingAvailabilityRequests({ staffId, onResolved }) {
 }
 
 const DAYS = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
-const API_BASE = 'http://localhost:3001';
 
 function parseGymHours(raw) {
   if (!raw) return null;

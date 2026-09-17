@@ -5,8 +5,7 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import LocationCheckboxes from '../components/LocationCheckboxes';
 import { Plus, Trash2, Pencil, CalendarClock, Upload, X, Check } from 'lucide-react';
-
-const BASE = 'http://localhost:3001';
+import { mediaUrl } from '../utils/media';
 
 const EMPTY = { name: '', description: '', category: '', duration_mins: 60, hide_staff_selection: false, slot_label_mode: 'time_only', drop_in_price_cents: '', requires_attendance_confirmation: true, requires_qr_scan: true };
 
@@ -30,7 +29,7 @@ function ImageUploadBox({ label, accept, currentUrl, onUpload, onRemove, hint })
     }
   };
 
-  const displayed = preview || (currentUrl ? `${BASE}${currentUrl}` : null);
+  const displayed = preview || (currentUrl ? mediaUrl(currentUrl) : null);
 
   return (
     <div style={{ flex: 1 }}>
@@ -257,40 +256,42 @@ export default function Services() {
           </thead>
           <tbody>
             {services.map(s => (
-              <tr key={s.id}>
-                <td style={{ width: 48 }}>
+              <tr key={s.id} style={{ verticalAlign: 'middle' }}>
+                <td style={{ width: 48, verticalAlign: 'middle' }}>
                   {s.icon_svg_url ? (
-                    <img src={`${BASE}${s.icon_svg_url}`} alt="" style={{ width: 36, height: 36 }} />
+                    <img src={mediaUrl(s.icon_svg_url)} alt="" style={{ width: 36, height: 36, display: 'block' }} />
                   ) : s.image_url ? (
-                    <img src={`${BASE}${s.image_url}`} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 6 }} />
+                    <img src={mediaUrl(s.image_url)} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
                   ) : (
                     <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: 18 }}>
                       🏋️
                     </div>
                   )}
                 </td>
-                <td style={{ fontWeight: 600 }}>
-                  {s.name}
-                  <div className="text-muted">{s.category}</div>
-                  {s.hide_staff_selection
-                    ? <span className="badge badge-blue" style={{ marginTop: 4, display: 'inline-block' }}>Αυτόματη ανάθεση</span>
-                    : <span className="badge" style={{ marginTop: 4, display: 'inline-block' }}>Επιλογή γυμναστή</span>}
+                <td style={{ fontWeight: 600, verticalAlign: 'middle' }}>
+                  <div>{s.name}</div>
+                  <div className="text-muted" style={{ fontWeight: 400 }}>{s.category}</div>
+                  <span className={`badge ${s.hide_staff_selection ? 'badge-blue' : 'badge-gray'}`} style={{ marginTop: 4 }}>
+                    {s.hide_staff_selection ? 'Αυτόματη ανάθεση' : 'Επιλογή γυμναστή'}
+                  </span>
                 </td>
-                <td style={{ fontSize: '0.85rem', maxWidth: 140 }}>
+                <td style={{ fontSize: '0.85rem', maxWidth: 140, verticalAlign: 'middle' }}>
                   {s.location_count > 0 ? (s.location_names || '—') : <span className="text-muted">Όλα</span>}
                 </td>
-                <td style={{ maxWidth: 200 }}>{s.description || '—'}</td>
-                <td>
+                <td style={{ maxWidth: 200, verticalAlign: 'middle' }}>{s.description || '—'}</td>
+                <td style={{ verticalAlign: 'middle' }}>
                   <button className={`badge ${s.is_active ? 'badge-green' : 'badge-red'}`} onClick={() => toggleActive(s)}>
                     {s.is_active ? 'Ενεργή' : 'Ανενεργή'}
                   </button>
                 </td>
-                <td style={{ display: 'flex', gap: 4 }}>
-                  <Link to={`/services/${s.id}/schedule`} className="btn btn-secondary btn-sm" title="Πρόγραμμα ωρών & χωρητικότητα">
-                    <CalendarClock size={14} /> Πρόγραμμα
-                  </Link>
-                  <button className="btn btn-secondary btn-sm" onClick={() => openEdit(s)}><Pencil size={14} /></button>
-                  <button className="btn btn-danger btn-sm" onClick={() => remove(s.id)}><Trash2 size={14} /></button>
+                <td style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <Link to={`/services/${s.id}/schedule`} className="btn btn-secondary btn-sm" title="Πρόγραμμα ωρών & χωρητικότητα">
+                      <CalendarClock size={14} /> Πρόγραμμα
+                    </Link>
+                    <button className="btn btn-secondary btn-sm" onClick={() => openEdit(s)}><Pencil size={14} /></button>
+                    <button className="btn btn-danger btn-sm" onClick={() => remove(s.id)}><Trash2 size={14} /></button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -395,7 +396,7 @@ export default function Services() {
                               cursor: 'pointer', position: 'relative',
                             }}
                           >
-                            <img src={`${BASE}${ic.url}`} alt={ic.label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            <img src={mediaUrl(ic.url)} alt={ic.label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                             {isSelected && (
                               <div style={{ position: 'absolute', top: 2, right: 2, background: '#76C043', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Check size={10} color="#fff" />

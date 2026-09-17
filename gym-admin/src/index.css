@@ -405,7 +405,11 @@ tr:hover td { background: var(--surface-2); }
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  border: none;
+  box-shadow: none;
+  cursor: default;
 }
+button.badge { cursor: pointer; }
 
 .badge-green  { background: var(--success-dim); color: var(--success); }
 .badge-red    { background: var(--danger-dim);  color: var(--danger); }
@@ -581,6 +585,18 @@ tr:hover td { background: var(--surface-2); }
 .modal--wide { max-width: 720px; width: 95%; }
 .modal-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 20px; color: var(--text); letter-spacing: -0.02em; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+
+/* ── Messages — modern redesign ──────────────────────────────────────────── */
+.messages-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
 
 /* ── Login split layout ──────────────────────────────────────────────────── */
 .login-split {
