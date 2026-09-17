@@ -262,6 +262,8 @@ function requireNutritionStaff(req, res, next) {
 async function businessLoginPayload(businessId, fallbackName, slug, type) {
   const [[cfg]] = await db.query(
     `SELECT app_name, logo_url,
+            primary_color, secondary_color, accent_color,
+            background_color, surface_color, font_family,
             feature_online_booking, feature_loyalty_points,
             feature_memberships, feature_waitlist, feature_nutrition
      FROM business_configs WHERE business_id = ? LIMIT 1`,
@@ -275,6 +277,12 @@ async function businessLoginPayload(businessId, fallbackName, slug, type) {
     slug,
     type: type || 'gym',
     logo_url: cfg?.logo_url || null,
+    primary_color:    cfg?.primary_color    || '#B8F55E',
+    secondary_color:  cfg?.secondary_color  || '#7C5CFC',
+    accent_color:     cfg?.accent_color     || '#FF6D00',
+    background_color: cfg?.background_color || '#0F0F12',
+    surface_color:    cfg?.surface_color    || '#1A1A22',
+    font_family:      cfg?.font_family      || 'Inter',
     feature_programs: isGym ? 1 : 0,
     feature_trainers: isGym ? 1 : 0,
     feature_online_booking: cfg?.feature_online_booking ?? 1,

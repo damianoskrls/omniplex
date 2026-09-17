@@ -12,6 +12,7 @@ import 'services/notification_service.dart';
 import 'services/push_service.dart';
 import 'services/user_notification_sync.dart';
 import 'screens/staff_home_screen.dart';
+import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/splash_screen.dart';
 
@@ -143,46 +144,55 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
         Provider.value(value: widget.config),
         ChangeNotifierProvider.value(value: widget.auth),
       ],
-      child: MaterialApp(
-        navigatorKey: appNavigatorKey,
-        title: widget.config.appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.fromConfig(widget.config),
-        home: Consumer<AuthService>(
-          builder: (context, auth, _) {
-            if (auth.loading) {
-              return const Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(color: Color(0xFFB8F55E)),
-                ),
-              );
-            }
-            if (auth.reconnecting) {
-              return const Scaffold(
-                backgroundColor: Color(0xFF0F0F12),
-                body: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: Color(0xFFB8F55E)),
-                      SizedBox(height: 20),
-                      Text('Σύνδεση στον server...',
-                          style: TextStyle(color: Colors.white54, fontSize: 14)),
-                    ],
-                  ),
-                ),
-              );
-            }
-            if (auth.isLoggedIn) {
-              if (_gymSplashActive) {
-                return SplashScreen(config: widget.config);
-              }
-              if (auth.user!.isStaff) return const StaffHomeScreen();
-              return const HomeScreen();
-            }
-            return const LoginScreen();
-          },
-        ),
+      child: Builder(
+        builder: (ctx) {
+          AppColors.setTenantPrimary(AppColors.fromHex(widget.config.primaryColor));
+          return AppColorsTheme(
+            primary: AppColors.fromHex(widget.config.primaryColor),
+            accent:  AppColors.fromHex(widget.config.accentColor),
+            child: MaterialApp(
+              navigatorKey: appNavigatorKey,
+              title: widget.config.appName,
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.fromConfig(widget.config),
+              home: Consumer<AuthService>(
+                builder: (context, auth, _) {
+                  if (auth.loading) {
+                    return const Scaffold(
+                      body: Center(
+                        child: CircularProgressIndicator(color: Color(0xFFB8F55E)),
+                      ),
+                    );
+                  }
+                  if (auth.reconnecting) {
+                    return const Scaffold(
+                      backgroundColor: Color(0xFF0F0F12),
+                      body: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(color: Color(0xFFB8F55E)),
+                            SizedBox(height: 20),
+                            Text('Σύνδεση στον server...',
+                                style: TextStyle(color: Colors.white54, fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  if (auth.isLoggedIn) {
+                    if (_gymSplashActive) {
+                      return SplashScreen(config: widget.config);
+                    }
+                    if (auth.user!.isStaff) return const StaffHomeScreen();
+                    return const HomeScreen();
+                  }
+                  return const LoginScreen();
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }

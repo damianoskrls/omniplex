@@ -15,6 +15,21 @@ export function AuthProvider({ children }) {
     document.title = business?.name ? `${business.name} — OmniPlex` : 'OmniPlex';
   }, [business]);
 
+  // Inject tenant CSS variables whenever business changes
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!business) {
+      // Reset to OmniPlex defaults when logged out
+      root.style.removeProperty('--tenant-primary');
+      root.style.removeProperty('--tenant-accent');
+      root.style.removeProperty('--tenant-secondary');
+      return;
+    }
+    if (business.primary_color)   root.style.setProperty('--tenant-primary',   business.primary_color);
+    if (business.accent_color)    root.style.setProperty('--tenant-accent',    business.accent_color);
+    if (business.secondary_color) root.style.setProperty('--tenant-secondary', business.secondary_color);
+  }, [business]);
+
   const login = async (email, password) => {
     const res = await api.post('/client-admin/login', { email, password });
     const userRole = res.data.role || 'client_admin';

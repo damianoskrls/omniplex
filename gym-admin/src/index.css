@@ -4,6 +4,11 @@
 
 /* ── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
+  /* Tenant overrides — set dynamically by AuthContext */
+  --tenant-primary:   #7C5CFC;
+  --tenant-accent:    #E040FB;
+  --tenant-secondary: #7C5CFC;
+
   --bg:          #F4F5F7;
   --surface:     #FFFFFF;
   --surface-2:   #F0F1F4;
@@ -13,9 +18,9 @@
   --text:        #111827;
   --text-2:      #4B5563;
   --text-3:      #9CA3AF;
-  --accent:      #7C5CFC;
-  --accent-dim:  rgba(124, 92, 252, 0.10);
-  --accent-glow: rgba(124, 92, 252, 0.06);
+  --accent:      var(--tenant-primary);
+  --accent-dim:  color-mix(in srgb, var(--tenant-primary) 12%, transparent);
+  --accent-glow: color-mix(in srgb, var(--tenant-primary) 6%, transparent);
   --danger:      #EF4444;
   --danger-dim:  rgba(239, 68, 68, 0.10);
   --warning:     #F59E0B;
