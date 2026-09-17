@@ -12,6 +12,13 @@ function monthEnd(year, month) {
   return `${year}-${String(month).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+async function safeQuery(conn, sql, params, fallback = { cnt: 0 }) {
+  try {
+    const [[row]] = await conn.query(sql, params);
+    return row ?? fallback;
+  } catch { return fallback; }
+}
+
 async function computeMonthData(conn, bizId, year, month) {
   const start = monthStart(year, month);
   const end   = monthEnd(year, month);
@@ -21,97 +28,35 @@ async function computeMonthData(conn, bizId, year, month) {
   const prevStart = monthStart(prevYear, prevMonth);
   const prevEnd   = monthEnd(prevYear, prevMonth);
 
-  const [[cfg]] = await conn.query(`
-    SELECT minutes_per_booking, at_risk_days
-    FROM business_configs WHERE business_id = ?
-  `, [bizId]);
+  const cfg = await safeQuery(conn, `SELECT minutes_per_booking, at_risk_days FROM business_configs WHERE business_id = ?`, [bizId], { minutes_per_booking: 5 });
   const minutesPerBooking = cfg?.minutes_per_booking ?? 5;
 
   // ── Waitlist fills ──────────────────────────────────────────────────────
-  const [[wl]] = await conn.query(`
-    SELECT COUNT(*) AS cnt FROM waitlist_promotions
-    WHERE business_id = ? AND booking_id IS NOT NULL
-      AND promoted_at BETWEEN ? AND ?
-  `, [bizId, start, end + ' 23:59:59']);
-  const [[wlPrev]] = await conn.query(`
-    SELECT COUNT(*) AS cnt FROM waitlist_promotions
-    WHERE business_id = ? AND booking_id IS NOT NULL
-      AND promoted_at BETWEEN ? AND ?
-  `, [bizId, prevStart, prevEnd + ' 23:59:59']);
+  const wl     = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM waitlist_promotions WHERE business_id = ? AND booking_id IS NOT NULL AND promoted_at BETWEEN ? AND ?`, [bizId, start, end + ' 23:59:59']);
+  const wlPrev = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM waitlist_promotions WHERE business_id = ? AND booking_id IS NOT NULL AND promoted_at BETWEEN ? AND ?`, [bizId, prevStart, prevEnd + ' 23:59:59']);
 
   // ── App bookings ────────────────────────────────────────────────────────
-  const [[bk]] = await conn.query(`
-    SELECT COUNT(*) AS cnt FROM bookings
-    WHERE business_id = ? AND source = 'app'
-      AND starts_at BETWEEN ? AND ?
-  `, [bizId, start, end + ' 23:59:59']);
-  const [[bkPrev]] = await conn.query(`
-    SELECT COUNT(*) AS cnt FROM bookings
-    WHERE business_id = ? AND source = 'app'
-      AND starts_at BETWEEN ? AND ?
-  `, [bizId, prevStart, prevEnd + ' 23:59:59']);
+  const bk     = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM bookings WHERE business_id = ? AND source = 'app' AND starts_at BETWEEN ? AND ?`, [bizId, start, end + ' 23:59:59']);
+  const bkPrev = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM bookings WHERE business_id = ? AND source = 'app' AND starts_at BETWEEN ? AND ?`, [bizId, prevStart, prevEnd + ' 23:59:59']);
 
   // ── Check-ins ───────────────────────────────────────────────────────────
-  const [[ci]] = await conn.query(`
-    SELECT COUNT(*) AS cnt FROM bookings
-    WHERE business_id = ? AND attendance_confirmed = 1
-      AND starts_at BETWEEN ? AND ?
-  `, [bizId, start, end + ' 23:59:59']);
-  const [[ciPrev]] = await conn.query(`
-    SELECT COUNT(*) AS cnt FROM bookings
-    WHERE business_id = ? AND attendance_confirmed = 1
-      AND starts_at BETWEEN ? AND ?
-  `, [bizId, prevStart, prevEnd + ' 23:59:59']);
+  const ci     = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM bookings WHERE business_id = ? AND attendance_confirmed = 1 AND starts_at BETWEEN ? AND ?`, [bizId, start, end + ' 23:59:59']);
+  const ciPrev = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM bookings WHERE business_id = ? AND attendance_confirmed = 1 AND starts_at BETWEEN ? AND ?`, [bizId, prevStart, prevEnd + ' 23:59:59']);
 
   // ── Active members (had at least 1 booking in period) ──────────────────
-  const [[am]] = await conn.query(`
-    SELECT COUNT(DISTINCT user_id) AS cnt FROM bookings
-    WHERE business_id = ? AND status IN ('confirmed','completed','attended')
-      AND starts_at BETWEEN ? AND ?
-  `, [bizId, start, end + ' 23:59:59']);
-  const [[amPrev]] = await conn.query(`
-    SELECT COUNT(DISTINCT user_id) AS cnt FROM bookings
-    WHERE business_id = ? AND status IN ('confirmed','completed','attended')
-      AND starts_at BETWEEN ? AND ?
-  `, [bizId, prevStart, prevEnd + ' 23:59:59']);
+  const am     = await safeQuery(conn, `SELECT COUNT(DISTINCT user_id) AS cnt FROM bookings WHERE business_id = ? AND status IN ('confirmed','completed','attended') AND starts_at BETWEEN ? AND ?`, [bizId, start, end + ' 23:59:59']);
+  const amPrev = await safeQuery(conn, `SELECT COUNT(DISTINCT user_id) AS cnt FROM bookings WHERE business_id = ? AND status IN ('confirmed','completed','attended') AND starts_at BETWEEN ? AND ?`, [bizId, prevStart, prevEnd + ' 23:59:59']);
 
   // ── Payment reminders sent & renewals that followed ────────────────────
-  const [[pr]] = await conn.query(`
-    SELECT COUNT(*) AS cnt FROM user_notifications
-    WHERE business_id = ? AND type IN ('payment_reminder_auto','membership_expired')
-      AND created_at BETWEEN ? AND ?
-  `, [bizId, start, end + ' 23:59:59']);
-
-  const [[prRenewed]] = await conn.query(`
-    SELECT COUNT(*) AS cnt
-    FROM user_notifications n
-    JOIN user_memberships m
-      ON m.user_id = n.user_id AND m.business_id = n.business_id
-      AND m.valid_from > DATE(n.created_at)
-      AND m.valid_from <= DATE(DATE_ADD(n.created_at, INTERVAL 14 DAY))
-    WHERE n.business_id = ? AND n.type IN ('payment_reminder_auto','membership_expired')
-      AND n.created_at BETWEEN ? AND ?
-  `, [bizId, start, end + ' 23:59:59']);
+  const pr = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM user_notifications WHERE business_id = ? AND type IN ('payment_reminder_auto','membership_expired') AND created_at BETWEEN ? AND ?`, [bizId, start, end + ' 23:59:59']);
+  const prRenewed = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM user_notifications n JOIN user_memberships m ON m.user_id = n.user_id AND m.business_id = n.business_id AND m.valid_from > DATE(n.created_at) AND m.valid_from <= DATE(DATE_ADD(n.created_at, INTERVAL 14 DAY)) WHERE n.business_id = ? AND n.type IN ('payment_reminder_auto','membership_expired') AND n.created_at BETWEEN ? AND ?`, [bizId, start, end + ' 23:59:59']);
 
   // ── At-risk members who returned ───────────────────────────────────────
-  const [[ar]] = await conn.query(`
-    SELECT COUNT(*) AS cnt FROM at_risk_outreach
-    WHERE business_id = ? AND returned_at IS NOT NULL
-      AND returned_at BETWEEN ? AND ?
-  `, [bizId, start, end + ' 23:59:59']);
-  const [[arPrev]] = await conn.query(`
-    SELECT COUNT(*) AS cnt FROM at_risk_outreach
-    WHERE business_id = ? AND returned_at IS NOT NULL
-      AND returned_at BETWEEN ? AND ?
-  `, [bizId, prevStart, prevEnd + ' 23:59:59']);
+  const ar     = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM at_risk_outreach WHERE business_id = ? AND returned_at IS NOT NULL AND returned_at BETWEEN ? AND ?`, [bizId, start, end + ' 23:59:59']);
+  const arPrev = await safeQuery(conn, `SELECT COUNT(*) AS cnt FROM at_risk_outreach WHERE business_id = ? AND returned_at IS NOT NULL AND returned_at BETWEEN ? AND ?`, [bizId, prevStart, prevEnd + ' 23:59:59']);
 
   // ── Avg session price estimate from payments in last 90d ───────────────
-  const [[avgPrice]] = await conn.query(`
-    SELECT AVG(amount_cents) AS avg_cents
-    FROM payments
-    WHERE business_id = ? AND status = 'paid'
-      AND created_at >= DATE_SUB(?, INTERVAL 90 DAY)
-  `, [bizId, start]);
+  const avgPrice = await safeQuery(conn, `SELECT AVG(COALESCE(paid_amount_cents, amount_cents)) AS avg_cents FROM payments WHERE business_id = ? AND status = 'paid' AND created_at >= DATE_SUB(?, INTERVAL 90 DAY)`, [bizId, start], { avg_cents: 0 });
   const avgSessionCents = avgPrice?.avg_cents || 0;
 
   // ── Value estimate ──────────────────────────────────────────────────────
