@@ -244,6 +244,10 @@ router.get('/:bizId/stats', async (req, res) => {
 // GET /api/business/:bizId/analytics?year=2026&month=9
 // ============================================================
 router.get('/:bizId/analytics', authenticate, async (req, res) => {
+  // Allow master admin or the business's own admin
+  if (req.user.role !== 'master_admin' && req.user.businessId !== req.params.bizId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   const bizId = req.params.bizId;
   const now   = new Date();
   const year  = parseInt(req.query.year  || now.getFullYear(), 10);
@@ -262,32 +266,32 @@ router.get('/:bizId/analytics', authenticate, async (req, res) => {
   const range = (s, e) => [`${s} 00:00:00`, `${e} 23:59:59`];
 
   try {
-    // Revenue (paid payments)
+    // Revenue (paid payments — use payment_date for month bucketing)
     const [[rev]] = await db.query(
-      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM payments
-       WHERE business_id=? AND status='paid' AND paid_at BETWEEN ? AND ?`,
-      [bizId, ...range(start, end)]);
-    const [[revPrev]] = await db.query(
-      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM payments
-       WHERE business_id=? AND status='paid' AND paid_at BETWEEN ? AND ?`,
-      [bizId, ...range(prevStart, prevEnd)]);
-
-    // Expenses
-    const [[exp]] = await db.query(
-      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM expenses
-       WHERE business_id=? AND expense_date BETWEEN ? AND ?`,
+      `SELECT COALESCE(SUM(paid_amount_cents),0) AS total FROM payments
+       WHERE business_id=? AND status='paid' AND payment_date BETWEEN ? AND ?`,
       [bizId, start, end]);
-    const [[expPrev]] = await db.query(
-      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM expenses
-       WHERE business_id=? AND expense_date BETWEEN ? AND ?`,
+    const [[revPrev]] = await db.query(
+      `SELECT COALESCE(SUM(paid_amount_cents),0) AS total FROM payments
+       WHERE business_id=? AND status='paid' AND payment_date BETWEEN ? AND ?`,
       [bizId, prevStart, prevEnd]);
+
+    // Expenses (from business_expenses table)
+    const [[exp]] = await db.query(
+      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM business_expenses
+       WHERE business_id=? AND year=? AND month=?`,
+      [bizId, year, month]);
+    const [[expPrev]] = await db.query(
+      `SELECT COALESCE(SUM(amount_cents),0) AS total FROM business_expenses
+       WHERE business_id=? AND year=? AND month=?`,
+      [bizId, prevYear, prevMonth]);
 
     // Expenses by category
     const [expByCategory] = await db.query(
       `SELECT category, COALESCE(SUM(amount_cents),0) AS total
-       FROM expenses WHERE business_id=? AND expense_date BETWEEN ? AND ?
+       FROM business_expenses WHERE business_id=? AND year=? AND month=?
        GROUP BY category ORDER BY total DESC`,
-      [bizId, start, end]);
+      [bizId, year, month]);
 
     // Trial bookings
     const [[trials]] = await db.query(
@@ -303,26 +307,27 @@ router.get('/:bizId/analytics', authenticate, async (req, res) => {
     const [[conversions]] = await db.query(
       `SELECT COUNT(DISTINCT b.user_id) AS total
        FROM bookings b
-       JOIN memberships m ON m.user_id = b.user_id AND m.business_id = b.business_id
+       JOIN user_memberships m ON m.user_id = b.user_id AND m.business_id = b.business_id
        WHERE b.business_id=? AND b.is_trial=1
          AND b.starts_at BETWEEN ? AND ?
          AND m.valid_from >= b.starts_at`,
       [bizId, ...range(start, end)]);
 
-    // Revenue by service
+    // Revenue by service (JOIN services for name)
     const [revByService] = await db.query(
-      `SELECT b.service_name, COUNT(*) AS bookings_count,
-              COALESCE(SUM(p.amount_cents),0) AS revenue_cents
+      `SELECT sv.name AS service_name, COUNT(*) AS bookings_count,
+              COALESCE(SUM(p.paid_amount_cents),0) AS revenue_cents
        FROM bookings b
+       JOIN services sv ON sv.id = b.service_id
        LEFT JOIN payments p ON p.booking_id = b.id AND p.status='paid'
        WHERE b.business_id=? AND b.starts_at BETWEEN ? AND ?
          AND b.status IN ('completed','confirmed')
-       GROUP BY b.service_id, b.service_name
+       GROUP BY b.service_id, sv.name
        ORDER BY revenue_cents DESC
        LIMIT 10`,
       [bizId, ...range(start, end)]);
 
-    // New members this month
+    // New members this month (users registered to this business)
     const [[newMembers]] = await db.query(
       `SELECT COUNT(*) AS total FROM users
        WHERE business_id=? AND created_at BETWEEN ? AND ?`,
@@ -342,17 +347,19 @@ router.get('/:bizId/analytics', authenticate, async (req, res) => {
        WHERE business_id=? AND status='completed' AND starts_at BETWEEN ? AND ?`,
       [bizId, ...range(prevStart, prevEnd)]);
 
+    const c2e = (cents) => Math.round((cents || 0) / 100); // cents → euros
     return res.json({
       period: { year, month, start, end },
-      revenue:     { current: rev.total,       prev: revPrev.total },
-      expenses:    { current: exp.total,        prev: expPrev.total },
-      profit:      { current: rev.total - exp.total, prev: revPrev.total - expPrev.total },
-      trials:      { current: trials.total,     prev: trialsPrev.total },
-      conversions: { current: conversions.total, rate: trials.total > 0 ? Math.round((conversions.total / trials.total) * 100) : 0 },
-      completed:   { current: completed.total,  prev: completedPrev.total },
-      new_members: { current: newMembers.total, prev: newMembersPrev.total },
-      revenue_by_service: revByService,
-      expenses_by_category: expByCategory,
+      revenue:     { current: c2e(rev.total),                    previous: c2e(revPrev.total) },
+      expenses:    { current: c2e(exp.total),                    previous: c2e(expPrev.total) },
+      profit:      { current: c2e(rev.total - exp.total),        previous: c2e(revPrev.total - expPrev.total) },
+      trials:      trials.total,
+      conversions: conversions.total,
+      conversion_rate: trials.total > 0 ? Math.round((conversions.total / trials.total) * 100) : 0,
+      completed:   { current: completed.total,  previous: completedPrev.total },
+      new_members: { current: newMembers.total, previous: newMembersPrev.total },
+      revenue_by_service: revByService.map(r => ({ service_name: r.service_name, revenue: c2e(r.revenue_cents), bookings: r.bookings_count })),
+      expenses_by_category: expByCategory.map(r => ({ category: r.category, total: c2e(r.total) })),
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });

@@ -441,7 +441,7 @@ router.get('/dashboard', requireClientAdmin, async (req, res) => {
       [bizId]
     );
     const [[pendingBookings]] = await db.query(
-      "SELECT COUNT(*) AS total FROM bookings WHERE business_id=? AND status='pending'",
+      "SELECT COUNT(*) AS total FROM bookings WHERE business_id=? AND status='pending' AND starts_at > NOW()",
       [bizId]
     );
     const [[tomorrowBookings]] = await db.query(
@@ -4511,9 +4511,11 @@ router.get('/reviews', requireClientAdmin, async (req, res) => {
   const [[{ total }]] = await db.query(
     `SELECT COUNT(*) AS total FROM bookings b WHERE ${where}`, params);
   const [rows] = await db.query(`
-    SELECT b.id, b.feedback_rating, b.feedback_note, b.starts_at, b.service_name,
+    SELECT b.id, b.feedback_rating, b.feedback_note, b.starts_at,
+           sv.name AS service_name,
            u.full_name AS member_name, s.full_name AS staff_name
     FROM bookings b
+    LEFT JOIN services sv ON sv.id = b.service_id
     LEFT JOIN users  u ON u.id = b.user_id
     LEFT JOIN staff  s ON s.id = b.staff_id
     WHERE ${where}

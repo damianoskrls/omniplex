@@ -57,7 +57,7 @@ export default function Analytics() {
     if (!bizId) { setLoading(false); return; }
     api.get(`/business/${bizId}/analytics`, { params: { year, month } })
       .then(r => setData(r.data))
-      .catch(() => {})
+      .catch(e => console.error('Analytics error:', e?.response?.data || e.message))
       .finally(() => setLoading(false));
   }, [year, month]);
 
