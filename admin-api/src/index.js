@@ -29,7 +29,7 @@ const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Middleware ────────────────────────────────────────────────
-app.use(cors());
+app.use(cors({ origin: '*', credentials: false }));
 // Raw body for Stripe webhooks (must be before express.json)
 app.use('/api/payments-online/:bizId/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
