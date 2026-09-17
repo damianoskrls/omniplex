@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/client';
 
 const AuthContext = createContext(null);
@@ -10,6 +10,10 @@ export function AuthProvider({ children }) {
     return raw ? JSON.parse(raw) : null;
   });
   const [role, setRole] = useState(() => localStorage.getItem('gym_admin_role') || 'client_admin');
+
+  useEffect(() => {
+    document.title = business?.name ? `${business.name} — OmniPlex` : 'OmniPlex';
+  }, [business]);
 
   const login = async (email, password) => {
     const res = await api.post('/client-admin/login', { email, password });
