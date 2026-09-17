@@ -2,11 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { Save, Upload, Download, Apple } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
-
-const BASE = 'http://localhost:3001';
+import { Save, Upload, Download } from 'lucide-react';
+import { mediaUrl } from '../utils/media';
 const DAYS = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
 const DAYS_FULL = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
 
@@ -127,7 +124,7 @@ export default function Settings() {
   return (
     <Layout title="Ρυθμίσεις">
       <div className="page-header">
-        <h1 className="page-title">Ρυθμίσεις γυμναστηρίου</h1>
+        <h1 className="page-title">Ρυθμίσεις</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary" onClick={backup} disabled={backing}>
             <Download size={15} /> {backing ? 'Εξαγωγή...' : 'Backup δεδομένων'}
@@ -141,14 +138,14 @@ export default function Settings() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Basic info */}
         <div className="card">
-          <div className="modal-title" style={{ marginBottom: 16 }}>Στοιχεία γυμναστηρίου</div>
+          <div className="modal-title" style={{ marginBottom: 16 }}>Στοιχεία επιχείρησης</div>
 
           {/* Logo */}
           <div className="form-group">
             <label className="form-label">Logo</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               {form.logo_url ? (
-                <img src={`${BASE}${form.logo_url}`} alt="logo" style={{ height: 60, maxWidth: 160, objectFit: 'contain', borderRadius: 8, border: '1px solid #e2e8f0' }} />
+                <img src={mediaUrl(form.logo_url)} alt="logo" style={{ height: 60, maxWidth: 160, objectFit: 'contain', borderRadius: 8, border: '1px solid #e2e8f0' }} />
               ) : (
                 <div style={{ width: 80, height: 60, borderRadius: 8, background: '#f1f5f9', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.75rem' }}>Χωρίς logo</div>
               )}
@@ -172,11 +169,11 @@ export default function Settings() {
           </div>
           <div className="form-grid-2">
             <div className="form-group">
-              <label className="form-label">Τηλέφωνο γυμν.</label>
+              <label className="form-label">Τηλέφωνο</label>
               <input className="form-input" value={form.gym_phone} onChange={e => setForm({ ...form, gym_phone: e.target.value })} placeholder="+30 210..." />
             </div>
             <div className="form-group">
-              <label className="form-label">Email γυμν.</label>
+              <label className="form-label">Email</label>
               <input className="form-input" type="email" value={form.gym_email} onChange={e => setForm({ ...form, gym_email: e.target.value })} />
             </div>
           </div>
@@ -230,7 +227,7 @@ export default function Settings() {
         <div className="card">
           <div className="modal-title" style={{ marginBottom: 4 }}>Ωράριο λειτουργίας</div>
           <div className="text-muted" style={{ fontSize: '0.8rem', marginBottom: 16 }}>
-            Χρησιμοποιείται ως default για διαθεσιμότητα γυμναστών.
+            Χρησιμοποιείται ως default για διαθεσιμότητα συνεργατών.
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -286,7 +283,7 @@ export default function Settings() {
               Για QR check-in άνοιξε από το μενού <strong>QR Check-in</strong> σε tablet στην είσοδο.
             </div>
             <div className="text-muted" style={{ fontSize: '0.78rem' }}>
-              Αν αλλάξεις logo ή όνομα, ενημέρωσε τον διαχειριστή Handstand για ενημέρωση της εφαρμογής στο App Store / Play Store.
+              Αν αλλάξεις logo ή όνομα, ενημέρωσε τον διαχειριστή OmniPlex για ενημέρωση της εφαρμογής στο App Store / Play Store.
             </div>
           </div>
 
@@ -302,17 +299,6 @@ export default function Settings() {
           </div>
         </div>
       </div>
-      {form.feature_nutrition ? (
-        <div className="card" style={{ marginTop: 20 }}>
-          <div className="modal-title" style={{ marginBottom: 12 }}>Διατροφολόγος</div>
-          <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: 12 }}>
-            Το προφίλ, η τιμολόγηση και οι πελάτες διατροφής διαχειρίζονται από το μενού Διατροφολόγος.
-          </p>
-          <Link to="/nutrition/profile" className="btn btn-secondary">
-            <Apple size={14} /> Προφίλ διατροφολόγου
-          </Link>
-        </div>
-      ) : null}
     </Layout>
   );
 }
