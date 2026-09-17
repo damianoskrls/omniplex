@@ -41,7 +41,7 @@ export default function Reviews() {
     setLoading(true);
     const params = { page, limit };
     if (minRating) params.min_rating = minRating;
-    api.get('/reviews', { params })
+    api.get('/client-admin/reviews', { params })
       .then(r => {
         setReviews(r.data.reviews || []);
         setTotal(r.data.total || 0);

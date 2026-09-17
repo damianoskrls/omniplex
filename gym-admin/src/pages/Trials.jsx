@@ -27,25 +27,25 @@ export default function Trials() {
 
   const reload = () => {
     setLoading(true);
-    api.get('/trials', { params: { past: showPast ? '1' : '0' } })
+    api.get('/client-admin/trials', { params: { past: showPast ? '1' : '0' } })
       .then(r => setRows(r.data))
       .catch(e => console.error(e))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    api.get('/staff').then(r => setStaffList(r.data)).catch(() => {});
+    api.get('/client-admin/staff').then(r => setStaffList(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => { reload(); }, [showPast]);
 
   const setRefer = async (id, staffId) => {
-    await api.patch(`/trials/${id}/refer`, { referred_by_staff_id: staffId || null });
+    await api.patch(`/client-admin/trials/${id}/refer`, { referred_by_staff_id: staffId || null });
     reload();
   };
 
   const toggleMember = async (id, became) => {
-    await api.patch(`/trials/${id}/refer`, { trial_became_member: became ? 1 : 0 });
+    await api.patch(`/client-admin/trials/${id}/refer`, { trial_became_member: became ? 1 : 0 });
     reload();
   };
 

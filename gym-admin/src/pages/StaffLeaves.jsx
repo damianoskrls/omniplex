@@ -25,8 +25,8 @@ export default function StaffLeaves() {
     setLoading(true);
     try {
       const [leavesRes, settingsRes] = await Promise.all([
-        api.get('/staff-leaves', { params: statusFilter ? { status: statusFilter } : {} }),
-        api.get('/settings/annual-leave-days').catch(() => ({ data: { annual_leave_days: 20 } })),
+        api.get('/client-admin/staff-leaves', { params: statusFilter ? { status: statusFilter } : {} }),
+        api.get('/client-admin/settings/annual-leave-days').catch(() => ({ data: { annual_leave_days: 20 } })),
       ]);
       setLeaves(leavesRes.data.leaves || leavesRes.data);
       setAnnualDays(settingsRes.data.annual_leave_days ?? 20);
@@ -39,7 +39,7 @@ export default function StaffLeaves() {
   const handleAction = async (leaveId, action) => {
     setActing(leaveId + action);
     try {
-      await api.patch(`/staff-leaves/${leaveId}`, { status: action, admin_note: actionNote[leaveId] || '' });
+      await api.patch(`/client-admin/staff-leaves/${leaveId}`, { status: action, admin_note: actionNote[leaveId] || '' });
       await load();
     } catch { /* silent */ }
     finally { setActing(null); }
@@ -48,7 +48,7 @@ export default function StaffLeaves() {
   const saveAnnualDays = async () => {
     setSavingDays(true);
     try {
-      await api.patch('/settings/annual-leave-days', { annual_leave_days: Number(annualDays) });
+      await api.patch('/client-admin/settings/annual-leave-days', { annual_leave_days: Number(annualDays) });
     } catch { /* silent */ }
     finally { setSavingDays(false); }
   };
