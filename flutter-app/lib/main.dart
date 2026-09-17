@@ -9,6 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
 import 'config/tenant_config.dart';
 import 'screens/business_selector_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_service.dart';
@@ -38,6 +39,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
   AuthService? _auth;
   String? _error;
   bool _needsTenantSelection = false;
+  bool _showOnboarding = false;
   String _selectorApiBase = 'https://passionate-grace-production-98ad.up.railway.app';
 
   @override
@@ -133,7 +135,13 @@ class _AppBootstrapState extends State<AppBootstrap> {
     ]);
 
     if (!mounted) return;
-    setState(() => _auth = auth);
+    final seenOnboarding = await hasSeenOnboarding();
+    if (!mounted) return;
+    if (!seenOnboarding) {
+      setState(() { _auth = auth; _showOnboarding = true; });
+    } else {
+      setState(() => _auth = auth);
+    }
     unawaited(_initBackgroundServices());
   }
 
@@ -191,7 +199,13 @@ class _AppBootstrapState extends State<AppBootstrap> {
       final auth = AuthService(config);
       await Future.wait([auth.init(), _waitRemainingSplash(splashStarted)]);
       if (!mounted) return;
-      setState(() => _auth = auth);
+      final seenOnboarding = await hasSeenOnboarding();
+      if (!mounted) return;
+      if (!seenOnboarding) {
+        setState(() { _auth = auth; _showOnboarding = true; });
+      } else {
+        setState(() => _auth = auth);
+      }
       unawaited(_initBackgroundServices());
     } catch (e) {
       if (!mounted) return;
@@ -229,6 +243,15 @@ class _AppBootstrapState extends State<AppBootstrap> {
         home: BusinessSelectorScreen(
           onConfigLoaded: _onTenantConfigLoaded,
           apiBaseUrl: _selectorApiBase,
+        ),
+      );
+    }
+
+    if (_config != null && _auth != null && _showOnboarding) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: OnboardingScreen(
+          onDone: () => setState(() => _showOnboarding = false),
         ),
       );
     }

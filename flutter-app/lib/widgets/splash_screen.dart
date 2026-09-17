@@ -127,55 +127,28 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 }
 
-// ── Omniplex logo (asset or stylized fallback) ────────────────────────────────
+// ── Omniplex logo ─────────────────────────────────────────────────────────────
 class _OmniplexLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        // Glow rings
+        // Glow behind logo
         Container(
-          width: 148, height: 148,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                AppColors.lime.withValues(alpha: 0.08),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
-        Container(
-          width: 128, height: 128,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                AppColors.lime.withValues(alpha: 0.12),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
-        // Logo
-        Container(
-          width: 104, height: 104,
-          decoration: BoxDecoration(
-            color: const Color(0xFF111118),
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.lime.withValues(alpha: 0.25), width: 1.5),
             boxShadow: [
-              BoxShadow(color: AppColors.lime.withValues(alpha: 0.18), blurRadius: 48, spreadRadius: 4),
+              BoxShadow(
+                color: const Color(0xFF7C5CFC).withValues(alpha: 0.35),
+                blurRadius: 60,
+                spreadRadius: 10,
+              ),
             ],
           ),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/logo.png',
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => _FallbackMark(size: 104),
-            ),
+          child: Image.asset(
+            'assets/logo.png',
+            width: 220,
+            errorBuilder: (_, __, ___) => _FallbackMark(size: 120),
           ),
         ),
       ],
@@ -235,40 +208,14 @@ class _GymLogo extends StatelessWidget {
 class _OmniplexWordmark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-            style: const TextStyle(
-              fontFamily: 'sans-serif',
-              letterSpacing: 5,
-              fontWeight: FontWeight.w800,
-              fontSize: 26,
-            ),
-            children: [
-              TextSpan(
-                text: 'OMNI',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.92)),
-              ),
-              const TextSpan(
-                text: 'PLEX',
-                style: TextStyle(color: AppColors.lime),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'FITNESS MANAGEMENT',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.22),
-            fontSize: 11,
-            letterSpacing: 3.5,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+    return Text(
+      'flow for all',
+      style: TextStyle(
+        color: Colors.white.withValues(alpha: 0.30),
+        fontSize: 13,
+        letterSpacing: 4,
+        fontWeight: FontWeight.w400,
+      ),
     );
   }
 }
