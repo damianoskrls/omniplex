@@ -21,6 +21,7 @@ function mobileAuth(req, res, next) {
   }
 }
 const { createOneBooking } = require('../lib/create_booking');
+const { computeAvailableSlots, buildSlotsPayload } = require('../lib/slots');
 
 const router = express.Router();
 
@@ -151,33 +152,27 @@ async function execGetServices(bizId, userId, input) {
 
 async function execCheckAvailability(bizId, userId, input) {
   const date = dateFromRelative(input.date) || input.date;
-  const [slots] = await db.query(
-    `SELECT ss.id, ss.start_time, ss.end_time, ss.staff_id,
-            CONCAT(st.first_name, ' ', st.last_name) AS staff_name,
-            ss.capacity,
-            (SELECT COUNT(*) FROM bookings b WHERE b.schedule_slot_id = ss.id AND b.status NOT IN ('cancelled','no_show')) AS booked_count
-     FROM schedule_slots ss
-     LEFT JOIN staff st ON st.id = ss.staff_id
-     WHERE ss.business_id = ? AND ss.service_id = ? AND ss.slot_date = ?
-       AND ss.is_active = 1
-     ORDER BY ss.start_time`,
-    [bizId, input.service_id, date],
-  );
+  try {
+    const computed = await computeAvailableSlots(db, bizId, input.service_id, date, null, null);
+    if (!computed) return { date, slots: [], error: 'Service not found' };
+    if (computed.closedReason) return { date, slots: [], message: 'Gym is closed on this day.' };
 
-  const available = slots.filter(s => s.booked_count < s.capacity);
-  return {
-    date,
-    service_id: input.service_id,
-    slots: available.map(s => ({
-      time: s.start_time.slice(0, 5),
-      end_time: s.end_time.slice(0, 5),
-      staff_id: s.staff_id,
-      staff_name: s.staff_name,
-      spots_left: s.capacity - s.booked_count,
-    })),
-    total_slots: slots.length,
-    available_count: available.length,
-  };
+    const payload = buildSlotsPayload(computed, { featureWaitlist: false, date });
+    return {
+      date,
+      service_id: input.service_id,
+      slots: (payload.slots || []).map(s => ({
+        time: s.time,
+        end_time: s.end_time,
+        staff_id: s.staff?.id || null,
+        staff_name: s.staff?.name || null,
+        spots_left: s.spots_left ?? s.capacity,
+      })),
+      available_count: (payload.slots || []).length,
+    };
+  } catch (err) {
+    return { date, slots: [], error: err.message };
+  }
 }
 
 async function execCreateBooking(bizId, userId, input) {
@@ -203,25 +198,27 @@ async function execCreateBooking(bizId, userId, input) {
 async function execGetMyBookings(bizId, userId, input) {
   const limit = input.limit || 5;
   const [rows] = await db.query(
-    `SELECT b.id, b.booking_date, b.booking_time, b.status,
+    `SELECT b.id, b.starts_at, b.ends_at, b.status,
             s.name AS service_name, s.duration_minutes,
             CONCAT(st.first_name, ' ', st.last_name) AS staff_name
      FROM bookings b
      JOIN services s ON s.id = b.service_id
      LEFT JOIN staff st ON st.id = b.staff_id
      WHERE b.user_id = ? AND b.business_id = ?
-       AND b.booking_date >= CURDATE()
+       AND b.starts_at >= NOW()
        AND b.status NOT IN ('cancelled','no_show')
-     ORDER BY b.booking_date, b.booking_time
+     ORDER BY b.starts_at
      LIMIT ?`,
     [userId, bizId, limit],
   );
   return rows.map(r => ({
     id: r.id,
-    date: r.booking_date instanceof Date
-      ? r.booking_date.toISOString().slice(0, 10)
-      : String(r.booking_date).slice(0, 10),
-    time: String(r.booking_time).slice(0, 5),
+    date: r.starts_at instanceof Date
+      ? r.starts_at.toISOString().slice(0, 10)
+      : String(r.starts_at).slice(0, 10),
+    time: r.starts_at instanceof Date
+      ? r.starts_at.toTimeString().slice(0, 5)
+      : String(r.starts_at).slice(11, 16),
     service: r.service_name,
     duration: r.duration_minutes,
     staff: r.staff_name,

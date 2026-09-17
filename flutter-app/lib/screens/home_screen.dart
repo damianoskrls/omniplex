@@ -355,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: tabs[_index].key == 'community' ? null : FloatingActionButton(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiAgentScreen())),
         backgroundColor: Colors.transparent,
         elevation: 0,

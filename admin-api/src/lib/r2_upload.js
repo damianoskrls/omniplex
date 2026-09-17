@@ -10,6 +10,9 @@ const R2_BUCKET = process.env.R2_BUCKET || 'omniplex';
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-48c284e5304e457ea2182157948d7efe.r2.dev';
 
 function getS3Client() {
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+    throw new Error('R2 storage is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY, R2_SECRET_KEY env vars.');
+  }
   return new S3Client({
     region: 'auto',
     endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,

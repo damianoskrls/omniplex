@@ -121,7 +121,7 @@ export default function TenantDetail() {
       const r = await api.post(`/tenants/${id}/logo`, fd);
       setData(d => ({ ...d, logo_url: r.data.logo_url }));
       toast.success('Logo ανέβηκε');
-    } catch { toast.error('Σφάλμα upload'); }
+    } catch (e) { toast.error(e.response?.data?.error || 'Σφάλμα upload'); }
     finally { setUploading(false); }
   };
 
@@ -134,7 +134,7 @@ export default function TenantDetail() {
       const r = await api.post(`/tenants/${id}/icon`, fd);
       setData(d => ({ ...d, icon_url: r.data.icon_url }));
       toast.success('Icon ανέβηκε');
-    } catch { toast.error('Σφάλμα upload'); }
+    } catch (e) { toast.error(e.response?.data?.error || 'Σφάλμα upload'); }
     finally { setUploadingIcon(false); }
   };
 

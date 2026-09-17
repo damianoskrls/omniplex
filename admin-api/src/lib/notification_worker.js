@@ -123,12 +123,57 @@ async function processHourBeforeReminders(conn) {
 }
 
 async function processPostWorkoutReminders(conn) {
-  const [bookings] = await conn.query(`
+  // Auto-complete bookings where gym does NOT require attendance confirmation
+  const [autoCompleteBookings] = await conn.query(`
     SELECT b.id, b.user_id, b.business_id, b.starts_at, b.ends_at,
            sv.name AS service_name,
            sss.label, sss.icon_key
     FROM bookings b
     JOIN services sv ON sv.id = b.service_id
+    JOIN business_configs bc ON bc.business_id = b.business_id
+    LEFT JOIN service_slot_schedules sss ON sss.service_id = b.service_id
+      AND sss.business_id = b.business_id
+      AND sss.weekday = WEEKDAY(b.starts_at)
+      AND sss.start_time = TIME(b.starts_at)
+      AND sss.is_active = 1
+    WHERE b.status IN ('confirmed', 'pending', 'in_progress')
+      AND b.attendance_confirmed = 0
+      AND b.post_notified = 0
+      AND b.ends_at <= NOW()
+      AND b.ends_at >= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+      AND (bc.requires_attendance_confirmation = 0 OR bc.requires_attendance_confirmation IS NULL)
+  `);
+
+  for (const b of autoCompleteBookings) {
+    // Auto-mark as completed + attendance confirmed
+    await conn.query(
+      `UPDATE bookings SET status = 'completed', attendance_confirmed = 1, attendance_confirmed_at = NOW()
+       WHERE id = ? AND attendance_confirmed = 0`,
+      [b.id],
+    );
+    // Push notification prompting optional review/photo
+    const label = b.label || b.service_name;
+    await createUserNotification(conn, {
+      businessId: b.business_id,
+      userId: b.user_id,
+      bookingId: b.id,
+      type: 'workout_complete',
+      title: `Τέλος ${label}! 💪`,
+      body: 'Πώς πήγε; Άφησε ένα σχόλιο ή μοιράσου φωτογραφία! (προαιρετικό)',
+      payload: { action: 'workout_complete', booking_id: b.id },
+      sendPush: true,
+    });
+    await conn.query('UPDATE bookings SET post_notified = 1 WHERE id = ?', [b.id]);
+  }
+
+  // For gyms that DO require attendance confirmation: just send the push reminder
+  const [confirmBookings] = await conn.query(`
+    SELECT b.id, b.user_id, b.business_id, b.starts_at, b.ends_at,
+           sv.name AS service_name,
+           sss.label, sss.icon_key
+    FROM bookings b
+    JOIN services sv ON sv.id = b.service_id
+    JOIN business_configs bc ON bc.business_id = b.business_id
     LEFT JOIN service_slot_schedules sss ON sss.service_id = b.service_id
       AND sss.business_id = b.business_id
       AND sss.weekday = WEEKDAY(b.starts_at)
@@ -139,9 +184,10 @@ async function processPostWorkoutReminders(conn) {
       AND b.post_notified = 0
       AND b.ends_at <= NOW()
       AND b.ends_at >= DATE_SUB(NOW(), INTERVAL 3 HOUR)
+      AND bc.requires_attendance_confirmation = 1
   `);
 
-  for (const b of bookings) {
+  for (const b of confirmBookings) {
     const label = b.label || b.service_name;
     await createUserNotification(conn, {
       businessId: b.business_id,

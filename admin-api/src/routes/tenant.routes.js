@@ -415,17 +415,19 @@ router.patch('/:id/config', authenticate, requireMasterAdmin, async (req, res) =
 // ============================================================
 // POST /api/tenants/:id/logo — Upload logo image (PNG/JPG/WEBP/SVG)
 // ============================================================
-router.post('/:id/logo', authenticate, requireMasterAdmin, uploadLogo.single('logo'), async (req, res) => {
+router.post('/:id/logo', authenticate, requireMasterAdmin, (req, res, next) => {
+  uploadLogo.single('logo')(req, res, (err) => {
+    if (err) {
+      console.error('[logo upload]', err.message);
+      return res.status(500).json({ error: err.message || 'Upload failed' });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
     const logoUrl = req.file.publicUrl;
-
-    await db.query(
-      'UPDATE business_configs SET logo_url = ? WHERE business_id = ?',
-      [logoUrl, req.params.id]
-    );
-
+    await db.query('UPDATE business_configs SET logo_url = ? WHERE business_id = ?', [logoUrl, req.params.id]);
     return res.json({ logo_url: logoUrl });
   } catch (err) {
     console.error(err);
@@ -436,17 +438,19 @@ router.post('/:id/logo', authenticate, requireMasterAdmin, uploadLogo.single('lo
 // ============================================================
 // POST /api/tenants/:id/icon — Upload square app icon (PNG/JPG/WEBP/SVG)
 // ============================================================
-router.post('/:id/icon', authenticate, requireMasterAdmin, uploadIcon.single('icon'), async (req, res) => {
+router.post('/:id/icon', authenticate, requireMasterAdmin, (req, res, next) => {
+  uploadIcon.single('icon')(req, res, (err) => {
+    if (err) {
+      console.error('[icon upload]', err.message);
+      return res.status(500).json({ error: err.message || 'Upload failed' });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
     const iconUrl = req.file.publicUrl;
-
-    await db.query(
-      'UPDATE business_configs SET icon_url = ? WHERE business_id = ?',
-      [iconUrl, req.params.id]
-    );
-
+    await db.query('UPDATE business_configs SET icon_url = ? WHERE business_id = ?', [iconUrl, req.params.id]);
     return res.json({ icon_url: iconUrl });
   } catch (err) {
     console.error(err);
