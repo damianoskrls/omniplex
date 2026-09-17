@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/tenant_config.dart';
@@ -12,6 +13,7 @@ import 'services/push_service.dart';
 import 'services/user_notification_sync.dart';
 import 'screens/staff_home_screen.dart';
 import 'theme/app_theme.dart';
+import 'widgets/splash_screen.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -26,9 +28,14 @@ class BookUpApp extends StatefulWidget {
 }
 
 class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
+  bool _gymSplashActive = false;
+  bool _wasLoggedIn = false;
+  Timer? _splashTimer;
+
   @override
   void initState() {
     super.initState();
+    _wasLoggedIn = widget.auth.isLoggedIn;
     WidgetsBinding.instance.addObserver(this);
     NotificationService.instance.onTap = _handleNotificationTap;
     PushService.instance.onTap = _handleNotificationTap;
@@ -42,6 +49,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _splashTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     widget.auth.removeListener(_onAuthChanged);
     UserNotificationSync.instance.stop();
@@ -56,13 +64,23 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
   }
 
   void _onAuthChanged() {
-    if (widget.auth.isLoggedIn) {
+    final isNowLoggedIn = widget.auth.isLoggedIn;
+    if (isNowLoggedIn && !_wasLoggedIn) {
+      // Just logged in → show gym splash briefly
+      setState(() => _gymSplashActive = true);
+      _splashTimer?.cancel();
+      _splashTimer = Timer(const Duration(milliseconds: 2000), () {
+        if (mounted) setState(() => _gymSplashActive = false);
+      });
       UserNotificationSync.instance.start(widget.auth);
       PushService.instance.registerWithAuth(widget.auth);
       WidgetsBinding.instance.addPostFrameCallback((_) => _consumePendingNotificationTaps());
-    } else {
+    } else if (!isNowLoggedIn) {
+      _splashTimer?.cancel();
+      setState(() => _gymSplashActive = false);
       UserNotificationSync.instance.stop();
     }
+    _wasLoggedIn = isNowLoggedIn;
   }
 
   void _consumePendingNotificationTaps() {
@@ -156,6 +174,9 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
               );
             }
             if (auth.isLoggedIn) {
+              if (_gymSplashActive) {
+                return SplashScreen(config: widget.config);
+              }
               if (auth.user!.isStaff) return const StaffHomeScreen();
               return const HomeScreen();
             }

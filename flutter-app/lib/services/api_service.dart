@@ -1055,4 +1055,9 @@ class ApiService {
     final data = _decode(res) as List;
     return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
+
+  Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) async {
+    final res = await _post(path, body);
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
 }

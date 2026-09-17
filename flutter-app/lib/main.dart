@@ -8,15 +8,22 @@ import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
 import 'config/tenant_config.dart';
+import 'l10n/app_strings.dart';
 import 'screens/business_selector_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
+import 'services/language_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_service.dart';
 import 'widgets/splash_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LanguageService.instance.load();
+  LanguageService.instance.addListener(() {
+    updateLanguageBridge(LanguageService.instance.locale.languageCode);
+  });
+  updateLanguageBridge(LanguageService.instance.locale.languageCode);
   runApp(AppBootstrap());
 }
 
@@ -35,18 +42,29 @@ class AppBootstrap extends StatefulWidget {
 class _AppBootstrapState extends State<AppBootstrap> {
   static const _minSplash = Duration(milliseconds: 2400);
 
+  @override
+  void initState() {
+    super.initState();
+    LanguageService.instance.addListener(_onLanguageChanged);
+    SchedulerBinding.instance.addPostFrameCallback((_) => _bootstrap());
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    LanguageService.instance.removeListener(_onLanguageChanged);
+    super.dispose();
+  }
+
   TenantConfig? _config;
   AuthService? _auth;
   String? _error;
   bool _needsTenantSelection = false;
   bool _showOnboarding = false;
   String _selectorApiBase = 'https://passionate-grace-production-98ad.up.railway.app';
-
-  @override
-  void initState() {
-    super.initState();
-    SchedulerBinding.instance.addPostFrameCallback((_) => _bootstrap());
-  }
 
   Future<void> _bootstrap() async {
     final splashStarted = DateTime.now();
@@ -89,6 +107,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
       // If cached URL is local/dev, clear cache and show selector
       if (cached.apiUrl.contains('192.168') || cached.apiUrl.contains('localhost')) {
         await TenantConfig.clearCachedTenant();
+        await _waitRemainingSplash(splashStarted);
         if (!mounted) return;
         setState(() => _needsTenantSelection = true);
         return;
@@ -103,6 +122,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
         config = await TenantConfig.load();
         // Verify it has a meaningful business — if it's a placeholder, show selector
         if (config.businessId.isEmpty || config.slug.isEmpty) {
+          await _waitRemainingSplash(splashStarted);
           if (!mounted) return;
           setState(() {
             _needsTenantSelection = true;
@@ -111,6 +131,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
           return;
         }
       } catch (_) {
+        await _waitRemainingSplash(splashStarted);
         if (!mounted) return;
         setState(() => _needsTenantSelection = true);
         return;

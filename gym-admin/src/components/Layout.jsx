@@ -269,7 +269,7 @@ export default function Layout({ children, title, variant }) {
           )}
         </nav>
 
-        <div style={{ padding: '16px 20px', borderTop: '1px solid #334155' }}>
+        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)' }}>
           <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={() => { logout(); navigate('/login'); }}>
             <LogOut size={14} /> Αποσύνδεση
           </button>

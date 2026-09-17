@@ -183,23 +183,18 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              RichText(
-                                text: TextSpan(
-                                  style: const TextStyle(
-                                    fontSize: 17,
+                              ShaderMask(
+                                shaderCallback: (bounds) => const LinearGradient(
+                                  colors: [Color(0xFF7C5CFC), Color(0xFFE040FB)],
+                                ).createShader(bounds),
+                                child: const Text(
+                                  'OmniPlex',
+                                  style: TextStyle(
+                                    fontSize: 18,
                                     fontWeight: FontWeight.w800,
-                                    letterSpacing: 2.5,
+                                    letterSpacing: -0.3,
+                                    color: Colors.white,
                                   ),
-                                  children: [
-                                    TextSpan(
-                                      text: 'OMNI',
-                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
-                                    ),
-                                    const TextSpan(
-                                      text: 'PLEX',
-                                      style: TextStyle(color: AppColors.lime),
-                                    ),
-                                  ],
                                 ),
                               ),
                             ],
@@ -208,24 +203,14 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                           const SizedBox(height: 40),
 
                           // Hero headline
-                          RichText(
-                            text: TextSpan(
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                height: 1.1,
-                                letterSpacing: -0.5,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: 'Βρες τον\n',
-                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.95)),
-                                ),
-                                const TextSpan(
-                                  text: 'χώρο σου.',
-                                  style: TextStyle(color: AppColors.lime),
-                                ),
-                              ],
+                          const Text(
+                            'Βρες τον\nχώρο σου.',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              height: 1.15,
+                              letterSpacing: -0.5,
+                              color: Colors.white,
                             ),
                           ),
 
@@ -233,7 +218,7 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                           Text(
                             'Αναζήτησε γυμναστήριο ή κέντρο',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.32),
+                              color: Colors.white.withValues(alpha: 0.55),
                               fontSize: 14,
                               letterSpacing: 0.2,
                             ),
@@ -352,12 +337,12 @@ class _SearchField extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: focused
-              ? AppColors.lime.withValues(alpha: 0.4)
+              ? const Color(0xFF7C5CFC).withValues(alpha: 0.5)
               : Colors.white.withValues(alpha: 0.07),
           width: 1.5,
         ),
         boxShadow: focused
-            ? [BoxShadow(color: AppColors.lime.withValues(alpha: 0.06), blurRadius: 20)]
+            ? [BoxShadow(color: const Color(0xFF7C5CFC).withValues(alpha: 0.08), blurRadius: 20)]
             : [],
       ),
       child: Row(
@@ -373,7 +358,7 @@ class _SearchField extends StatelessWidget {
                 : Icon(
                     Icons.search_rounded,
                     color: focused
-                        ? AppColors.lime.withValues(alpha: 0.8)
+                        ? const Color(0xFF9C5FFC)
                         : Colors.white.withValues(alpha: 0.28),
                     size: 20,
                   ),
@@ -389,7 +374,7 @@ class _SearchField extends StatelessWidget {
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
-              cursorColor: AppColors.lime,
+              cursorColor: const Color(0xFF7C5CFC),
               decoration: InputDecoration(
                 hintText: 'π.χ. Handstand, FitLife...',
                 hintStyle: TextStyle(
@@ -672,7 +657,7 @@ class _ConnectingOverlay extends StatelessWidget {
               width: 40, height: 40,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(AppColors.lime.withValues(alpha: 0.8)),
+                valueColor: AlwaysStoppedAnimation(const Color(0xFF9C5FFC)),
               ),
             ),
             const SizedBox(height: 20),
@@ -709,7 +694,7 @@ class _OmniplexMark extends StatelessWidget {
         child: Text(
           'O',
           style: TextStyle(
-            color: AppColors.lime,
+            color: const Color(0xFF9C5FFC),
             fontSize: size * 0.5,
             fontWeight: FontWeight.w900,
           ),
@@ -730,7 +715,7 @@ class _BackgroundPainter extends CustomPainter {
       Paint()
         ..shader = RadialGradient(
           colors: [
-            AppColors.lime.withValues(alpha: 0.035),
+            const Color(0xFF7C5CFC).withValues(alpha: 0.05),
             Colors.transparent,
           ],
         ).createShader(Rect.fromCircle(center: Offset(size.width, 0), radius: size.width * 0.5)),

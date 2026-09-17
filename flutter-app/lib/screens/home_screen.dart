@@ -19,6 +19,8 @@ import 'workout_programs_screen.dart';
 import 'marketplace_screen.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
+import '../widgets/qr_checkin_sheet.dart';
+import 'ai_agent_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialTab = 0});
@@ -263,10 +265,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _openCheckin() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const QrCheckinScreen()),
-    );
+    showQrCheckinSheet(context);
   }
 
   void _openCommunityPost(String? postId) {
@@ -354,6 +353,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             Expanded(child: tabs[_index].screen),
           ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiAgentScreen())),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          width: 56, height: 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF7C5CFC), Color(0xFFE040FB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF7C5CFC).withValues(alpha: 0.45),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 24),
         ),
       ),
       bottomNavigationBar: FloatingNavBar(

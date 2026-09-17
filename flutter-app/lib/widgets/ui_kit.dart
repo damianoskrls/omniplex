@@ -32,72 +32,93 @@ class GreetingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-      child: Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(greeting, style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: 4),
-                Text(name, style: Theme.of(context).textTheme.headlineMedium),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 6),
-                  Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
-                ],
-              ],
+          // Row 1: gym logo (left) + action icons + avatar (right)
+          Row(
+            children: [
+              // Gym logo — tappable
+              GestureDetector(
+                onTap: onLogoTap,
+                child: const TenantLogo(size: 40, borderRadius: 12, showShadow: false),
+              ),
+              const Spacer(),
+              // Action icons row
+              if (onCheckinTap != null)
+                _HeaderIconButton(
+                  icon: Icons.qr_code_scanner_rounded,
+                  onTap: onCheckinTap!,
+                ),
+              if (onCheckinTap != null) const SizedBox(width: 8),
+              if (onMessagesTap != null)
+                _HeaderIconButton(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  onTap: onMessagesTap!,
+                  badgeCount: messageCount,
+                ),
+              if (onMessagesTap != null) const SizedBox(width: 8),
+              if (onNotificationsTap != null)
+                _HeaderIconButton(
+                  icon: Icons.notifications_outlined,
+                  onTap: onNotificationsTap!,
+                  badgeCount: notificationCount,
+                ),
+              if (onNotificationsTap != null) const SizedBox(width: 8),
+              // Avatar
+              if (avatarLetter != null)
+                GestureDetector(
+                  onTap: onAvatarTap,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.purple, AppColors.pink],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      avatarLetter!.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Row 2: greeting text
+          Text(
+            greeting,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
             ),
           ),
-          if (onLogoTap != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: _HeaderLogoButton(onTap: onLogoTap!),
+          const SizedBox(height: 2),
+          Text(
+            name,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
             ),
-          if (onCheckinTap != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: _HeaderIconButton(
-                icon: Icons.qr_code_scanner,
-                onTap: onCheckinTap!,
-              ),
-            ),
-          if (onMessagesTap != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: _HeaderIconButton(
-                icon: Icons.chat_bubble_outline,
-                onTap: onMessagesTap!,
-                badgeCount: messageCount,
-              ),
-            ),
-          if (onNotificationsTap != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: _HeaderIconButton(
-                icon: Icons.notifications_outlined,
-                onTap: onNotificationsTap!,
-                badgeCount: notificationCount,
-              ),
-            ),
-          if (avatarLetter != null)
-            GestureDetector(
-              onTap: onAvatarTap,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppColors.purple, AppColors.pink]),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  avatarLetter!.toUpperCase(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20),
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );

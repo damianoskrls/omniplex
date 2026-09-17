@@ -4,6 +4,7 @@ import '../app.dart';
 import '../config/tenant_config.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import 'goals_screen.dart';
@@ -204,6 +205,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 16),
         SurfaceCard(
           padding: EdgeInsets.zero,
+          child: ListenableBuilder(
+            listenable: LanguageService.instance,
+            builder: (_, __) {
+              final isEl = LanguageService.instance.isGreek;
+              return ListTile(
+                leading: Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A3A),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.language_rounded, size: 18, color: Colors.white60),
+                ),
+                title: Text(
+                  isEl ? 'Γλώσσα' : 'Language',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _LangChip(label: 'ΕΛ', active: isEl, onTap: () => LanguageService.instance.setLocale(const Locale('el'))),
+                    const SizedBox(width: 6),
+                    _LangChip(label: 'EN', active: !isEl, onTap: () => LanguageService.instance.setLocale(const Locale('en'))),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        SurfaceCard(
+          padding: EdgeInsets.zero,
           child: _MenuTile(
             icon: Icons.logout,
             title: 'Αποσύνδεση',
@@ -253,6 +286,39 @@ class _MenuTile extends StatelessWidget {
       title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: titleColor ?? AppColors.textPrimary)),
       subtitle: subtitle != null ? Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium) : null,
       trailing: onTap != null ? const Icon(Icons.chevron_right, color: AppColors.textSecondary) : null,
+    );
+  }
+}
+
+class _LangChip extends StatelessWidget {
+  const _LangChip({required this.label, required this.active, required this.onTap});
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const lime = Color(0xFFB8F55E);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: active ? lime.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: active ? lime.withValues(alpha: 0.5) : Colors.white12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? lime : Colors.white38,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
     );
   }
 }
