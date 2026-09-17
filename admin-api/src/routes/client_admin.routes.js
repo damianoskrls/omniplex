@@ -2674,17 +2674,20 @@ router.get('/trials', requireClientAdmin, async (req, res) => {
     const [rows] = await db.query(`
       SELECT b.id, b.starts_at, b.ends_at, b.status, b.notes,
              b.user_id, b.service_id, b.staff_id,
+             b.referred_by_staff_id, b.trial_became_member,
              u.full_name AS user_name, u.phone AS user_phone,
-             s.name AS service_name, s.id AS service_id_val,
-             st.full_name AS staff_name, st.avatar_url AS staff_avatar, st.color_hex AS staff_color
+             s.name AS service_name,
+             st.full_name AS staff_name, st.avatar_url AS staff_avatar, st.color_hex AS staff_color,
+             ref.full_name AS referred_by_staff_name, ref.avatar_url AS referred_by_staff_avatar
       FROM bookings b
       LEFT JOIN users u ON u.id = b.user_id
       LEFT JOIN services s ON s.id = b.service_id
       LEFT JOIN staff st ON st.id = b.staff_id
+      LEFT JOIN staff ref ON ref.id = b.referred_by_staff_id
       WHERE b.business_id = ? AND b.is_trial = 1 AND b.status != 'cancelled'
         ${showPast ? '' : 'AND b.starts_at >= NOW() - INTERVAL 3 HOUR'}
       ORDER BY b.starts_at ${showPast ? 'DESC' : 'ASC'}
-      LIMIT 100
+      LIMIT 200
     `, [bizId]);
     return res.json(rows);
   } catch (err) {
@@ -2739,6 +2742,37 @@ router.delete('/trials/:id', requireClientAdmin, async (req, res) => {
     if (!booking) return res.status(404).json({ error: 'Δεν βρέθηκε' });
     await db.query("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [id]);
     return res.json({ message: 'Διαγράφηκε' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /client-admin/trials/:id/refer — set referred_by_staff_id + trial_became_member
+router.patch('/trials/:id/refer', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const { id } = req.params;
+  const { referred_by_staff_id, trial_became_member } = req.body;
+  try {
+    const [[booking]] = await db.query(
+      'SELECT id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
+      [id, bizId]
+    );
+    if (!booking) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+
+    const updates = [];
+    const params = [];
+    if (referred_by_staff_id !== undefined) {
+      updates.push('referred_by_staff_id = ?');
+      params.push(referred_by_staff_id || null);
+    }
+    if (trial_became_member !== undefined) {
+      updates.push('trial_became_member = ?');
+      params.push(trial_became_member ? 1 : 0);
+    }
+    if (!updates.length) return res.json({ message: 'Κανένα update' });
+    params.push(id, bizId);
+    await db.query(`UPDATE bookings SET ${updates.join(', ')} WHERE id = ? AND business_id = ?`, params);
+    return res.json({ message: 'Ενημερώθηκε' });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

@@ -158,16 +158,26 @@ async function execCheckAvailability(bizId, userId, input) {
     if (computed.closedReason) return { date, slots: [], message: 'Gym is closed on this day.' };
 
     const payload = buildSlotsPayload(computed, { featureWaitlist: false, date });
+    const durationMins = payload.duration_mins;
     return {
       date,
       service_id: input.service_id,
-      slots: (payload.slots || []).map(s => ({
-        time: s.time,
-        end_time: s.end_time,
-        staff_id: s.staff?.id || null,
-        staff_name: s.staff?.name || null,
-        spots_left: s.spots_left ?? s.capacity,
-      })),
+      slots: (payload.slots || []).map(s => {
+        const firstStaff = s.available_staff?.[0] || null;
+        return {
+          time: s.time,
+          end_time: s.time && durationMins
+            ? (() => {
+                const [h, m] = s.time.split(':').map(Number);
+                const endMins = h * 60 + m + durationMins;
+                return `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
+              })()
+            : null,
+          staff_id: firstStaff?.id || null,
+          staff_name: firstStaff?.name || null,
+          spots_left: s.remaining_spots ?? s.capacity,
+        };
+      }),
       available_count: (payload.slots || []).length,
     };
   } catch (err) {
@@ -199,8 +209,8 @@ async function execGetMyBookings(bizId, userId, input) {
   const limit = input.limit || 5;
   const [rows] = await db.query(
     `SELECT b.id, b.starts_at, b.ends_at, b.status,
-            s.name AS service_name, s.duration_minutes,
-            CONCAT(st.first_name, ' ', st.last_name) AS staff_name
+            s.name AS service_name, s.duration_mins,
+            st.full_name AS staff_name
      FROM bookings b
      JOIN services s ON s.id = b.service_id
      LEFT JOIN staff st ON st.id = b.staff_id
@@ -220,7 +230,7 @@ async function execGetMyBookings(bizId, userId, input) {
       ? r.starts_at.toTimeString().slice(0, 5)
       : String(r.starts_at).slice(11, 16),
     service: r.service_name,
-    duration: r.duration_minutes,
+    duration: r.duration_mins,
     staff: r.staff_name,
     status: r.status,
   }));

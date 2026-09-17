@@ -711,7 +711,17 @@ router.post('/:bizId/my-bookings/:bookingId/complete', softAuth, requireActiveCu
     await conn.beginTransaction();
     const booking = await getOwnedBooking(req.params.bookingId, req.user.userId, req.params.bizId, conn);
     if (!booking) throw new Error('Η κράτηση δεν βρέθηκε.');
-    assertCanConfirmAttendance(booking);
+    if (assertCanConfirmAttendance(booking) === 'already_confirmed') {
+      if (rating || note) {
+        await conn.query(
+          `UPDATE bookings SET feedback_rating = COALESCE(?, feedback_rating), feedback_note = COALESCE(?, feedback_note) WHERE id = ?`,
+          [rating || null, note || null, booking.id],
+        );
+      }
+      const stats = await getUserStats(conn, req.user.userId, req.params.bizId);
+      await conn.commit();
+      return res.json({ message: 'Η παρουσία σου έχει ήδη καταχωρηθεί!', already_confirmed: true, stats });
+    }
 
     await conn.query(`
       UPDATE bookings SET
@@ -1306,7 +1316,7 @@ function isSameCalendarDay(a, b = new Date()) {
 }
 
 function assertCanConfirmAttendance(booking) {
-  if (booking.attendance_confirmed) throw new Error('Η παρουσία έχει ήδη επιβεβαιωθεί.');
+  if (booking.attendance_confirmed) return 'already_confirmed';
   const allowed = ['pending', 'confirmed', 'in_progress', 'completed'];
   if (!allowed.includes(booking.status)) {
     throw new Error('Αυτή η κράτηση δεν μπορεί να επιβεβαιωθεί.');
