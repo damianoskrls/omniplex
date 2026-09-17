@@ -900,8 +900,9 @@ export default function Marketplace() {
                     </label>
                   ) : field.type === 'money' ? (
                     <input type="number" min={0} step={0.01} className="form-input" style={{ maxWidth:160 }}
-                      value={val != null ? (val / 100).toFixed(2) : ''}
-                      onChange={e => onChange(Math.round(parseFloat(e.target.value || 0) * 100))}/>
+                      defaultValue={val != null ? (val / 100).toFixed(2) : ''}
+                      key={`${field.key}-${val}`}
+                      onBlur={e => onChange(Math.round(parseFloat(e.target.value || 0) * 100))}/>
                   ) : (
                     <input className="form-input" style={{ maxWidth:300 }} placeholder={field.placeholder || ''}
                       value={val || ''} onChange={e => onChange(e.target.value)}/>
