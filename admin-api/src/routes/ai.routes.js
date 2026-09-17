@@ -6,7 +6,7 @@
 const express  = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const db       = require('../db');
-const { softAuth } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const { createOneBooking } = require('../lib/create_booking');
 
 const router = express.Router();
@@ -289,10 +289,7 @@ IMPORTANT:
 
 // ── route ─────────────────────────────────────────────────────────────────────
 
-router.post('/:bizId/chat', softAuth, async (req, res) => {
-  if (!req.user?.userId) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
+router.post('/:bizId/chat', authenticate, async (req, res) => {
 
   const { bizId } = req.params;
   const { messages = [], locale = 'el' } = req.body;
