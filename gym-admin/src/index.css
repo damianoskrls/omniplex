@@ -477,7 +477,7 @@ tr:hover td { background: var(--surface-2); }
   display: block;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--text-2);
+  color: var(--text);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -607,7 +607,7 @@ tr:hover td { background: var(--surface-2); }
 
 .login-logo { font-size: 1.4rem; font-weight: 800; text-align: center; margin-bottom: 8px; letter-spacing: -0.03em; }
 .login-logo span { color: var(--accent); }
-.login-subtitle { text-align: center; color: var(--text-2); font-size: 0.875rem; margin-bottom: 28px; }
+.login-subtitle { text-align: center; color: var(--text); font-size: 0.875rem; margin-bottom: 28px; opacity: 0.7; }
 
 /* ── Misc utilities ──────────────────────────────────────────────────────── */
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 12px; flex-wrap: wrap; }

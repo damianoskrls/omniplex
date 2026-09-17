@@ -231,7 +231,7 @@ export default function Layout({ children, title, variant }) {
         aria-hidden={!navOpen}
       />
       <aside className={`sidebar ${navOpen ? 'sidebar--open' : ''}`}>
-        <BrandLogo variant="sidebar" logoUrl={business?.logo_url} />
+        <BrandLogo variant="sidebar" logoUrl={business?.logo_url} gymName={business?.name} />
         {isTrainer ? (
           <div className="sidebar-trainer-identity">
             <Avatar
