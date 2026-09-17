@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? '${API_BASE}';
+const API_BASE = import.meta.env.VITE_API_URL ?? 'https://passionate-grace-production-98ad.up.railway.app';
 import {
   ArrowLeft, Save, Upload, Copy, Smartphone, ExternalLink,
   Key, Eye, EyeOff, RefreshCw, ShoppingBag, CreditCard,
