@@ -1468,18 +1468,19 @@ button.badge { cursor: pointer; }
 .cb-icon-btn {
   width: 34px;
   height: 34px;
-  border-radius: 9px;
-  border: 1px solid var(--border-2);
-  background: var(--surface-2);
-  color: var(--text-2);
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
 }
 
-.cb-icon-btn:hover { background: var(--surface-3); color: var(--text); }
+.cb-icon-btn:hover { background: var(--surface-2); color: var(--text); }
 
 .cb-modal-close {
   width: 32px;

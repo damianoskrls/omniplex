@@ -11,6 +11,7 @@ import {
 import { groupBookingsBySlot, slotKey } from '../utils/groupBookingsBySlot';
 import Avatar from '../components/ui/Avatar';
 import TrialBookingModal from '../components/TrialBookingModal';
+import CreateBookingModal from '../components/CreateBookingModal';
 import ExpiringMembershipsModal from '../components/ExpiringMembershipsModal';
 
 const KPI_STYLES = [
@@ -138,6 +139,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [trials, setTrials] = useState([]);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [expiringMemberships, setExpiringMemberships] = useState([]);
   const [expiringModalOpen, setExpiringModalOpen] = useState(false);
   const [editingTrial, setEditingTrial] = useState(null);
@@ -246,6 +248,40 @@ export default function Dashboard() {
             })}
           </div>
 
+          {/* Quick actions */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
+            <button
+              onClick={() => setBookingModalOpen(true)}
+              style={{
+                padding: '22px 0', borderRadius: 18, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg,#76C043,#4A8D2C)',
+                color: '#fff', fontWeight: 800, fontSize: 17,
+                letterSpacing: '-0.2px',
+                boxShadow: '0 8px 24px rgba(118,192,67,0.35)',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 32px rgba(118,192,67,0.45)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 8px 24px rgba(118,192,67,0.35)'; }}
+            >
+              Νέα Κράτηση
+            </button>
+            <button
+              onClick={() => { setEditingTrial(null); setTrialModalOpen(true); }}
+              style={{
+                padding: '22px 0', borderRadius: 18, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg,#1a1a2e,#16213e)',
+                color: '#fff', fontWeight: 800, fontSize: 17,
+                letterSpacing: '-0.2px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 32px rgba(0,0,0,0.28)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.18)'; }}
+            >
+              Νέο Δοκιμαστικό
+            </button>
+          </div>
+
           {/* Trials widget */}
           <div className="dash-trial-widget">
             {/* Header */}
@@ -260,24 +296,6 @@ export default function Dashboard() {
                 )}
               </span>
             </div>
-
-            {/* Big "Νέο" button */}
-            <button
-              onClick={() => { setEditingTrial(null); setTrialModalOpen(true); }}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                width: '100%', padding: '11px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
-                background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', color: '#15803D',
-                fontWeight: 700, fontSize: 14, marginBottom: 14,
-                boxShadow: '0 2px 8px rgba(22,163,74,0.15)',
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 14px rgba(22,163,74,0.25)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(22,163,74,0.15)'}
-            >
-              <FlaskConical size={16} />
-              + Νέο Δοκιμαστικό
-            </button>
 
             {/* List */}
             {trials.length === 0 ? (
@@ -340,6 +358,12 @@ export default function Dashboard() {
             editTrial={editingTrial}
             onClose={() => { setTrialModalOpen(false); setEditingTrial(null); }}
             onSuccess={() => loadTrials()}
+          />
+
+          <CreateBookingModal
+            open={bookingModalOpen}
+            onClose={() => setBookingModalOpen(false)}
+            onSuccess={() => {}}
           />
 
           <ExpiringMembershipsModal
