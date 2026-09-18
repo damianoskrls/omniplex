@@ -2578,7 +2578,7 @@ router.post('/bookings/drop-in', requireClientAdmin, async (req, res) => {
 // POST /client-admin/trials — create a trial booking (client optional)
 router.post('/trials', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const { trial_date, trial_time, service_id, staff_id, user_id, notes } = req.body;
+  const { trial_date, trial_time, service_id, staff_id, user_id, notes, new_client } = req.body;
 
   if (!trial_date || !trial_time) {
     return res.status(400).json({ error: 'Απαιτούνται ημερομηνία και ώρα' });
@@ -2589,6 +2589,14 @@ router.post('/trials', requireClientAdmin, async (req, res) => {
     await conn.beginTransaction();
 
     let resolvedUserId = user_id || null;
+    if (!resolvedUserId && new_client?.full_name) {
+      const newUserId = uuidv4();
+      await conn.query(
+        'INSERT INTO users (id, business_id, full_name, phone, account_status) VALUES (?, ?, ?, ?, ?)',
+        [newUserId, bizId, new_client.full_name.trim(), new_client.phone?.trim() || null, 'active']
+      );
+      resolvedUserId = newUserId;
+    }
 
     let svc = null;
     if (service_id) {
@@ -2695,11 +2703,11 @@ router.get('/trials', requireClientAdmin, async (req, res) => {
   }
 });
 
-// PATCH /client-admin/trials/:id — edit date/time/service/staff/notes
+// PATCH /client-admin/trials/:id — edit date/time/service/staff/notes/user_id
 router.patch('/trials/:id', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
   const { id } = req.params;
-  const { trial_date, trial_time, service_id, staff_id, notes } = req.body;
+  const { trial_date, trial_time, service_id, staff_id, notes, user_id, new_client } = req.body;
   try {
     const [[booking]] = await db.query(
       'SELECT id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
@@ -2720,11 +2728,27 @@ router.patch('/trials/:id', requireClientAdmin, async (req, res) => {
     if (staff_id !== undefined) { updates.push('staff_id = ?'); params.push(staff_id || null); }
     if (notes !== undefined) { updates.push('notes = ?'); params.push(notes?.trim() || null); }
 
+    // Link existing client or create new
+    let resolvedUserId = user_id;
+    if (new_client?.full_name) {
+      const { v4: uuidv4 } = require('uuid');
+      const newId = uuidv4();
+      await db.query(
+        'INSERT INTO users (id, business_id, full_name, phone, account_status) VALUES (?, ?, ?, ?, ?)',
+        [newId, bizId, new_client.full_name.trim(), new_client.phone?.trim() || null, 'active']
+      );
+      resolvedUserId = newId;
+    }
+    if (resolvedUserId !== undefined) {
+      updates.push('user_id = ?');
+      params.push(resolvedUserId || null);
+    }
+
     if (updates.length) {
       params.push(id, bizId);
       await db.query(`UPDATE bookings SET ${updates.join(', ')} WHERE id = ? AND business_id = ?`, params);
     }
-    return res.json({ message: 'Ενημερώθηκε' });
+    return res.json({ message: 'Ενημερώθηκε', user_id: resolvedUserId || null });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -2747,20 +2771,35 @@ router.delete('/trials/:id', requireClientAdmin, async (req, res) => {
   }
 });
 
-// PATCH /client-admin/trials/:id/refer — set referred_by_staff_id + trial_became_member
+// PATCH /client-admin/trials/:id/refer — set referred_by_staff_id + trial_became_member + trial_considering
+// Accepts optional new_client: { full_name, phone } to auto-create user when becoming member
 router.patch('/trials/:id/refer', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
   const { id } = req.params;
-  const { referred_by_staff_id, trial_became_member } = req.body;
+  const { referred_by_staff_id, trial_became_member, new_client } = req.body;
   try {
     const [[booking]] = await db.query(
-      'SELECT id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
+      'SELECT id, user_id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
       [id, bizId]
     );
     if (!booking) return res.status(404).json({ error: 'Δεν βρέθηκε' });
 
     const updates = [];
     const params = [];
+
+    // Auto-create client if becoming member and no user linked
+    let createdUserId = null;
+    if (trial_became_member && !booking.user_id && new_client?.full_name) {
+      const { v4: uuidv4 } = require('uuid');
+      createdUserId = uuidv4();
+      await db.query(
+        'INSERT INTO users (id, business_id, full_name, phone, account_status) VALUES (?, ?, ?, ?, ?)',
+        [createdUserId, bizId, new_client.full_name.trim(), new_client.phone?.trim() || null, 'active']
+      );
+      updates.push('user_id = ?');
+      params.push(createdUserId);
+    }
+
     if (referred_by_staff_id !== undefined) {
       updates.push('referred_by_staff_id = ?');
       params.push(referred_by_staff_id || null);
@@ -2776,7 +2815,7 @@ router.patch('/trials/:id/refer', requireClientAdmin, async (req, res) => {
     if (!updates.length) return res.json({ message: 'Κανένα update' });
     params.push(id, bizId);
     await db.query(`UPDATE bookings SET ${updates.join(', ')} WHERE id = ? AND business_id = ?`, params);
-    return res.json({ message: 'Ενημερώθηκε' });
+    return res.json({ message: 'Ενημερώθηκε', created_user_id: createdUserId });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

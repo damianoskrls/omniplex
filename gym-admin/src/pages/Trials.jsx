@@ -63,19 +63,117 @@ function Toggle({ checked, onChange, activeColor = '#10B981', activeLabel, inact
   );
 }
 
+// ── Client Search inside modal ───────────────────────────────────────────────
+function ClientPicker({ value, valueName, valuePhone, onChange, clients }) {
+  const [query, setQuery] = useState('');
+  const [showList, setShowList] = useState(false);
+  const [newMode, setNewMode] = useState(false);
+  const [newClient, setNewClient] = useState({ full_name: '', phone: '' });
+
+  function normalize(s) { return String(s||'').toLowerCase().normalize('NFD').replace(/\p{M}/gu,''); }
+  const filtered = clients.filter(c =>
+    normalize(c.full_name).includes(normalize(query)) || (c.phone||'').includes(query)
+  ).slice(0,20);
+
+  const inp = { width: '100%', padding: '8px 11px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
+  const lbl = { fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' };
+
+  if (value && !newMode) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 10, border: '1.5px solid var(--border)' }}>
+        <Avatar name={valueName} size={30} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{valueName}</div>
+          {valuePhone && <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{valuePhone}</div>}
+        </div>
+        <button type="button" onClick={() => onChange(null,null,null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 12 }}>Αλλαγή</button>
+      </div>
+    );
+  }
+
+  if (newMode) {
+    return (
+      <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: 12, border: '1.5px solid var(--border)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 8 }}>
+          <div><label style={lbl}>Ονοματεπώνυμο *</label>
+            <input style={inp} placeholder="Γιώργης Παπάς" value={newClient.full_name} onChange={e => setNewClient(n=>({...n,full_name:e.target.value}))} autoFocus />
+          </div>
+          <div><label style={lbl}>Κινητό *</label>
+            <input style={inp} placeholder="69XXXXXXXX" value={newClient.phone} onChange={e => setNewClient(n=>({...n,phone:e.target.value}))} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" onClick={() => {
+            if (!newClient.full_name.trim()) return;
+            onChange('__new__', newClient.full_name.trim(), newClient.phone.trim(), newClient);
+            setNewMode(false);
+          }} style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: '#76C043', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+            Επιβεβαίωση
+          </button>
+          <button type="button" onClick={() => setNewMode(false)} style={{ padding: '5px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'transparent', color: 'var(--text-3)', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+            Πίσω
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ position: 'relative' }}>
+        <input style={inp} placeholder="Αναζήτηση ονόματος ή κινητού..."
+          value={query} onChange={e=>{setQuery(e.target.value);setShowList(true);}}
+          onFocus={()=>setShowList(true)} onBlur={()=>setTimeout(()=>setShowList(false),180)}
+          autoComplete="off" />
+      </div>
+      {showList && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,.1)', maxHeight: 180, overflowY: 'auto', marginTop: 4 }}>
+          {filtered.map(c => (
+            <button key={c.id} type="button" onMouseDown={() => { onChange(c.id, c.full_name, c.phone||''); setQuery(''); setShowList(false); }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+              <Avatar name={c.full_name} size={28} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{c.full_name}</div>
+                {c.phone && <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{c.phone}</div>}
+              </div>
+            </button>
+          ))}
+          {filtered.length === 0 && <div style={{ padding: '10px 14px', color: 'var(--text-3)', fontSize: 12.5 }}>Δεν βρέθηκαν</div>}
+        </div>
+      )}
+      <button type="button" onClick={() => setNewMode(true)} style={{ marginTop: 6, background: 'none', border: 'none', color: '#76C043', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+        + Νέος πελάτης
+      </button>
+    </div>
+  );
+}
+
 // ── Modals ───────────────────────────────────────────────────────────────────
-function TrialModal({ trial, staffList, services, onClose, onSave, isRepeat }) {
+function TrialModal({ trial, staffList, services, clients, onClose, onSave, isRepeat }) {
   const isNew = !trial?.id || isRepeat;
   const [form, setForm] = useState({
     trial_date: trial ? fmtDateInput(trial.starts_at) : new Date().toISOString().slice(0, 10),
     trial_time: trial ? fmtTimeInput(trial.starts_at) : '10:00',
-    service_id: trial?.service_id || (services[0]?.id ?? ''),
+    service_id: trial?.service_id || '',
     staff_id: trial?.staff_id || '',
     notes: isRepeat ? '' : (trial?.notes || ''),
-    user_id: isRepeat ? (trial?.user_id || '') : '',
+    user_id: isRepeat ? (trial?.user_id || '') : (trial?.user_id || ''),
+    user_name: isRepeat ? (trial?.user_name || '') : (trial?.user_name || ''),
+    user_phone: trial?.user_phone || '',
+    new_client: null,
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleClientChange = (id, name, phone, newClientData) => {
+    if (id === '__new__') {
+      setForm(f => ({ ...f, user_id: '', user_name: name, user_phone: phone, new_client: newClientData }));
+    } else if (id === null) {
+      setForm(f => ({ ...f, user_id: '', user_name: '', user_phone: '', new_client: null }));
+    } else {
+      setForm(f => ({ ...f, user_id: id, user_name: name, user_phone: phone, new_client: null }));
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -110,9 +208,20 @@ function TrialModal({ trial, staffList, services, onClose, onSave, isRepeat }) {
           <div><label style={lbl}>Ημερομηνία</label><input type="date" value={form.trial_date} onChange={e => set('trial_date', e.target.value)} style={inp} /></div>
           <div><label style={lbl}>Ώρα</label><input type="time" value={form.trial_time} onChange={e => set('trial_time', e.target.value)} style={inp} /></div>
         </div>
-        {!isRepeat && !trial?.id && (
-          <div style={{ marginTop: 14 }}><label style={lbl}>User ID (προαιρετικό)</label><input type="text" value={form.user_id} onChange={e => set('user_id', e.target.value)} placeholder="Αφήστε κενό αν δεν υπάρχει ακόμα" style={inp} /></div>
+
+        {!isRepeat && (
+          <div style={{ marginTop: 14 }}>
+            <label style={lbl}>Πελάτης <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(προαιρετικό)</span></label>
+            <ClientPicker
+              value={form.user_id || form.new_client ? (form.user_id || '__new__') : ''}
+              valueName={form.user_name}
+              valuePhone={form.user_phone}
+              onChange={handleClientChange}
+              clients={clients}
+            />
+          </div>
         )}
+
         <div style={{ marginTop: 14 }}><label style={lbl}>Υπηρεσία</label>
           <select value={form.service_id} onChange={e => set('service_id', e.target.value)} style={inp}>
             <option value="">— Χωρίς υπηρεσία —</option>
@@ -132,6 +241,48 @@ function TrialModal({ trial, staffList, services, onClose, onSave, isRepeat }) {
           <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-2)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Ακύρωση</button>
           <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: '10px 0', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#FCD34D,#F59E0B)', color: '#78350F', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: saving ? 0.7 : 1 }}>
             <Save size={14} />{saving ? 'Αποθήκευση...' : 'Αποθήκευση'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Mini popup: create client when becoming member ───────────────────────────
+function MemberClientModal({ onClose, onConfirm }) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [saving, setSaving] = useState(false);
+  const inp = { width: '100%', padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 18, padding: 24, width: '100%', maxWidth: 360, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Δημιουργία πελάτη</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', borderRadius: '50%', padding: 4, display: 'flex' }}><X size={17}/></button>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 16, marginTop: 0 }}>
+          Το δοκιμαστικό δεν έχει συνδεδεμένο πελάτη. Συμπλήρωσε τα στοιχεία για να δημιουργήσεις τον πελάτη.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' }}>Ονοματεπώνυμο *</label>
+            <input style={inp} placeholder="Γιώργης Παπάς" value={name} onChange={e=>setName(e.target.value)} autoFocus />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4, display: 'block' }}>Κινητό</label>
+            <input style={inp} placeholder="69XXXXXXXX" value={phone} onChange={e=>setPhone(e.target.value)} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-2)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Άκυρο</button>
+          <button disabled={!name.trim() || saving} onClick={async () => {
+            setSaving(true);
+            await onConfirm({ full_name: name.trim(), phone: phone.trim() });
+            setSaving(false); onClose();
+          }} style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', background: name.trim() ? '#10B981' : '#D1D5DB', color: '#fff', fontWeight: 700, fontSize: 13, cursor: name.trim() ? 'pointer' : 'not-allowed' }}>
+            {saving ? 'Αποθήκευση...' : 'Αποθήκευση & επιβεβαίωση'}
           </button>
         </div>
       </div>
@@ -193,7 +344,8 @@ function NotesCell({ trial, onSave }) {
 }
 
 // ── Trial Card ───────────────────────────────────────────────────────────────
-function TrialCard({ r, staffList, onEdit, onDelete, onRepeat, onToggleMember, onToggleConsidering, onUpdateStaff, onSaveNotes }) {
+function TrialCard({ r, slotIndex, slotTotal, staffList, onEdit, onDelete, onRepeat, onToggleMember, onToggleConsidering, onUpdateStaff, onSaveNotes }) {
+  const showSlotNum = !r.user_name && slotTotal > 1;
   return (
     <div style={{
       background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)',
@@ -205,6 +357,7 @@ function TrialCard({ r, staffList, onEdit, onDelete, onRepeat, onToggleMember, o
         {/* Time badge */}
         <div style={{ flexShrink: 0, background: 'linear-gradient(135deg,#FEF3C7,#FDE68A)', borderRadius: 12, padding: '8px 12px', textAlign: 'center', minWidth: 60 }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: '#92400E', lineHeight: 1 }}>{fmtTime(r.starts_at)}</div>
+          {showSlotNum && <div style={{ fontSize: 10, fontWeight: 700, color: '#92400E', marginTop: 2 }}>#{slotIndex}</div>}
         </div>
 
         {/* Person info */}
@@ -421,8 +574,10 @@ export default function Trials() {
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState([]);
   const [services, setServices] = useState([]);
+  const [clients, setClients] = useState([]);
   const [modal, setModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [memberClientModal, setMemberClientModal] = useState(null); // { trialId }
 
   const dateKey = toDateKey(selectedDate);
 
@@ -438,6 +593,7 @@ export default function Trials() {
   useEffect(() => {
     api.get('/client-admin/staff').then(r => setStaffList(r.data || [])).catch(() => {});
     api.get('/client-admin/services').then(r => setServices(r.data || [])).catch(() => {});
+    api.get('/client-admin/clients').then(r => setClients(r.data || [])).catch(() => {});
   }, []);
 
   const goDay = delta => {
@@ -459,9 +615,21 @@ export default function Trials() {
     });
   };
 
-  const toggleMember = async (id, val) => {
+  const toggleMember = (id, val) => {
+    if (val) {
+      const row = rows.find(r => r.id === id);
+      if (!row?.user_id) {
+        setMemberClientModal({ trialId: id });
+        return;
+      }
+    }
     setRows(prev => prev.map(r => r.id === id ? { ...r, trial_became_member: val ? 1 : 0 } : r));
-    await api.patch(`/client-admin/trials/${id}/refer`, { trial_became_member: val ? 1 : 0 });
+    api.patch(`/client-admin/trials/${id}/refer`, { trial_became_member: val ? 1 : 0 }).catch(() => {});
+  };
+  const confirmMemberClient = async (trialId, newClientData) => {
+    setRows(prev => prev.map(r => r.id === trialId ? { ...r, trial_became_member: 1 } : r));
+    await api.patch(`/client-admin/trials/${trialId}/refer`, { trial_became_member: 1, new_client: newClientData });
+    reload();
   };
   const toggleConsidering = async (id, val) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, trial_considering: val ? 1 : 0 } : r));
@@ -480,9 +648,21 @@ export default function Trials() {
     await api.delete(`/client-admin/trials/${id}`);
     setRows(prev => prev.filter(r => r.id !== id));
   };
-  const handleSaveEdit = async (form) => { await api.patch(`/client-admin/trials/${modal.trial.id}`, form); reload(); };
-  const handleSaveNew = async (form) => { await api.post('/client-admin/trials', form); reload(); };
-  const handleRepeat = async (form) => { await api.post('/client-admin/trials', { ...form, user_id: modal.trial.user_id }); reload(); };
+  const handleSaveEdit = async (form) => {
+    const payload = { trial_date: form.trial_date, trial_time: form.trial_time, service_id: form.service_id||null, staff_id: form.staff_id||null, notes: form.notes||null };
+    if (form.new_client) payload.new_client = form.new_client;
+    else payload.user_id = form.user_id || null;
+    await api.patch(`/client-admin/trials/${modal.trial.id}`, payload);
+    reload();
+  };
+  const handleSaveNew = async (form) => {
+    const payload = { trial_date: form.trial_date, trial_time: form.trial_time, service_id: form.service_id||undefined, staff_id: form.staff_id||undefined, notes: form.notes||undefined };
+    if (form.new_client) payload.new_client = form.new_client;
+    else if (form.user_id) payload.user_id = form.user_id;
+    await api.post('/client-admin/trials', payload);
+    reload();
+  };
+  const handleRepeat = async (form) => { await api.post('/client-admin/trials', { trial_date: form.trial_date, trial_time: form.trial_time, service_id: form.service_id||undefined, staff_id: form.staff_id||undefined, user_id: modal.trial.user_id||undefined }); reload(); };
 
   // Quick day chips
   const quickDays = [-1, 0, 1, 2, 3].map(delta => {
@@ -576,30 +756,45 @@ export default function Trials() {
               <p style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-2)', marginBottom: 4 }}>Δεν υπάρχουν δοκιμαστικά</p>
               <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Για {isToday(selectedDate) ? 'σήμερα' : fmtShortDay(selectedDate)}</p>
             </div>
-          ) : (
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-              {rows.sort((a,b) => new Date(a.starts_at) - new Date(b.starts_at)).map(r => (
-                <TrialCard
-                  key={r.id} r={r} staffList={staffList}
-                  onEdit={() => setModal({ type: 'edit', trial: r })}
-                  onDelete={() => setDeleteTarget(r)}
-                  onRepeat={() => setModal({ type: 'repeat', trial: r })}
-                  onToggleMember={val => toggleMember(r.id, val)}
-                  onToggleConsidering={val => toggleConsidering(r.id, val)}
-                  onUpdateStaff={staff_id => updateStaff(r.id, staff_id)}
-                  onSaveNotes={notes => updateNotes(r.id, notes)}
-                />
-              ))}
-            </div>
-          )}
+          ) : (() => {
+            const sorted = [...rows].sort((a,b) => new Date(a.starts_at) - new Date(b.starts_at));
+            // Count per time slot for slot numbering
+            const slotCounts = {};
+            sorted.forEach(r => { const k = fmtTime(r.starts_at); slotCounts[k] = (slotCounts[k]||0)+1; });
+            const slotIdx = {};
+            sorted.forEach(r => { const k = fmtTime(r.starts_at); slotIdx[r.id] = (slotIdx[k]||0)+1; slotIdx[k] = slotIdx[r.id]; });
+            return (
+              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+                {sorted.map(r => (
+                  <TrialCard
+                    key={r.id} r={r} staffList={staffList}
+                    slotIndex={slotIdx[r.id]} slotTotal={slotCounts[fmtTime(r.starts_at)]}
+                    onEdit={() => setModal({ type: 'edit', trial: r })}
+                    onDelete={() => setDeleteTarget(r)}
+                    onRepeat={() => setModal({ type: 'repeat', trial: r })}
+                    onToggleMember={val => toggleMember(r.id, val)}
+                    onToggleConsidering={val => toggleConsidering(r.id, val)}
+                    onUpdateStaff={staff_id => updateStaff(r.id, staff_id)}
+                    onSaveNotes={notes => updateNotes(r.id, notes)}
+                  />
+                ))}
+              </div>
+            );
+          })()}
         </>
       )}
 
       {/* Modals */}
-      {modal?.type === 'edit' && <TrialModal trial={modal.trial} staffList={staffList} services={services} onClose={() => setModal(null)} onSave={handleSaveEdit} />}
-      {modal?.type === 'new'  && <TrialModal trial={null} staffList={staffList} services={services} onClose={() => setModal(null)} onSave={handleSaveNew} />}
-      {modal?.type === 'repeat' && <TrialModal trial={modal.trial} staffList={staffList} services={services} onClose={() => setModal(null)} onSave={handleRepeat} isRepeat />}
+      {modal?.type === 'edit' && <TrialModal trial={modal.trial} staffList={staffList} services={services} clients={clients} onClose={() => setModal(null)} onSave={handleSaveEdit} />}
+      {modal?.type === 'new'  && <TrialModal trial={null} staffList={staffList} services={services} clients={clients} onClose={() => setModal(null)} onSave={handleSaveNew} />}
+      {modal?.type === 'repeat' && <TrialModal trial={modal.trial} staffList={staffList} services={services} clients={clients} onClose={() => setModal(null)} onSave={handleRepeat} isRepeat />}
       {deleteTarget && <DeleteConfirm trial={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={() => handleDelete(deleteTarget.id)} />}
+      {memberClientModal && (
+        <MemberClientModal
+          onClose={() => setMemberClientModal(null)}
+          onConfirm={newClientData => confirmMemberClient(memberClientModal.trialId, newClientData)}
+        />
+      )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </Layout>

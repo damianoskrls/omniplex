@@ -82,21 +82,28 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
     if (!form.trial_date || !form.trial_time) { toast.error('Συμπλήρωσε ημερομηνία και ώρα'); return; }
     setSubmitting(true);
     try {
+      if (newClientMode && (!newClient.full_name.trim() || !newClient.phone.trim())) {
+        toast.error('Συμπλήρωσε όνομα και κινητό'); setSubmitting(false); return;
+      }
+
       if (isEdit) {
-        await api.patch(`/client-admin/trials/${editTrial.id}`, {
+        const payload = {
           trial_date: form.trial_date,
           trial_time: form.trial_time,
           service_id: form.service_id || null,
           staff_id: form.staff_id || null,
           notes: form.notes || null,
-        });
+        };
+        if (newClientMode) {
+          payload.new_client = { full_name: newClient.full_name.trim(), phone: newClient.phone.trim() };
+        } else if (form.user_id !== (editTrial.user_id || '')) {
+          payload.user_id = form.user_id || null;
+        }
+        await api.patch(`/client-admin/trials/${editTrial.id}`, payload);
         toast.success('Το δοκιμαστικό ενημερώθηκε');
       } else {
         let userId = form.user_id || null;
         if (newClientMode) {
-          if (!newClient.full_name.trim() || !newClient.phone.trim()) {
-            toast.error('Συμπλήρωσε όνομα και κινητό'); setSubmitting(false); return;
-          }
           const res = await api.post('/client-admin/clients', {
             full_name: newClient.full_name.trim(),
             phone: newClient.phone.trim(),
@@ -157,12 +164,11 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
               </div>
             </div>
 
-            {/* Client (only for new trials) */}
-            {!isEdit && (
-              <div>
-                <div className="cb-section-label" style={{ marginBottom: 10 }}>
-                  Πελάτης <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#94a3b8' }}>(προαιρετικό)</span>
-                </div>
+            {/* Client */}
+            <div>
+              <div className="cb-section-label" style={{ marginBottom: 10 }}>
+                Πελάτης <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#94a3b8' }}>(προαιρετικό)</span>
+              </div>
 
                 {!newClientMode ? (
                   <>
@@ -227,8 +233,7 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
                     </button>
                   </div>
                 )}
-              </div>
-            )}
+            </div>
 
             {/* Service */}
             <div>
