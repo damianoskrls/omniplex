@@ -209,6 +209,12 @@ async function bootstrapSchema() {
     console.warn('gdpr_consents table skipped:', err.message);
   }
 
+  // Add last_seen_at to users for online presence
+  try {
+    await db.query('ALTER TABLE users ADD COLUMN last_seen_at DATETIME NULL');
+    console.log('✓ Schema: users.last_seen_at added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('last_seen_at skipped:', err.message); }
+
   // Questionnaire templates
   try {
     await db.query(`

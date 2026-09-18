@@ -15,6 +15,13 @@ function accentTextColor(hex) {
   return hexLuminance(hex) > 0.35 ? '#111111' : '#ffffff';
 }
 
+// Text color for active sidebar items (accent-dim background)
+// Light accents (yellow): use near-black. Dark accents: use the accent itself.
+function accentActiveText(hex) {
+  if (!hex || hex.length < 7) return null;
+  return hexLuminance(hex) > 0.20 ? '#111111' : null; // null = keep using var(--accent)
+}
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -38,11 +45,18 @@ export function AuthProvider({ children }) {
       root.style.removeProperty('--tenant-accent');
       root.style.removeProperty('--tenant-secondary');
       root.style.removeProperty('--accent-text');
+      root.style.removeProperty('--accent-active-text');
       return;
     }
     if (business.primary_color) {
       root.style.setProperty('--tenant-primary', business.primary_color);
       root.style.setProperty('--accent-text', accentTextColor(business.primary_color));
+      const activeText = accentActiveText(business.primary_color);
+      if (activeText) {
+        root.style.setProperty('--accent-active-text', activeText);
+      } else {
+        root.style.removeProperty('--accent-active-text');
+      }
     }
     if (business.accent_color)    root.style.setProperty('--tenant-accent',    business.accent_color);
     if (business.secondary_color) root.style.setProperty('--tenant-secondary', business.secondary_color);
