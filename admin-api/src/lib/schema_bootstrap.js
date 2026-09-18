@@ -142,7 +142,6 @@ async function bootstrapSchema() {
   } catch (err) {
     console.warn('handstand branding fix skipped:', err.message);
   }
-}
 
   try {
     await db.query(
