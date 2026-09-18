@@ -144,4 +144,14 @@ async function bootstrapSchema() {
   }
 }
 
+  try {
+    await db.query(
+      'ALTER TABLE bookings ADD COLUMN trial_considering TINYINT(1) NOT NULL DEFAULT 0',
+    );
+    console.log('✓ Schema: προστέθηκε bookings.trial_considering');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+  }
+}
+
 module.exports = { bootstrapSchema };

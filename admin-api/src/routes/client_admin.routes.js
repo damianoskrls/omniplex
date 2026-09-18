@@ -2677,7 +2677,7 @@ router.get('/trials', requireClientAdmin, async (req, res) => {
     const [rows] = await db.query(`
       SELECT b.id, b.starts_at, b.ends_at, b.status, b.notes,
              b.user_id, b.service_id, b.staff_id,
-             b.trial_became_member,
+             b.trial_became_member, b.trial_considering,
              u.full_name AS user_name, u.phone AS user_phone,
              s.name AS service_name,
              st.full_name AS staff_name, st.avatar_url AS staff_avatar, st.color_hex AS staff_color
@@ -2768,6 +2768,10 @@ router.patch('/trials/:id/refer', requireClientAdmin, async (req, res) => {
     if (trial_became_member !== undefined) {
       updates.push('trial_became_member = ?');
       params.push(trial_became_member ? 1 : 0);
+    }
+    if (req.body.trial_considering !== undefined) {
+      updates.push('trial_considering = ?');
+      params.push(req.body.trial_considering ? 1 : 0);
     }
     if (!updates.length) return res.json({ message: 'Κανένα update' });
     params.push(id, bizId);

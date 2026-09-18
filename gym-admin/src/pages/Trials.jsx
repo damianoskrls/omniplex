@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
-import { Target, UserCheck, Check, TrendingUp, Pencil, Trash2, RefreshCw, ChevronDown, X, Save, Plus } from 'lucide-react';
+import { Target, UserCheck, Check, TrendingUp, Pencil, Trash2, RefreshCw, ChevronDown, X, Save, Plus, Clock } from 'lucide-react';
 
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -32,6 +32,38 @@ function Avatar({ name, avatar, color, size = 30 }) {
     <div style={{ width: size, height: size, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: size * 0.35, fontWeight: 700, flexShrink: 0 }}>
       {initials}
     </div>
+  );
+}
+
+function Toggle({ checked, onChange, activeColor = '#10B981', activeLabel, inactiveLabel, activeIcon }) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 7,
+        padding: '5px 10px 5px 6px', borderRadius: 99, border: 'none', cursor: 'pointer',
+        fontSize: 12, fontWeight: 700, transition: 'all 0.18s', whiteSpace: 'nowrap',
+        background: checked ? activeColor + '22' : 'var(--surface-2)',
+        color: checked ? activeColor : 'var(--text-3)',
+      }}
+    >
+      {/* Track */}
+      <div style={{
+        width: 32, height: 18, borderRadius: 99, position: 'relative', flexShrink: 0,
+        background: checked ? activeColor : '#D1D5DB',
+        transition: 'background 0.18s',
+      }}>
+        <div style={{
+          position: 'absolute', top: 2, left: checked ? 16 : 2,
+          width: 14, height: 14, borderRadius: '50%', background: '#fff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.18s',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {checked && activeIcon && <span style={{ color: activeColor, lineHeight: 1 }}>{activeIcon}</span>}
+        </div>
+      </div>
+      {checked ? activeLabel : inactiveLabel}
+    </button>
   );
 }
 
@@ -266,8 +298,13 @@ export default function Trials() {
   }, []);
 
   const toggleMember = async (id, became) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, trial_became_member: became ? 1 : 0 } : r));
     await api.patch(`/client-admin/trials/${id}/refer`, { trial_became_member: became ? 1 : 0 });
-    reload();
+  };
+
+  const toggleConsidering = async (id, val) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, trial_considering: val ? 1 : 0 } : r));
+    await api.patch(`/client-admin/trials/${id}/refer`, { trial_considering: val ? 1 : 0 });
   };
 
   const updateNotes = async (id, notes) => {
@@ -391,7 +428,7 @@ export default function Trials() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                  {['Ημερομηνία', 'Άτομο', 'Υπηρεσία', 'Εκπαιδευτής', 'Σχόλια', 'Έγινε μέλος', 'Ενέργειες'].map(h => (
+                  {['Ημερομηνία', 'Άτομο', 'Υπηρεσία', 'Εκπαιδευτής', 'Σχόλια', 'Σκέφτεται', 'Έγινε μέλος', 'Ενέργειες'].map(h => (
                     <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-3)', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -434,26 +471,31 @@ export default function Trials() {
                           : <span style={{ color: 'var(--text-3)' }}>—</span>}
                       </td>
 
-                      {/* Trainer inline dropdown */}
+                      {/* Trainer inline dropdown with avatar */}
                       <td style={{ padding: '13px 14px' }}>
-                        <div style={{ position: 'relative', display: 'inline-block' }}>
-                          <select
-                            value={r.staff_id || ''}
-                            onChange={e => updateStaff(r.id, e.target.value)}
-                            style={{
-                              appearance: 'none', WebkitAppearance: 'none',
-                              padding: r.staff_name ? '5px 28px 5px 8px' : '5px 28px 5px 10px',
-                              borderRadius: 99, border: '1.5px solid var(--border)',
-                              background: r.staff_name ? 'var(--surface-2)' : 'var(--surface)',
-                              color: r.staff_name ? 'var(--text-2)' : 'var(--text-3)',
-                              fontSize: 12.5, fontWeight: r.staff_name ? 600 : 400,
-                              cursor: 'pointer', outline: 'none', minWidth: 120,
-                            }}
-                          >
-                            <option value="">— Εκπαιδευτής —</option>
-                            {staffList.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
-                          </select>
-                          <ChevronDown size={11} style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-3)' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {r.staff_name && (
+                            <Avatar name={r.staff_name} avatar={r.staff_avatar} color={r.staff_color} size={26} />
+                          )}
+                          <div style={{ position: 'relative' }}>
+                            <select
+                              value={r.staff_id || ''}
+                              onChange={e => updateStaff(r.id, e.target.value)}
+                              style={{
+                                appearance: 'none', WebkitAppearance: 'none',
+                                padding: '5px 26px 5px 9px',
+                                borderRadius: 99, border: '1.5px solid var(--border)',
+                                background: r.staff_name ? 'var(--surface-2)' : 'var(--surface)',
+                                color: r.staff_name ? 'var(--text-2)' : 'var(--text-3)',
+                                fontSize: 12.5, fontWeight: r.staff_name ? 600 : 400,
+                                cursor: 'pointer', outline: 'none', minWidth: 110,
+                              }}
+                            >
+                              <option value="">— Εκπαιδευτής —</option>
+                              {staffList.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+                            </select>
+                            <ChevronDown size={11} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-3)' }} />
+                          </div>
                         </div>
                       </td>
 
@@ -462,37 +504,42 @@ export default function Trials() {
                         <NotesCell trial={r} onSave={notes => updateNotes(r.id, notes)} />
                       </td>
 
+                      {/* Considering toggle */}
+                      <td style={{ padding: '13px 14px' }}>
+                        <Toggle
+                          checked={!!r.trial_considering}
+                          onChange={val => toggleConsidering(r.id, val)}
+                          activeColor="#F59E0B"
+                          activeLabel="Ναι"
+                          inactiveLabel="Όχι"
+                        />
+                      </td>
+
                       {/* Became member toggle */}
                       <td style={{ padding: '13px 14px' }}>
-                        <button
-                          onClick={() => toggleMember(r.id, !r.trial_became_member)}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '6px 14px', borderRadius: 99, border: 'none', cursor: 'pointer',
-                            fontSize: 12.5, fontWeight: 700, transition: 'all 0.15s', whiteSpace: 'nowrap',
-                            background: r.trial_became_member ? 'linear-gradient(135deg,#D1FAE5,#A7F3D0)' : 'var(--surface-2)',
-                            color: r.trial_became_member ? '#065F46' : 'var(--text-3)',
-                            boxShadow: r.trial_became_member ? '0 2px 8px rgba(16,185,129,0.2)' : 'none',
-                          }}
-                        >
-                          {r.trial_became_member ? <UserCheck size={13} /> : <Check size={13} />}
-                          {r.trial_became_member ? 'Μέλος' : 'Όχι'}
-                        </button>
+                        <Toggle
+                          checked={!!r.trial_became_member}
+                          onChange={val => toggleMember(r.id, val)}
+                          activeColor="#10B981"
+                          activeLabel="Μέλος"
+                          inactiveLabel="Όχι"
+                          activeIcon={<UserCheck size={12} />}
+                        />
                       </td>
 
                       {/* Actions */}
                       <td style={{ padding: '13px 14px' }}>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => setModal({ type: 'edit', trial: r })} title="Επεξεργασία"
-                            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Pencil size={13} />
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>
+                          <button onClick={() => setModal({ type: 'edit', trial: r })}
+                            style={{ height: 30, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                            <Pencil size={12} />Επεξεργασία
                           </button>
-                          <button onClick={() => setModal({ type: 'repeat', trial: r })} title="Επανάληψη"
-                            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <RefreshCw size={13} />
+                          <button onClick={() => setModal({ type: 'repeat', trial: r })}
+                            style={{ height: 30, padding: '0 10px', borderRadius: 8, border: '1px solid #DBEAFE', background: '#EFF6FF', color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                            <RefreshCw size={12} />Επανάληψη
                           </button>
-                          <button onClick={() => setDeleteTarget(r)} title="Διαγραφή"
-                            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #FEE2E2', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <button onClick={() => setDeleteTarget(r)}
+                            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #FEE2E2', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <Trash2 size={13} />
                           </button>
                         </div>
