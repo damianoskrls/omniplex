@@ -2669,28 +2669,26 @@ router.get('/expiring-memberships', requireClientAdmin, async (req, res) => {
 // GET /client-admin/trials
 router.get('/trials', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const showPast = req.query.past === '1';
   try {
+    const whereClauses = ['b.business_id = ?', "b.is_trial = 1", "b.status != 'cancelled'"];
+    const params = [bizId];
+    if (req.query.from) { whereClauses.push('DATE(b.starts_at) >= ?'); params.push(req.query.from); }
+    if (req.query.to)   { whereClauses.push('DATE(b.starts_at) <= ?'); params.push(req.query.to); }
     const [rows] = await db.query(`
       SELECT b.id, b.starts_at, b.ends_at, b.status, b.notes,
              b.user_id, b.service_id, b.staff_id,
-             b.referred_by_staff_id, b.trial_became_member,
+             b.trial_became_member,
              u.full_name AS user_name, u.phone AS user_phone,
              s.name AS service_name,
-             st.full_name AS staff_name, st.avatar_url AS staff_avatar, st.color_hex AS staff_color,
-             ref.full_name AS referred_by_staff_name, ref.avatar_url AS referred_by_staff_avatar
+             st.full_name AS staff_name, st.avatar_url AS staff_avatar, st.color_hex AS staff_color
       FROM bookings b
       LEFT JOIN users u ON u.id = b.user_id
       LEFT JOIN services s ON s.id = b.service_id
       LEFT JOIN staff st ON st.id = b.staff_id
-      LEFT JOIN staff ref ON ref.id = b.referred_by_staff_id
-      WHERE b.business_id = ? AND b.is_trial = 1 AND b.status != 'cancelled'
-        ${showPast ? '' : 'AND b.starts_at >= NOW() - INTERVAL 3 HOUR'}
-        ${req.query.from ? 'AND DATE(b.starts_at) >= ?' : ''}
-        ${req.query.to   ? 'AND DATE(b.starts_at) <= ?' : ''}
-      ORDER BY b.starts_at ${showPast ? 'DESC' : 'ASC'}
+      WHERE ${whereClauses.join(' AND ')}
+      ORDER BY b.starts_at DESC
       LIMIT 500
-    `, [bizId, ...(req.query.from ? [req.query.from] : []), ...(req.query.to ? [req.query.to] : [])]);
+    `, params);
     return res.json(rows);
   } catch (err) {
     return res.status(500).json({ error: err.message });

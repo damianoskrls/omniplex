@@ -724,4 +724,65 @@ router.delete('/staff/leaves/:id', requireMobileStaff, async (req, res) => {
   }
 });
 
+// ── Staff Trials ────────────────────────────────────────────────────────────
+
+// GET /api/mobile/staff/trials — list all (or unassigned) trials for this business
+router.get('/staff/trials', requireMobileStaff, async (req, res) => {
+  const unassignedOnly = req.query.unassigned === '1';
+  try {
+    const [rows] = await db.query(`
+      SELECT b.id, b.starts_at, b.ends_at, b.status, b.notes,
+             b.user_id, b.service_id, b.staff_id, b.trial_became_member,
+             u.full_name AS user_name, u.phone AS user_phone,
+             s.name AS service_name,
+             st.full_name AS staff_name
+      FROM bookings b
+      LEFT JOIN users u ON u.id = b.user_id
+      LEFT JOIN services s ON s.id = b.service_id
+      LEFT JOIN staff st ON st.id = b.staff_id
+      WHERE b.business_id = ? AND b.is_trial = 1 AND b.status != 'cancelled'
+        ${unassignedOnly ? 'AND b.staff_id IS NULL' : ''}
+      ORDER BY b.starts_at DESC
+      LIMIT 200
+    `, [req.businessId]);
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/mobile/staff/trials/:id/claim — staff claims an unassigned trial
+router.patch('/staff/trials/:id/claim', requireMobileStaff, async (req, res) => {
+  try {
+    const [[trial]] = await db.query(
+      'SELECT id, staff_id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
+      [req.params.id, req.businessId]
+    );
+    if (!trial) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    if (trial.staff_id && trial.staff_id !== req.staffId) {
+      return res.status(409).json({ error: 'Έχει ήδη εκπαιδευτή' });
+    }
+    await db.query('UPDATE bookings SET staff_id = ? WHERE id = ?', [req.staffId, req.params.id]);
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/mobile/staff/trials/:id/became-member — mark trial_became_member
+router.patch('/staff/trials/:id/became-member', requireMobileStaff, async (req, res) => {
+  const became = req.body.became_member ? 1 : 0;
+  try {
+    const [[trial]] = await db.query(
+      'SELECT id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
+      [req.params.id, req.businessId]
+    );
+    if (!trial) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    await db.query('UPDATE bookings SET trial_became_member = ? WHERE id = ?', [became, req.params.id]);
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
