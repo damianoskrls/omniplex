@@ -58,7 +58,7 @@ export default function MonthlyReport() {
     try {
       const r = await api.get(`/business/${bizId}/report/monthly`, { params: { year, month } });
       setData(r.data);
-    } catch { toast.error('Σφάλμα φόρτωσης αναφοράς'); }
+    } catch (err) { toast.error('Σφάλμα: ' + (err?.response?.data?.error || err.message || 'Άγνωστο σφάλμα')); }
     finally { setLoading(false); }
   };
 

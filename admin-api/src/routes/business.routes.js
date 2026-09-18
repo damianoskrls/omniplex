@@ -485,12 +485,15 @@ router.get('/:bizId/report/monthly', authenticate, async (req, res) => {
       stored = row;
     } catch { /* monthly_reports table missing — skip */ }
 
-    if (stored) return res.json(JSON.parse(stored.data));
+    if (stored) {
+      try { return res.json(JSON.parse(stored.data)); } catch { /* bad JSON, recompute */ }
+    }
 
     // Generate on-the-fly
     const data = await computeMonthData(conn, req.params.bizId, year, month);
     return res.json(data);
   } catch (err) {
+    console.error('[monthly report]', err);
     return res.status(500).json({ error: err.message });
   } finally {
     conn.release();
