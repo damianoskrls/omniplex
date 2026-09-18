@@ -547,59 +547,75 @@ function MeasurementsPanel({ clientId }) {
         </div>
       )}
 
-      <div className="measurements-form-section">
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Νέα μέτρηση (επίσκεψη)</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 12 }}>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Ημερομηνία</label>
-          <input className="form-input" type="date" value={form.measured_on} onChange={e => setForm({ ...form, measured_on: e.target.value })} />
+      <div className="meas-form-card">
+        <div className="meas-form-title">Νέα μέτρηση επίσκεψης</div>
+
+        {/* Row 1: Date & time */}
+        <div className="meas-form-section-label">Ημερομηνία &amp; ώρα</div>
+        <div className="meas-form-row meas-form-row--3">
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Ημερομηνία</label>
+            <input className="form-input" type="date" value={form.measured_on} onChange={e => setForm({ ...form, measured_on: e.target.value })} />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Στιγμή ημέρας</label>
+            <select className="form-input" value={form.time_of_day} onChange={e => setForm({ ...form, time_of_day: e.target.value, measured_time: '' })}>
+              <option value="morning">Πρωί</option>
+              <option value="noon">Μεσημέρι</option>
+              <option value="afternoon">Απόγευμα</option>
+              <option value="evening">Βράδυ</option>
+            </select>
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Ακριβής ώρα <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(προαιρ.)</span></label>
+            <input className="form-input" type="time" value={form.measured_time} onChange={e => setForm({ ...form, measured_time: e.target.value, time_of_day: e.target.value ? '' : form.time_of_day })} />
+          </div>
         </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Στιγμή ημέρας</label>
-          <select className="form-input" value={form.time_of_day} onChange={e => setForm({ ...form, time_of_day: e.target.value, measured_time: '' })}>
-            <option value="morning">Πρωί</option>
-            <option value="noon">Μεσημέρι</option>
-            <option value="afternoon">Απόγευμα</option>
-            <option value="evening">Βράδυ</option>
-          </select>
+
+        {/* Row 2: Main body metrics */}
+        <div className="meas-form-section-label">Βασικές μετρήσεις</div>
+        <div className="meas-form-row meas-form-row--4">
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Βάρος <span className="meas-unit">kg</span></label>
+            <input className="form-input" type="number" step="0.1" placeholder="0.0" value={form.weight_kg} onChange={e => setForm({ ...form, weight_kg: e.target.value })} />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Ύψος <span className="meas-unit">cm</span></label>
+            <input className="form-input" type="number" step="0.1" placeholder="0.0" value={form.height_cm} onChange={e => setForm({ ...form, height_cm: e.target.value })} />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Λίπος <span className="meas-unit">%</span></label>
+            <input className="form-input" type="number" step="0.1" placeholder="0.0" value={form.body_fat_pct} onChange={e => setForm({ ...form, body_fat_pct: e.target.value })} />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">BMI</label>
+            <input className="form-input" type="number" step="0.1" placeholder="0.0" value={form.bmi} onChange={e => setForm({ ...form, bmi: e.target.value })} />
+          </div>
         </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Ακριβής ώρα (προαιρ.)</label>
-          <input className="form-input" type="time" value={form.measured_time} onChange={e => setForm({ ...form, measured_time: e.target.value, time_of_day: e.target.value ? '' : form.time_of_day })} />
+
+        {/* Row 3: Body composition */}
+        <div className="meas-form-section-label">Σύνθεση σώματος</div>
+        <div className="meas-form-row meas-form-row--3">
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Μυϊκή μάζα <span className="meas-unit">kg</span></label>
+            <input className="form-input" type="number" step="0.1" placeholder="0.0" value={form.muscle_mass_kg} onChange={e => setForm({ ...form, muscle_mass_kg: e.target.value })} />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Λιπώδης μάζα <span className="meas-unit">kg</span></label>
+            <input className="form-input" type="number" step="0.1" placeholder="0.0" value={form.fat_mass_kg} onChange={e => setForm({ ...form, fat_mass_kg: e.target.value })} />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label">Σπλαχνικό λίπος <span className="meas-unit">επίπεδο</span></label>
+            <input className="form-input" type="number" placeholder="0" value={form.visceral_fat_level} onChange={e => setForm({ ...form, visceral_fat_level: e.target.value })} />
+          </div>
         </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Βάρος (kg)</label>
-          <input className="form-input" type="number" step="0.1" value={form.weight_kg} onChange={e => setForm({ ...form, weight_kg: e.target.value })} />
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Ύψος (cm)</label>
-          <input className="form-input" type="number" step="0.1" value={form.height_cm} onChange={e => setForm({ ...form, height_cm: e.target.value })} />
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Λίπος %</label>
-          <input className="form-input" type="number" step="0.1" value={form.body_fat_pct} onChange={e => setForm({ ...form, body_fat_pct: e.target.value })} />
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Μυϊκή μάζα</label>
-          <input className="form-input" type="number" step="0.1" value={form.muscle_mass_kg} onChange={e => setForm({ ...form, muscle_mass_kg: e.target.value })} />
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Λιπώδης μάζα</label>
-          <input className="form-input" type="number" step="0.1" value={form.fat_mass_kg} onChange={e => setForm({ ...form, fat_mass_kg: e.target.value })} />
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">BMI</label>
-          <input className="form-input" type="number" step="0.1" value={form.bmi} onChange={e => setForm({ ...form, bmi: e.target.value })} />
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Σπλαχνικό λίπος</label>
-          <input className="form-input" type="number" value={form.visceral_fat_level} onChange={e => setForm({ ...form, visceral_fat_level: e.target.value })} />
-        </div>
-        </div>
-        <div className="form-group">
+
+        {/* Notes */}
+        <div className="form-group" style={{ marginBottom: 16 }}>
           <label className="form-label">Σημειώσεις</label>
           <input className="form-input" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="π.χ. Μετά από InBody" />
         </div>
+
         <button className="btn btn-primary btn-sm" type="button" onClick={saveMeasurement} disabled={saving}>
           {saving ? 'Αποθήκευση...' : 'Καταχώρηση μέτρησης'}
         </button>
