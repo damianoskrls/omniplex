@@ -2686,9 +2686,11 @@ router.get('/trials', requireClientAdmin, async (req, res) => {
       LEFT JOIN staff ref ON ref.id = b.referred_by_staff_id
       WHERE b.business_id = ? AND b.is_trial = 1 AND b.status != 'cancelled'
         ${showPast ? '' : 'AND b.starts_at >= NOW() - INTERVAL 3 HOUR'}
+        ${req.query.from ? 'AND DATE(b.starts_at) >= ?' : ''}
+        ${req.query.to   ? 'AND DATE(b.starts_at) <= ?' : ''}
       ORDER BY b.starts_at ${showPast ? 'DESC' : 'ASC'}
-      LIMIT 200
-    `, [bizId]);
+      LIMIT 500
+    `, [bizId, ...(req.query.from ? [req.query.from] : []), ...(req.query.to ? [req.query.to] : [])]);
     return res.json(rows);
   } catch (err) {
     return res.status(500).json({ error: err.message });
