@@ -557,6 +557,68 @@ router.get('/dashboard', requireClientAdmin, async (req, res) => {
   }
 });
 
+// GET /api/client-admin/dashboard-extras
+// App installs, messages unread, marketplace pending orders + revenue
+router.get('/dashboard-extras', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  try {
+    const [[appTotal]] = await db.query(
+      'SELECT COUNT(DISTINCT user_id) AS total FROM device_tokens WHERE business_id=?',
+      [bizId]
+    );
+    const [appByPlatform] = await db.query(
+      'SELECT platform, COUNT(DISTINCT user_id) AS cnt FROM device_tokens WHERE business_id=? GROUP BY platform',
+      [bizId]
+    );
+    const [[messagesUnread]] = await db.query(
+      `SELECT COUNT(*) AS total FROM messages m
+       JOIN message_threads mt ON mt.id = m.thread_id
+       WHERE mt.business_id=? AND m.sender_type='customer' AND m.is_read=0`,
+      [bizId]
+    ).catch(() => [[{ total: 0 }]]);
+    const [recentMessages] = await db.query(
+      `SELECT mt.id AS thread_id, u.full_name, u.phone,
+              m.body, m.created_at, m.is_read
+       FROM message_threads mt
+       JOIN users u ON u.id = mt.user_id
+       JOIN messages m ON m.id = (
+         SELECT id FROM messages WHERE thread_id=mt.id ORDER BY created_at DESC LIMIT 1
+       )
+       WHERE mt.business_id=?
+       ORDER BY m.created_at DESC LIMIT 5`,
+      [bizId]
+    ).catch(() => [[]]).then(r => r[0]);
+    const [[ordersPending]] = await db.query(
+      "SELECT COUNT(*) AS total FROM orders WHERE business_id=? AND status IN ('pending','paid')",
+      [bizId]
+    ).catch(() => [[{ total: 0 }]]);
+    const [recentOrders] = await db.query(
+      `SELECT o.id, o.status, o.total_cents, o.created_at,
+              o.customer_name, o.customer_phone
+       FROM orders WHERE business_id=?
+       ORDER BY created_at DESC LIMIT 5`,
+      [bizId]
+    ).catch(() => [[]]).then(r => r[0]);
+    const [[ordersRevenue]] = await db.query(
+      "SELECT COALESCE(SUM(total_cents),0) AS total FROM orders WHERE business_id=? AND status NOT IN ('cancelled','refunded') AND MONTH(created_at)=MONTH(NOW())",
+      [bizId]
+    ).catch(() => [[{ total: 0 }]]);
+
+    const platforms = {};
+    for (const r of appByPlatform) platforms[r.platform] = Number(r.cnt);
+
+    res.json({
+      app: { total: Number(appTotal.total), ios: platforms.ios || 0, android: platforms.android || 0 },
+      messages: { unread: Number(messagesUnread.total), recent: recentMessages || [] },
+      marketplace: {
+        pending_orders: Number(ordersPending.total),
+        month_revenue_cents: Number(ordersRevenue.total),
+        recent_orders: recentOrders || [],
+      },
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.get('/reports', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
   try {

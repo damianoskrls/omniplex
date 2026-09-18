@@ -12,6 +12,7 @@ import GlobalSearch from './GlobalSearch';
 import { useEffect, useRef, useState } from 'react';
 import api from '../api/client';
 import useMessagesUnreadCount from '../hooks/useMessagesUnreadCount';
+import useMarketplacePending from '../hooks/useMarketplacePending';
 
 function buildNavGroups({ features, featureNutrition }) {
   return [
@@ -123,13 +124,15 @@ function MessagesNavBadge({ count }) {
   );
 }
 
-function NavItem({ link, unreadCount, className = '' }) {
+function NavItem({ link, unreadCount, marketplacePending, className = '' }) {
   const isMessages = link.to === '/messages';
+  const isMarketplaceOrders = link.to === '/marketplace/orders';
   const content = (
     <>
       <link.icon size={className ? 14 : 16} />
       <span className="sidebar-nav-link__label">{link.label}</span>
       {isMessages && <MessagesNavBadge count={unreadCount} />}
+      {isMarketplaceOrders && marketplacePending > 0 && <MessagesNavBadge count={marketplacePending} />}
     </>
   );
   if (link.external) {
@@ -146,7 +149,7 @@ function NavItem({ link, unreadCount, className = '' }) {
   );
 }
 
-function AccordionGroup({ groupKey, label, links, unreadCount, defaultOpen }) {
+function AccordionGroup({ groupKey, label, links, unreadCount, marketplacePending, defaultOpen }) {
   const location = useLocation();
   const isActive = links.some(l => l.end ? location.pathname === l.to : location.pathname.startsWith(l.to));
   const [open, setOpen] = useState(defaultOpen || isActive);
@@ -164,12 +167,14 @@ function AccordionGroup({ groupKey, label, links, unreadCount, defaultOpen }) {
         aria-expanded={open}
       >
         <span className="sidebar-accordion__title">{label}</span>
+        {groupKey === 'communication' && unreadCount > 0 && <span className="sidebar-nav-badge" style={{ marginRight: 6 }}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+        {groupKey === 'marketplace' && marketplacePending > 0 && <span className="sidebar-nav-badge" style={{ marginRight: 6, background: '#f59e0b' }}>{marketplacePending}</span>}
         <ChevronDown size={14} className={`sidebar-accordion__chevron ${open ? 'sidebar-accordion__chevron--open' : ''}`} />
       </button>
       {open && (
         <div className="sidebar-accordion__items">
           {links.map(link => (
-            <NavItem key={link.to} link={link} unreadCount={unreadCount} className="sidebar-subnav-link" />
+            <NavItem key={link.to} link={link} unreadCount={unreadCount} marketplacePending={marketplacePending} className="sidebar-subnav-link" />
           ))}
         </div>
       )}
@@ -216,6 +221,7 @@ export default function Layout({ children, title, variant, headerActions }) {
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarRef = useRef(null);
   const { unreadCount: messagesUnread } = useMessagesUnreadCount();
+  const { pendingCount: marketplacePending } = useMarketplacePending();
 
   useEffect(() => {
     function handleClick(e) {
@@ -288,6 +294,7 @@ export default function Layout({ children, title, variant, headerActions }) {
                   label={group.label}
                   links={group.links}
                   unreadCount={messagesUnread}
+                  marketplacePending={marketplacePending}
                   defaultOpen={false}
                 />
               ))}

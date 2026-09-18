@@ -7,6 +7,7 @@ import { AnimatedCounter, WeekBarChart, DonutChart } from '../components/dashboa
 import {
   Calendar, Users, UserPlus, Package, Clock, ChevronRight, Dumbbell, AlertCircle, MapPin, FlaskConical,
   Pencil, Trash2, MessageSquarePlus, Check, X, Target,
+  Smartphone, MessageSquare, ShoppingBag,
 } from 'lucide-react';
 import { groupBookingsBySlot, slotKey } from '../utils/groupBookingsBySlot';
 import Avatar from '../components/ui/Avatar';
@@ -142,6 +143,7 @@ export default function Dashboard() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [expiringMemberships, setExpiringMemberships] = useState([]);
   const [expiringModalOpen, setExpiringModalOpen] = useState(false);
+  const [extras, setExtras] = useState(null);
   const [editingTrial, setEditingTrial] = useState(null);
   const [noteTrialId, setNoteTrialId] = useState(null);
   const [noteText, setNoteText] = useState('');
@@ -180,6 +182,7 @@ export default function Dashboard() {
       })
       .finally(() => setLoading(false));
     loadTrials(false);
+    api.get('/client-admin/dashboard-extras').then(r => setExtras(r.data)).catch(() => {});
 
     // Check for expiring memberships — show modal once per calendar day
     const todayKey = new Date().toISOString().slice(0, 10);
@@ -534,6 +537,117 @@ export default function Dashboard() {
                 </div>
               )}
             </section>
+            {/* Messages widget */}
+            {extras && (
+              <section className="dash-widget">
+                <div className="dash-widget__head">
+                  <div>
+                    <h2 className="dash-widget__title">
+                      <MessageSquare size={18} /> Μηνύματα
+                      {extras.messages.unread > 0 && (
+                        <span style={{ marginLeft: 8, background: '#ef4444', color: '#fff', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, padding: '1px 7px' }}>
+                          {extras.messages.unread} νέα
+                        </span>
+                      )}
+                    </h2>
+                    <p className="dash-widget__sub">Τελευταία από πελάτες</p>
+                  </div>
+                  <Link to="/messages" className="btn btn-secondary btn-sm">Όλα</Link>
+                </div>
+                {!extras.messages.recent.length ? (
+                  <div className="dash-empty"><p>Δεν υπάρχουν μηνύματα</p></div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {extras.messages.recent.map(m => (
+                      <Link key={m.thread_id} to={`/messages?thread=${m.thread_id}`}
+                        style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)', textDecoration: 'none', alignItems: 'flex-start' }}>
+                        <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent-dim)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', flexShrink: 0 }}>
+                          {m.full_name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: m.is_read ? 500 : 700, fontSize: '0.86rem', color: 'var(--text)' }}>{m.full_name}</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.body}</div>
+                        </div>
+                        {!m.is_read && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0, marginTop: 6 }} />}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Marketplace widget */}
+            {extras && (
+              <section className="dash-widget">
+                <div className="dash-widget__head">
+                  <div>
+                    <h2 className="dash-widget__title">
+                      <ShoppingBag size={18} /> Marketplace
+                      {extras.marketplace.pending_orders > 0 && (
+                        <span style={{ marginLeft: 8, background: '#f59e0b', color: '#fff', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, padding: '1px 7px' }}>
+                          {extras.marketplace.pending_orders} εκκρεμείς
+                        </span>
+                      )}
+                    </h2>
+                    <p className="dash-widget__sub">Έσοδα μήνα: {(extras.marketplace.month_revenue_cents / 100).toLocaleString('el-GR', { style: 'currency', currency: 'EUR' })}</p>
+                  </div>
+                  <Link to="/marketplace/orders" className="btn btn-secondary btn-sm">Παραγγελίες</Link>
+                </div>
+                {!extras.marketplace.recent_orders.length ? (
+                  <div className="dash-empty"><p>Δεν υπάρχουν παραγγελίες</p></div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {extras.marketplace.recent_orders.map(o => (
+                      <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.86rem' }}>{o.customer_name || '—'}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{new Date(o.created_at).toLocaleDateString('el-GR')}</div>
+                        </div>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>{(o.total_cents / 100).toLocaleString('el-GR', { minimumFractionDigits: 2 })}€</span>
+                        <span style={{
+                          fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                          background: o.status === 'pending' ? '#fef9c3' : o.status === 'paid' ? '#dcfce7' : 'var(--surface-2)',
+                          color: o.status === 'pending' ? '#ca8a04' : o.status === 'paid' ? '#16a34a' : 'var(--text-2)',
+                        }}>
+                          {o.status === 'pending' ? 'Εκκρεμεί' : o.status === 'paid' ? 'Πληρωμένη' : o.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* App installs widget */}
+            {extras && extras.app.total > 0 && (
+              <section className="dash-widget">
+                <div className="dash-widget__head">
+                  <div>
+                    <h2 className="dash-widget__title"><Smartphone size={18} /> App Downloads</h2>
+                    <p className="dash-widget__sub">Πελάτες που έχουν εγκαταστήσει το app</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
+                  <div style={{ flex: 1, background: 'var(--surface-2)', borderRadius: 12, padding: '16px 18px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{extras.app.total}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginTop: 4 }}>Σύνολο</div>
+                  </div>
+                  {extras.app.ios > 0 && (
+                    <div style={{ flex: 1, background: 'var(--surface-2)', borderRadius: 12, padding: '16px 18px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '2rem', fontWeight: 800, color: '#007aff', lineHeight: 1 }}>{extras.app.ios}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginTop: 4 }}>iOS</div>
+                    </div>
+                  )}
+                  {extras.app.android > 0 && (
+                    <div style={{ flex: 1, background: 'var(--surface-2)', borderRadius: 12, padding: '16px 18px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '2rem', fontWeight: 800, color: '#3ddc84', lineHeight: 1 }}>{extras.app.android}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginTop: 4 }}>Android</div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
           </div>
         </>
       )}
