@@ -249,34 +249,34 @@ export default function Dashboard() {
           </div>
 
           {/* Quick actions */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20, marginTop: 4 }}>
             <button
               onClick={() => setBookingModalOpen(true)}
               style={{
-                padding: '22px 0', borderRadius: 18, border: 'none', cursor: 'pointer',
-                background: 'linear-gradient(135deg,#76C043,#4A8D2C)',
-                color: '#fff', fontWeight: 800, fontSize: 17,
-                letterSpacing: '-0.2px',
-                boxShadow: '0 8px 24px rgba(118,192,67,0.35)',
-                transition: 'transform 0.15s, box-shadow 0.15s',
+                flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
+                background: '#76C043',
+                color: '#fff', fontWeight: 700, fontSize: 14,
+                letterSpacing: '0.1px',
+                boxShadow: '0 2px 8px rgba(118,192,67,0.28)',
+                transition: 'opacity 0.15s, box-shadow 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 32px rgba(118,192,67,0.45)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 8px 24px rgba(118,192,67,0.35)'; }}
+              onMouseEnter={e => { e.currentTarget.style.opacity='0.88'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity='1'; }}
             >
               Νέα Κράτηση
             </button>
             <button
               onClick={() => { setEditingTrial(null); setTrialModalOpen(true); }}
               style={{
-                padding: '22px 0', borderRadius: 18, border: 'none', cursor: 'pointer',
-                background: 'linear-gradient(135deg,#1a1a2e,#16213e)',
-                color: '#fff', fontWeight: 800, fontSize: 17,
-                letterSpacing: '-0.2px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-                transition: 'transform 0.15s, box-shadow 0.15s',
+                flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
+                background: '#76C043',
+                color: '#fff', fontWeight: 700, fontSize: 14,
+                letterSpacing: '0.1px',
+                boxShadow: '0 2px 8px rgba(118,192,67,0.28)',
+                transition: 'opacity 0.15s, box-shadow 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 32px rgba(0,0,0,0.28)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.18)'; }}
+              onMouseEnter={e => { e.currentTarget.style.opacity='0.88'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity='1'; }}
             >
               Νέο Δοκιμαστικό
             </button>
