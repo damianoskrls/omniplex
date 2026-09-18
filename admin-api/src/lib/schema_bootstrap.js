@@ -151,6 +151,25 @@ async function bootstrapSchema() {
   } catch (err) {
     if (err.code !== 'ER_DUP_FIELDNAME') throw err;
   }
+
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS business_expenses (
+        id          VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id VARCHAR(36)  NOT NULL,
+        year        SMALLINT     NOT NULL,
+        month       TINYINT      NOT NULL,
+        category    VARCHAR(100) NOT NULL DEFAULT 'Άλλο',
+        description VARCHAR(255) NULL,
+        amount_cents INT          NOT NULL DEFAULT 0,
+        created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_be_biz_ym (business_id, year, month)
+      )
+    `);
+    console.log('✓ Schema: business_expenses table ready');
+  } catch (err) {
+    console.warn('business_expenses table skipped:', err.message);
+  }
 }
 
 module.exports = { bootstrapSchema };
