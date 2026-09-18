@@ -1481,6 +1481,22 @@ button.badge { cursor: pointer; }
 
 .cb-icon-btn:hover { background: var(--surface-3); color: var(--text); }
 
+.cb-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.cb-modal-close:hover { background: var(--surface-2); color: var(--text); }
+
 .cb-form { padding: 16px 22px 22px; display: flex; flex-direction: column; gap: 20px; }
 
 .cb-stepper {
