@@ -428,7 +428,7 @@ export default function Trials() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                  {['Ημερομηνία', 'Άτομο', 'Υπηρεσία', 'Εκπαιδευτής', 'Σχόλια', 'Σκέφτεται', 'Έγινε μέλος', 'Ενέργειες'].map(h => (
+                  {['Ημερομηνία', 'Άτομο', 'Υπηρεσία', 'Εκπαιδευτής', 'Σχόλια', 'Το σκέφτεται', 'Έγινε μέλος', 'Ενέργειες'].map(h => (
                     <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-3)', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -510,7 +510,7 @@ export default function Trials() {
                           checked={!!r.trial_considering}
                           onChange={val => toggleConsidering(r.id, val)}
                           activeColor="#F59E0B"
-                          activeLabel="Ναι"
+                          activeLabel="Το σκέφτεται"
                           inactiveLabel="Όχι"
                         />
                       </td>
