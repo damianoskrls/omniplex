@@ -475,15 +475,19 @@ router.get('/:bizId/report/monthly', authenticate, async (req, res) => {
 
   const conn = await db.getConnection();
   try {
-    // Try stored report first
-    const [[stored]] = await conn.query(`
-      SELECT data FROM monthly_reports
-      WHERE business_id = ? AND report_month = ?
-    `, [req.params.bizId, `${year}-${String(month).padStart(2,'0')}-01`]);
+    // Try stored report first (table may not exist on older deployments)
+    let stored = null;
+    try {
+      const [[row]] = await conn.query(`
+        SELECT data FROM monthly_reports
+        WHERE business_id = ? AND report_month = ?
+      `, [req.params.bizId, `${year}-${String(month).padStart(2,'0')}-01`]);
+      stored = row;
+    } catch { /* monthly_reports table missing — skip */ }
 
     if (stored) return res.json(JSON.parse(stored.data));
 
-    // Generate on-the-fly (for current/past months not yet stored)
+    // Generate on-the-fly
     const data = await computeMonthData(conn, req.params.bizId, year, month);
     return res.json(data);
   } catch (err) {

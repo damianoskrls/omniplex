@@ -85,11 +85,13 @@ async function generateMonthlyReport(conn, bizId, year, month) {
   const data = await computeMonthData(conn, bizId, year, month);
   const reportMonth = monthStart(year, month);
 
-  await conn.query(`
-    INSERT INTO monthly_reports (id, business_id, report_month, data)
-    VALUES (?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE data = VALUES(data), created_at = CURRENT_TIMESTAMP
-  `, [uuidv4(), bizId, reportMonth, JSON.stringify(data)]);
+  try {
+    await conn.query(`
+      INSERT INTO monthly_reports (id, business_id, report_month, data)
+      VALUES (?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE data = VALUES(data), created_at = CURRENT_TIMESTAMP
+    `, [uuidv4(), bizId, reportMonth, JSON.stringify(data)]);
+  } catch { /* monthly_reports table missing — data still returned */ }
 
   return data;
 }
