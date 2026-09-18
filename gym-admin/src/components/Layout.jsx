@@ -23,7 +23,6 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/clients', icon: Users, label: 'Πελάτες' },
         { to: '/at-risk', icon: AlertTriangle, label: 'Πελάτες σε Κίνδυνο' },
         ...(features.programs ? [{ to: '/programs', icon: Dumbbell, label: 'Προγράμματα Άσκησης' }] : []),
-        ...(featureNutrition ? [{ to: '/nutrition/clients', icon: Apple, label: 'Διατροφολόγος' }] : []),
       ],
     },
     {
@@ -56,6 +55,17 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/marketplace/payment-methods', icon: CreditCard, label: 'Τρόπος Πληρωμής' },
       ],
     },
+    ...(featureNutrition ? [{
+      key: 'nutrition',
+      label: 'Διατροφολόγος',
+      links: [
+        { to: '/nutrition/clients', icon: Users, label: 'Πελάτες διατροφής' },
+        { to: '/nutrition/bookings', icon: Calendar, label: 'Κρατήσεις' },
+        { to: '/nutrition/schedule', icon: Calendar, label: 'Ωράριο επισκέψεων' },
+        { to: '/nutrition/plans', icon: Package, label: 'Πακέτα διατροφής' },
+        { to: '/nutrition/nutritionists', icon: UserCircle, label: 'Διατροφολόγοι' },
+      ],
+    }] : []),
     {
       key: 'management',
       label: 'Διαχείριση',
