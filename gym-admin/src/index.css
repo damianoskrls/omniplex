@@ -264,6 +264,42 @@ input, select, textarea, button {
 }
 .sidebar-logout-link:hover { background: var(--surface-2); color: var(--danger); }
 
+/* Sidebar promo banner */
+.sidebar-promo {
+  margin: 12px 10px 16px;
+  padding: 14px 14px 12px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%);
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+.sidebar-promo__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.sidebar-promo__text {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.80);
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+.sidebar-promo__btn {
+  display: inline-block;
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.30);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.sidebar-promo__btn:hover { background: rgba(255,255,255,0.28); }
+
 /* Sidebar groups (trainer/nutrition) */
 .sidebar-group { margin: 4px 8px 8px; }
 
@@ -306,13 +342,20 @@ input, select, textarea, button {
   z-index: 120;
 }
 
-.topbar--modern { min-height: 60px; }
+.topbar--modern { min-height: 64px; }
 
 .topbar-left {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex: 1;
+}
+
+.topbar-center {
+  flex: 0 1 480px;
+  display: flex;
+  justify-content: center;
 }
 
 .topbar-right {
@@ -320,6 +363,8 @@ input, select, textarea, button {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .topbar-title {
@@ -387,8 +432,9 @@ input, select, textarea, button {
   outline: none;
   font-size: 0.845rem;
   color: var(--text);
-  width: 160px;
+  width: 220px;
   min-width: 0;
+  flex: 1;
 }
 .topbar-search__input::placeholder { color: var(--text-3); }
 .topbar-search--open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
@@ -398,6 +444,12 @@ input, select, textarea, button {
   border-radius: 50%; animation: spin 0.6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+.topbar-search__kbd {
+  font-size: 0.70rem; color: var(--text-3);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 5px; padding: 1px 5px; font-family: inherit;
+  flex-shrink: 0; white-space: nowrap; line-height: 1.6;
+}
 
 /* Global search dropdown */
 .global-search-dropdown {

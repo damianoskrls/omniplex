@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Search, User } from 'lucide-react';
 import api from '../api/client';
 
+const isMac = navigator.platform?.toLowerCase().includes('mac');
+
 function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -15,6 +17,7 @@ export default function GlobalSearch() {
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(-1);
   const wrapRef = useRef(null);
+  const inputRef = useRef(null);
   const navigate = useNavigate();
 
   const fetch = useCallback(debounce(async (q) => {
@@ -63,20 +66,37 @@ export default function GlobalSearch() {
     return () => document.removeEventListener('mousedown', click);
   }, []);
 
+  // ⌘K / Ctrl+K shortcut
+  useEffect(() => {
+    function onKey(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <div ref={wrapRef} className="topbar-search-wrap">
       <div className={`topbar-search ${open && results.length ? 'topbar-search--open' : ''}`}>
         <Search size={15} className="topbar-search__icon" />
         <input
+          ref={inputRef}
           className="topbar-search__input"
-          placeholder="Αναζήτηση πελατών"
+          placeholder="Αναζήτηση πελατών…"
           value={val}
           onChange={onChange}
           onKeyDown={onKeyDown}
           onFocus={() => { if (results.length) setOpen(true); }}
           autoComplete="off"
         />
-        {loading && <span className="topbar-search__spinner" />}
+        {loading
+          ? <span className="topbar-search__spinner" />
+          : !val && <kbd className="topbar-search__kbd">{isMac ? '⌘' : 'Ctrl'}K</kbd>
+        }
       </div>
 
       {open && results.length > 0 && (

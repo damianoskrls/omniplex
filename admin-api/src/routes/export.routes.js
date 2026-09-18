@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../lib/db');
+const db = require('../db');
 
 function requireClientAdmin(req, res, next) {
   const auth = req.headers.authorization;

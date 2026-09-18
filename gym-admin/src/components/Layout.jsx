@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
@@ -42,6 +42,7 @@ function buildNavGroups({ features, featureNutrition }) {
       label: 'Επικοινωνία',
       links: [
         { to: '/messages', icon: MessageSquare, label: 'Μηνύματα' },
+        { to: '/bulk-message', icon: Send, label: 'Μαζική Αποστολή' },
         { to: '/community', icon: UsersRound, label: 'Κοινότητα' },
         { to: '/notifications', icon: Bell, label: 'Ειδοποιήσεις' },
       ],
@@ -291,6 +292,16 @@ export default function Layout({ children, title, variant, headerActions }) {
             </>
           )}
         </nav>
+
+        {isOwner && (
+          <div className="sidebar-promo">
+            <div className="sidebar-promo__title">Ψηφιακά Ερωτηματολόγια</div>
+            <div className="sidebar-promo__text">Στείλε φόρμες αξιολόγησης & παρακολούθησης στους πελάτες σου.</div>
+            <button type="button" className="sidebar-promo__btn" onClick={() => navigate('/questionnaires')}>
+              Σύντομα →
+            </button>
+          </div>
+        )}
       </aside>
 
       <main className="main">
@@ -314,11 +325,16 @@ export default function Layout({ children, title, variant, headerActions }) {
               )}
             </div>
           </div>
+
+          {/* Centered search */}
+          {isOwner && (
+            <div className="topbar-center">
+              <GlobalSearch />
+            </div>
+          )}
+
           <div className="topbar-right">
             {headerActions && <div style={{ display: 'flex', gap: 8 }}>{headerActions}</div>}
-
-            {/* Global search */}
-            {isOwner && <GlobalSearch />}
 
             {/* Notifications */}
             {(isOwner || isTrainer) && <NotificationBell />}
