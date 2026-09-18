@@ -199,7 +199,7 @@ function NutritionNav({ isOwner, unreadCount }) {
   );
 }
 
-export default function Layout({ children, title, variant }) {
+export default function Layout({ children, title, variant, headerActions }) {
   const { logout, business, isNutritionist, isTrainer, isOwner, features } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -301,6 +301,7 @@ export default function Layout({ children, title, variant }) {
             </div>
           </div>
           <div className="topbar-right">
+            {headerActions && <div style={{ display: 'flex', gap: 8 }}>{headerActions}</div>}
             {isTrainer && (
               <button
                 type="button"

@@ -217,7 +217,34 @@ export default function Dashboard() {
   const now = new Date();
 
   return (
-    <Layout title="Dashboard">
+    <Layout title="Dashboard" headerActions={
+      <>
+        <button
+          onClick={() => setBookingModalOpen(true)}
+          style={{
+            padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer',
+            background: '#76C043', color: '#fff', fontWeight: 600, fontSize: 13,
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+        >
+          Νέα Κράτηση
+        </button>
+        <button
+          onClick={() => { setEditingTrial(null); setTrialModalOpen(true); }}
+          style={{
+            padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer',
+            background: '#76C043', color: '#fff', fontWeight: 600, fontSize: 13,
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+        >
+          Νέο Δοκιμαστικό
+        </button>
+      </>
+    }>
       {loading && !stats ? (
         <div className="loading">Φόρτωση...</div>
       ) : (
@@ -248,39 +275,6 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Quick actions */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 20, marginTop: 4 }}>
-            <button
-              onClick={() => setBookingModalOpen(true)}
-              style={{
-                flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
-                background: '#76C043',
-                color: '#fff', fontWeight: 700, fontSize: 14,
-                letterSpacing: '0.1px',
-                boxShadow: '0 2px 8px rgba(118,192,67,0.28)',
-                transition: 'opacity 0.15s, box-shadow 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.opacity='0.88'; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity='1'; }}
-            >
-              Νέα Κράτηση
-            </button>
-            <button
-              onClick={() => { setEditingTrial(null); setTrialModalOpen(true); }}
-              style={{
-                flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
-                background: '#76C043',
-                color: '#fff', fontWeight: 700, fontSize: 14,
-                letterSpacing: '0.1px',
-                boxShadow: '0 2px 8px rgba(118,192,67,0.28)',
-                transition: 'opacity 0.15s, box-shadow 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.opacity='0.88'; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity='1'; }}
-            >
-              Νέο Δοκιμαστικό
-            </button>
-          </div>
 
           {/* Trials widget */}
           <div className="dash-trial-widget">
