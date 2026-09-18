@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { AnimatedCounter, WeekBarChart, DonutChart } from '../components/dashboard/DashboardCharts';
 import {
   Calendar, Users, UserPlus, Package, Clock, ChevronRight, Dumbbell, AlertCircle, MapPin, FlaskConical,
-  Pencil, Trash2, MessageSquarePlus, Check, X,
+  Pencil, Trash2, MessageSquarePlus, Check, X, Target,
 } from 'lucide-react';
 import { groupBookingsBySlot, slotKey } from '../utils/groupBookingsBySlot';
 import Avatar from '../components/ui/Avatar';
@@ -141,13 +141,15 @@ export default function Dashboard() {
   const [expiringMemberships, setExpiringMemberships] = useState([]);
   const [expiringModalOpen, setExpiringModalOpen] = useState(false);
   const [editingTrial, setEditingTrial] = useState(null);
-  const [showPast, setShowPast] = useState(false);
   const [noteTrialId, setNoteTrialId] = useState(null);
   const [noteText, setNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
 
-  function loadTrials(past = showPast) {
-    api.get(`/client-admin/trials${past ? '?past=1' : ''}`).then(r => setTrials(r.data || [])).catch(() => {});
+  function loadTrials() {
+    const today = new Date().toISOString().slice(0, 10);
+    api.get('/client-admin/trials', { params: { from: today } })
+      .then(r => setTrials((r.data || []).filter(t => new Date(t.starts_at) >= new Date())))
+      .catch(() => {});
   }
 
   async function deleteTrial(id) {
@@ -246,84 +248,91 @@ export default function Dashboard() {
 
           {/* Trials widget */}
           <div className="dash-trial-widget">
+            {/* Header */}
             <div className="dash-trial-widget__head">
-              <span><FlaskConical size={16} style={{ color: '#76C043', marginRight: 6 }} />Δοκιμαστικά{trials.length > 0 ? ` (${trials.length})` : ''}</span>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => { const next = !showPast; setShowPast(next); loadTrials(next); }}
-                  style={{ fontSize: 12 }}
-                >
-                  {showPast ? 'Εκκρεμή' : 'Προηγούμενα'}
-                </button>
-                <button className="btn btn-primary btn-sm" onClick={() => { setEditingTrial(null); setTrialModalOpen(true); }}>+ Νέο</button>
-              </div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                <FlaskConical size={16} style={{ color: '#76C043' }} />
+                Επερχόμενα Δοκιμαστικά
+                {trials.length > 0 && (
+                  <span style={{ background: '#F0FDF4', color: '#16A34A', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, border: '1px solid #BBF7D0' }}>
+                    {trials.length}
+                  </span>
+                )}
+              </span>
             </div>
+
+            {/* Big "Νέο" button */}
+            <button
+              onClick={() => { setEditingTrial(null); setTrialModalOpen(true); }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', padding: '11px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', color: '#15803D',
+                fontWeight: 700, fontSize: 14, marginBottom: 14,
+                boxShadow: '0 2px 8px rgba(22,163,74,0.15)',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 14px rgba(22,163,74,0.25)'}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(22,163,74,0.15)'}
+            >
+              <FlaskConical size={16} />
+              + Νέο Δοκιμαστικό
+            </button>
+
+            {/* List */}
             {trials.length === 0 ? (
-              <p className="dash-trial-widget__empty">{showPast ? 'Δεν υπάρχουν προηγούμενα δοκιμαστικά' : 'Δεν υπάρχουν επερχόμενα δοκιμαστικά'}</p>
+              <p className="dash-trial-widget__empty">Δεν υπάρχουν επερχόμενα δοκιμαστικά</p>
             ) : (
               <div className="dash-trial-list">
-                {trials.map(t => {
-                  const isPast = new Date(t.starts_at) < now;
-                  return (
-                    <div key={t.id} className="dash-trial-row" style={{ opacity: isPast ? 0.75 : 1 }}>
-                      <FlaskConical size={14} style={{ color: '#76C043', flexShrink: 0, marginTop: 2 }} />
-                      <div className="dash-trial-row__info" style={{ flex: 1 }}>
-                        <span className="dash-trial-row__name">{t.user_name || '— Χωρίς πελάτη —'}</span>
-                        <span className="dash-trial-row__meta">
-                          {new Date(t.starts_at).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })}
-                          {' · '}
-                          {new Date(t.starts_at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}
-                          {t.service_name ? ` · ${t.service_name}` : ''}
-                          {t.staff_name ? ` · ${t.staff_name}` : ''}
+                {trials.map(t => (
+                  <div key={t.id} className="dash-trial-row">
+                    <FlaskConical size={14} style={{ color: '#76C043', flexShrink: 0, marginTop: 2 }} />
+                    <div className="dash-trial-row__info" style={{ flex: 1 }}>
+                      <span className="dash-trial-row__name">{t.user_name || '— Χωρίς πελάτη —'}</span>
+                      <span className="dash-trial-row__meta">
+                        {new Date(t.starts_at).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })}
+                        {' · '}
+                        {new Date(t.starts_at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}
+                        {t.service_name ? ` · ${t.service_name}` : ''}
+                        {t.staff_name ? ` · ${t.staff_name}` : ''}
+                      </span>
+                      {t.notes && (
+                        <span style={{ fontSize: 12, color: '#475569', marginTop: 2, display: 'block', fontStyle: 'italic' }}>
+                          💬 {t.notes}
                         </span>
-                        {/* Note display */}
-                        {t.notes && noteTrialId !== t.id && (
-                          <span style={{ fontSize: 12, color: '#475569', marginTop: 2, display: 'block', fontStyle: 'italic' }}>
-                            💬 {t.notes}
-                          </span>
-                        )}
-                        {/* Note editor */}
-                        {noteTrialId === t.id && (
-                          <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
-                            <input
-                              className="form-input"
-                              style={{ flex: 1, fontSize: 13, padding: '5px 10px' }}
-                              placeholder="π.χ. Ήρθε, συζητήσαμε τιμές..."
-                              value={noteText}
-                              onChange={e => setNoteText(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') saveNote(t.id); if (e.key === 'Escape') { setNoteTrialId(null); setNoteText(''); } }}
-                              autoFocus
-                            />
-                            <button className="btn btn-primary btn-sm" onClick={() => saveNote(t.id)} disabled={savingNote}>
-                              <Check size={13} />
-                            </button>
-                            <button className="btn btn-secondary btn-sm" onClick={() => { setNoteTrialId(null); setNoteText(''); }}>
-                              <X size={13} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {/* Actions */}
-                      <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
-                        <button title="Σχόλιο" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
-                          onClick={() => { setNoteTrialId(t.id); setNoteText(t.notes || ''); }}>
-                          <MessageSquarePlus size={15} />
-                        </button>
-                        <button title="Επεξεργασία" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
-                          onClick={() => { setEditingTrial(t); setTrialModalOpen(true); }}>
-                          <Pencil size={14} />
-                        </button>
-                        <button title="Διαγραφή" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171', padding: 4 }}
-                          onClick={() => deleteTrial(t.id)}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      )}
                     </div>
-                  );
-                })}
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+                      <button title="Επεξεργασία" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
+                        onClick={() => { setEditingTrial(t); setTrialModalOpen(true); }}>
+                        <Pencil size={14} />
+                      </button>
+                      <button title="Διαγραφή" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171', padding: 4 }}
+                        onClick={() => deleteTrial(t.id)}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
+
+            {/* Link to full Trials page */}
+            <Link
+              to="/trials"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                marginTop: 14, padding: '9px 0', borderRadius: 10,
+                border: '1.5px solid var(--border, #e2e8f0)', color: '#64748b',
+                fontSize: 13, fontWeight: 600, textDecoration: 'none', background: 'transparent',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#76C043'; e.currentTarget.style.color = '#16A34A'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #e2e8f0)'; e.currentTarget.style.color = '#64748b'; }}
+            >
+              <Target size={14} />
+              Στατιστικά & Διαχείριση Δοκιμαστικών →
+            </Link>
           </div>
 
           <TrialBookingModal
