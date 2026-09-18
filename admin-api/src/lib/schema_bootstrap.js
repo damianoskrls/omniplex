@@ -152,6 +152,29 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_DUP_FIELDNAME') throw err;
   }
 
+  // ── Bulk campaigns table ─────────────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS bulk_campaigns (
+        id              VARCHAR(36)   NOT NULL PRIMARY KEY,
+        business_id     VARCHAR(36)   NOT NULL,
+        channel         ENUM('email','sms') NOT NULL,
+        subject         VARCHAR(255)  NULL,
+        body            TEXT          NOT NULL,
+        filter_type     VARCHAR(50)   NOT NULL DEFAULT 'all',
+        filter_value    VARCHAR(255)  NULL,
+        recipient_count INT           NOT NULL DEFAULT 0,
+        sent_count      INT           NOT NULL DEFAULT 0,
+        status          ENUM('draft','sending','done','failed') NOT NULL DEFAULT 'done',
+        created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_camp_biz (business_id)
+      )
+    `);
+    console.log('✓ Schema: bulk_campaigns table ready');
+  } catch (err) {
+    console.warn('bulk_campaigns table skipped:', err.message);
+  }
+
   // ── GDPR text column in business_configs ─────────────────────
   try {
     await db.query('ALTER TABLE business_configs ADD COLUMN gdpr_text MEDIUMTEXT NULL');
@@ -185,6 +208,70 @@ async function bootstrapSchema() {
   } catch (err) {
     console.warn('gdpr_consents table skipped:', err.message);
   }
+
+  // Questionnaire templates
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS questionnaire_templates (
+        id          VARCHAR(36)   NOT NULL PRIMARY KEY,
+        business_id VARCHAR(36)   NOT NULL,
+        title       VARCHAR(255)  NOT NULL,
+        description TEXT          NULL,
+        questions   JSON          NOT NULL,
+        created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_qt_biz (business_id)
+      )
+    `);
+    console.log('✓ Schema: questionnaire_templates ready');
+  } catch (err) { console.warn('questionnaire_templates skipped:', err.message); }
+
+  // Questionnaire responses
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS questionnaire_responses (
+        id          VARCHAR(36)   NOT NULL PRIMARY KEY,
+        template_id VARCHAR(36)   NOT NULL,
+        business_id VARCHAR(36)   NOT NULL,
+        user_id     VARCHAR(36)   NULL,
+        token       VARCHAR(128)  NOT NULL UNIQUE,
+        status      ENUM('pending','completed') NOT NULL DEFAULT 'pending',
+        answers     JSON          NULL,
+        completed_at DATETIME     NULL,
+        expires_at  DATETIME      NOT NULL,
+        created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_qr_biz (business_id),
+        INDEX idx_qr_token (token),
+        INDEX idx_qr_user (user_id)
+      )
+    `);
+    console.log('✓ Schema: questionnaire_responses ready');
+  } catch (err) { console.warn('questionnaire_responses skipped:', err.message); }
+
+  // Sent reminders (dedup log)
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS sent_reminders (
+        id          VARCHAR(36)   NOT NULL PRIMARY KEY,
+        business_id VARCHAR(36)   NOT NULL,
+        user_id     VARCHAR(36)   NOT NULL,
+        type        VARCHAR(50)   NOT NULL,
+        channel     VARCHAR(10)   NOT NULL DEFAULT 'sms',
+        ref_id      VARCHAR(36)   NULL,
+        status      VARCHAR(20)   NOT NULL DEFAULT 'sent',
+        sent_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sr_biz (business_id),
+        INDEX idx_sr_user (user_id),
+        INDEX idx_sr_type_ref (type, ref_id)
+      )
+    `);
+    console.log('✓ Schema: sent_reminders ready');
+  } catch (err) { console.warn('sent_reminders skipped:', err.message); }
+
+  // Add reminder_settings column to business_configs
+  try {
+    await db.query('ALTER TABLE business_configs ADD COLUMN reminder_settings JSON NULL');
+    console.log('✓ Schema: business_configs.reminder_settings added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('reminder_settings col skipped:', err.message); }
 
   try {
     await db.query(`

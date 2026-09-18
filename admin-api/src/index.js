@@ -23,8 +23,12 @@ const checkinRoutes         = require('./routes/checkin.routes');
 const aiRoutes              = require('./routes/ai.routes');
 const exportRoutes          = require('./routes/export.routes');
 const gdprRoutes            = require('./routes/gdpr.routes');
+const campaignsRoutes       = require('./routes/campaigns.routes');
+const questionnairesRoutes  = require('./routes/questionnaires.routes');
+const remindersRoutes       = require('./routes/reminders.routes');
 const { startNotificationWorker } = require('./lib/notification_worker');
 const { startMessageAttachmentWorker } = require('./lib/message_attachments');
+const { startReminderWorker } = require('./lib/reminder_worker');
 const { bootstrapSchema } = require('./lib/schema_bootstrap');
 
 const app  = express();
@@ -59,6 +63,9 @@ app.use('/api/checkin',         checkinRoutes);
 app.use('/api/ai',              aiRoutes);
 app.use('/api/export',          exportRoutes);
 app.use('/api/gdpr',            gdprRoutes);
+app.use('/api/campaigns',       campaignsRoutes);
+app.use('/api/questionnaires',  questionnairesRoutes);
+app.use('/api/reminders',       remindersRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -85,6 +92,7 @@ bootstrapSchema()
       console.log(` Health:     http://localhost:${PORT}/api/health\n`);
       startNotificationWorker();
       startMessageAttachmentWorker();
+      startReminderWorker();
     });
   })
   .catch((err) => {

@@ -48,6 +48,10 @@ import Trials from './pages/Trials';
 import Export from './pages/Export';
 import Gdpr from './pages/Gdpr';
 import GdprSign from './pages/GdprSign';
+import BulkMessage from './pages/BulkMessage';
+import Questionnaires from './pages/Questionnaires';
+import QuestionnaireSign from './pages/QuestionnaireSign';
+import Reminders from './pages/Reminders';
 
 function HomeRedirect() {
   const { isNutritionist, isTrainer } = useAuth();
@@ -113,7 +117,11 @@ export default function App() {
           <Route path="/trials" element={<PrivateRoute ownerOnly><Trials /></PrivateRoute>} />
           <Route path="/export" element={<PrivateRoute ownerOnly><Export /></PrivateRoute>} />
           <Route path="/gdpr" element={<PrivateRoute ownerOnly><Gdpr /></PrivateRoute>} />
+          <Route path="/bulk-message" element={<PrivateRoute ownerOnly><BulkMessage /></PrivateRoute>} />
           <Route path="/gdpr/:token" element={<GdprSign />} />
+          <Route path="/questionnaires" element={<PrivateRoute ownerOnly><Questionnaires /></PrivateRoute>} />
+          <Route path="/reminders" element={<PrivateRoute ownerOnly><Reminders /></PrivateRoute>} />
+          <Route path="/q/:token" element={<QuestionnaireSign />} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
       </BrowserRouter>
