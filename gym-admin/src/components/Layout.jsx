@@ -15,26 +15,25 @@ import useMessagesUnreadCount from '../hooks/useMessagesUnreadCount';
 function buildNavGroups({ features, featureNutrition }) {
   return [
     {
-      key: 'main',
-      label: 'Κύρια',
-      links: [
-        { to: '/', end: true, icon: LayoutDashboard, label: 'Dashboard' },
-        { to: '/reports', icon: BarChart2, label: 'Αναφορές' },
-        { to: '/analytics', icon: Activity, label: 'Αναλυτικά' },
-        { to: '/monthly-report', icon: TrendingUp, label: 'Αναφορά Αξίας' },
-        { to: '/reviews', icon: Star, label: 'Αξιολογήσεις' },
-        { to: '/trials', icon: Target, label: 'Δοκιμαστικά' },
-      ],
-    },
-    {
       key: 'clients',
       label: 'Πελάτες & Κρατήσεις',
       links: [
         { to: '/bookings', icon: Calendar, label: 'Κρατήσεις' },
         { to: '/clients', icon: Users, label: 'Πελάτες' },
-        { to: '/payments', icon: CreditCard, label: 'Πληρωμές' },
         { to: '/at-risk', icon: AlertTriangle, label: 'Πελάτες σε Κίνδυνο' },
         ...(features.programs ? [{ to: '/programs', icon: Dumbbell, label: 'Προγράμματα Άσκησης' }] : []),
+        ...(featureNutrition ? [{ to: '/nutrition/clients', icon: Apple, label: 'Διατροφολόγος' }] : []),
+      ],
+    },
+    {
+      key: 'reports',
+      label: 'Αναφορές',
+      links: [
+        { to: '/reports', icon: BarChart2, label: 'Αναφορές' },
+        { to: '/analytics', icon: Activity, label: 'Αναλυτικά' },
+        { to: '/monthly-report', icon: TrendingUp, label: 'Αναφορά Αξίας' },
+        { to: '/reviews', icon: Star, label: 'Αξιολογήσεις' },
+        { to: '/trials', icon: Target, label: 'Δοκιμαστικά' },
       ],
     },
     {
@@ -46,45 +45,37 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/notifications', icon: Bell, label: 'Ειδοποιήσεις' },
       ],
     },
-    ...(featureNutrition ? [{
-      key: 'nutrition',
-      label: 'Διατροφολόγος',
-      links: NUTRITION_LINKS.filter(l => l.to !== '/messages'),
-    }] : []),
-    {
-      key: 'setup',
-      label: 'Ρύθμιση',
-      links: [
-        { to: '/services', icon: Scissors, label: 'Υπηρεσίες' },
-        { to: '/plans', icon: Package, label: 'Πακέτα' },
-        { to: '/staff', icon: UserCog, label: 'Προσωπικό' },
-        { to: '/staff-leaves', icon: CalendarOff, label: 'Άδειες Προσωπικού' },
-        { to: '/rooms', icon: DoorOpen, label: 'Αίθουσες / Χώροι' },
-        { to: '/locations', icon: MapPin, label: 'Τοποθεσίες' },
-        { to: '/waitlist-config', icon: ListOrdered, label: 'Λίστα Αναμονής' },
-        ...(features.trainers ? [{ to: '/trainer-fees', icon: UserCog, label: 'Αμοιβές Συνεργατών' }] : []),
-        { to: '/expenses', icon: Receipt, label: 'Γενικά Έξοδα' },
-        { to: '/online-payments', icon: CreditCard, label: 'Online Πληρωμές' },
-      ],
-    },
     {
       key: 'marketplace',
       label: 'Marketplace',
       links: [
-        { to: '/marketplace', end: true, icon: Package, label: 'Προϊόντα' },
+        { to: '/marketplace', end: true, icon: ShoppingBag, label: 'Προϊόντα & Κατηγορίες' },
         { to: '/marketplace/orders', icon: ClipboardList, label: 'Παραγγελίες' },
-        { to: '/marketplace/categories', icon: Tag, label: 'Κατηγορίες' },
         { to: '/marketplace/shipping', icon: Truck, label: 'Τρόπος Αποστολής' },
         { to: '/marketplace/payment-methods', icon: CreditCard, label: 'Τρόπος Πληρωμής' },
       ],
     },
     {
-      key: 'other',
-      label: 'Άλλα',
+      key: 'management',
+      label: 'Διαχείριση',
       links: [
-        { to: '/kiosk', icon: QrCode, label: 'QR Check-in', external: true },
-        { to: '/entrance-scanner', icon: DoorOpen, label: 'Scanner Εισόδου', external: true },
-        { to: '/settings', icon: Settings, label: 'Ρυθμίσεις' },
+        { to: '/services', icon: Scissors, label: 'Υπηρεσίες & Πακέτα' },
+        { to: '/staff', icon: UserCog, label: 'Προσωπικό' },
+        { to: '/staff-leaves', icon: CalendarOff, label: 'Άδειες Προσωπικού' },
+        ...(features.trainers ? [{ to: '/trainer-fees', icon: Receipt, label: 'Αμοιβές Συνεργατών' }] : []),
+        { to: '/rooms', icon: DoorOpen, label: 'Χώροι & Αίθουσες' },
+        { to: '/locations', icon: MapPin, label: 'Τοποθεσίες' },
+        { to: '/waitlist-config', icon: ListOrdered, label: 'Λίστα Αναμονής' },
+        { to: '/expenses', icon: Receipt, label: 'Γενικά Έξοδα' },
+      ],
+    },
+    {
+      key: 'settings',
+      label: 'Ρυθμίσεις',
+      links: [
+        { to: '/settings', icon: Settings, label: 'Γενικές Ρυθμίσεις' },
+        { to: '/online-payments', icon: CreditCard, label: 'Online Πληρωμές' },
+        { to: '/kiosk', icon: QrCode, label: 'QR Check-in / Scanner', external: true },
       ],
     },
   ];
@@ -259,24 +250,32 @@ export default function Layout({ children, title, variant, headerActions }) {
           ) : isNutritionist ? (
             <NutritionNav isOwner={false} unreadCount={messagesUnread} />
           ) : (
-            ownerGroups.map((group, i) => (
-              <AccordionGroup
-                key={group.key}
-                groupKey={group.key}
-                label={group.label}
-                links={group.links}
-                unreadCount={messagesUnread}
-                defaultOpen={i === 0}
-              />
-            ))
+            <>
+              <NavLink to="/" end className="sidebar-dashboard-link">
+                <LayoutDashboard size={16} />
+                <span>Dashboard</span>
+              </NavLink>
+              {ownerGroups.map(group => (
+                <AccordionGroup
+                  key={group.key}
+                  groupKey={group.key}
+                  label={group.label}
+                  links={group.links}
+                  unreadCount={messagesUnread}
+                  defaultOpen={false}
+                />
+              ))}
+              <button
+                type="button"
+                className="sidebar-logout-link"
+                onClick={() => { logout(); navigate('/login'); }}
+              >
+                <LogOut size={16} />
+                <span>Αποσύνδεση</span>
+              </button>
+            </>
           )}
         </nav>
-
-        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)' }}>
-          <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={() => { logout(); navigate('/login'); }}>
-            <LogOut size={14} /> Αποσύνδεση
-          </button>
-        </div>
       </aside>
 
       <main className="main">

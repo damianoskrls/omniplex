@@ -226,6 +226,44 @@ input, select, textarea, button {
 .sidebar-accordion__chevron--open { transform: rotate(180deg); }
 .sidebar-accordion__items { display: flex; flex-direction: column; gap: 0; padding-bottom: 2px; }
 
+/* Dashboard standalone link */
+.sidebar-dashboard-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  margin: 4px 14px 2px;
+  border-radius: 10px;
+  font-size: 0.855rem;
+  font-weight: 600;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+  letter-spacing: -0.01em;
+}
+.sidebar-dashboard-link:hover { background: var(--surface-2); color: var(--text); }
+.sidebar-dashboard-link.active { background: var(--accent-dim); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(124,92,252,0.18); }
+
+/* Logout link in nav */
+.sidebar-logout-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  margin: 2px 14px 8px;
+  border-radius: 10px;
+  font-size: 0.855rem;
+  font-weight: 500;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: calc(100% - 28px);
+  transition: background 0.12s, color 0.12s;
+  letter-spacing: -0.01em;
+}
+.sidebar-logout-link:hover { background: var(--surface-2); color: var(--danger); }
+
 /* Sidebar groups (trainer/nutrition) */
 .sidebar-group { margin: 4px 8px 8px; }
 
