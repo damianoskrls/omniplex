@@ -3,11 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, Search,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
 import Avatar from './ui/Avatar';
+import GlobalSearch from './GlobalSearch';
 import { useEffect, useRef, useState } from 'react';
 import api from '../api/client';
 import useMessagesUnreadCount from '../hooks/useMessagesUnreadCount';
@@ -197,7 +198,6 @@ export default function Layout({ children, title, variant, headerActions }) {
   const [navOpen, setNavOpen] = useState(false);
   const [featureNutrition, setFeatureNutrition] = useState(false);
   const [trainerStaff, setTrainerStaff] = useState(null);
-  const [searchVal, setSearchVal] = useState('');
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarRef = useRef(null);
   const { unreadCount: messagesUnread } = useMessagesUnreadCount();
@@ -306,18 +306,7 @@ export default function Layout({ children, title, variant, headerActions }) {
             {headerActions && <div style={{ display: 'flex', gap: 8 }}>{headerActions}</div>}
 
             {/* Global search */}
-            <form
-              className="topbar-search"
-              onSubmit={e => { e.preventDefault(); if (searchVal.trim()) { navigate(`/clients?q=${encodeURIComponent(searchVal.trim())}`); setSearchVal(''); } }}
-            >
-              <Search size={15} className="topbar-search__icon" />
-              <input
-                className="topbar-search__input"
-                placeholder="Αναζήτηση"
-                value={searchVal}
-                onChange={e => setSearchVal(e.target.value)}
-              />
-            </form>
+            {isOwner && <GlobalSearch />}
 
             {/* Notifications */}
             {(isOwner || isTrainer) && <NotificationBell />}

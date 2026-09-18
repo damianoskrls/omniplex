@@ -572,6 +572,33 @@ router.get('/reports', requireClientAdmin, async (req, res) => {
 });
 
 // ============================================================
+// GET /api/client-admin/search?q= — Quick global search
+// ============================================================
+router.get('/search', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json([]);
+  const like = `%${q}%`;
+  try {
+    const [rows] = await db.query(`
+      SELECT u.id, u.full_name, u.phone, u.email, u.account_status,
+             COUNT(DISTINCT m.id) AS active_packages
+      FROM users u
+      LEFT JOIN user_memberships m ON m.user_id = u.id AND m.business_id = u.business_id
+                                   AND m.membership_status IN ('active','trial')
+      WHERE u.business_id = ? AND u.deleted_at IS NULL
+        AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)
+      GROUP BY u.id
+      ORDER BY u.full_name
+      LIMIT 8
+    `, [bizId, like, like, like]);
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
 // GET /api/client-admin/clients — All clients with credits
 // ============================================================
 router.get('/clients', requireClientAdmin, async (req, res) => {
