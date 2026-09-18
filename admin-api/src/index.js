@@ -21,6 +21,7 @@ const paymentsOnlineRoutes  = require('./routes/payments_online.routes');
 const marketplaceRoutes     = require('./routes/marketplace.routes');
 const checkinRoutes         = require('./routes/checkin.routes');
 const aiRoutes              = require('./routes/ai.routes');
+const exportRoutes          = require('./routes/export.routes');
 const { startNotificationWorker } = require('./lib/notification_worker');
 const { startMessageAttachmentWorker } = require('./lib/message_attachments');
 const { bootstrapSchema } = require('./lib/schema_bootstrap');
@@ -55,6 +56,7 @@ app.use('/api/payments-online', paymentsOnlineRoutes);
 app.use('/api/marketplace',     marketplaceRoutes);
 app.use('/api/checkin',         checkinRoutes);
 app.use('/api/ai',              aiRoutes);
+app.use('/api/export',          exportRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -45,6 +45,7 @@ import Reviews from './pages/Reviews';
 import Analytics from './pages/Analytics';
 import StaffLeaves from './pages/StaffLeaves';
 import Trials from './pages/Trials';
+import Export from './pages/Export';
 
 function HomeRedirect() {
   const { isNutritionist, isTrainer } = useAuth();
@@ -108,6 +109,7 @@ export default function App() {
           <Route path="/analytics" element={<PrivateRoute ownerOnly><Analytics /></PrivateRoute>} />
           <Route path="/staff-leaves" element={<PrivateRoute ownerOnly><StaffLeaves /></PrivateRoute>} />
           <Route path="/trials" element={<PrivateRoute ownerOnly><Trials /></PrivateRoute>} />
+          <Route path="/export" element={<PrivateRoute ownerOnly><Export /></PrivateRoute>} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
       </BrowserRouter>

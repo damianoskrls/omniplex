@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
@@ -34,6 +34,7 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/monthly-report', icon: TrendingUp, label: 'Αναφορά Αξίας' },
         { to: '/reviews', icon: Star, label: 'Αξιολογήσεις' },
         { to: '/trials', icon: Target, label: 'Δοκιμαστικά' },
+        { to: '/export', icon: FileDown, label: 'Εξαγωγή Excel' },
       ],
     },
     {
