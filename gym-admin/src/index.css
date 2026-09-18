@@ -3941,3 +3941,126 @@ select option { background: var(--surface-2); color: var(--text); }
   color: var(--text-3);
   margin-left: 2px;
 }
+
+/* ── Visit Timeline (Nutrition) ──────────────────────────────────────────── */
+.visit-timeline { margin-top: 8px; }
+
+.visit-timeline__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.visit-timeline__track {
+  position: relative;
+  padding-left: 28px;
+}
+
+.visit-timeline__line {
+  position: absolute;
+  left: 7px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.visit-item {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.visit-item__dot {
+  position: absolute;
+  left: -23px;
+  top: 16px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1.5px var(--border);
+  z-index: 1;
+}
+.visit-item__dot--athlete { background: #22c55e; }
+.visit-item__dot--staff   { background: var(--accent); }
+
+.visit-item__card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  transition: border-color 0.15s;
+}
+.visit-item__card:hover { border-color: var(--border-2); }
+
+.visit-item__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.visit-item__date {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+
+.visit-item__who {
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+.visit-item__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.visit-metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  text-align: center;
+  min-width: 64px;
+}
+
+.visit-metric__label {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.visit-metric__value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.visit-metric__value--hi {
+  color: var(--accent-active-text, var(--accent));
+  font-size: 0.95rem;
+}
+
+.visit-item__notes {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.visit-item__source {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  margin-top: 4px;
+}

@@ -119,40 +119,45 @@ export function VisitTimeline({ visits }) {
   if (!visits?.length) return null;
 
   return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ fontWeight: 600, marginBottom: 10 }}>Ιστορικό επισκέψεων / μετρήσεων</div>
-      <div style={{ position: 'relative', paddingLeft: 20 }}>
-        <div style={{ position: 'absolute', left: 7, top: 4, bottom: 4, width: 2, background: '#e2e8f0' }} />
+    <div className="visit-timeline">
+      <div className="visit-timeline__title">Ιστορικό επισκέψεων &amp; μετρήσεων</div>
+      <div className="visit-timeline__track">
+        <div className="visit-timeline__line" />
         {visits.map((v, i) => {
           const isAthlete = v.recorded_by === 'athlete';
+          const metrics = [
+            v.weight_kg      != null && { label: 'Βάρος',       value: `${v.weight_kg} kg`,       hi: true },
+            v.body_fat_pct   != null && { label: 'Λίπος',       value: `${v.body_fat_pct}%` },
+            v.muscle_mass_kg != null && { label: 'Μυϊκή μάζα', value: `${v.muscle_mass_kg} kg` },
+            v.fat_mass_kg    != null && { label: 'Λιπώδης',     value: `${v.fat_mass_kg} kg` },
+            v.bmi            != null && { label: 'BMI',          value: v.bmi },
+            v.visceral_fat_level != null && { label: 'Σπλαχνικό', value: `Επίπεδο ${v.visceral_fat_level}` },
+          ].filter(Boolean);
+
           return (
-            <div key={v.id || i} style={{ position: 'relative', marginBottom: 14, paddingLeft: 12 }}>
-              <div style={{
-                position: 'absolute',
-                left: -17,
-                top: 6,
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                background: isAthlete ? '#22c55e' : '#76C043',
-                border: '2px solid #fff',
-                boxShadow: '0 0 0 1px #e2e8f0',
-              }} />
-              <div style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 12px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <div key={v.id || i} className="visit-item">
+              <div className={`visit-item__dot ${isAthlete ? 'visit-item__dot--athlete' : 'visit-item__dot--staff'}`} />
+              <div className="visit-item__card">
+                <div className="visit-item__head">
                   <div>
-                    <strong>{v.measured_when || v.date || v.measured_on}</strong>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                      {isAthlete ? 'Καταγραφή ασκουμένου' : 'Μέτρηση διατροφολόγου (επίσκεψη)'}
+                    <div className="visit-item__date">{v.measured_when || v.date || v.measured_on}</div>
+                    <div className="visit-item__who">
+                      {isAthlete ? '📱 Καταγραφή ασκουμένου' : '👤 Μέτρηση διατροφολόγου'}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', fontSize: '0.85rem' }}>
-                    {v.weight_kg != null && <div><strong>{v.weight_kg} kg</strong></div>}
-                    {v.body_fat_pct != null && <div>{v.body_fat_pct}% λίπος</div>}
-                    {v.muscle_mass_kg != null && <div>{v.muscle_mass_kg} kg μύες</div>}
-                  </div>
+                  {metrics.length > 0 && (
+                    <div className="visit-item__metrics">
+                      {metrics.map((m) => (
+                        <div key={m.label} className="visit-metric">
+                          <div className="visit-metric__label">{m.label}</div>
+                          <div className={`visit-metric__value ${m.hi ? 'visit-metric__value--hi' : ''}`}>{m.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {v.notes && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 6 }}>{v.notes}</div>}
+                {v.notes && <div className="visit-item__notes">{v.notes}</div>}
+                {v.source_label && <div className="visit-item__source">{v.source_label}</div>}
               </div>
             </div>
           );
