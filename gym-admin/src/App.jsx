@@ -46,6 +46,8 @@ import Analytics from './pages/Analytics';
 import StaffLeaves from './pages/StaffLeaves';
 import Trials from './pages/Trials';
 import Export from './pages/Export';
+import Gdpr from './pages/Gdpr';
+import GdprSign from './pages/GdprSign';
 
 function HomeRedirect() {
   const { isNutritionist, isTrainer } = useAuth();
@@ -110,6 +112,8 @@ export default function App() {
           <Route path="/staff-leaves" element={<PrivateRoute ownerOnly><StaffLeaves /></PrivateRoute>} />
           <Route path="/trials" element={<PrivateRoute ownerOnly><Trials /></PrivateRoute>} />
           <Route path="/export" element={<PrivateRoute ownerOnly><Export /></PrivateRoute>} />
+          <Route path="/gdpr" element={<PrivateRoute ownerOnly><Gdpr /></PrivateRoute>} />
+          <Route path="/gdpr/:token" element={<GdprSign />} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
       </BrowserRouter>

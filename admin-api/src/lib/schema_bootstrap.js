@@ -152,6 +152,40 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_DUP_FIELDNAME') throw err;
   }
 
+  // ── GDPR text column in business_configs ─────────────────────
+  try {
+    await db.query('ALTER TABLE business_configs ADD COLUMN gdpr_text MEDIUMTEXT NULL');
+    console.log('✓ Schema: προστέθηκε business_configs.gdpr_text');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+  }
+
+  // ── GDPR Consents table ──────────────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS gdpr_consents (
+        id              VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id     VARCHAR(36)  NOT NULL,
+        user_id         VARCHAR(36)  NULL,
+        full_name       VARCHAR(200) NULL,
+        email           VARCHAR(200) NULL,
+        phone           VARCHAR(50)  NULL,
+        token           VARCHAR(64)  NOT NULL UNIQUE,
+        signed_at       DATETIME     NULL,
+        signature_data  MEDIUMTEXT   NULL,
+        ip_address      VARCHAR(45)  NULL,
+        expires_at      DATETIME     NOT NULL,
+        created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_gdpr_biz (business_id),
+        INDEX idx_gdpr_token (token),
+        INDEX idx_gdpr_user (user_id)
+      )
+    `);
+    console.log('✓ Schema: gdpr_consents table ready');
+  } catch (err) {
+    console.warn('gdpr_consents table skipped:', err.message);
+  }
+
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS business_expenses (

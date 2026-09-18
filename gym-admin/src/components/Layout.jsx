@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
@@ -21,7 +21,7 @@ function buildNavGroups({ features, featureNutrition }) {
       links: [
         { to: '/bookings', icon: Calendar, label: 'Κρατήσεις' },
         { to: '/clients', icon: Users, label: 'Πελάτες' },
-        { to: '/at-risk', icon: AlertTriangle, label: 'Πελάτες σε Κίνδυνο' },
+        { to: '/trials', icon: Target, label: 'Δοκιμαστικά' },
         ...(features.programs ? [{ to: '/programs', icon: Dumbbell, label: 'Προγράμματα Άσκησης' }] : []),
       ],
     },
@@ -33,7 +33,7 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/analytics', icon: Activity, label: 'Αναλυτικά' },
         { to: '/monthly-report', icon: TrendingUp, label: 'Αναφορά Αξίας' },
         { to: '/reviews', icon: Star, label: 'Αξιολογήσεις' },
-        { to: '/trials', icon: Target, label: 'Δοκιμαστικά' },
+        { to: '/at-risk', icon: AlertTriangle, label: 'Πελάτες σε Κίνδυνο' },
         { to: '/export', icon: FileDown, label: 'Εξαγωγή Excel' },
       ],
     },
@@ -87,6 +87,7 @@ function buildNavGroups({ features, featureNutrition }) {
       links: [
         { to: '/settings', icon: Settings, label: 'Γενικές Ρυθμίσεις' },
         { to: '/online-payments', icon: CreditCard, label: 'Online Πληρωμές' },
+        { to: '/gdpr', icon: ShieldCheck, label: 'GDPR — Συναίνεση' },
         { to: '/kiosk', icon: QrCode, label: 'QR Check-in / Scanner', external: true },
       ],
     },
