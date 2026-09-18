@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/media_url.dart';
 import '../widgets/ui_kit.dart';
@@ -40,6 +41,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     _load();
+    NotificationService.instance.clearBadge();
   }
 
   Future<void> _load() async {
@@ -80,6 +82,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         for (final n in _items) n['is_read'] = 1;
       });
       _notifyUnread();
+      NotificationService.instance.clearBadge();
     } finally {
       if (mounted) setState(() => _markingAll = false);
     }

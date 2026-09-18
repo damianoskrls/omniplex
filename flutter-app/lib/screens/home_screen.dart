@@ -157,7 +157,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _index = _clampTab(widget.initialTab);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshUnread();
-      _checkServerNotifications();
       _loadNutritionAccess();
     });
     _unreadTimer = Timer.periodic(const Duration(seconds: 45), (_) => _refreshUnread());
@@ -167,6 +166,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _loadNutritionAccess();
+      _refreshUnread();
+      NotificationService.instance.clearBadge();
     }
   }
 
@@ -215,38 +216,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final msgCount = await context.read<AuthService>().api.fetchMessageUnreadCount();
       if (mounted) setState(() => _messageUnreadCount = msgCount);
-    } on ApiException catch (_) {}
-  }
-
-  Future<void> _checkServerNotifications() async {
-    final auth = context.read<AuthService>();
-    if (!auth.isLoggedIn) return;
-    try {
-      final result = await auth.api.fetchNotifications();
-      for (final n in result.notifications) {
-        if (n['is_read'] == 1) continue;
-        final type = n['type'] as String? ?? '';
-        if (type == 'workout_complete') {
-          final bookingId = n['booking_id'] as String?;
-          if (bookingId == null) continue;
-          await NotificationService.instance.showInstant(
-            title: n['title'] as String? ?? 'Προπόνηση',
-            body: n['body'] as String? ?? '',
-            payload: 'complete:$bookingId',
-          );
-          break;
-        }
-        if (type == 'checkin_reminder') {
-          final bookingId = n['booking_id'] as String?;
-          if (bookingId == null) continue;
-          await NotificationService.instance.showInstant(
-            title: n['title'] as String? ?? 'Check-in',
-            body: n['body'] as String? ?? '',
-            payload: 'complete:$bookingId',
-          );
-          break;
-        }
-      }
     } on ApiException catch (_) {}
   }
 

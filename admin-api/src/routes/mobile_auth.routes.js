@@ -423,10 +423,25 @@ router.get('/notifications', async (req, res) => {
 
     const cutoff = new Date(Date.now() - STALE_HOURS * 3600 * 1000);
 
+    // Auto-mark-read stale time-sensitive notifications so unread_count stays accurate.
+    const staleIds = rows
+      .filter(r => !r.is_read && STALE_TYPES.has(r.type))
+      .filter(r => {
+        const ref = r.booking_starts_at ? new Date(r.booking_starts_at) : new Date(r.created_at);
+        return ref < cutoff;
+      })
+      .map(r => r.id);
+    if (staleIds.length) {
+      await db.query(
+        `UPDATE user_notifications SET is_read = 1 WHERE id IN (${staleIds.map(() => '?').join(',')})`,
+        staleIds
+      ).catch(() => {});
+    }
+
     const notifications = rows
       .filter((row) => {
-        // Drop unread time-sensitive notifications about past bookings.
-        if (!row.is_read && STALE_TYPES.has(row.type)) {
+        // Drop stale time-sensitive from the response (already marked read above).
+        if (STALE_TYPES.has(row.type)) {
           const ref = row.booking_starts_at ? new Date(row.booking_starts_at) : new Date(row.created_at);
           if (ref < cutoff) return false;
         }

@@ -148,9 +148,32 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(badgeNumber: 0),
       ),
       payload: payload,
     );
+  }
+
+  /// Resets the iOS app icon badge count to zero.
+  Future<void> clearBadge() async {
+    if (!_ready) return;
+    try {
+      // Show a silent invisible notification with badge=0 then immediately cancel it.
+      const id = 99999;
+      await _plugin.show(
+        id,
+        '',
+        '',
+        const NotificationDetails(
+          iOS: DarwinNotificationDetails(
+            presentAlert: false,
+            presentSound: false,
+            presentBadge: true,
+            badgeNumber: 0,
+          ),
+        ),
+      );
+      await _plugin.cancel(id);
+    } catch (_) {}
   }
 }
