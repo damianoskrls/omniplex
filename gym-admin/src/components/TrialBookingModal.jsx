@@ -22,6 +22,7 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
   const [clients, setClients] = useState([]);
   const [services, setServices] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [takenServiceIds, setTakenServiceIds] = useState([]);
   const [query, setQuery] = useState('');
   const [showList, setShowList] = useState(false);
   const [newClientMode, setNewClientMode] = useState(false);
@@ -64,9 +65,14 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
       });
     }
     setQuery(''); setNewClientMode(false); setNewClient({ full_name: '', phone: '' }); setShowList(false);
+    setTakenServiceIds([]);
     api.get('/client-admin/clients').then(r => setClients(r.data || [])).catch(() => {});
     api.get('/client-admin/services').then(r => setServices(r.data || [])).catch(() => {});
     api.get('/client-admin/staff').then(r => setStaff(r.data || [])).catch(() => {});
+    const initUserId = isEdit ? editTrial.user_id : presetClient?.id;
+    if (initUserId) {
+      api.get(`/client-admin/clients/${initUserId}/active-service-ids`).then(r => setTakenServiceIds(r.data || [])).catch(() => {});
+    }
   }, [open, editTrial]);
 
   if (!open) return null;
@@ -196,7 +202,11 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
                           <div className="cb-client-list" style={{ maxHeight: 200, marginTop: 4, borderRadius: 10, border: '1px solid #e2e8f0', boxShadow: '0 4px 16px rgba(0,0,0,.08)' }}>
                             {filtered.map(c => (
                               <button key={c.id} type="button" className="cb-client-item"
-                                onMouseDown={() => { set('user_id', c.id); set('user_name', c.full_name); set('user_phone', c.phone || ''); setQuery(''); setShowList(false); }}>
+                                onMouseDown={() => {
+                                  set('user_id', c.id); set('user_name', c.full_name); set('user_phone', c.phone || '');
+                                  setQuery(''); setShowList(false);
+                                  api.get(`/client-admin/clients/${c.id}/active-service-ids`).then(r => setTakenServiceIds(r.data || [])).catch(() => {});
+                                }}>
                                 <Avatar name={c.full_name} size={36} />
                                 <div className="cb-client-item-text">
                                   <div className="cb-client-item-name">{c.full_name}</div>
@@ -236,22 +246,40 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
             </div>
 
             {/* Service */}
-            <div>
-              <div className="cb-section-label" style={{ marginBottom: 10 }}>
-                Υπηρεσία <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#94a3b8' }}>(προαιρετικό)</span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {[{ id: '', name: 'Χωρίς' }, ...services].map(s => (
-                  <button key={s.id} type="button"
-                    onClick={() => set('service_id', s.id)}
-                    className={form.service_id === s.id ? 'badge badge-green' : 'badge badge-gray'}
-                    style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '5px 12px', border: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {form.service_id === s.id && <Check size={11} />}
-                    {s.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {(() => {
+              const trialServices = services.filter(s => s.category !== 'nutrition_consultation');
+              const available = trialServices.filter(s => !takenServiceIds.includes(s.id));
+              const taken = trialServices.filter(s => takenServiceIds.includes(s.id));
+              return (
+                <div>
+                  <div className="cb-section-label" style={{ marginBottom: 10 }}>
+                    Υπηρεσία <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#94a3b8' }}>(προαιρετικό)</span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {[{ id: '', name: 'Χωρίς' }, ...available].map(s => (
+                      <button key={s.id} type="button"
+                        onClick={() => set('service_id', s.id)}
+                        className={form.service_id === s.id ? 'badge badge-green' : 'badge badge-gray'}
+                        style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '5px 12px', border: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {form.service_id === s.id && <Check size={11} />}
+                        {s.name}
+                      </button>
+                    ))}
+                    {taken.map(s => (
+                      <span key={s.id} title="Ο πελάτης έχει ήδη ενεργό πακέτο"
+                        style={{ fontSize: '0.8rem', padding: '5px 12px', borderRadius: 99, background: '#f1f5f9', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'line-through' }}>
+                        {s.name}
+                      </span>
+                    ))}
+                  </div>
+                  {taken.length > 0 && (
+                    <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 6 }}>
+                      Διαγραμμένες = ο πελάτης έχει ήδη ενεργό πακέτο
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Staff */}
             <div>

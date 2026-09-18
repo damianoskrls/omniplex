@@ -163,6 +163,16 @@ function TrialModal({ trial, staffList, services, clients, onClose, onSave, isRe
     new_client: null,
   });
   const [saving, setSaving] = useState(false);
+  const [takenServiceIds, setTakenServiceIds] = useState([]);
+
+  useEffect(() => {
+    const uid = form.user_id;
+    if (uid && uid !== '__new__') {
+      api.get(`/client-admin/clients/${uid}/active-service-ids`).then(r => setTakenServiceIds(r.data || [])).catch(() => {});
+    } else {
+      setTakenServiceIds([]);
+    }
+  }, [form.user_id]);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleClientChange = (id, name, phone, newClientData) => {
@@ -225,7 +235,13 @@ function TrialModal({ trial, staffList, services, clients, onClose, onSave, isRe
         <div style={{ marginTop: 14 }}><label style={lbl}>Υπηρεσία</label>
           <select value={form.service_id} onChange={e => set('service_id', e.target.value)} style={inp}>
             <option value="">— Χωρίς υπηρεσία —</option>
-            {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {services
+              .filter(s => s.category !== 'nutrition_consultation')
+              .map(s => (
+                <option key={s.id} value={s.id} disabled={takenServiceIds.includes(s.id)}>
+                  {s.name}{takenServiceIds.includes(s.id) ? ' (ήδη μέλος)' : ''}
+                </option>
+              ))}
           </select>
         </div>
         <div style={{ marginTop: 14 }}><label style={lbl}>Εκπαιδευτής</label>

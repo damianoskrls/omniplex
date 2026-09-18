@@ -1033,6 +1033,22 @@ async function createNutritionMembership(conn, {
 }
 
 // ============================================================
+// GET /api/client-admin/clients/:userId/active-service-ids — service_ids with active memberships
+router.get('/clients/:userId/active-service-ids', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  try {
+    const [rows] = await db.query(`
+      SELECT DISTINCT service_id FROM user_memberships
+      WHERE user_id = ? AND business_id = ?
+        AND membership_status IN ('active', 'trial')
+        AND service_id IS NOT NULL
+    `, [req.params.userId, bizId]);
+    return res.json(rows.map(r => r.service_id));
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/client-admin/clients/:userId/credits
 // ============================================================
 router.get('/clients/:userId/credits', requireClientAdmin, async (req, res) => {
