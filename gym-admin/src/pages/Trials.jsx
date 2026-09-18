@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
-import { Target, UserCheck, Check, ChevronDown, TrendingUp, Users, Percent } from 'lucide-react';
+import { Target, UserCheck, Check, TrendingUp } from 'lucide-react';
 
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -37,27 +37,6 @@ function StatCard({ label, value, sub, icon: Icon, gradient }) {
   );
 }
 
-function StaffDropdown({ value, options, onChange }) {
-  return (
-    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-      <select
-        value={value || ''}
-        onChange={e => onChange(e.target.value)}
-        style={{
-          appearance: 'none', background: value ? 'rgba(124,58,237,0.06)' : 'var(--surface-2)',
-          border: `1.5px solid ${value ? '#7C3AED' : 'var(--border)'}`,
-          borderRadius: 9, padding: '6px 28px 6px 10px',
-          fontSize: 12.5, fontWeight: 500, color: value ? '#7C3AED' : 'var(--text-3)',
-          cursor: 'pointer', outline: 'none', minWidth: 130,
-        }}
-      >
-        <option value="">— Κανείς —</option>
-        {options.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
-      </select>
-      <ChevronDown size={12} style={{ position: 'absolute', right: 8, pointerEvents: 'none', color: value ? '#7C3AED' : 'var(--text-3)' }} />
-    </div>
-  );
-}
 
 const PERIODS = [
   { label: 'Αυτόν τον μήνα', value: 'this_month' },
@@ -84,7 +63,6 @@ function periodDates(period) {
 
 export default function Trials() {
   const [rows, setRows] = useState([]);
-  const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPast, setShowPast] = useState(true);
   const [period, setPeriod] = useState('this_month');
@@ -103,16 +81,7 @@ export default function Trials() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    api.get('/client-admin/staff').then(r => setStaffList(r.data || [])).catch(() => {});
-  }, []);
-
   useEffect(() => { reload(); }, [showPast, period]);
-
-  const setRefer = async (id, staffId) => {
-    await api.patch(`/client-admin/trials/${id}/refer`, { referred_by_staff_id: staffId || null });
-    reload();
-  };
 
   const toggleMember = async (id, became) => {
     await api.patch(`/client-admin/trials/${id}/refer`, { trial_became_member: became ? 1 : 0 });
@@ -122,9 +91,8 @@ export default function Trials() {
   const totals = rows.reduce((a, r) => {
     a.total++;
     if (r.trial_became_member) a.converted++;
-    if (r.referred_by_staff_id) a.referred++;
     return a;
-  }, { total: 0, converted: 0, referred: 0 });
+  }, { total: 0, converted: 0 });
 
   const convRate = totals.total > 0 ? Math.round((totals.converted / totals.total) * 100) : 0;
 
@@ -176,7 +144,6 @@ export default function Trials() {
         <StatCard label="Σύνολο δοκιμαστικών" value={totals.total} icon={Target} gradient="linear-gradient(135deg,#FCD34D,#F59E0B)" />
         <StatCard label="Έγιναν μέλη" value={totals.converted} icon={UserCheck} gradient="linear-gradient(135deg,#34D399,#10B981)" />
         <StatCard label="Ποσοστό μετατροπής" value={`${convRate}%`} icon={TrendingUp} gradient="linear-gradient(135deg,#60A5FA,#2563EB)" sub={`${totals.converted} από ${totals.total}`} />
-        <StatCard label="Μέσω γυμναστή" value={totals.referred} icon={Users} gradient="linear-gradient(135deg,#A78BFA,#7C3AED)" />
       </div>
 
       {/* Table */}
@@ -198,18 +165,8 @@ export default function Trials() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                  {[
-                    { label: 'Ημερομηνία', tip: null },
-                    { label: 'Άτομο', tip: null },
-                    { label: 'Υπηρεσία', tip: null },
-                    { label: 'Εκπαιδευτής', tip: 'Ποιος έκανε το δοκιμαστικό' },
-                    { label: 'Έφερε ο', tip: 'Γυμναστής που παρέπεμψε τον πελάτη' },
-                    { label: 'Έγινε μέλος', tip: null },
-                  ].map(({ label, tip }) => (
-                    <th key={label} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-3)', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap' }}>
-                      {label}
-                      {tip && <span title={tip} style={{ marginLeft: 4, fontSize: 10, background: 'var(--border)', borderRadius: '50%', padding: '1px 5px', cursor: 'help', textTransform: 'none', letterSpacing: 0, color: 'var(--text-3)' }}>?</span>}
-                    </th>
+                  {['Ημερομηνία', 'Άτομο', 'Υπηρεσία', 'Εκπαιδευτής', 'Έγινε μέλος'].map(h => (
+                    <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--text-3)', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -243,17 +200,6 @@ export default function Trials() {
                           <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-2)' }}>{r.staff_name}</span>
                         </div>
                       ) : <span style={{ color: 'var(--border-2)', fontSize: 18 }}>—</span>}
-                    </td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <StaffDropdown value={r.referred_by_staff_id} options={staffList} onChange={staffId => setRefer(r.id, staffId)} />
-                        {r.referred_by_staff_name && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#7C3AED', fontWeight: 500 }}>
-                            <Avatar name={r.referred_by_staff_name} avatar={r.referred_by_staff_avatar} size={16} color="#7C3AED" />
-                            {r.referred_by_staff_name}
-                          </div>
-                        )}
-                      </div>
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <button
