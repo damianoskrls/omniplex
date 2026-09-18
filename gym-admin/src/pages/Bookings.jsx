@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import BookingsGroupedView from '../components/BookingsGroupedView';
 import CreateBookingModal from '../components/CreateBookingModal';
+import TimeInput from '../components/ui/TimeInput';
 import TrialBookingModal from '../components/TrialBookingModal';
 import DropInBookingModal from '../components/DropInBookingModal';
 import api from '../api/client';
@@ -1047,13 +1048,11 @@ export default function Bookings() {
               <div className="form-grid-2" style={{ marginBottom: 10 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Ώρα από (προαιρετικό)</label>
-                  <input type="time" className="form-input" value={closureForm.time_from}
-                    onChange={e => setClosureForm({ ...closureForm, time_from: e.target.value })} />
+                  <TimeInput value={closureForm.time_from} onChange={val => setClosureForm({ ...closureForm, time_from: val })} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Ώρα έως</label>
-                  <input type="time" className="form-input" value={closureForm.time_to}
-                    onChange={e => setClosureForm({ ...closureForm, time_to: e.target.value })} />
+                  <TimeInput value={closureForm.time_to} onChange={val => setClosureForm({ ...closureForm, time_to: val })} />
                 </div>
               </div>
               <div className="form-group" style={{ marginBottom: 10 }}>

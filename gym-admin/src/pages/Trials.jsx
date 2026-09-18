@@ -6,6 +6,7 @@ import {
   ChevronDown, X, Save, Plus, ChevronLeft, ChevronRight, BarChart2,
   Calendar, Clock, Users, Award,
 } from 'lucide-react';
+import TimeInput from '../components/ui/TimeInput';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function toDateKey(d) { return d.toISOString().slice(0, 10); }
@@ -216,7 +217,7 @@ function TrialModal({ trial, staffList, services, clients, onClose, onSave, isRe
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <div><label style={lbl}>Ημερομηνία</label><input type="date" value={form.trial_date} onChange={e => set('trial_date', e.target.value)} style={inp} /></div>
-          <div><label style={lbl}>Ώρα</label><input type="time" value={form.trial_time} onChange={e => set('trial_time', e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>Ώρα</label><TimeInput value={form.trial_time} onChange={val => set('trial_time', val)} /></div>
         </div>
 
         {!isRepeat && (

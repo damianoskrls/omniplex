@@ -3,12 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, Search,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
 import Avatar from './ui/Avatar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../api/client';
 import useMessagesUnreadCount from '../hooks/useMessagesUnreadCount';
 
@@ -197,7 +197,18 @@ export default function Layout({ children, title, variant, headerActions }) {
   const [navOpen, setNavOpen] = useState(false);
   const [featureNutrition, setFeatureNutrition] = useState(false);
   const [trainerStaff, setTrainerStaff] = useState(null);
+  const [searchVal, setSearchVal] = useState('');
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const avatarRef = useRef(null);
   const { unreadCount: messagesUnread } = useMessagesUnreadCount();
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   useEffect(() => { setNavOpen(false); }, [location.pathname]);
 
@@ -265,14 +276,6 @@ export default function Layout({ children, title, variant, headerActions }) {
                   defaultOpen={false}
                 />
               ))}
-              <button
-                type="button"
-                className="sidebar-logout-link"
-                onClick={() => { logout(); navigate('/login'); }}
-              >
-                <LogOut size={16} />
-                <span>Αποσύνδεση</span>
-              </button>
             </>
           )}
         </nav>
@@ -301,23 +304,67 @@ export default function Layout({ children, title, variant, headerActions }) {
           </div>
           <div className="topbar-right">
             {headerActions && <div style={{ display: 'flex', gap: 8 }}>{headerActions}</div>}
-            {isTrainer && (
+
+            {/* Global search */}
+            <form
+              className="topbar-search"
+              onSubmit={e => { e.preventDefault(); if (searchVal.trim()) { navigate(`/clients?q=${encodeURIComponent(searchVal.trim())}`); setSearchVal(''); } }}
+            >
+              <Search size={15} className="topbar-search__icon" />
+              <input
+                className="topbar-search__input"
+                placeholder="Αναζήτηση"
+                value={searchVal}
+                onChange={e => setSearchVal(e.target.value)}
+              />
+            </form>
+
+            {/* Notifications */}
+            {(isOwner || isTrainer) && <NotificationBell />}
+
+            {/* Avatar dropdown */}
+            <div className="topbar-avatar-wrap" ref={avatarRef}>
               <button
                 type="button"
-                className="topbar-trainer-avatar"
-                onClick={() => navigate('/trainer/profile')}
-                aria-label="Το προφίλ μου"
-                title={trainerStaff?.full_name || staffLabel}
+                className="topbar-avatar-btn"
+                onClick={() => setAvatarOpen(v => !v)}
+                aria-label="Μενού χρήστη"
               >
                 <Avatar
-                  name={trainerStaff?.full_name || staffLabel}
-                  image={trainerStaff?.avatar_url}
-                  color={trainerStaff?.color_hex}
-                  size={40}
+                  name={isTrainer ? (trainerStaff?.full_name || staffLabel) : (business?.name || 'Admin')}
+                  image={isTrainer ? trainerStaff?.avatar_url : null}
+                  color={isTrainer ? trainerStaff?.color_hex : null}
+                  size={36}
                 />
               </button>
-            )}
-            {isOwner && <NotificationBell />}
+              {avatarOpen && (
+                <div className="topbar-avatar-dropdown">
+                  <div className="topbar-avatar-dropdown__name">
+                    {isTrainer ? (trainerStaff?.full_name || staffLabel) : business?.name}
+                  </div>
+                  <div className="topbar-avatar-dropdown__role">
+                    {isOwner ? 'Διαχειριστής' : isTrainer ? staffLabel : 'Χρήστης'}
+                  </div>
+                  <div className="topbar-avatar-dropdown__divider" />
+                  {isOwner && (
+                    <button
+                      type="button"
+                      className="topbar-avatar-dropdown__item"
+                      onClick={() => { setAvatarOpen(false); navigate('/settings'); }}
+                    >
+                      <Settings size={14} /> Ρυθμίσεις
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="topbar-avatar-dropdown__item topbar-avatar-dropdown__item--danger"
+                    onClick={() => { setAvatarOpen(false); logout(); navigate('/login'); }}
+                  >
+                    <LogOut size={14} /> Αποσύνδεση
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="content content--modern">{children}</div>

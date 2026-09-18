@@ -4,6 +4,7 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import { Save, Upload, Download } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
+import TimeInput from '../components/ui/TimeInput';
 const DAYS = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
 const DAYS_FULL = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
 
@@ -244,20 +245,14 @@ export default function Settings() {
                   </label>
                   {!h.closed && (
                     <>
-                      <input
-                        type="time"
-                        className="form-input"
-                        style={{ width: 100, padding: '4px 8px' }}
+                      <TimeInput
                         value={h.open}
-                        onChange={e => updateHours(day, 'open', e.target.value)}
+                        onChange={val => updateHours(day, 'open', val)}
                       />
                       <span style={{ color: '#94a3b8' }}>—</span>
-                      <input
-                        type="time"
-                        className="form-input"
-                        style={{ width: 100, padding: '4px 8px' }}
+                      <TimeInput
                         value={h.close}
-                        onChange={e => updateHours(day, 'close', e.target.value)}
+                        onChange={val => updateHours(day, 'close', val)}
                       />
                       <button
                         type="button"

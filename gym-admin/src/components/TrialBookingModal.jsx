@@ -3,6 +3,7 @@ import { FlaskConical, UserPlus, X, Check, Calendar } from 'lucide-react';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { mediaUrl, hashColor, initials } from '../utils/media';
+import TimeInput from './ui/TimeInput';
 
 function normalize(str) {
   return String(str || '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
@@ -164,8 +165,7 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Ώρα *</label>
-                  <input type="time" className="form-input" value={form.trial_time}
-                    onChange={e => set('trial_time', e.target.value)} required />
+                  <TimeInput value={form.trial_time} onChange={val => set('trial_time', val)} />
                 </div>
               </div>
             </div>

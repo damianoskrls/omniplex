@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
+import TimeInput from '../components/ui/TimeInput';
 import { ArrowLeft, Plus, Trash2, X, Edit2, Check, ChevronDown, ChevronUp, Save } from 'lucide-react';
 import LocationCheckboxes from '../components/LocationCheckboxes';
 
@@ -354,11 +355,11 @@ export default function ServiceSchedule() {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                   <div>
                     <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: 2 }}>Από</div>
-                    <input type="time" className="form-input" style={{ maxWidth: 110 }} value={form.rangeFrom} onChange={e => setForm(p => ({ ...p, rangeFrom: e.target.value }))} />
+                    <TimeInput value={form.rangeFrom} onChange={val => setForm(p => ({ ...p, rangeFrom: val }))} />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: 2 }}>Έως</div>
-                    <input type="time" className="form-input" style={{ maxWidth: 110 }} value={form.rangeTo} onChange={e => setForm(p => ({ ...p, rangeTo: e.target.value }))} />
+                    <TimeInput value={form.rangeTo} onChange={val => setForm(p => ({ ...p, rangeTo: val }))} />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: 2 }}>Κάθε</div>
@@ -385,7 +386,7 @@ export default function ServiceSchedule() {
                 </div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input type="time" className="form-input" style={{ maxWidth: 120 }} value={form.singleTime} onChange={e => setForm(p => ({ ...p, singleTime: e.target.value }))} />
+                <TimeInput value={form.singleTime} onChange={val => setForm(p => ({ ...p, singleTime: val }))} />
                 <button type="button" className="btn btn-secondary btn-sm" onClick={addSingleTime}><Plus size={13} /> Μία ώρα</button>
               </div>
             </div>

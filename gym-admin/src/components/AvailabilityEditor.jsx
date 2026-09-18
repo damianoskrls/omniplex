@@ -1,3 +1,4 @@
+import TimeInput from './ui/TimeInput';
 const DAYS_SHORT = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
 
 export default function AvailabilityEditor({ slots, onChange, gymHours, readOnly = false }) {
@@ -78,26 +79,16 @@ export default function AvailabilityEditor({ slots, onChange, gymHours, readOnly
 
               {daySlots.map(s => (
                 <div key={s._idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, paddingLeft: 50 }}>
-                  <input
-                    type="time"
-                    className="form-input"
-                    style={{ width: 100, padding: '4px 8px' }}
+                  <TimeInput
                     value={s.start_time}
-                    min={minTime || undefined}
-                    max={maxTime || undefined}
                     disabled={readOnly}
-                    onChange={e => update(s._idx, 'start_time', e.target.value)}
+                    onChange={val => update(s._idx, 'start_time', val)}
                   />
                   <span style={{ color: '#94a3b8' }}>—</span>
-                  <input
-                    type="time"
-                    className="form-input"
-                    style={{ width: 100, padding: '4px 8px' }}
+                  <TimeInput
                     value={s.end_time}
-                    min={minTime || undefined}
-                    max={maxTime || undefined}
                     disabled={readOnly}
-                    onChange={e => update(s._idx, 'end_time', e.target.value)}
+                    onChange={val => update(s._idx, 'end_time', val)}
                   />
                   {!readOnly && (
                     <button type="button" onClick={() => remove(s._idx)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444' }}>
