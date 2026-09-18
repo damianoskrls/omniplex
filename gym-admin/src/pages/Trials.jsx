@@ -594,6 +594,9 @@ export default function Trials() {
   const [modal, setModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [memberClientModal, setMemberClientModal] = useState(null); // { trialId }
+  const [showAll, setShowAll] = useState(false);
+  const [allRows, setAllRows] = useState([]);
+  const [allLoading, setAllLoading] = useState(false);
 
   const dateKey = toDateKey(selectedDate);
 
@@ -605,7 +608,16 @@ export default function Trials() {
       .finally(() => setLoading(false));
   };
 
+  const loadAll = () => {
+    setAllLoading(true);
+    api.get('/client-admin/trials')
+      .then(r => setAllRows(r.data || []))
+      .catch(() => {})
+      .finally(() => setAllLoading(false));
+  };
+
   useEffect(() => { reload(); }, [dateKey]);
+  useEffect(() => { if (showAll) loadAll(); }, [showAll]);
   useEffect(() => {
     api.get('/client-admin/staff').then(r => setStaffList(r.data || [])).catch(() => {});
     api.get('/client-admin/services').then(r => setServices(r.data || [])).catch(() => {});
@@ -728,39 +740,124 @@ export default function Trials() {
 
       {tab === 'reports' ? <ReportsTab /> : (
         <>
-          {/* Day quick chips */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            {quickDays.map(d => {
-              const key = toDateKey(d);
-              const active = key === dateKey;
-              return (
-                <button key={key} onClick={() => setSelectedDate(new Date(d))} style={{
-                  padding: '6px 14px', borderRadius: 99,
-                  border: `1.5px solid ${active ? '#F59E0B' : 'var(--border)'}`,
-                  background: active ? 'linear-gradient(135deg,#FEF3C7,#FDE68A)' : 'var(--surface)',
-                  color: active ? '#92400E' : 'var(--text-2)',
-                  fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
-                }}>{dayLabel(d)}</button>
-              );
-            })}
-          </div>
-
-          {/* Day navigator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, background: 'var(--surface)', borderRadius: 16, padding: '12px 16px', border: '1px solid var(--border)' }}>
-            <button onClick={() => goDay(-1)} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ChevronLeft size={18} />
-            </button>
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)', textTransform: 'capitalize' }}>{fmtDay(selectedDate)}</div>
-              {isToday(selectedDate) && <div style={{ fontSize: 11, color: '#F59E0B', fontWeight: 700, marginTop: 2 }}>ΣΗΜΕΡΑ</div>}
+          {/* Controls row: chips + show-all toggle */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {!showAll && quickDays.map(d => {
+                const key = toDateKey(d);
+                const active = key === dateKey;
+                return (
+                  <button key={key} onClick={() => setSelectedDate(new Date(d))} style={{
+                    padding: '6px 14px', borderRadius: 99,
+                    border: `1.5px solid ${active ? '#F59E0B' : 'var(--border)'}`,
+                    background: active ? 'linear-gradient(135deg,#FEF3C7,#FDE68A)' : 'var(--surface)',
+                    color: active ? '#92400E' : 'var(--text-2)',
+                    fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s',
+                  }}>{dayLabel(d)}</button>
+                );
+              })}
+              {showAll && <span style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 500 }}>Όλα τα δοκιμαστικά</span>}
             </div>
-            <button onClick={() => goDay(1)} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ChevronRight size={18} />
+            <button onClick={() => setShowAll(v => !v)} style={{
+              padding: '6px 14px', borderRadius: 99, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              border: `1.5px solid ${showAll ? '#F59E0B' : 'var(--border)'}`,
+              background: showAll ? 'linear-gradient(135deg,#FEF3C7,#FDE68A)' : 'var(--surface)',
+              color: showAll ? '#92400E' : 'var(--text-2)', transition: 'all 0.15s',
+            }}>
+              {showAll ? '← Ημερολόγιο' : 'Εμφάνιση όλων'}
             </button>
           </div>
 
-          {/* Cards */}
-          {loading ? (
+          {/* Day navigator — hidden in showAll mode */}
+          {!showAll && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, background: 'var(--surface)', borderRadius: 16, padding: '12px 16px', border: '1px solid var(--border)' }}>
+              <button onClick={() => goDay(-1)} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ChevronLeft size={18} />
+              </button>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)', textTransform: 'capitalize' }}>{fmtDay(selectedDate)}</div>
+                {isToday(selectedDate) && <div style={{ fontSize: 11, color: '#F59E0B', fontWeight: 700, marginTop: 2 }}>ΣΗΜΕΡΑ</div>}
+              </div>
+              <button onClick={() => goDay(1)} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', background: 'var(--surface-2)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
+
+          {/* ALL view — grouped by period */}
+          {showAll ? (() => {
+            if (allLoading) return (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid var(--border)', borderTopColor: '#F59E0B', animation: 'spin 0.8s linear infinite' }} />
+              </div>
+            );
+            const todayKey = toDateKey(new Date());
+            const yesterdayKey = toDateKey(new Date(Date.now() - 86400000));
+            const weekAgo = toDateKey(new Date(Date.now() - 7 * 86400000));
+            const monthAgo = toDateKey(new Date(Date.now() - 30 * 86400000));
+
+            const groups = [
+              { label: 'Σήμερα', filter: r => toDateKey(new Date(r.starts_at)) === todayKey },
+              { label: 'Χθες', filter: r => toDateKey(new Date(r.starts_at)) === yesterdayKey },
+              { label: 'Αυτή η εβδομάδα', filter: r => { const k = toDateKey(new Date(r.starts_at)); return k < todayKey && k > weekAgo; } },
+              { label: 'Αυτός ο μήνας', filter: r => { const k = toDateKey(new Date(r.starts_at)); return k <= weekAgo && k > monthAgo; } },
+              { label: 'Παλαιότερα', filter: r => toDateKey(new Date(r.starts_at)) <= monthAgo },
+            ];
+            const sorted = [...allRows].sort((a,b) => new Date(b.starts_at) - new Date(a.starts_at));
+
+            const renderCards = (groupRows) => {
+              const slotCounts = {};
+              groupRows.forEach(r => { const k = fmtTime(r.starts_at); slotCounts[k] = (slotCounts[k]||0)+1; });
+              const slotIdx = {};
+              groupRows.forEach(r => { const k = fmtTime(r.starts_at); slotIdx[r.id] = (slotIdx[k]||0)+1; slotIdx[k] = slotIdx[r.id]; });
+              return (
+                <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+                  {groupRows.map(r => (
+                    <TrialCard key={r.id} r={r} staffList={staffList}
+                      slotIndex={slotIdx[r.id]} slotTotal={slotCounts[fmtTime(r.starts_at)]}
+                      onEdit={() => setModal({ type: 'edit', trial: r })}
+                      onDelete={() => setDeleteTarget(r)}
+                      onRepeat={() => setModal({ type: 'repeat', trial: r })}
+                      onToggleMember={val => toggleMember(r.id, val)}
+                      onToggleConsidering={val => toggleConsidering(r.id, val)}
+                      onUpdateStaff={staff_id => updateStaff(r.id, staff_id)}
+                      onSaveNotes={notes => updateNotes(r.id, notes)}
+                    />
+                  ))}
+                </div>
+              );
+            };
+
+            const hasAny = groups.some(g => sorted.some(g.filter));
+            if (!hasAny) return (
+              <div style={{ background: 'var(--surface)', borderRadius: 18, border: '1.5px dashed var(--border)', padding: '60px 20px', textAlign: 'center' }}>
+                <Target size={24} color="var(--text-3)" style={{ marginBottom: 10 }} />
+                <p style={{ color: 'var(--text-3)', fontSize: 14 }}>Δεν υπάρχουν δοκιμαστικά</p>
+              </div>
+            );
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+                {groups.map(g => {
+                  const gRows = sorted.filter(g.filter);
+                  if (!gRows.length) return null;
+                  return (
+                    <div key={g.label}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{g.label}</div>
+                        <span style={{ background: '#F1F5F9', color: '#64748B', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99 }}>{gRows.length}</span>
+                        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                      </div>
+                      {renderCards(gRows)}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })() : null}
+
+          {/* Day view cards */}
+          {!showAll && (loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid var(--border)', borderTopColor: '#F59E0B', animation: 'spin 0.8s linear infinite' }} />
             </div>
@@ -796,7 +893,7 @@ export default function Trials() {
                 ))}
               </div>
             );
-          })()}
+          })())}
         </>
       )}
 
