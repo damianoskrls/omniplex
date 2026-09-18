@@ -389,39 +389,65 @@ router.delete('/device-token', async (req, res) => {
 });
 
 // ============================================================
+// ── Auth helper ──────────────────────────────────────────────────────────────
+function requireMobileAuth(req, res) {
+  const header = req.headers['authorization'];
+  if (!header) { res.status(401).json({ error: 'Δεν είστε συνδεδεμένος' }); return null; }
+  const token = header.startsWith('Bearer ') ? header.slice(7) : header;
+  try { return jwt.verify(token, process.env.JWT_SECRET); }
+  catch { res.status(401).json({ error: 'Μη έγκυρο token' }); return null; }
+}
+
+// Time-sensitive types: skip in the response if the booking was more than 4h ago.
+const STALE_TYPES = new Set([
+  'checkin_reminder', 'workout_complete', 'booking_reminder_24h', 'prep_reminder',
+]);
+const STALE_HOURS = 4;
+
 // GET /api/mobile/notifications
 // ============================================================
 router.get('/notifications', async (req, res) => {
-  const header = req.headers['authorization'];
-  if (!header) return res.status(401).json({ error: 'Δεν είστε συνδεδεμένος' });
-
-  const token = header.startsWith('Bearer ') ? header.slice(7) : header;
-  let decoded;
-  try { decoded = jwt.verify(token, process.env.JWT_SECRET); }
-  catch { return res.status(401).json({ error: 'Μη έγκυρο token' }); }
+  const decoded = requireMobileAuth(req, res);
+  if (!decoded) return;
 
   try {
     const [rows] = await db.query(`
-      SELECT id, booking_id, type, title, body, payload, is_read, created_at
-      FROM user_notifications
-      WHERE user_id = ? AND business_id = ?
-      ORDER BY created_at DESC
-      LIMIT 40
+      SELECT n.id, n.booking_id, n.type, n.title, n.body, n.payload, n.is_read, n.created_at,
+             b.starts_at AS booking_starts_at
+      FROM user_notifications n
+      LEFT JOIN bookings b ON b.id = n.booking_id
+      WHERE n.user_id = ? AND n.business_id = ?
+      ORDER BY n.created_at DESC
+      LIMIT 60
     `, [decoded.userId, decoded.businessId]);
 
-    const notifications = rows.map((row) => {
-      let payload = row.payload;
-      if (typeof payload === 'string') {
-        try { payload = JSON.parse(payload); } catch { payload = null; }
-      }
-      const imageUrl = payload?.image_url || null;
-      return { ...row, payload, image_url: imageUrl };
-    });
+    const cutoff = new Date(Date.now() - STALE_HOURS * 3600 * 1000);
 
-    const [[{ unread }]] = await db.query(
-      'SELECT COUNT(*) AS unread FROM user_notifications WHERE user_id = ? AND is_read = 0',
-      [decoded.userId]
-    );
+    const notifications = rows
+      .filter((row) => {
+        // Drop unread time-sensitive notifications about past bookings.
+        if (!row.is_read && STALE_TYPES.has(row.type)) {
+          const ref = row.booking_starts_at ? new Date(row.booking_starts_at) : new Date(row.created_at);
+          if (ref < cutoff) return false;
+        }
+        return true;
+      })
+      .map((row) => {
+        let payload = row.payload;
+        if (typeof payload === 'string') {
+          try { payload = JSON.parse(payload); } catch { payload = null; }
+        }
+        // Embed booking_starts_at into payload so the Flutter client can also check staleness.
+        if (row.booking_starts_at) {
+          payload = payload || {};
+          payload.booking_starts_at = row.booking_starts_at;
+        }
+        const imageUrl = payload?.image_url || null;
+        const { booking_starts_at: _skip, ...rest } = row;
+        return { ...rest, payload, image_url: imageUrl };
+      });
+
+    const unread = notifications.filter(n => !n.is_read).length;
     return res.json({ notifications, unread_count: unread });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -429,17 +455,21 @@ router.get('/notifications', async (req, res) => {
 });
 
 router.patch('/notifications/:id/read', async (req, res) => {
-  const header = req.headers['authorization'];
-  if (!header) return res.status(401).json({ error: 'Δεν είστε συνδεδεμένος' });
-
-  const token = header.startsWith('Bearer ') ? header.slice(7) : header;
-  let decoded;
-  try { decoded = jwt.verify(token, process.env.JWT_SECRET); }
-  catch { return res.status(401).json({ error: 'Μη έγκυρο token' }); }
-
+  const decoded = requireMobileAuth(req, res);
+  if (!decoded) return;
   await db.query(
     'UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id = ?',
     [req.params.id, decoded.userId]
+  );
+  return res.json({ ok: true });
+});
+
+router.patch('/notifications/read-all', async (req, res) => {
+  const decoded = requireMobileAuth(req, res);
+  if (!decoded) return;
+  await db.query(
+    'UPDATE user_notifications SET is_read = 1 WHERE user_id = ? AND business_id = ? AND is_read = 0',
+    [decoded.userId, decoded.businessId]
   );
   return res.json({ ok: true });
 });

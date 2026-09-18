@@ -568,6 +568,10 @@ class ApiService {
     await _patch('/api/mobile/notifications/$id/read');
   }
 
+  Future<void> markAllNotificationsRead() async {
+    await _patch('/api/mobile/notifications/read-all');
+  }
+
   Future<List<Map<String, dynamic>>> fetchMessageThreads() async {
     final res = await _get('/api/booking/$bizId/messages/threads');
     final data = _decode(res) as Map<String, dynamic>;
