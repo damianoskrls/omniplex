@@ -1,6 +1,20 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/client';
 
+function hexLuminance(hex) {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.substring(0, 2), 16) / 255;
+  const g = parseInt(c.substring(2, 4), 16) / 255;
+  const b = parseInt(c.substring(4, 6), 16) / 255;
+  const toLinear = (v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
+function accentTextColor(hex) {
+  if (!hex || hex.length < 7) return '#ffffff';
+  return hexLuminance(hex) > 0.35 ? '#111111' : '#ffffff';
+}
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -23,9 +37,13 @@ export function AuthProvider({ children }) {
       root.style.removeProperty('--tenant-primary');
       root.style.removeProperty('--tenant-accent');
       root.style.removeProperty('--tenant-secondary');
+      root.style.removeProperty('--accent-text');
       return;
     }
-    if (business.primary_color)   root.style.setProperty('--tenant-primary',   business.primary_color);
+    if (business.primary_color) {
+      root.style.setProperty('--tenant-primary', business.primary_color);
+      root.style.setProperty('--accent-text', accentTextColor(business.primary_color));
+    }
     if (business.accent_color)    root.style.setProperty('--tenant-accent',    business.accent_color);
     if (business.secondary_color) root.style.setProperty('--tenant-secondary', business.secondary_color);
   }, [business]);

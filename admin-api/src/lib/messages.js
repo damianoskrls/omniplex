@@ -322,6 +322,8 @@ async function getThreadMessages(conn, threadId, { viewerRole, viewerId } = {}) 
 async function formatThreadRow(conn, row, { unreadField }) {
   const client = await getUserDisplay(conn, row.client_user_id);
   const peerLabel = await resolveThreadPeerLabel(conn, row.business_id, row);
+  const lastSeen = row.last_seen_at ? new Date(row.last_seen_at) : null;
+  const isOnline = lastSeen && (Date.now() - lastSeen.getTime()) < 5 * 60 * 1000;
   return {
     id: row.id,
     business_id: row.business_id,
@@ -338,6 +340,8 @@ async function formatThreadRow(conn, row, { unreadField }) {
     last_message_preview: row.last_message_preview,
     unread_count: row[unreadField] || 0,
     created_at: row.created_at,
+    last_seen_at: row.last_seen_at || null,
+    is_online: !!isOnline,
   };
 }
 
@@ -457,7 +461,7 @@ async function listStaffThreads(dbOrConn, actor, { q = '', limit = 50 } = {}) {
   const safeLimit = Math.min(Math.max(limit, 1), 100);
 
   const [rows] = await conn.execute(
-    `SELECT t.*, u.full_name, u.email, u.phone
+    `SELECT t.*, u.full_name, u.email, u.phone, u.last_seen_at
      FROM message_threads t
      INNER JOIN users u ON u.id = t.client_user_id
      WHERE t.business_id = ?

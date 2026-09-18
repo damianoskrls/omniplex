@@ -7,7 +7,7 @@ import { AnimatedCounter, WeekBarChart, DonutChart } from '../components/dashboa
 import {
   Calendar, Users, UserPlus, Package, Clock, ChevronRight, Dumbbell, AlertCircle, MapPin, FlaskConical,
   Pencil, Trash2, MessageSquarePlus, Check, X, Target,
-  Smartphone, MessageSquare, ShoppingBag,
+  Smartphone, MessageSquare, ShoppingBag, QrCode,
 } from 'lucide-react';
 import { groupBookingsBySlot, slotKey } from '../utils/groupBookingsBySlot';
 import Avatar from '../components/ui/Avatar';
@@ -222,28 +222,10 @@ export default function Dashboard() {
   return (
     <Layout title="Dashboard" headerActions={
       <>
-        <button
-          onClick={() => setBookingModalOpen(true)}
-          style={{
-            padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer',
-            background: '#76C043', color: '#fff', fontWeight: 600, fontSize: 13,
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-        >
+        <button className="btn btn-primary btn-sm" onClick={() => setBookingModalOpen(true)}>
           Νέα Κράτηση
         </button>
-        <button
-          onClick={() => { setEditingTrial(null); setTrialModalOpen(true); }}
-          style={{
-            padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer',
-            background: '#76C043', color: '#fff', fontWeight: 600, fontSize: 13,
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-        >
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditingTrial(null); setTrialModalOpen(true); }}>
           Νέο Δοκιμαστικό
         </button>
       </>
@@ -647,6 +629,18 @@ export default function Dashboard() {
                 </div>
               </section>
             )}
+
+            {/* QR Scanner widget */}
+            <section className="dash-widget dash-qr-widget">
+              <div className="dash-qr-widget__icon">
+                <QrCode size={40} strokeWidth={1.2} />
+              </div>
+              <div className="dash-qr-widget__title">QR Check-in</div>
+              <div className="dash-qr-widget__sub">Σκανάρισμα QR εισόδου πελάτη</div>
+              <Link to="/entrance" className="btn btn-primary btn-sm dash-qr-widget__btn">
+                Άνοιγμα Scanner
+              </Link>
+            </section>
 
           </div>
         </>

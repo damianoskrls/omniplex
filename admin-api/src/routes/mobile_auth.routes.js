@@ -394,7 +394,11 @@ function requireMobileAuth(req, res) {
   const header = req.headers['authorization'];
   if (!header) { res.status(401).json({ error: 'Δεν είστε συνδεδεμένος' }); return null; }
   const token = header.startsWith('Bearer ') ? header.slice(7) : header;
-  try { return jwt.verify(token, process.env.JWT_SECRET); }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    db.query('UPDATE users SET last_seen_at = NOW() WHERE id = ?', [decoded.userId]).catch(() => {});
+    return decoded;
+  }
   catch { res.status(401).json({ error: 'Μη έγκυρο token' }); return null; }
 }
 

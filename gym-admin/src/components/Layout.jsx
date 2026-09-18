@@ -345,6 +345,16 @@ export default function Layout({ children, title, variant, headerActions }) {
           <div className="topbar-right">
             {headerActions && <div style={{ display: 'flex', gap: 8 }}>{headerActions}</div>}
 
+            {/* Messages quick-access */}
+            {(isOwner || isTrainer) && (
+              <NavLink to="/messages" className="topbar-msg-btn" title="Μηνύματα">
+                <MessageSquare size={20} />
+                {messagesUnread > 0 && (
+                  <span className="topbar-msg-badge">{messagesUnread > 99 ? '99+' : messagesUnread}</span>
+                )}
+              </NavLink>
+            )}
+
             {/* Notifications */}
             {(isOwner || isTrainer) && <NotificationBell />}
 
