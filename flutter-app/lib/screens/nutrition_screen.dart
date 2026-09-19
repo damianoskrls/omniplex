@@ -5,14 +5,14 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/nutrition.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/nutrition_body_progress.dart';
 import '../widgets/ui_kit.dart';
-
-const _dayNames = ['', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
 const _mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 String _mealTypeForHour(int hour) {
@@ -32,7 +32,7 @@ String _isoDate(DateTime d) {
   return '${d.year}-$m-$day';
 }
 
-String _dayTitle(DateTime d) => '${_dayNames[d.weekday]} ${d.day}/${d.month}/${d.year}';
+String _dayTitle(DateTime d, List<String> dayNames) => '${dayNames[d.weekday]} ${d.day}/${d.month}/${d.year}';
 
 bool _isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
@@ -138,9 +138,9 @@ class _NutritionScreenState extends State<NutritionScreen> {
       initialDate: _selectedDate,
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 1, 12, 31),
-      helpText: 'Επίλεξε ημέρα',
-      cancelText: 'Άκυρο',
-      confirmText: 'ΟΚ',
+      helpText: AppStrings.of(context).nutritionSelectDay,
+      cancelText: AppStrings.of(context).nutritionCancelText,
+      confirmText: AppStrings.of(context).nutritionOkay,
     );
     if (picked != null) await _goToDate(picked);
   }
@@ -192,7 +192,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
         _weightCtrl.text = _fmt(progress.goals.weightKg);
         _bodyFatCtrl.text = _fmt(progress.goals.bodyFatPct);
       });
-      _showSnack('Η μέτρηση αποθηκεύτηκε');
+      _showSnack(AppStrings.of(context).nutritionSaved);
     } on ApiException catch (e) {
       if (mounted) _showSnack(e.message, success: false);
     }
@@ -210,7 +210,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
           );
       if (!mounted) return;
       setState(() => _goals = goals);
-      _showSnack('Οι στόχοι αποθηκεύτηκαν');
+      _showSnack(AppStrings.of(context).nutritionGoalsSaved);
     } on ApiException catch (e) {
       if (mounted) _showSnack(e.message, success: false);
     }
@@ -223,13 +223,13 @@ class _NutritionScreenState extends State<NutritionScreen> {
     try {
       await context.read<AuthService>().api.logFood(
             mealType: mealType,
-            description: 'Έφαγα: ${opt.title}',
+            description: AppStrings.of(context).nutritionEatNowDesc(opt.title),
             planOptionId: opt.id,
             date: _isoDate(_selectedDate),
             photoPath: photo?.path,
           );
       if (!mounted) return;
-      _showSnack('Καταγράφηκε — ο διατροφολόγος θα το δει');
+      _showSnack(AppStrings.of(context).nutritionLogged);
       await _load();
     } on ApiException catch (e) {
       if (mounted) _showSnack(e.message, success: false);
@@ -239,7 +239,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
 
   Future<void> _logCustomMeal(String mealType, String desc, {File? photo}) async {
     if (desc.trim().isEmpty) {
-      _showSnack('Γράψε τι έφαγες', success: false);
+      _showSnack(AppStrings.of(context).nutritionWriteFirst, success: false);
       return;
     }
     try {
@@ -250,7 +250,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
             photoPath: photo?.path,
           );
       if (!mounted) return;
-      _showSnack('Καταγράφηκε — ο διατροφολόγος θα το δει');
+      _showSnack(AppStrings.of(context).nutritionLogged);
       await _load();
     } on ApiException catch (e) {
       if (mounted) _showSnack(e.message, success: false);
@@ -329,14 +329,16 @@ class _NutritionScreenState extends State<NutritionScreen> {
 
   String _formatShoppingList(List<ShoppingListItem> items) {
     if (items.isEmpty) return '';
+    final s = AppStrings.of(context);
+    final gymName = context.read<TenantConfig>().appName;
     final lines = items.map((item) {
       final buy = item.buyAmount != null
           ? '${item.buyAmount} ${item.buyUnit ?? item.unit}'
           : (item.amount != null ? '${item.amount} ${item.unit}' : item.unit);
-      final need = item.neededAmount != null ? ' (χρειάζεσαι ${item.neededAmount} ${item.neededUnit})' : '';
-      return '• ${item.ingredient} — αγόρασε $buy$need';
+      final need = item.neededAmount != null ? s.nutritionShopNeed('${item.neededAmount}', item.neededUnit ?? '') : '';
+      return s.nutritionShopBuy(item.ingredient, '$buy$need');
     });
-    return 'Λίστα αγορών Handstand\n\n${lines.join('\n')}';
+    return '${s.nutritionShopTitle(gymName)}\n\n${lines.join('\n')}';
   }
 
   void _openShoppingList() {
@@ -362,7 +364,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
             formatList: _formatShoppingList,
             onCopied: () {
               Navigator.pop(ctx);
-              _showSnack('Η λίστα αντιγράφηκε στο clipboard');
+              _showSnack(AppStrings.of(context).nutritionCopied);
             },
           );
         },
@@ -371,7 +373,8 @@ class _NutritionScreenState extends State<NutritionScreen> {
   }
 
   Widget _dateNavigator() {
-    final title = _dayTitle(_selectedDate);
+    final s = AppStrings.of(context);
+    final title = _dayTitle(_selectedDate, s.dayNames);
     return SurfaceCard(
       child: Column(
         children: [
@@ -380,7 +383,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
               IconButton(
                 onPressed: _loading ? null : () => _shiftDay(-1),
                 icon: const Icon(Icons.chevron_left),
-                tooltip: 'Προηγούμενη ημέρα',
+                tooltip: s.nutritionPrevDay,
               ),
               Expanded(
                 child: InkWell(
@@ -402,8 +405,8 @@ class _NutritionScreenState extends State<NutritionScreen> {
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              'Σήμερα',
-                              style: TextStyle(color: AppColors.lime, fontSize: 12, fontWeight: FontWeight.w600),
+                              s.nutritionToday,
+                              style: const TextStyle(color: AppColors.lime, fontSize: 12, fontWeight: FontWeight.w600),
                             ),
                           ),
                       ],
@@ -414,19 +417,19 @@ class _NutritionScreenState extends State<NutritionScreen> {
               IconButton(
                 onPressed: _loading ? null : () => _shiftDay(1),
                 icon: const Icon(Icons.chevron_right),
-                tooltip: 'Επόμενη ημέρα',
+                tooltip: s.nutritionNextDay,
               ),
               IconButton(
                 onPressed: _loading ? null : _pickDateFromCalendar,
                 icon: const Icon(Icons.calendar_month_outlined),
-                tooltip: 'Ημερολόγιο',
+                tooltip: s.nutritionCalendar,
               ),
             ],
           ),
           if (!_isViewingToday)
             TextButton(
               onPressed: _loading ? null : () => _goToDate(DateTime.now()),
-              child: const Text('Πήγαινε στο σήμερα'),
+              child: Text(AppStrings.of(context).nutritionGoToToday),
             ),
         ],
       ),
@@ -443,7 +446,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Πρόγραμμα διατροφής', style: Theme.of(context).textTheme.titleLarge),
+              Text(AppStrings.of(context).nutritionPlan, style: Theme.of(context).textTheme.titleLarge),
               if (_hasMealPlan && currentMeal != null) ...[
                 const SizedBox(height: 4),
                 Text(
@@ -457,7 +460,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
               if (_weekPlan?.effectiveFrom != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  'Πρόγραμμα από ${_weekPlan!.effectiveFrom}',
+                  AppStrings.of(context).nutritionPlanFrom(_weekPlan!.effectiveFrom ?? ''),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -467,7 +470,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
         FilledButton.tonalIcon(
           onPressed: _openShoppingList,
           icon: const Icon(Icons.shopping_cart_outlined, size: 18),
-          label: Text(hasList ? 'Λίστα αγορών' : 'Λίστα'),
+          label: Text(hasList ? AppStrings.of(context).nutritionShoppingList : AppStrings.of(context).nutritionList),
           style: FilledButton.styleFrom(
             visualDensity: VisualDensity.compact,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -478,17 +481,18 @@ class _NutritionScreenState extends State<NutritionScreen> {
   }
 
   String _nowMealHint(String mealType) {
+    final s = AppStrings.of(context);
     switch (mealType) {
       case 'breakfast':
-        return 'Πρωινό τώρα';
+        return s.nutritionBreakfastNow;
       case 'lunch':
-        return 'Μεσημεριανό τώρα';
+        return s.nutritionLunchNow;
       case 'dinner':
-        return 'Βραδινό τώρα';
+        return s.nutritionDinnerNow;
       case 'snack':
-        return 'Σνακ τώρα';
+        return s.nutritionSnackNow;
       default:
-        return 'Τώρα';
+        return s.nutritionNow;
     }
   }
 
@@ -504,12 +508,12 @@ class _NutritionScreenState extends State<NutritionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Το πρόγραμμα διατροφής έρχεται σύντομα',
+                  AppStrings.of(context).nutritionNoPlanYet,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Ο διατροφολόγος σου θα σου στείλει το εβδομαδιαίο πρόγραμμα. Μέχρι τότε μπορείς να καταγράφεις τα γεύματά σου.',
+                  AppStrings.of(context).nutritionNoPlanBody,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -560,7 +564,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
         children: [
           SurfaceCard(
             child: Text(
-              'Δεν έχει οριστεί πρόγραμμα για αυτή την ημέρα. Μπορείς να καταγράψεις τι έφαγες.',
+              AppStrings.of(context).nutritionNoPlanDay,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -611,7 +615,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Σημειώσεις διατροφολόγου', style: Theme.of(context).textTheme.titleMedium),
+                Text(AppStrings.of(context).nutritionTrainerNotes, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 Text(_weekPlan!.notes!, style: Theme.of(context).textTheme.bodyMedium),
               ],
@@ -630,7 +634,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        Text('Άλλες καταγραφές', style: Theme.of(context).textTheme.titleMedium),
+        Text(AppStrings.of(context).nutritionOtherLogs, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         SurfaceCard(
           child: Column(
@@ -674,29 +678,32 @@ class _NutritionScreenState extends State<NutritionScreen> {
             onLogMeasurement: _logMeasurement,
           ),
           const SizedBox(height: 20),
-          Text('Στόχοι', style: Theme.of(context).textTheme.titleLarge),
+          Text(AppStrings.of(context).nutritionGoalsTitle, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           SurfaceCard(
-            child: Column(
+            child: Builder(builder: (context) {
+              final s = AppStrings.of(context);
+              return Column(
               children: [
                 Row(children: [
-                  Expanded(child: _field('Βάρος (kg)', _weightCtrl)),
+                  Expanded(child: _field(s.nutritionWeightKg, _weightCtrl)),
                   const SizedBox(width: 12),
-                  Expanded(child: _field('Στόχος (kg)', _targetWeightCtrl)),
+                  Expanded(child: _field(s.nutritionTargetKg, _targetWeightCtrl)),
                 ]),
                 const SizedBox(height: 12),
                 Row(children: [
-                  Expanded(child: _field('Ύψος (cm)', _heightCtrl)),
+                  Expanded(child: _field(s.nutritionHeightCm, _heightCtrl)),
                   const SizedBox(width: 12),
-                  Expanded(child: _field('Λίπος (%)', _bodyFatCtrl)),
+                  Expanded(child: _field(s.nutritionBodyFat, _bodyFatCtrl)),
                 ]),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _savingGoals ? null : _saveGoals,
-                  child: Text(_savingGoals ? 'Αποθήκευση...' : 'Αποθήκευση στόχων'),
+                  child: Text(_savingGoals ? s.nutritionSavingGoals : s.nutritionSaveGoals),
                 ),
               ],
-            ),
+            );
+            }),
           ),
         ],
       ),
@@ -786,9 +793,9 @@ class _MealSlotCardState extends State<_MealSlotCard> {
                         color: AppColors.lime,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
-                        'Τώρα',
-                        style: TextStyle(color: AppColors.bg, fontSize: 11, fontWeight: FontWeight.w800),
+                      child: Text(
+                        AppStrings.of(context).nutritionNow,
+                        style: const TextStyle(color: AppColors.bg, fontSize: 11, fontWeight: FontWeight.w800),
                       ),
                     ),
                   if (hasLogs) ...[
@@ -800,7 +807,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
               const SizedBox(height: 10),
               if (widget.slot.options.isEmpty)
                 Text(
-                  'Δεν έχει οριστεί πρόγραμμα για αυτό το γεύμα.',
+                  AppStrings.of(context).nutritionNoPlanMeal,
                   style: Theme.of(context).textTheme.bodyMedium,
                 )
               else
@@ -822,7 +829,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
                 const SizedBox(height: 8),
                 const Divider(color: AppColors.border),
                 const SizedBox(height: 4),
-                Text('Καταγράφηκε', style: Theme.of(context).textTheme.labelMedium),
+                Text(AppStrings.of(context).nutritionLogged2, style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 6),
                 ...widget.logs.map((log) => _LoggedMealRow(log: log, apiBase: widget.apiBase)),
               ],
@@ -830,15 +837,15 @@ class _MealSlotCardState extends State<_MealSlotCard> {
               TextButton.icon(
                 onPressed: () => setState(() => _showCustom = !_showCustom),
                 icon: Icon(_showCustom ? Icons.expand_less : Icons.edit_note_outlined),
-                label: Text(_showCustom ? 'Κλείσιμο' : 'Έφαγα κάτι άλλο'),
+                label: Text(_showCustom ? AppStrings.of(context).nutritionCloseOther : AppStrings.of(context).nutritionOtherFood),
               ),
               if (_showCustom) ...[
                 TextField(
                   controller: _customCtrl,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Τι έφαγες;',
-                    hintText: 'π.χ. Σαλάτα αντί για κοτόπουλο',
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).nutritionWhatAte,
+                    hintText: AppStrings.of(context).nutritionWhatAteHint,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -853,7 +860,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
                     OutlinedButton.icon(
                       onPressed: () => _pickPhoto(ImageSource.camera),
                       icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                      label: const Text('Κάμερα'),
+                      label: Text(AppStrings.of(context).nutritionCamera),
                     ),
                     if (_photo != null) ...[
                       const SizedBox(width: 8),
@@ -878,7 +885,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
                             setState(() => _savingCustom = false);
                           }
                         },
-                  child: Text(_savingCustom ? 'Αποθήκευση...' : 'Καταγραφή'),
+                  child: Text(_savingCustom ? AppStrings.of(context).nutritionSaving : AppStrings.of(context).nutritionLog),
                 ),
               ],
             ],
@@ -966,7 +973,7 @@ class _PlanOptionTile extends StatelessWidget {
                             width: 18,
                             child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                           )
-                        : const Text('Το έφαγα'),
+                        : Text(AppStrings.of(context).nutritionAteIt),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1057,12 +1064,12 @@ class _ShoppingListSheet extends StatelessWidget {
             children: [
               const Icon(Icons.shopping_cart_outlined, color: AppColors.lime),
               const SizedBox(width: 10),
-              Expanded(child: Text('Έξυπνη λίστα αγορών', style: Theme.of(context).textTheme.titleLarge)),
+              Expanded(child: Text(AppStrings.of(context).nutritionSmartShopping, style: Theme.of(context).textTheme.titleLarge)),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Προτάσεις σε πρακτικές συσκευασίες (π.χ. 450 ml → 1 λίτρο).',
+            AppStrings.of(context).nutritionShoppingNote,
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 16),
@@ -1073,12 +1080,12 @@ class _ShoppingListSheet extends StatelessWidget {
             )
           else if (!hasPlan)
             Text(
-              'Η λίστα θα εμφανιστεί μόλις ο διατροφολόγος σου στείλει το πρόγραμμα.',
+              AppStrings.of(context).nutritionShoppingNoList,
               style: Theme.of(context).textTheme.bodyMedium,
             )
           else if (items.isEmpty)
             Text(
-              'Ο διατροφολόγος δεν έχει ορίσει υλικά ακόμα.',
+              AppStrings.of(context).nutritionNoIngredients,
               style: Theme.of(context).textTheme.bodyMedium,
             )
           else ...[
@@ -1100,7 +1107,7 @@ class _ShoppingListSheet extends StatelessWidget {
                     subtitle: item.suggestion != null
                         ? Text(item.suggestion!, style: Theme.of(context).textTheme.bodySmall)
                         : (item.neededAmount != null
-                            ? Text('Χρειάζεσαι ${item.neededAmount} ${item.neededUnit}', style: Theme.of(context).textTheme.bodySmall)
+                            ? Text(AppStrings.of(context).nutritionNeedAmount('${item.neededAmount}', item.neededUnit ?? ''), style: Theme.of(context).textTheme.bodySmall)
                             : null),
                     trailing: Text(buy, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
                   );
@@ -1114,7 +1121,7 @@ class _ShoppingListSheet extends StatelessWidget {
                 onCopied();
               },
               icon: const Icon(Icons.copy_outlined),
-              label: const Text('Αντιγραφή λίστας'),
+              label: Text(AppStrings.of(context).nutritionCopyList),
             ),
           ],
         ],

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_strings.dart';
 import '../models/user_stats.dart';
+import '../services/language_service.dart';
 import '../models/workout_metrics.dart';
 import '../services/auth_service.dart';
 import '../services/demo_workout_metrics_service.dart';
@@ -97,7 +99,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
 
     if (workouts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Δεν βρέθηκαν προπονήσεις στο Apple Health')),
+        SnackBar(content: Text(AppStrings.of(context).metricsNoHealthData)),
       );
       setState(() => _syncingHealth = false);
       return;
@@ -109,7 +111,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
     });
     _chartAnim.forward(from: 0);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Φορτώθηκαν ${workouts.length} προπονήσεις από το ρολόι')),
+      SnackBar(content: Text(AppStrings.of(context).metricsLoadedFromWatch(workouts.length))),
     );
   }
 
@@ -119,16 +121,16 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bg,
-        title: const Text('Προπόνηση & Metrics'),
+        title: Text(AppStrings.of(context).metricsTitle),
         actions: [
           if (kDebugMode)
             IconButton(
-              tooltip: 'Demo δεδομένα',
+              tooltip: AppStrings.of(context).metricsDemoTooltip,
               onPressed: () => _load(forceDemo: true),
               icon: const Icon(Icons.science_outlined),
             ),
           IconButton(
-            tooltip: 'Ανανέωση',
+            tooltip: AppStrings.of(context).metricsRefresh,
             onPressed: _loading ? null : () => _load(),
             icon: const Icon(Icons.refresh),
           ),
@@ -153,15 +155,15 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
                   ],
                   _summaryGrid(_data!.summary),
                   const SizedBox(height: 16),
-                  _sectionTitle('Κατανομή δραστηριότητας'),
+                  _sectionTitle(AppStrings.of(context).metricsActivityDist),
                   const SizedBox(height: 8),
                   _activityPieCard(_data!.byActivity),
                   const SizedBox(height: 16),
-                  _sectionTitle('Εβδομαδιαίες θερμίδες'),
+                  _sectionTitle(AppStrings.of(context).metricsWeeklyCalories),
                   const SizedBox(height: 8),
                   _weeklyBarCard(_data!.byWeek),
                   const SizedBox(height: 20),
-                  _sectionTitle('Ανά προπόνηση'),
+                  _sectionTitle(AppStrings.of(context).metricsPerWorkout),
                   const SizedBox(height: 8),
                   ..._data!.workouts.map(_workoutTile),
                 ],
@@ -186,7 +188,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Δεδομένα επίδειξης — συγχρόνισε το ρολόι ή ολοκλήρωσε κράτηση με health sync για πραγματικά metrics.',
+                AppStrings.of(context).metricsDemoData,
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13, height: 1.35),
               ),
             ),
@@ -217,7 +219,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
               children: [
                 const Text('Apple Watch / Health', style: TextStyle(fontWeight: FontWeight.w700)),
                 Text(
-                  _data?.dataSource == 'health' ? 'Συγχρονισμένα από το ρολόι' : 'Φόρτωσε πρόσφατες προπονήσεις',
+                  _data?.dataSource == 'health' ? AppStrings.of(context).metricsSyncFromWatch : AppStrings.of(context).metricsLoadRecent,
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
               ],
@@ -232,7 +234,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
             ),
             child: _syncingHealth
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Συγχρονισμός'),
+                : Text(AppStrings.of(context).metricsSync),
           ),
         ],
       ),
@@ -288,18 +290,18 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Στόχος προπονήσεων', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                Text(AppStrings.of(context).metricsGoalTarget, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 6),
-                Text('$done / $target αυτόν τον μήνα', style: const TextStyle(color: AppColors.textSecondary)),
+                Text(AppStrings.of(context).metricsDoneOfTarget(done, target), style: const TextStyle(color: AppColors.textSecondary)),
                 const SizedBox(height: 10),
                 Text(
-                  'Θερμίδες στόχος: ~$caloriesTarget kcal',
+                  AppStrings.of(context).metricsCaloriesTarget(caloriesTarget),
                   style: TextStyle(color: AppColors.lime.withValues(alpha: 0.9), fontSize: 13),
                 ),
                 if (stats.goalMet)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: PillChip(label: 'Στόχος επιτεύχθηκε!', color: AppColors.lime, textColor: AppColors.bg),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: PillChip(label: AppStrings.of(context).completedAchieved, color: AppColors.lime, textColor: AppColors.bg),
                   ),
               ],
             ),
@@ -310,12 +312,13 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
   }
 
   Widget _summaryGrid(WorkoutMetricsSummary summary) {
+    final s = AppStrings.of(context);
     final tiles = [
-      _StatTileData('Προπονήσεις', summary.totalSessions.toString(), Icons.fitness_center, AppColors.purple),
-      _StatTileData('Λεπτά', summary.totalDurationMins.toString(), Icons.timer_outlined, AppColors.teal),
-      _StatTileData('Θερμίδες', summary.totalCalories.toString(), Icons.local_fire_department_outlined, AppColors.orange),
+      _StatTileData(s.metricsWorkouts, summary.totalSessions.toString(), Icons.fitness_center, AppColors.purple),
+      _StatTileData(s.metricsMinutes, summary.totalDurationMins.toString(), Icons.timer_outlined, AppColors.teal),
+      _StatTileData(s.metricsCalories, summary.totalCalories.toString(), Icons.local_fire_department_outlined, AppColors.orange),
       _StatTileData(
-        'Μέσος σφυγμός',
+        s.metricsAvgHeartRate,
         summary.avgHeartRate?.toString() ?? '—',
         Icons.favorite_outline,
         AppColors.pink,
@@ -361,9 +364,9 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
 
   Widget _activityPieCard(List<ActivityBreakdown> items) {
     if (items.isEmpty) {
-      return const SurfaceCard(
-        padding: EdgeInsets.all(24),
-        child: Center(child: Text('Δεν υπάρχουν δεδομένα δραστηριότητας')),
+      return SurfaceCard(
+        padding: const EdgeInsets.all(24),
+        child: Center(child: Text(AppStrings.of(context).metricsNoData)),
       );
     }
 
@@ -503,7 +506,9 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
   Widget _workoutTile(WorkoutMetricEntry w) {
     final id = w.id ?? w.startedAt.toIso8601String();
     final expanded = _expandedWorkoutId == id;
-    final dateFmt = DateFormat('EEE d MMM · HH:mm', 'el_GR');
+    final s = AppStrings.of(context);
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    final dateFmt = DateFormat('EEE d MMM · HH:mm', locale);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -548,7 +553,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
                   children: [
                     if (w.caloriesKcal != null)
                       PillChip(label: '${w.caloriesKcal} kcal', color: AppColors.orange.withValues(alpha: 0.15), textColor: AppColors.orange),
-                    PillChip(label: '${w.durationMins} λεπτά', color: AppColors.teal.withValues(alpha: 0.15), textColor: AppColors.teal),
+                    PillChip(label: s.minutesSuffix(w.durationMins), color: AppColors.teal.withValues(alpha: 0.15), textColor: AppColors.teal),
                     if (w.avgHeartRate != null)
                       PillChip(label: '♥ ${w.avgHeartRate}', color: AppColors.pink.withValues(alpha: 0.15), textColor: AppColors.pink),
                   ],
@@ -557,12 +562,12 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
                   const SizedBox(height: 12),
                   const Divider(height: 1),
                   const SizedBox(height: 12),
-                  _detailRow('Δραστηριότητα', w.activityLabel ?? w.activityType ?? '—'),
-                  _detailRow('Διάρκεια', '${w.durationMins} λεπτά'),
-                  if (w.caloriesKcal != null) _detailRow('Θερμίδες', '${w.caloriesKcal} kcal'),
-                  if (w.avgHeartRate != null) _detailRow('Μέσος σφυγμός', '${w.avgHeartRate} bpm'),
-                  if (w.distanceM != null) _detailRow('Απόσταση', '${(w.distanceM! / 1000).toStringAsFixed(2)} km'),
-                  if (w.source != null) _detailRow('Πηγή', _sourceLabel(w.source!)),
+                  _detailRow(s.metricsActivity, w.activityLabel ?? w.activityType ?? '—'),
+                  _detailRow(s.metricsDuration, s.minutesSuffix(w.durationMins)),
+                  if (w.caloriesKcal != null) _detailRow(s.metricsCaloriesKcal, '${w.caloriesKcal} kcal'),
+                  if (w.avgHeartRate != null) _detailRow(s.metricsHeartRate, '${w.avgHeartRate} bpm'),
+                  if (w.distanceM != null) _detailRow(s.metricsDistance, '${(w.distanceM! / 1000).toStringAsFixed(2)} km'),
+                  if (w.source != null) _detailRow(s.metricsSource, _sourceLabel(s, w.source!)),
                 ],
               ],
             ),
@@ -584,11 +589,11 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
     );
   }
 
-  String _sourceLabel(String source) {
-    const labels = {
+  String _sourceLabel(AppStrings s, String source) {
+    final labels = {
       'apple_health': 'Apple Health',
       'health_connect': 'Health Connect',
-      'demo': 'Επίδειξη',
+      'demo': s.metricsSourceDemo,
     };
     return labels[source] ?? source;
   }

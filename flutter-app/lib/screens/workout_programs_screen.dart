@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
-import '../services/auth_service.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 
 bool _isVideoUrl(String? url) {
@@ -186,7 +187,7 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
     final auth = context.read<AuthService>();
     final userId = auth.user?.id;
     if (userId == null) {
-      setState(() { _loading = false; _error = 'Δεν βρέθηκε χρήστης.'; });
+      setState(() { _loading = false; _error = AppStrings.of(context).programsUserNotFound; });
       return;
     }
     try {
@@ -250,7 +251,8 @@ class _ProgramCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = program['program_name'] as String? ?? 'Πρόγραμμα';
+    final s = AppStrings.of(context);
+    final name = program['program_name'] as String? ?? s.programsDefaultName;
     final desc = program['program_description'] as String?;
     final exercises = (program['exercises'] as List?)
         ?.map((e) => Map<String, dynamic>.from(e as Map))
@@ -305,7 +307,7 @@ class _ProgramCard extends StatelessWidget {
                             const Icon(Icons.layers_outlined, size: 12, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
                             Text(
-                              '${exercises.length} ασκήσεις',
+                              s.exerciseCount(exercises.length),
                               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                             ),
                             if (assignedAt != null) ...[
@@ -363,7 +365,8 @@ class _ExerciseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = exercise['exercise_name'] as String? ?? 'Άσκηση';
+    final s = AppStrings.of(context);
+    final name = exercise['exercise_name'] as String? ?? s.exerciseDefaultName;
     final muscle = exercise['muscle_group'] as String?;
     final rawAnimUrl = exercise['animation_url'] as String?;
     final apiBase = context.read<AuthService>().api.config.apiBaseUrl;
@@ -431,13 +434,13 @@ class _ExerciseRow extends StatelessWidget {
                     runSpacing: 4,
                     children: [
                       if (sets != null && reps != null)
-                        _Chip(label: '${sets}×${reps} επ.', color: AppColors.lime),
+                        _Chip(label: s.exerciseSetsReps(sets, reps), color: AppColors.lime),
                       if (sets != null && reps == null && durSecs != null)
-                        _Chip(label: '${sets} σετ × ${_formatSecs(durSecs)}', color: AppColors.teal),
+                        _Chip(label: s.exerciseSetsDuration(sets, _formatSecs(durSecs)), color: AppColors.teal),
                       if (sets != null && reps != null && durSecs != null)
                         _Chip(label: _formatSecs(durSecs), color: AppColors.teal),
                       if (restSecs != null)
-                        _Chip(label: 'Ανάπαυση ${_formatSecs(restSecs)}', color: AppColors.orange),
+                        _Chip(label: s.exerciseRestLabel(_formatSecs(restSecs)), color: AppColors.orange),
                     ],
                   ),
                 ],
@@ -461,7 +464,8 @@ class _ExerciseRow extends StatelessWidget {
   }
 
   void _showExerciseDetail(BuildContext context, String? animUrl) {
-    final name = exercise['exercise_name'] as String? ?? 'Άσκηση';
+    final s = AppStrings.of(context);
+    final name = exercise['exercise_name'] as String? ?? s.exerciseDefaultName;
     final desc = exercise['exercise_description'] as String?;
     final muscle = exercise['muscle_group'] as String?;
     final sets = exercise['exercise_sets'] as int?;
@@ -529,26 +533,26 @@ class _ExerciseRow extends StatelessWidget {
               Row(
                 children: [
                   if (sets != null)
-                    _StatBox(label: 'Σετ', value: '$sets'),
+                    _StatBox(label: s.exerciseSets, value: '$sets'),
                   if (reps != null) ...[
                     const SizedBox(width: 10),
-                    _StatBox(label: 'Επαναλήψεις', value: '$reps'),
+                    _StatBox(label: s.exerciseReps, value: '$reps'),
                   ],
                   if (durSecs != null) ...[
                     const SizedBox(width: 10),
-                    _StatBox(label: 'Διάρκεια', value: _formatSecs(durSecs)),
+                    _StatBox(label: s.exerciseDuration, value: _formatSecs(durSecs)),
                   ],
                   if (restSecs != null) ...[
                     const SizedBox(width: 10),
-                    _StatBox(label: 'Ανάπαυση', value: _formatSecs(restSecs)),
+                    _StatBox(label: s.exerciseRest, value: _formatSecs(restSecs)),
                   ],
                 ],
               ),
               if (desc != null && desc.isNotEmpty) ...[
                 const SizedBox(height: 20),
-                const Text(
-                  'Οδηγίες',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
+                Text(
+                  s.exerciseInstructions,
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -569,9 +573,9 @@ class _ExerciseRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Σημειώσεις γυμναστή',
-                        style: TextStyle(color: AppColors.lime, fontSize: 12, fontWeight: FontWeight.w600),
+                      Text(
+                        s.exerciseTrainerNotes,
+                        style: const TextStyle(color: AppColors.lime, fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -669,14 +673,14 @@ class _EmptyView extends StatelessWidget {
               child: const Icon(Icons.fitness_center, size: 40, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Κανένα πρόγραμμα ακόμα',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+            Text(
+              AppStrings.of(context).programsNoProgram,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Ο γυμναστής σου δεν έχει αναθέσει κάποιο\nπρόγραμμα άσκησης ακόμα.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+            Text(
+              AppStrings.of(context).programsNoAssigned,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
               textAlign: TextAlign.center,
             ),
           ],
@@ -713,7 +717,7 @@ class _ErrorView extends StatelessWidget {
                 backgroundColor: AppColors.lime,
                 foregroundColor: Colors.black,
               ),
-              child: const Text('Δοκίμασε ξανά'),
+              child: Text(AppStrings.of(context).retryBtn),
             ),
           ],
         ),

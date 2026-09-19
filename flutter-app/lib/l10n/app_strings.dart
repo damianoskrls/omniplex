@@ -83,6 +83,7 @@ class AppStrings {
   String get orderStatusPaid2     => _isEl ? 'Πληρώθηκε'      : 'Paid';
   String get orderStatusProcessing2 => _isEl ? 'Επεξ.'        : 'Proc.';
   String get orderStatusReady2    => _isEl ? 'Έτοιμη'         : 'Ready';
+  String ordersMoreItems(int n)  => _isEl ? '+$n ακόμη'      : '+$n more';
 
   // ── Common ───────────────────────────────────────────────────────────────
   String get cancel        => _isEl ? 'Άκυρο'         : 'Cancel';
@@ -326,6 +327,10 @@ class AppStrings {
   String get workoutCompleteSavePhoto => _isEl ? 'Αποθήκευση'          : 'Save';
   String get workoutCompletePhotoNote => _isEl ? 'Πάνω στη φωτό προστίθενται αυτόματα: πρόγραμμα, ημερομηνία, ώρα και logo του γυμναστηρίου.' : 'Added automatically to the photo: program, date, time and gym logo.';
   String get workoutCompleteBtn     => _isEl ? 'Επιβεβαίωση παρουσίας' : 'Confirm attendance';
+  String get workoutCompletePhotoTitle => _isEl ? 'Φωτογραφία για social (Strava style)' : 'Social photo (Strava style)';
+  String get workoutCompleteHowWas => _isEl ? 'Πώς ήταν; (προαιρετικό)' : 'How was it? (optional)';
+  String get workoutCompleteCameraLabel => _isEl ? 'Κάμερα' : 'Camera';
+  String get workoutCompleteSaveLabel => _isEl ? 'Αποθήκευση' : 'Save';
   String get workoutCompletePhotoSaved => _isEl ? 'Η φωτογραφία αποθηκεύτηκε στη συλλογή σου' : 'Photo saved to your gallery';
   String workoutCompletePhotoError(String e) => _isEl ? 'Αποτυχία αποθήκευσης: $e' : 'Save failed: $e';
   String workoutCompleteConfirmedPoints(int points) => _isEl ? 'Επιβεβαιώθηκε! +$points πόντοι loyalty 🎉' : 'Confirmed! +$points loyalty points 🎉';
@@ -344,6 +349,7 @@ class AppStrings {
   String get metricsGoalTarget      => _isEl ? 'Στόχος προπονήσεων'        : 'Workout goal';
   String metricsDoneOfTarget(int done, int target) => _isEl ? '$done / $target αυτόν τον μήνα' : '$done / $target this month';
   String metricsCaloriesTarget(int cal) => _isEl ? 'Θερμίδες στόχος: ~$cal kcal' : 'Calorie goal: ~$cal kcal';
+  String get metricsNoActivityData => _isEl ? 'Δεν υπάρχουν δεδομένα δραστηριότητας' : 'No activity data';
   String get metricsGoalAchieved    => _isEl ? 'Στόχος επιτεύχθηκε!'      : 'Goal achieved!';
   String get metricsWorkouts        => _isEl ? 'Προπονήσεις'               : 'Workouts';
   String get metricsMinutes         => _isEl ? 'Λεπτά'                     : 'Minutes';
@@ -374,6 +380,11 @@ class AppStrings {
   String get exerciseInstructions  => _isEl ? 'Οδηγίες'                    : 'Instructions';
   String get exerciseTrainerNotes  => _isEl ? 'Σημειώσεις γυμναστή'       : 'Trainer notes';
   String get programsUserNotFound  => _isEl ? 'Δεν βρέθηκε χρήστης.'      : 'User not found.';
+  String get programsDefaultName   => _isEl ? 'Πρόγραμμα'                  : 'Program';
+  String get exerciseDefaultName   => _isEl ? 'Άσκηση'                     : 'Exercise';
+  String exerciseSetsReps(int sets, int reps) => _isEl ? '${sets}×${reps} επ.' : '${sets}×${reps} reps';
+  String exerciseSetsDuration(int sets, String dur) => _isEl ? '$sets σετ × $dur' : '$sets sets × $dur';
+  String exerciseRestLabel(String dur) => _isEl ? 'Ανάπαυση $dur'          : 'Rest $dur';
 
   // ── Goals ────────────────────────────────────────────────────────────────
   String get goalsTitle            => _isEl ? 'Στόχοι'                    : 'Goals';
@@ -553,6 +564,20 @@ class AppStrings {
   String get nutritionShoppingNoList => _isEl ? 'Η λίστα θα εμφανιστεί μόλις ο διατροφολόγος σου στείλει το πρόγραμμα.' : 'The list will appear once your nutritionist sends the plan.';
   String get nutritionNoIngredients => _isEl ? 'Ο διατροφολόγος δεν έχει ορίσει υλικά ακόμα.' : 'The nutritionist has not set ingredients yet.';
   String nutritionNeedAmount(String amount, String unit) => _isEl ? 'Χρειάζεσαι $amount $unit' : 'You need $amount $unit';
+  String nutritionShopNeed(String amount, String unit) => _isEl ? ' (χρειάζεσαι $amount $unit)' : ' (need $amount $unit)';
+  String nutritionShopBuy(String ingredient, String buy) => _isEl ? '• $ingredient — αγόρασε $buy' : '• $ingredient — buy $buy';
+  String nutritionShopTitle(String gymName) => _isEl ? 'Λίστα αγορών $gymName' : '$gymName Shopping list';
+  String get nutritionPlan          => _isEl ? 'Πρόγραμμα διατροφής'       : 'Nutrition plan';
+  String get nutritionTrainerNotes  => _isEl ? 'Σημειώσεις διατροφολόγου'  : 'Nutritionist notes';
+  String get nutritionOtherLogs     => _isEl ? 'Άλλες καταγραφές'          : 'Other logs';
+  String get nutritionGoalsTitle    => _isEl ? 'Στόχοι'                    : 'Goals';
+  String get nutritionNow           => _isEl ? 'Τώρα'                      : 'Now';
+  String get nutritionToday         => _isEl ? 'Σήμερα'                    : 'Today';
+  String get nutritionOkay          => _isEl ? 'ΟΚ'                        : 'OK';
+  String get nutritionCancelText    => _isEl ? 'Άκυρο'                     : 'Cancel';
+  String get nutritionSmartShopping => _isEl ? 'Έξυπνη λίστα αγορών'      : 'Smart shopping list';
+  String get nutritionLogged2       => _isEl ? 'Καταγράφηκε'               : 'Logged';
+  String nutritionEatNowDesc(String title) => _isEl ? 'Έφαγα: $title'      : 'Ate: $title';
 
   static const List<String> dayNamesEl = ['', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
   static const List<String> dayNamesEn = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -597,6 +622,10 @@ class AppStrings {
   String marketplaceSubmitBtn(String price) => _isEl ? 'Υποβολή παραγγελίας' : 'Place order';
   String get marketplaceSubmitting => _isEl ? 'Υποβολή...'                : 'Submitting...';
   String get marketplaceSelectPayment => _isEl ? 'Επίλεξε τρόπο πληρωμής' : 'Select a payment method';
+  String get marketplaceCart        => _isEl ? 'Καλάθι'                   : 'Cart';
+  String get marketplaceCheckout    => _isEl ? 'Ολοκλήρωση'               : 'Checkout';
+  String get marketplaceRequired    => _isEl ? 'Απαιτείται'               : 'Required';
+  String marketplaceCartFab(String price, int count) => _isEl ? 'Καλάθι · $price ($count)' : 'Cart · $price ($count)';
 
   // ── Profile ───────────────────────────────────────────────────────────────
   String get profileQrTitle        => _isEl ? 'Το QR μου'                 : 'My QR';

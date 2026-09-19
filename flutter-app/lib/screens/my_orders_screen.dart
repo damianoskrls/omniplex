@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 
 class MyOrdersScreen extends StatefulWidget {
@@ -47,7 +50,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        title: const Text('Οι Παραγγελίες μου', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        title: Text(AppStrings.of(context).myOrders, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -69,7 +72,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       FilledButton(
                         onPressed: _load,
                         style: FilledButton.styleFrom(backgroundColor: AppColors.lime, foregroundColor: AppColors.bg),
-                        child: const Text('Επανάληψη'),
+                        child: Text(AppStrings.of(context).retry),
                       ),
                     ],
                   ),
@@ -88,9 +91,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                             child: const Icon(Icons.shopping_bag_outlined, size: 48, color: AppColors.textSecondary),
                           ),
                           const SizedBox(height: 20),
-                          const Text('Δεν υπάρχουν παραγγελίες', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600)),
+                          Text(AppStrings.of(context).noOrders, style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 6),
-                          const Text('Οι παραγγελίες σου θα εμφανίζονται εδώ', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                          Text(AppStrings.of(context).ordersEmptySubtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                         ],
                       ),
                     )
@@ -124,11 +127,12 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     final status = order['status'] as String? ?? 'pending';
     final totalCents = order['total_cents'] as int? ?? 0;
     final createdAt = _formatDate(order['created_at'] as String?);
     final items = (order['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final cfg = _statusConfig(status);
+    final cfg = _statusConfig(s, status);
 
     return GestureDetector(
       onTap: () => _showDetail(context),
@@ -215,7 +219,7 @@ class _OrderCard extends StatelessWidget {
               if (items.length > 3)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                  child: Text('+${items.length - 3} ακόμη', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  child: Text(s.ordersMoreItems(items.length - 3), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                 ),
             ],
 
@@ -225,7 +229,7 @@ class _OrderCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Σύνολο', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(s.orderTotal, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   Text(eur(totalCents), style: TextStyle(color: AppColors.lime, fontSize: 15, fontWeight: FontWeight.w700)),
                 ],
               ),
@@ -252,20 +256,20 @@ class _OrderCard extends StatelessWidget {
 
   bool _showTimeline(String status) => ['pending', 'paid', 'processing'].contains(status);
 
-  static _StatusConfig _statusConfig(String status) {
+  static _StatusConfig _statusConfig(AppStrings s, String status) {
     switch (status) {
       case 'pending':
-        return _StatusConfig('Εκκρεμεί', const Color(0xFFF59E0B), const Color(0x22F59E0B), Icons.hourglass_empty_rounded);
+        return _StatusConfig(s.orderStatusPending, const Color(0xFFF59E0B), const Color(0x22F59E0B), Icons.hourglass_empty_rounded);
       case 'paid':
-        return _StatusConfig('Πληρώθηκε', const Color(0xFF60A5FA), const Color(0x2260A5FA), Icons.payment_rounded);
+        return _StatusConfig(s.orderStatusPaid, const Color(0xFF60A5FA), const Color(0x2260A5FA), Icons.payment_rounded);
       case 'processing':
-        return _StatusConfig('Σε επεξεργασία', const Color(0xFFA78BFA), const Color(0x22A78BFA), Icons.settings_rounded);
+        return _StatusConfig(s.orderStatusProcessing, const Color(0xFFA78BFA), const Color(0x22A78BFA), Icons.settings_rounded);
       case 'fulfilled':
-        return _StatusConfig('Έτοιμη', AppColors.lime, Color(0x22B8F55E), Icons.check_circle_rounded);
+        return _StatusConfig(s.orderStatusReady, AppColors.lime, const Color(0x22B8F55E), Icons.check_circle_rounded);
       case 'cancelled':
-        return _StatusConfig('Ακυρώθηκε', const Color(0xFFFF5757), const Color(0x22FF5757), Icons.cancel_rounded);
+        return _StatusConfig(s.orderStatusCancelled, const Color(0xFFFF5757), const Color(0x22FF5757), Icons.cancel_rounded);
       case 'refunded':
-        return _StatusConfig('Επιστροφή', const Color(0xFF94A3B8), const Color(0x2294A3B8), Icons.undo_rounded);
+        return _StatusConfig(s.orderStatusRefunded, const Color(0xFF94A3B8), const Color(0x2294A3B8), Icons.undo_rounded);
       default:
         return _StatusConfig(status, AppColors.textSecondary, AppColors.surfaceLight, Icons.circle_outlined);
     }
@@ -275,9 +279,9 @@ class _OrderCard extends StatelessWidget {
     if (iso == null) return '—';
     try {
       final d = DateTime.parse(iso).toLocal();
-      final months = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαϊ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
-      return '${d.day} ${months[d.month - 1]} ${d.year}, ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-    } catch (_) { return iso; }
+      final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+      return DateFormat('d MMM yyyy, HH:mm', locale).format(d);
+    } catch (_) { return iso ?? '—'; }
   }
 }
 
@@ -316,7 +320,8 @@ class _StatusTimeline extends StatelessWidget {
           }
           final stepIdx = i ~/ 2;
           final done = stepIdx <= idx;
-          final labels = ['Εκκρεμεί', 'Πληρώθηκε', 'Επεξ.', 'Έτοιμη'];
+          final s = AppStrings.of(context);
+          final labels = [s.orderStatusPending2, s.orderStatusPaid2, s.orderStatusProcessing2, s.orderStatusReady2];
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -350,10 +355,11 @@ class _OrderDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     final items = (order['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final status = order['status'] as String? ?? 'pending';
     final totalCents = order['total_cents'] as int? ?? 0;
-    final cfg = _OrderCard._statusConfig(status);
+    final cfg = _OrderCard._statusConfig(s, status);
     final createdAt = _OrderCard._formatDate(order['created_at'] as String?);
 
     return DraggableScrollableSheet(
@@ -394,7 +400,7 @@ class _OrderDetailSheet extends StatelessWidget {
           const SizedBox(height: 20),
 
           // Items
-          const Text('Προϊόντα', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+          Text(s.orderProducts, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
           const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(12)),
@@ -431,7 +437,7 @@ class _OrderDetailSheet extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Σύνολο', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
+                      Text(s.orderTotal, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
                       Text(eur(totalCents), style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 16)),
                     ],
                   ),
@@ -442,7 +448,7 @@ class _OrderDetailSheet extends StatelessWidget {
 
           if (['pending', 'paid', 'processing'].contains(status)) ...[
             const SizedBox(height: 20),
-            const Text('Πορεία', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            Text(s.orderProgress, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
             const SizedBox(height: 10),
             Container(
               decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(12)),

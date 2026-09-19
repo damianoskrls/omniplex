@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
@@ -67,12 +68,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Προστέθηκε στο καλάθι'),
+          content: Text(AppStrings.of(context).marketplaceAddedToCart),
           duration: const Duration(seconds: 3),
           backgroundColor: AppColors.surface,
           behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
-            label: 'Καλάθι →',
+            label: AppStrings.of(context).marketplaceCartBtnLabel,
             textColor: AppColors.lime,
             onPressed: _showCart,
           ),
@@ -117,8 +118,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           context: context,
           builder: (_) => AlertDialog(
             backgroundColor: AppColors.surface,
-            title: const Text('Παραγγελία καταχωρήθηκε! 🎉'),
-            content: const Text('Θα λάβεις ειδοποίηση όταν είναι έτοιμη.'),
+            title: Text(AppStrings.of(context).marketplaceOrderSuccess),
+            content: Text(AppStrings.of(context).marketplaceOrderSuccessBody),
             actions: [
               FilledButton(
                 onPressed: () => Navigator.pop(context),
@@ -187,7 +188,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.receipt_long_outlined),
-            tooltip: 'Οι παραγγελίες μου',
+            tooltip: AppStrings.of(context).marketplaceMyOrders,
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
@@ -222,10 +223,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           : _error != null
               ? Center(child: Text(_error!))
               : _products.isEmpty
-                  ? const EmptyState(
+                  ? EmptyState(
                       icon: Icons.storefront_outlined,
-                      title: 'Δεν υπάρχουν προϊόντα',
-                      subtitle: 'Το γυμναστήριο δεν έχει ανεβάσει προϊόντα ακόμα.',
+                      title: AppStrings.of(context).marketplaceEmpty,
+                      subtitle: AppStrings.of(context).marketplaceEmptySub,
                     )
                   : RefreshIndicator(
                       onRefresh: _load,
@@ -250,7 +251,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 child: FilledButton.icon(
                   onPressed: _showCart,
                   icon: const Icon(Icons.shopping_bag_outlined),
-                  label: Text('Καλάθι · ${_eur(_cartTotal)} ($_cartItemCount)'),
+                  label: Text(AppStrings.of(context).marketplaceCartFab(_eur(_cartTotal), _cartItemCount)),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.lime,
                     foregroundColor: AppColors.bg,
@@ -321,8 +322,8 @@ class _ProductRow extends StatelessWidget {
                       ),
                     const SizedBox(height: 6),
                     if (outOfStock)
-                      const Text('Εξαντλήθηκε',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary))
+                      Text(AppStrings.of(context).marketplaceOutOfStock,
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))
                     else
                       Text(_eur(price),
                           style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 15)),
@@ -414,6 +415,7 @@ class _ProductPageState extends State<_ProductPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     final data = _full ?? widget.product;
     final name = data['name'] as String? ?? '';
     final description = data['description'] as String?;
@@ -514,14 +516,14 @@ class _ProductPageState extends State<_ProductPage> {
 
                   // Info grid
                   if (stock != null || sku != null || weightGrams != null) ...[
-                    _SectionTitle('Πληροφορίες'),
+                    _SectionTitle(s.marketplaceInfo),
                     const SizedBox(height: 10),
                     _InfoGrid(items: [
                       if (stock != null)
                         _InfoItem(
                           icon: Icons.inventory_2_outlined,
-                          label: 'Απόθεμα',
-                          value: outOfStock ? 'Εξαντλήθηκε' : '$stock τεμ.',
+                          label: s.marketplaceStock,
+                          value: outOfStock ? s.marketplaceOutOfStock : s.marketplaceStockUnits(stock),
                           valueColor: outOfStock ? AppColors.pink : null,
                         ),
                       if (sku != null && sku.isNotEmpty)
@@ -529,7 +531,7 @@ class _ProductPageState extends State<_ProductPage> {
                       if (weightGrams != null)
                         _InfoItem(
                           icon: Icons.scale_outlined,
-                          label: 'Βάρος',
+                          label: s.marketplaceWeight,
                           value: weightGrams is int && weightGrams >= 1000
                               ? '${(weightGrams / 1000).toStringAsFixed(1)} kg'
                               : '${weightGrams}g',
@@ -540,7 +542,7 @@ class _ProductPageState extends State<_ProductPage> {
 
                   // Ingredients
                   if (ingredients != null && ingredients.isNotEmpty) ...[
-                    _SectionTitle('Συστατικά'),
+                    _SectionTitle(s.marketplaceIngredients),
                     const SizedBox(height: 8),
                     Text(ingredients,
                         style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary)),
@@ -549,7 +551,7 @@ class _ProductPageState extends State<_ProductPage> {
 
                   // Usage instructions
                   if (usageInstructions != null && usageInstructions.isNotEmpty) ...[
-                    _SectionTitle('Οδηγίες χρήσης'),
+                    _SectionTitle(s.marketplaceUsage),
                     const SizedBox(height: 8),
                     Text(usageInstructions,
                         style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textSecondary)),
@@ -558,7 +560,7 @@ class _ProductPageState extends State<_ProductPage> {
 
                   // Notes
                   if (notes != null && notes.isNotEmpty) ...[
-                    _SectionTitle('Σημειώσεις'),
+                    _SectionTitle(s.marketplaceNotes),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(14),
@@ -595,9 +597,9 @@ class _ProductPageState extends State<_ProductPage> {
             border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.5))),
           ),
           child: outOfStock
-              ? const Center(
-                  child: Text('Εξαντλήθηκε',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 15)))
+              ? Center(
+                  child: Text(s.marketplaceOutOfStock,
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)))
               : Row(
                   children: [
                     // Qty stepper
@@ -632,8 +634,8 @@ class _ProductPageState extends State<_ProductPage> {
                         ),
                         child: Text(
                           _qty == 0
-                              ? 'Προσθήκη στο καλάθι'
-                              : 'Προσθήκη · ${_eur(price * (_qty + 1))}',
+                              ? s.marketplaceAddToCart
+                              : s.marketplaceAddWithPrice(_eur(price * (_qty + 1))),
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                         ),
                       ),
@@ -707,13 +709,13 @@ class _CartSheetState extends State<_CartSheet> {
     return t;
   }
 
-  String _paymentLabel(String key) {
+  String _paymentLabel(AppStrings s, String key) {
     switch (key) {
-      case 'cash': return 'Μετρητά';
-      case 'card': return 'Κάρτα';
-      case 'pickup': return 'Παραλαβή από κατάστημα';
-      case 'stripe': return 'Online πληρωμή';
-      case 'bank': return 'Τραπεζική μεταφορά';
+      case 'cash': return s.marketplacePayCash;
+      case 'card': return s.marketplacePayCard;
+      case 'pickup': return s.marketplacePayPickup;
+      case 'stripe': return s.marketplacePayStripe;
+      case 'bank': return s.marketplacePayBank;
       default: return key;
     }
   }
@@ -760,7 +762,7 @@ class _CartSheetState extends State<_CartSheet> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Text('Καλάθι', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+              Text(AppStrings.of(context).marketplaceCart, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
               const Spacer(),
               const Icon(Icons.shopping_bag_outlined, color: AppColors.lime),
             ],
@@ -809,7 +811,7 @@ class _CartSheetState extends State<_CartSheet> {
           const Divider(height: 24),
           Row(
             children: [
-              const Text('Σύνολο', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              Text(AppStrings.of(context).marketplaceTotal, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
               const Spacer(),
               Text(_eur(_total), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: AppColors.lime)),
             ],
@@ -820,7 +822,7 @@ class _CartSheetState extends State<_CartSheet> {
             child: FilledButton.icon(
               onPressed: () => setState(() => _showCheckout = true),
               icon: const Icon(Icons.arrow_forward),
-              label: Text('Συνέχεια · ${_eur(_total)}'),
+              label: Text(AppStrings.of(context).marketplaceContinue(_eur(_total))),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.lime,
                 foregroundColor: AppColors.bg,
@@ -835,6 +837,7 @@ class _CartSheetState extends State<_CartSheet> {
   }
 
   Widget _buildCheckout() {
+    final s = AppStrings.of(context);
     final enabledPayments = widget.paymentMethods.entries.where((e) => e.value).toList();
 
     return Container(
@@ -862,7 +865,7 @@ class _CartSheetState extends State<_CartSheet> {
                     child: const Icon(Icons.arrow_back_ios, size: 18, color: AppColors.textSecondary),
                   ),
                   const SizedBox(width: 8),
-                  Text('Ολοκλήρωση', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(s.marketplaceCheckout, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
                   const Spacer(),
                   Text(_eur(_total), style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 18)),
                 ],
@@ -870,38 +873,38 @@ class _CartSheetState extends State<_CartSheet> {
               const SizedBox(height: 24),
 
               // Contact info
-              _SectionTitle('Στοιχεία επικοινωνίας'),
+              _SectionTitle(s.marketplaceContactInfo),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _nameCtrl,
-                decoration: _inputDecoration('Ονοματεπώνυμο', Icons.person_outline),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Απαιτείται' : null,
+                decoration: _inputDecoration(s.marketplaceFullName, Icons.person_outline),
+                validator: (v) => v == null || v.trim().isEmpty ? s.marketplaceRequired : null,
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _phoneCtrl,
-                decoration: _inputDecoration('Τηλέφωνο', Icons.phone_outlined),
+                decoration: _inputDecoration(s.marketplacePhoneField, Icons.phone_outlined),
                 keyboardType: TextInputType.phone,
-                validator: (v) => v == null || v.trim().isEmpty ? 'Απαιτείται' : null,
+                validator: (v) => v == null || v.trim().isEmpty ? s.marketplaceRequired : null,
               ),
               const SizedBox(height: 24),
 
               // Delivery method
-              _SectionTitle('Τρόπος παραλαβής'),
+              _SectionTitle(s.marketplaceDelivery),
               const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(child: _DeliveryOption(
                     icon: Icons.store_outlined,
-                    label: 'Από το κατάστημα',
+                    label: s.marketplacePickupLabel,
                     selected: _deliveryMethod == 'pickup',
                     onTap: () => setState(() { _deliveryMethod = 'pickup'; }),
                   )),
                   const SizedBox(width: 10),
                   Expanded(child: _DeliveryOption(
                     icon: Icons.local_shipping_outlined,
-                    label: 'Αποστολή',
+                    label: s.marketplaceShipLabel,
                     selected: _deliveryMethod == 'delivery',
                     onTap: () => setState(() { _deliveryMethod = 'delivery'; }),
                   )),
@@ -911,8 +914,8 @@ class _CartSheetState extends State<_CartSheet> {
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _addressCtrl,
-                  decoration: _inputDecoration('Διεύθυνση αποστολής', Icons.location_on_outlined),
-                  validator: (v) => _deliveryMethod == 'delivery' && (v == null || v.trim().isEmpty) ? 'Απαιτείται' : null,
+                  decoration: _inputDecoration(s.marketplaceShipAddress, Icons.location_on_outlined),
+                  validator: (v) => _deliveryMethod == 'delivery' && (v == null || v.trim().isEmpty) ? s.marketplaceRequired : null,
                   maxLines: 2,
                   textCapitalization: TextCapitalization.sentences,
                 ),
@@ -921,7 +924,7 @@ class _CartSheetState extends State<_CartSheet> {
 
               // Payment method
               if (enabledPayments.isNotEmpty) ...[
-                _SectionTitle('Τρόπος πληρωμής'),
+                _SectionTitle(s.marketplacePaymentMethod),
                 const SizedBox(height: 10),
                 ...enabledPayments.map((e) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
@@ -941,7 +944,7 @@ class _CartSheetState extends State<_CartSheet> {
                         children: [
                           Icon(_paymentIcon(e.key), color: _paymentMethod == e.key ? AppColors.lime : AppColors.textSecondary, size: 20),
                           const SizedBox(width: 12),
-                          Text(_paymentLabel(e.key), style: TextStyle(
+                          Text(_paymentLabel(s, e.key), style: TextStyle(
                             fontWeight: _paymentMethod == e.key ? FontWeight.w700 : FontWeight.w500,
                             color: _paymentMethod == e.key ? AppColors.lime : AppColors.textPrimary,
                           )),
@@ -959,7 +962,7 @@ class _CartSheetState extends State<_CartSheet> {
               // Notes
               TextFormField(
                 controller: _notesCtrl,
-                decoration: _inputDecoration('Σημειώσεις παραγγελίας (προαιρετικό)', Icons.notes_outlined),
+                decoration: _inputDecoration(s.marketplaceOrderNotes, Icons.notes_outlined),
                 maxLines: 2,
                 textCapitalization: TextCapitalization.sentences,
               ),
@@ -975,7 +978,7 @@ class _CartSheetState extends State<_CartSheet> {
                 ),
                 child: Row(
                   children: [
-                    const Text('Σύνολο παραγγελίας', style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text(s.marketplaceOrderTotal, style: const TextStyle(fontWeight: FontWeight.w600)),
                     const Spacer(),
                     Text(_eur(_total), style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w900, fontSize: 20)),
                   ],
@@ -990,7 +993,7 @@ class _CartSheetState extends State<_CartSheet> {
                   icon: widget.ordering
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
                       : const Icon(Icons.check_circle_outline),
-                  label: Text(widget.ordering ? 'Υποβολή...' : 'Υποβολή παραγγελίας'),
+                  label: Text(widget.ordering ? s.marketplaceSubmitting : s.marketplaceSubmitBtn(_eur(_total))),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.lime,
                     foregroundColor: AppColors.bg,
@@ -1009,7 +1012,7 @@ class _CartSheetState extends State<_CartSheet> {
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_paymentMethod == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Επίλεξε τρόπο πληρωμής')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppStrings.of(context).marketplaceSelectPayment)));
       return;
     }
     widget.onCheckout({
