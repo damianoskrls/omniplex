@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 
@@ -48,14 +50,14 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Ακύρωση αιτήματος;'),
-        content: const Text('Το αίτημα άδειας θα ακυρωθεί.'),
+        title: Text(AppStrings.of(context).staffLeavesCancelTitle),
+        content: Text(AppStrings.of(context).staffLeavesCancelBody),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Άκυρο')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).cancel)),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
-            child: const Text('Ακύρωση'),
+            child: Text(AppStrings.of(context).staffLeavesCancelBtn),
           ),
         ],
       ),
@@ -84,7 +86,7 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
   String _formatRange(String? from, String? to) {
     if (from == null) return '';
     try {
-      final fmt = DateFormat('d MMM yyyy', 'el_GR');
+      final fmt = DateFormat('d MMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US');
       final f = fmt.format(DateTime.parse(from));
       if (to == null || to == from) return f;
       return '$f – ${fmt.format(DateTime.parse(to))}';
@@ -108,11 +110,11 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
     }
   }
 
-  String _statusLabel(String? s) {
+  String _statusLabel(String? s, BuildContext context) {
     switch (s) {
-      case 'approved': return 'Εγκρίθηκε';
-      case 'rejected': return 'Απορρίφθηκε';
-      default:         return 'Σε αναμονή';
+      case 'approved': return AppStrings.of(context).staffLeavesStatusApproved;
+      case 'rejected': return AppStrings.of(context).staffLeavesStatusRejected;
+      default:         return AppStrings.of(context).staffLeavesStatusPending;
     }
   }
 
@@ -152,9 +154,9 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Υπόλοιπο αδειών',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                Text('$remaining από $_annualDays μέρες',
+                                Text(AppStrings.of(context).staffLeavesBalance,
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                Text(AppStrings.of(context).staffLeavesOf(remaining, _annualDays),
                                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                               ],
                             ),
@@ -162,9 +164,9 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              const Text('Χρησιμοποιήθηκαν',
-                                  style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                              Text('$_usedDays μέρες',
+                              Text(AppStrings.of(context).staffLeavesUsed,
+                                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                              Text(AppStrings.of(context).staffLeavesDays(_usedDays),
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.orange)),
                             ],
@@ -176,10 +178,10 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                     // Leaves list
                     Expanded(
                       child: _leaves.isEmpty
-                          ? const EmptyState(
+                          ? EmptyState(
                               icon: Icons.beach_access_outlined,
-                              title: 'Δεν υπάρχουν άδειες',
-                              subtitle: 'Πάτα + για να στείλεις αίτημα άδειας.',
+                              title: AppStrings.of(context).staffLeavesEmpty,
+                              subtitle: AppStrings.of(context).staffLeavesEmptySub,
                             )
                           : RefreshIndicator(
                               onRefresh: _load,
@@ -234,7 +236,7 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                                                   color: sColor.withValues(alpha: 0.12),
                                                   borderRadius: BorderRadius.circular(6),
                                                 ),
-                                                child: Text(_statusLabel(status),
+                                                child: Text(_statusLabel(status, context),
                                                     style: TextStyle(
                                                         fontSize: 11, fontWeight: FontWeight.w700, color: sColor)),
                                               ),
@@ -247,7 +249,7 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                                             icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
-                                            tooltip: 'Ακύρωση αιτήματος',
+                                            tooltip: AppStrings.of(context).staffLeavesCancelAction,
                                           ),
                                       ],
                                     ),
@@ -311,7 +313,7 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
 
   Future<void> _save() async {
     if (_from == null) {
-      setState(() => _error = 'Επιλέξτε ημερομηνία');
+      setState(() => _error = AppStrings.of(context).staffLeavesEnterDate);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -329,9 +331,9 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
     }
   }
 
-  String _rangeLabel() {
-    if (_from == null) return 'Επιλογή ημερομηνιών';
-    final fmt = DateFormat('d MMM yyyy', 'el_GR');
+  String _rangeLabel(BuildContext context) {
+    if (_from == null) return AppStrings.of(context).staffLeavesSelectDate;
+    final fmt = DateFormat('d MMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US');
     final f = fmt.format(_from!);
     if (_to == null || _to == _from) return f;
     return '$f – ${fmt.format(_to!)}';
@@ -345,11 +347,11 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Νέο αίτημα άδειας',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+          Text(AppStrings.of(context).staffLeavesNewRequest,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
           const SizedBox(height: 4),
-          const Text('Το αίτημα θα σταλεί για έγκριση από τον διαχειριστή.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          Text(AppStrings.of(context).staffLeavesNewRequestSub,
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           const SizedBox(height: 20),
 
           // Date range picker
@@ -367,7 +369,7 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
                   const Icon(Icons.date_range_outlined, color: AppColors.textSecondary, size: 20),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(_rangeLabel(),
+                    child: Text(_rangeLabel(context),
                         style: TextStyle(
                           color: _from != null ? AppColors.textPrimary : AppColors.textSecondary,
                           fontWeight: _from != null ? FontWeight.w600 : FontWeight.w400,
@@ -382,9 +384,9 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
           const SizedBox(height: 14),
           TextField(
             controller: _reasonCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Αιτία (προαιρετικά)',
-              prefixIcon: Icon(Icons.notes_outlined, color: AppColors.textSecondary),
+            decoration: InputDecoration(
+              labelText: AppStrings.of(context).staffLeavesReason,
+              prefixIcon: const Icon(Icons.notes_outlined, color: AppColors.textSecondary),
             ),
             textInputAction: TextInputAction.done,
           ),
@@ -402,7 +404,7 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
               child: _loading
                   ? const SizedBox(height: 20, width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                  : const Text('Αποστολή αιτήματος'),
+                  : Text(AppStrings.of(context).staffLeavesSend),
             ),
           ),
         ],

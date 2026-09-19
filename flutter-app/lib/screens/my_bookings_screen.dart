@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_strings.dart';
 import '../models/booking.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/preparation_tips_card.dart';
 import '../widgets/ui_kit.dart';
@@ -122,13 +124,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Αποχώρηση από αναμονή'),
-        content: Text('Να αφαιρεθείς από την αναμονή για ${entry.displayName};'),
+        title: Text(AppStrings.of(context).cancelWaitlistTitle),
+        content: Text(AppStrings.of(context).cancelWaitlistContent(entry.displayName)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Όχι')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).no)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ναι', style: TextStyle(color: AppColors.orange)),
+            child: Text(AppStrings.of(context).yes, style: const TextStyle(color: AppColors.orange)),
           ),
         ],
       ),
@@ -139,7 +141,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       await context.read<AuthService>().api.leaveWaitlist(entry.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Αφαιρέθηκες από τη λίστα αναμονής')),
+          SnackBar(content: Text(AppStrings.of(context).waitlistLeft)),
         );
         _load();
       }
@@ -151,7 +153,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 
   Widget _waitlistCard(WaitlistEntry entry) {
-    final dateFmt = DateFormat('EEE d MMM, HH:mm', 'el_GR');
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    final dateFmt = DateFormat('EEE d MMM, HH:mm', locale);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: SurfaceCard(
@@ -190,13 +193,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Θέση #${entry.position} στη λίστα αναμονής',
+                    AppStrings.of(context).waitlistPosition(entry.position),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
                   ),
                   if (entry.isOffered) ...[
                     const SizedBox(height: 6),
                     Text(
-                      'Άνοιξε θέση — θα ενημερωθείς μόλις επιβεβαιωθεί η κράτηση.',
+                      AppStrings.of(context).waitlistOpened,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.lime,
                             fontSize: 13,
@@ -208,7 +211,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     alignment: Alignment.centerLeft,
                     child: TextButton(
                       onPressed: () => _leaveWaitlist(entry),
-                      child: const Text('Αποχώρηση από αναμονή', style: TextStyle(color: AppColors.orange)),
+                      child: Text(AppStrings.of(context).leaveWaitlist, style: const TextStyle(color: AppColors.orange)),
                     ),
                   ),
                 ],
@@ -226,13 +229,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Ακύρωση κράτησης'),
-        content: Text('Να ακυρωθεί η κράτηση για ${booking.serviceName};'),
+        title: Text(AppStrings.of(context).cancelBookingTitle),
+        content: Text(AppStrings.of(context).cancelBookingContent(booking.serviceName)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Όχι')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).no)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ναι', style: TextStyle(color: AppColors.orange)),
+            child: Text(AppStrings.of(context).yes, style: const TextStyle(color: AppColors.orange)),
           ),
         ],
       ),
@@ -243,7 +246,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       await api.cancelBooking(booking.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Η κράτηση ακυρώθηκε')),
+          SnackBar(content: Text(AppStrings.of(context).bookingCancelled)),
         );
         _load();
       }
@@ -286,17 +289,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 
   Widget _bookingCard(Booking booking, {required int index, required bool isFirstUpcoming}) {
-    final dateFmt = DateFormat('EEE d MMM, HH:mm', 'el_GR');
+    final s = AppStrings.of(context);
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    final dateFmt = DateFormat('EEE d MMM, HH:mm', locale);
     final accent = booking.isNutritionConsultation
         ? AppColors.pink
         : AppColors.cardGradient(index).first;
     final isNext = isFirstUpcoming && booking.isUpcoming;
     final nextLabel = isNext
-        ? (_isToday(booking.startsAt) ? 'Σήμερα' : 'Επόμενο')
+        ? (_isToday(booking.startsAt) ? s.today : s.next)
         : null;
     final isNutrition = booking.isNutritionConsultation;
-    final tipsLabel = isNutrition ? 'Οδηγίες πριν τη συνεδρία' : 'Tips προετοιμασίας';
-    final tipsTitle = isNutrition ? 'Πριν τη συνεδρία' : 'Έτοιμασου';
+    final tipsLabel = isNutrition ? s.tipsLabelNutrition : s.tipsLabelGym;
+    final tipsTitle = isNutrition ? s.tipsTitleNutrition : s.tipsTitleGym;
     final tipsIcon = isNutrition ? Icons.restaurant_outlined : Icons.lightbulb_outline;
 
     return Padding(
@@ -346,7 +351,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          isNutrition ? 'Με ${booking.staffName}' : 'Με ${booking.staffName}',
+                          s.withStaff(booking.staffName),
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -389,7 +394,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       },
                       icon: Icon(tipsIcon, size: 16),
                       label: Text(
-                        _expandedTips.contains(booking.id) ? 'Κρύψε οδηγίες' : tipsLabel,
+                        _expandedTips.contains(booking.id) ? s.hideTips : tipsLabel,
                       ),
                     ),
                     if (_expandedTips.contains(booking.id))
@@ -406,12 +411,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       if (booking.isInProgress)
                         TextButton(
                           onPressed: () => _openWorkoutComplete(booking),
-                          child: const Text('Φωτό & Share'),
+                          child: Text(s.sharePhoto),
                         ),
                       if (booking.needsCheckIn)
                         TextButton(
                           onPressed: () => _openWorkoutComplete(booking),
-                          child: const Text('Επιβεβαίωση'),
+                          child: Text(s.confirmAttendance),
                         ),
                       if (booking.isUpcoming) ...[
                         TextButton(
@@ -423,12 +428,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           ).then((changed) {
                             if (changed == true) _load();
                           }),
-                          child: const Text('Αλλαγή'),
+                          child: Text(s.reschedule),
                         ),
                         TextButton(
                           onPressed: () => _cancel(booking),
                           style: TextButton.styleFrom(foregroundColor: AppColors.orange),
-                          child: const Text('Ακύρωση'),
+                          child: Text(s.cancel),
                         ),
                       ],
                     ],
@@ -478,7 +483,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
           children: [
             Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('Δοκίμασε ξανά')),
+            ElevatedButton(onPressed: _load, child: Text(AppStrings.of(context).retryBtn)),
           ],
         ),
       );
@@ -492,10 +497,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final upcoming = _upcomingCount;
 
     if (!hasActive && _completedCount == 0) {
-      return const EmptyState(
+      final s2 = AppStrings.of(context);
+      return EmptyState(
         icon: Icons.calendar_today_outlined,
-        title: 'Δεν έχεις κρατήσεις ακόμα',
-        subtitle: 'Κλείσε το πρώτο σου ραντεβού από την καρτέλα Κράτηση.',
+        title: s2.noBookings,
+        subtitle: s2.noBookingsSubtitle,
       );
     }
 
@@ -507,7 +513,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         children: [
           if (pendingApproval.isNotEmpty) ...[
             _sectionHeader(
-              title: 'Αναμονή επιβεβαίωσης',
+              title: AppStrings.of(context).bookingPendingConfirm,
               icon: Icons.pending_actions_rounded,
               color: AppColors.orange,
               count: pendingApproval.length,
@@ -521,7 +527,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
           ],
           if (_waitlist.isNotEmpty) ...[
             _sectionHeader(
-              title: 'Λίστα αναμονής',
+              title: AppStrings.of(context).waitlistSection,
               icon: Icons.hourglass_top_rounded,
               color: AppColors.orange,
               count: _waitlist.length,
@@ -553,11 +559,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Εκκρεμεί επιβεβαίωση',
+                                AppStrings.of(context).pendingAttendanceSection,
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               Text(
-                                '${pendingAttendance.length} προπόνηση${pendingAttendance.length == 1 ? '' : 'εις'} χωρίς check-in',
+                                AppStrings.of(context).noCheckinCount(pendingAttendance.length),
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],
@@ -567,7 +573,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     ),
                     const SizedBox(height: 12),
                     ...pendingAttendance.take(3).map((booking) {
-                      final dateFmt = DateFormat('EEE d MMM, HH:mm', 'el_GR');
+                      final _locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+                      final dateFmt = DateFormat('EEE d MMM, HH:mm', _locale);
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Row(
@@ -580,7 +587,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             ),
                             TextButton(
                               onPressed: () => _openWorkoutComplete(booking),
-                              child: const Text('Επιβεβαίωση'),
+                              child: Text(AppStrings.of(context).confirmAttendance),
                             ),
                           ],
                         ),
@@ -613,11 +620,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Ολοκληρωμένα',
+                              AppStrings.of(context).completedSection,
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             Text(
-                              '$_completedCount προπονήσεις · στόχοι & KPIs',
+                              '$_completedCount ${AppStrings.of(context).completedSubtitle}',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
@@ -648,8 +655,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     Expanded(
                       child: Text(
                         upcoming == 1
-                            ? 'Επόμενο ραντεβού'
-                            : '$upcoming επερχόμενα ραντεβού',
+                            ? AppStrings.of(context).nextAppointment
+                            : AppStrings.of(context).upcomingAppointments(upcoming),
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
@@ -658,24 +665,24 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               ),
             ),
           if (!hasActive)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
               child: EmptyState(
                 icon: Icons.event_available_outlined,
-                title: 'Δεν έχεις ενεργά ραντεβού',
-                subtitle: 'Τα ολοκληρωμένα βρίσκονται παραπάνω.',
+                title: AppStrings.of(context).noActiveAppointments,
+                subtitle: AppStrings.of(context).noActiveAppointmentsSubtitle,
               ),
             )
           else ...[
             ..._bookingSection(
-              title: 'Γυμναστήριο',
+              title: AppStrings.of(context).gymLabel,
               icon: Icons.fitness_center,
               color: AppColors.teal,
               bookings: gym,
               isFirstSection: gym.isNotEmpty,
             ),
             ..._bookingSection(
-              title: 'Διατροφολόγος',
+              title: AppStrings.of(context).nutritionistLabel,
               icon: Icons.restaurant,
               color: AppColors.pink,
               bookings: nutrition,
@@ -695,12 +702,13 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     final labels = {
-      'confirmed': 'Επιβεβαιωμένη',
-      'pending': 'Αναμονή επιβεβαίωσης',
-      'cancelled': 'Ακυρωμένη',
-      'completed': needsCheckIn ? 'Χωρίς check-in' : 'Ολοκληρωμένη',
-      'no_show': 'Απόντας',
+      'confirmed': s.bookingStatusConfirmed,
+      'pending': s.bookingStatusPending,
+      'cancelled': s.bookingStatusCancelled,
+      'completed': needsCheckIn ? s.bookingStatusNoCheckin : s.bookingStatusCompleted,
+      'no_show': s.bookingStatusNoShow,
     };
     final colors = {
       'confirmed': AppColors.lime,

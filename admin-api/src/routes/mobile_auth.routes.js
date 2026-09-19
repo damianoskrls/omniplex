@@ -619,12 +619,11 @@ router.get('/staff/schedule', requireMobileStaff, async (req, res) => {
       LEFT JOIN locations l ON l.id = b.location_id
       LEFT JOIN rooms r ON r.id = b.room_id
       WHERE b.business_id = ?
-        AND b.staff_id = ?
         AND b.starts_at >= ?
         AND b.starts_at < ?
         AND b.status NOT IN ('cancelled')
       ORDER BY b.starts_at ASC
-    `, [req.businessId, req.staffId, date, nextStr]);
+    `, [req.businessId, date, nextStr]);
     return res.json({ bookings, date });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -645,12 +644,11 @@ router.get('/staff/schedule/week', requireMobileStaff, async (req, res) => {
       JOIN services s ON s.id = b.service_id
       JOIN users u ON u.id = b.user_id
       WHERE b.business_id = ?
-        AND b.staff_id = ?
         AND b.starts_at >= ?
         AND b.starts_at < ?
         AND b.status NOT IN ('cancelled')
       ORDER BY b.starts_at ASC
-    `, [req.businessId, req.staffId, from, toStr]);
+    `, [req.businessId, from, toStr]);
     return res.json({ bookings, from, to: toStr });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -662,8 +660,8 @@ router.patch('/staff/bookings/:id/attendance', requireMobileStaff, async (req, r
   const { confirmed } = req.body;
   try {
     await db.query(
-      'UPDATE bookings SET attendance_confirmed = ?, attendance_confirmed_at = NOW() WHERE id = ? AND business_id = ? AND staff_id = ?',
-      [confirmed ? 1 : 0, req.params.id, req.businessId, req.staffId],
+      'UPDATE bookings SET attendance_confirmed = ?, attendance_confirmed_at = NOW() WHERE id = ? AND business_id = ?',
+      [confirmed ? 1 : 0, req.params.id, req.businessId],
     );
     return res.json({ ok: true });
   } catch (err) {

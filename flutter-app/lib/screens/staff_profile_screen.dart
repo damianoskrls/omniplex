@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../services/push_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
@@ -62,8 +64,8 @@ class StaffProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Γυμναστήριο',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    Text(AppStrings.of(context).staffProfileGym,
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                     Text(config.appName,
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   ],
@@ -79,12 +81,12 @@ class StaffProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
-                    SizedBox(width: 8),
-                    Text('Βιογραφικό',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    const Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
+                    const SizedBox(width: 8),
+                    Text(AppStrings.of(context).staffProfileBio,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -102,7 +104,7 @@ class StaffProfileScreen extends StatelessWidget {
             children: [
               _ActionRow(
                 icon: Icons.logout,
-                label: 'Αποσύνδεση',
+                label: AppStrings.of(context).staffProfileLogout,
                 color: AppColors.orange,
                 onTap: () => _logout(context, auth, config),
               ),
@@ -122,14 +124,14 @@ class StaffProfileScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Αποσύνδεση;'),
-        content: Text('Θα αποσυνδεθείς από το ${config.appName}.'),
+        title: Text(AppStrings.of(context).staffProfileLogoutTitle),
+        content: Text(AppStrings.of(context).staffProfileLogoutBody(config.appName)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Άκυρο')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).cancel)),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
-            child: const Text('Αποσύνδεση'),
+            child: Text(AppStrings.of(context).staffProfileLogout),
           ),
         ],
       ),
@@ -195,6 +197,39 @@ class _ActionRow extends StatelessWidget {
             Expanded(child: Text(label, style: TextStyle(color: c, fontWeight: FontWeight.w600))),
             Icon(Icons.chevron_right, color: c.withValues(alpha: 0.5), size: 18),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LangChip extends StatelessWidget {
+  const _LangChip({required this.label, required this.active, required this.onTap});
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const lime = Color(0xFFB8F55E);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: active ? lime.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: active ? lime.withValues(alpha: 0.5) : Colors.white12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? lime : Colors.white38,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
         ),
       ),
     );

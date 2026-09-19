@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import 'wallet_card_screen.dart';
 
 class MyQrScreen extends StatefulWidget {
   const MyQrScreen({super.key});
@@ -56,6 +57,7 @@ class _QrBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final token      = data['token'] as String? ?? '';
     final fullName   = data['fullName'] as String? ?? '';
+    final memberId   = data['memberId'] as String? ?? data['userId'] as String?;
     final remaining  = data['remaining'];
     final isUnlimited = data['isUnlimited'] == true;
     final hasActive  = data['hasActiveMembership'] == true;
@@ -134,6 +136,33 @@ class _QrBody extends StatelessWidget {
                   Text('Δείξε το στον scanner εισόδου',
                       style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Wallet card button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => WalletCardScreen(
+                      token: token,
+                      fullName: fullName,
+                      memberId: memberId,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.wallet_outlined, size: 18),
+                label: const Text('Αποθήκευση στο Wallet'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.lime,
+                  side: const BorderSide(color: AppColors.lime),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
               ),
             ),
           ],

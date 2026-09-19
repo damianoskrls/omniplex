@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/user_stats.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import '../widgets/payment_sheet.dart';
@@ -73,7 +75,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         (_paymentOptions!['methods'] as List? ?? []).isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Οι πληρωμές μου')),
+      appBar: AppBar(title: Text(AppStrings.of(context).paymentsTitle)),
       body: _loading
           ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
@@ -91,7 +93,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Υπόλοιπο προς πληρωμή',
+                                  Text(AppStrings.of(context).paymentsBalance,
                                       style: Theme.of(context).textTheme.bodyMedium),
                                   Text(
                                     _eur(_totalBalance),
@@ -113,10 +115,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       ),
                       const SizedBox(height: 16),
                       if (_payments.isEmpty)
-                        const EmptyState(
+                        EmptyState(
                           icon: Icons.receipt_long_outlined,
-                          title: 'Δεν υπάρχουν καταχωρήσεις',
-                          subtitle: 'Ο διαχειριστής θα προσθέσει τις πληρωμές σου εδώ.',
+                          title: AppStrings.of(context).paymentsNoEntries,
+                          subtitle: AppStrings.of(context).paymentsNoEntriesSub,
                         )
                       else
                         ..._payments.map((p) {
@@ -132,7 +134,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          p.description ?? 'Πληρωμή',
+                                          p.description ?? AppStrings.of(context).paymentsDefaultLabel,
                                           style: Theme.of(context).textTheme.titleMedium,
                                         ),
                                       ),
@@ -144,15 +146,15 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  Text('Σύνολο: ${_eur(p.amountCents)} · Πληρώθηκε: ${_eur(p.paidAmountCents)}'),
+                                  Text(AppStrings.of(context).paymentsTotalPaid(_eur(p.amountCents), _eur(p.paidAmountCents))),
                                   if (p.balanceCents > 0)
                                     Text(
-                                      'Υπόλοιπο: ${_eur(p.balanceCents)}',
+                                      AppStrings.of(context).paymentsBalance2(_eur(p.balanceCents)),
                                       style: const TextStyle(color: AppColors.orange, fontWeight: FontWeight.w600),
                                     ),
                                   if (date != null)
                                     Text(
-                                      DateFormat('d MMM yyyy', 'el_GR').format(date),
+                                      DateFormat('d MMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US').format(date),
                                       style: Theme.of(context).textTheme.bodyMedium,
                                     ),
                                   if (p.notes != null && p.notes!.isNotEmpty)
@@ -164,7 +166,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                       child: FilledButton.icon(
                                         onPressed: () => _showPaymentSheet(p),
                                         icon: const Icon(Icons.payment, size: 18),
-                                        label: Text('Πλήρωσε ${_eur(p.balanceCents)}'),
+                                        label: Text(AppStrings.of(context).paymentsPayBtn(_eur(p.balanceCents))),
                                         style: FilledButton.styleFrom(
                                           backgroundColor: AppColors.lime,
                                           foregroundColor: AppColors.bg,

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/booking.dart';
 import '../models/service.dart';
 import '../models/user_stats.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import '../widgets/payment_sheet.dart';
@@ -129,28 +131,28 @@ class _CreditsScreenState extends State<CreditsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Διακοπή συνδρομής'),
+        title: Text(AppStrings.of(context).creditsCancelTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Θέλεις να διακόψεις τη συνδρομή σου;'),
+            Text(AppStrings.of(context).creditsCancelQuestion),
             const SizedBox(height: 12),
             TextField(
               controller: reasonCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Λόγος (προαιρετικό)',
-                hintText: 'π.χ. Μετακόμιση',
+              decoration: InputDecoration(
+                labelText: AppStrings.of(context).creditsCancelReason,
+                hintText: AppStrings.of(context).creditsCancelReasonHint,
               ),
               maxLines: 2,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Άκυρο')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).cancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Διακοπή', style: TextStyle(color: AppColors.orange)),
+            child: Text(AppStrings.of(context).creditsCancelBtn, style: const TextStyle(color: AppColors.orange)),
           ),
         ],
       ),
@@ -163,7 +165,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Η συνδρομή διακόπηκε')),
+        SnackBar(content: Text(AppStrings.of(context).creditsCancelled)),
       );
       _load();
     } on ApiException catch (e) {
@@ -197,16 +199,16 @@ class _CreditsScreenState extends State<CreditsScreen> {
           children: [
             Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('Δοκίμασε ξανά')),
+            ElevatedButton(onPressed: _load, child: Text(AppStrings.of(context).retryBtn)),
           ],
         ),
       );
     }
 
     if (_credits.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.card_membership_outlined,
-        title: 'Δεν έχεις ενεργά πακέτα',
+        title: AppStrings.of(context).creditsNoPackages,
       );
     }
 
@@ -236,9 +238,10 @@ class _CreditsScreenState extends State<CreditsScreen> {
   }
 
   Widget _buildCreditCard(BuildContext context, MembershipCredit credit, int index) {
-    final renewal = DateFormat('d MMMM yyyy', 'el_GR').format(credit.validUntil);
-    final started = DateFormat('d MMM yyyy', 'el_GR').format(credit.validFrom);
-    final title = credit.planName ?? credit.serviceName ?? 'Γενικό πακέτο';
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    final renewal = DateFormat('d MMMM yyyy', locale).format(credit.validUntil);
+    final started = DateFormat('d MMM yyyy', locale).format(credit.validFrom);
+    final title = credit.planName ?? credit.serviceName ?? AppStrings.of(context).creditsGenericPackage;
     final isNutrition = credit.isNutritionProgram || credit.isNutritionConsultation;
     final accent = isNutrition
         ? const Color(0xFF0f766e)
@@ -266,14 +269,14 @@ class _CreditsScreenState extends State<CreditsScreen> {
                   children: [
                     Text(title, style: Theme.of(context).textTheme.titleLarge),
                     if (credit.isNutritionProgram)
-                      const Text(
-                        'Πρόγραμμα διατροφής',
-                        style: TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w600, fontSize: 13),
+                      Text(
+                        AppStrings.of(context).creditsNutritionProgram,
+                        style: const TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w600, fontSize: 13),
                       )
                     else if (credit.isNutritionConsultation)
-                      const Text(
-                        'Επισκέψεις διατροφολόγου',
-                        style: TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w600, fontSize: 13),
+                      Text(
+                        AppStrings.of(context).creditsNutritionVisitsSect,
+                        style: const TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w600, fontSize: 13),
                       )
                     else if (credit.serviceDescription != null)
                       Text(
@@ -323,11 +326,11 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 color: const Color(0xFF0f766e).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.restaurant_menu_outlined, size: 18, color: Color(0xFF0f766e)),
-                  SizedBox(width: 8),
-                  Text('Ενεργό πρόγραμμα διατροφής', style: TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w700)),
+                  const Icon(Icons.restaurant_menu_outlined, size: 18, color: Color(0xFF0f766e)),
+                  const SizedBox(width: 8),
+                  Text(AppStrings.of(context).creditsActivePlan, style: const TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w700)),
                 ],
               ),
             )
@@ -336,7 +339,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Υπόλοιπο συνεδριών', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                Text(AppStrings.of(context).creditsSessionsBalance, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 ...credit.planServices!.map((svc) {
                   final svcName = svc['service_name'] as String? ?? '';
@@ -352,8 +355,8 @@ class _CreditsScreenState extends State<CreditsScreen> {
                         Expanded(child: Text(svcName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
                         Text(
                           isUnlim
-                              ? 'Απεριόριστες'
-                              : '${remaining ?? 0} / $perPeriod αυτόν τον μήνα',
+                              ? AppStrings.of(context).creditsUnlimitedSessions
+                              : AppStrings.of(context).creditsSessionsThisMonth(remaining ?? 0, perPeriod ?? 0),
                           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: accent),
                         ),
                       ],
@@ -369,11 +372,11 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 color: AppColors.lime.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.all_inclusive, size: 18, color: AppColors.lime),
-                  SizedBox(width: 8),
-                  Text('Απεριόριστες συνεδρίες', style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w700)),
+                  const Icon(Icons.all_inclusive, size: 18, color: AppColors.lime),
+                  const SizedBox(width: 8),
+                  Text(AppStrings.of(context).creditsUnlimitedSessionsLabel, style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w700)),
                 ],
               ),
             )
@@ -381,7 +384,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Υπόλοιπο', style: Theme.of(context).textTheme.bodyMedium),
+                Text(AppStrings.of(context).creditsBalance, style: Theme.of(context).textTheme.bodyMedium),
                 Text(
                   '${credit.remaining} / ${credit.totalSessions}',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: accent),
@@ -400,18 +403,18 @@ class _CreditsScreenState extends State<CreditsScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          _InfoRow(icon: Icons.event, label: 'Έναρξη', value: started),
-          _InfoRow(icon: Icons.autorenew, label: credit.isNutritionProgram ? 'Λήξη' : 'Επόμενη ανανέωση', value: renewal),
+          _InfoRow(icon: Icons.event, label: AppStrings.of(context).creditsStart, value: started),
+          _InfoRow(icon: Icons.autorenew, label: credit.isNutritionProgram ? AppStrings.of(context).creditsExpiry : AppStrings.of(context).creditsNextRenewal, value: renewal),
           if (credit.lastPaymentDate != null)
             _InfoRow(
               icon: Icons.receipt_long_outlined,
-              label: 'Τελευταία πληρωμή',
-              value: DateFormat('d MMM yyyy', 'el_GR').format(DateTime.parse(credit.lastPaymentDate!)),
+              label: AppStrings.of(context).creditsLastPayment,
+              value: DateFormat('d MMM yyyy', locale).format(DateTime.parse(credit.lastPaymentDate!)),
             ),
           if (credit.billingPeriod != null)
-            _InfoRow(icon: Icons.payments, label: 'Περίοδος', value: _periodLabel(credit.billingPeriod)),
+            _InfoRow(icon: Icons.payments, label: AppStrings.of(context).creditsPeriod, value: _periodLabel(credit.billingPeriod)),
           if (credit.planPriceCents != null)
-            _InfoRow(icon: Icons.euro, label: 'Τιμή', value: '€${(credit.planPriceCents! / 100).toStringAsFixed(2)}'),
+            _InfoRow(icon: Icons.euro, label: AppStrings.of(context).creditsPrice, value: '€${(credit.planPriceCents! / 100).toStringAsFixed(2)}'),
           if (credit.notes != null && credit.notes!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -451,7 +454,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _nutritionConsultCanBook ? _openNutritionBooking : null,
                   icon: const Icon(Icons.monitor_heart_outlined, size: 18),
-                  label: Text(_nutritionConsultCanBook ? 'Κράτηση διατροφολόγου' : 'Δεν υπάρχει διαθέσιμος διατροφολόγος'),
+                  label: Text(_nutritionConsultCanBook ? AppStrings.of(context).creditsBookNutritionist : AppStrings.of(context).creditsNoNutritionist),
                 ),
               ),
           ],
@@ -460,7 +463,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
             OutlinedButton.icon(
               onPressed: () => _cancelMembership(credit),
               icon: const Icon(Icons.cancel_outlined, size: 18),
-              label: const Text('Διακοπή συνδρομής'),
+              label: Text(AppStrings.of(context).creditsCancelSubscription),
             ),
           ],
         ],
@@ -501,7 +504,7 @@ class _PaymentBanner extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Εκκρεμής πληρωμή ${_eur(totalCents)}',
+                  AppStrings.of(context).creditsPendingPayment(_eur(totalCents)),
                   style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.orange),
                 ),
               ),
@@ -519,7 +522,7 @@ class _PaymentBanner extends StatelessWidget {
                   onPaid: onPaid,
                 ),
                 icon: const Icon(Icons.payment, size: 18),
-                label: Text('Πλήρωσε ${_eur(payments.first.balanceCents)}'),
+                label: Text(AppStrings.of(context).creditsPayBtn(_eur(payments.first.balanceCents))),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.orange,
                   foregroundColor: Colors.white,
@@ -540,7 +543,7 @@ class _PaymentBanner extends StatelessWidget {
                     onPaid: onPaid,
                   ),
                   icon: const Icon(Icons.payment, size: 16),
-                  label: Text('${p.description ?? "Πληρωμή"} · ${_eur(p.balanceCents)}',
+                  label: Text('${p.description ?? AppStrings.of(context).paymentsDefaultLabel} · ${_eur(p.balanceCents)}',
                       overflow: TextOverflow.ellipsis),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.orange,

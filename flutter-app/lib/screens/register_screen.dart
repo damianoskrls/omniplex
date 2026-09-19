@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/location.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -82,11 +83,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_multiLocation && _locations.length > 1 && _selectedLocationId == null) {
-      setState(() => _error = 'Επίλεξε κατάστημα');
+      setState(() => _error = AppStrings.of(context).registerSelectBranch);
       return;
     }
     if (_pin.length != 4) {
-      setState(() => _error = 'Εισάγετε 4ψήφιο κωδικό');
+      setState(() => _error = AppStrings.of(context).registerEnterPin);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -105,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
     } catch (_) {
-      if (mounted) setState(() { _error = 'Απροσδόκητο σφάλμα. Δοκίμασε ξανά.'; _loading = false; });
+      if (mounted) setState(() { _error = AppStrings.of(context).unexpectedError; _loading = false; });
     }
   }
 
@@ -113,7 +114,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Αίτηση εγγραφής'),
+        title: Text(AppStrings.of(context).registerTitle),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -141,19 +142,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
           children: [
             const Icon(Icons.check_circle_outline, color: AppColors.lime, size: 72),
             const SizedBox(height: 20),
-            Text('Αίτηση στάλθηκε!',
+            Text(AppStrings.of(context).registerSentTitle,
                 style: Theme.of(context).textTheme.headlineMedium,
                 textAlign: TextAlign.center),
             const SizedBox(height: 12),
             Text(
-              'Η αίτησή σου καταχωρήθηκε. Θα λάβεις SMS μόλις το γυμναστήριο εγκρίνει τον λογαριασμό σου.',
+              AppStrings.of(context).registerSentBody,
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Επιστροφή στη σύνδεση'),
+              child: Text(AppStrings.of(context).registerBackToLogin),
             ),
           ],
         ),
@@ -188,7 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       children: [
                         Text(config.appName,
                             style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15)),
-                        Text('Εγγραφή μέλους',
+                        Text(AppStrings.of(context).registerMembership,
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
                       ],
                     ),
@@ -197,11 +198,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            Text('Δημιουργία λογαριασμού',
+            Text(AppStrings.of(context).registerCreateAccount,
                 style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 8),
             Text(
-              'Συμπλήρωσε τα στοιχεία σου. Ο διαχειριστής θα εγκρίνει την αίτησή σου και θα σου στείλει SMS.',
+              AppStrings.of(context).registerSubtitle,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 28),
@@ -211,11 +212,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _name,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Ονοματεπώνυμο *',
-                prefixIcon: Icon(Icons.person_outline, color: AppColors.textSecondary),
+              decoration: InputDecoration(
+                labelText: AppStrings.of(context).registerFullName,
+                prefixIcon: const Icon(Icons.person_outline, color: AppColors.textSecondary),
               ),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Απαιτείται όνομα' : null,
+              validator: (v) => v == null || v.trim().isEmpty ? AppStrings.of(context).registerNameRequired : null,
             ),
             const SizedBox(height: 16),
 
@@ -225,15 +226,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d\+\-\s]'))],
-              decoration: const InputDecoration(
-                labelText: 'Κινητό τηλέφωνο *',
-                prefixIcon: Icon(Icons.phone_outlined, color: AppColors.textSecondary),
+              decoration: InputDecoration(
+                labelText: AppStrings.of(context).registerMobile,
+                prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textSecondary),
                 hintText: '6901234567',
               ),
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Απαιτείται κινητό';
+                if (v == null || v.trim().isEmpty) return AppStrings.of(context).registerMobileRequired;
                 final digits = v.replaceAll(RegExp(r'\D'), '');
-                if (digits.length < 10) return 'Μη έγκυρος αριθμός';
+                if (digits.length < 10) return AppStrings.of(context).registerInvalidMobile;
                 return null;
               },
             ),
@@ -244,14 +245,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _email,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Email (προαιρετικό)',
-                prefixIcon: Icon(Icons.email_outlined, color: AppColors.textSecondary),
+              decoration: InputDecoration(
+                labelText: AppStrings.of(context).registerEmail,
+                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textSecondary),
                 hintText: 'example@email.com',
               ),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
-                if (!v.contains('@') || !v.contains('.')) return 'Μη έγκυρο email';
+                if (!v.contains('@') || !v.contains('.')) return AppStrings.of(context).registerInvalidEmail;
                 return null;
               },
             ),
@@ -261,9 +262,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (!_locLoading && _multiLocation && _locations.length > 1) ...[
               DropdownButtonFormField<String>(
                 value: _selectedLocationId,
-                decoration: const InputDecoration(
-                  labelText: 'Κατάστημα *',
-                  prefixIcon: Icon(Icons.location_on_outlined, color: AppColors.textSecondary),
+                decoration: InputDecoration(
+                  labelText: AppStrings.of(context).registerBranch,
+                  prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.textSecondary),
                 ),
                 dropdownColor: AppColors.surface,
                 items: _locations.map((loc) => DropdownMenuItem(
@@ -271,7 +272,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Text(loc.name),
                 )).toList(),
                 onChanged: (v) => setState(() { _selectedLocationId = v; _error = null; }),
-                validator: (v) => v == null ? 'Επίλεξε κατάστημα' : null,
+                validator: (v) => v == null ? AppStrings.of(context).registerBranchRequired : null,
               ),
               const SizedBox(height: 16),
             ],
@@ -290,10 +291,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               child: Column(
                 children: [
-                  Text('Επίλεξε κωδικό (4 ψηφία)',
+                  Text(AppStrings.of(context).registerChoosePin,
                       style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 4),
-                  Text('Με αυτόν θα συνδέεσαι στην εφαρμογή',
+                  Text(AppStrings.of(context).registerPinHint,
                       style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 16),
                   Row(
@@ -338,7 +339,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: _loading
                   ? const SizedBox(height: 20, width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                  : const Text('Υποβολή αίτησης'),
+                  : Text(AppStrings.of(context).registerSubmit),
             ),
           ],
         ),

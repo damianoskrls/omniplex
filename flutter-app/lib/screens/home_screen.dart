@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
 import '../widgets/gym_info_sheet.dart';
 import '../widgets/ui_kit.dart';
@@ -100,13 +101,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _TabItem(
         key: 'community',
         icon: Icons.people_outline,
-        label: 'Κοινότητα',
+        label: AppStrings.of(context).community,
         screen: const CommunityScreen(),
       ),
       _TabItem(
         key: 'programs',
         icon: Icons.sports_gymnastics,
-        label: 'Προγράμματα',
+        label: AppStrings.of(context).programs,
         screen: const WorkoutProgramsScreen(),
       ),
       // Secondary — appear in overflow when nav is full
@@ -114,21 +115,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _TabItem(
           key: 'packages',
           icon: Icons.card_membership,
-          label: 'Πακέτα',
+          label: AppStrings.of(context).packages,
           screen: const CreditsScreen(),
         ),
       if (config.featureNutrition && _hasNutritionAccess)
         _TabItem(
           key: 'nutrition',
           icon: Icons.restaurant_menu,
-          label: 'Διατροφή',
+          label: AppStrings.of(context).nutrition,
           screen: const NutritionScreen(),
         ),
       if (config.featureMarketplace)
         _TabItem(
           key: 'marketplace',
           icon: Icons.storefront_outlined,
-          label: 'Shop',
+          label: AppStrings.of(context).marketplace,
           screen: const MarketplaceScreen(),
         ),
     ];
@@ -277,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context,
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('Προφίλ')),
+          appBar: AppBar(title: Text(AppStrings.of(context).profile)),
           body: const ProfileScreen(),
         ),
       ),
@@ -363,7 +364,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         items: [
           ...visibleTabs.map((t) => FloatingNavItem(icon: t.icon, label: t.label)),
           if (hasOverflow)
-            const FloatingNavItem(icon: Icons.grid_view_rounded, label: 'Περισσότερα'),
+            FloatingNavItem(icon: Icons.grid_view_rounded, label: AppStrings.of(context).more),
         ],
       ),
     );

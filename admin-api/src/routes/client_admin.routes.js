@@ -4604,7 +4604,7 @@ router.get('/staff-leaves', requireClientAdmin, async (req, res) => {
     SELECT sl.*, s.full_name AS staff_name, s.role AS staff_role,
            DATEDIFF(sl.date_to, sl.date_from) + 1 AS days_count
     FROM staff_leaves sl
-    JOIN staff s ON s.id = sl.staff_id
+    LEFT JOIN staff s ON s.id = sl.staff_id
     WHERE ${where}
     ORDER BY sl.created_at DESC, sl.date_from DESC
   `, params);

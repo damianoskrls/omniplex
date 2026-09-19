@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../services/language_service.dart';
@@ -23,7 +24,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _biometricEnabled = false;
-  String _biometricLabel = 'Βιομετρικά';
+  String _biometricLabel = '';
   IconData _biometricIcon = Icons.fingerprint;
 
   @override
@@ -98,7 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text(
                   [
                     if (fitness.weightKg != null) '${fitness.weightKg!.toStringAsFixed(1)} kg',
-                    if (fitness.targetWeightKg != null) 'στόχος ${fitness.targetWeightKg!.toStringAsFixed(1)} kg',
+                    if (fitness.targetWeightKg != null) AppStrings.of(context).profileTargetWeight(fitness.targetWeightKg!),
                   ].join(' · '),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
                 ),
@@ -121,22 +122,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _MenuTile(
                 icon: Icons.qr_code_2_outlined,
-                title: 'Το QR μου',
-                subtitle: 'Δείξε το στον scanner εισόδου',
+                title: AppStrings.of(context).profileQrTitle,
+                subtitle: AppStrings.of(context).profileQrSubtitle,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyQrScreen())),
               ),
               const Divider(height: 1, indent: 56),
               _MenuTile(
                 icon: Icons.track_changes_outlined,
-                title: 'Στόχοι',
-                subtitle: fitness.fitnessGoalLabel ?? 'Βάρος, στόχος & προπονήσεις',
+                title: AppStrings.of(context).profileGoals,
+                subtitle: fitness.fitnessGoalLabel ?? AppStrings.of(context).profileGoalsSubtitle(''),
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GoalsScreen())),
               ),
               const Divider(height: 1, indent: 56),
               _MenuTile(
                 icon: Icons.insights_outlined,
-                title: 'Προπόνηση & Metrics',
-                subtitle: 'Ρολόι, θερμίδες & στόχοι',
+                title: AppStrings.of(context).profileMetrics,
+                subtitle: AppStrings.of(context).profileMetricsSubtitle,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkoutMetricsScreen())),
               ),
               const Divider(height: 1, indent: 56),
@@ -151,8 +152,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Icon(_biometricIcon, color: AppColors.purple, size: 20),
                   ),
-                  title: Text('Είσοδος με $_biometricLabel', style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text('Μετά το logout, είσοδος με $_biometricLabel χωρίς κωδικό'),
+                  title: Text(AppStrings.of(context).profileBiometricLogin(_biometricLabel), style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(AppStrings.of(context).profileBiometricSubtitle(_biometricLabel)),
                   value: _biometricEnabled,
                   onChanged: (value) async {
                     if (value) {
@@ -162,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         setState(() => _biometricEnabled = true);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Δεν ενεργοποιήθηκε η βιομετρική είσοδος')),
+                          SnackBar(content: Text(AppStrings.of(context).profileBiometricFailed)),
                         );
                       }
                     } else {
@@ -174,31 +175,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (auth.biometricAvailable) const Divider(height: 1, indent: 56),
               _MenuTile(
                 icon: Icons.receipt_long_outlined,
-                title: 'Οι πληρωμές μου',
-                subtitle: 'Ιστορικό & εκκρεμότητες',
+                title: AppStrings.of(context).profilePayments,
+                subtitle: AppStrings.of(context).profilePaymentsSubtitle,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentsScreen())),
               ),
               const Divider(height: 1, indent: 56),
               _MenuTile(
                 icon: Icons.notifications_outlined,
-                title: 'Ειδοποιήσεις',
-                subtitle: 'Ανακοινώσεις & υπενθυμίσεις',
+                title: AppStrings.of(context).profileNotifications,
+                subtitle: AppStrings.of(context).profileNotifSubtitle,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
               ),
               const Divider(height: 1, indent: 56),
               _MenuTile(
                 icon: Icons.chat_bubble_outline,
-                title: 'Μηνύματα',
-                subtitle: 'Επικοινωνία με το γυμναστήριο',
+                title: AppStrings.of(context).profileMessages,
+                subtitle: AppStrings.of(context).profileMessagesSubtitle,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MessagesScreen())),
               ),
               const Divider(height: 1, indent: 56),
-              _MenuTile(icon: Icons.email_outlined, title: 'Email', subtitle: user.email),
+              _MenuTile(icon: Icons.email_outlined, title: AppStrings.of(context).email, subtitle: user.email),
               const Divider(height: 1, indent: 56),
               if (user.phone != null)
-                _MenuTile(icon: Icons.phone_outlined, title: 'Τηλέφωνο', subtitle: user.phone!),
+                _MenuTile(icon: Icons.phone_outlined, title: AppStrings.of(context).profilePhone, subtitle: user.phone!),
               if (user.phone != null) const Divider(height: 1, indent: 56),
-              _MenuTile(icon: Icons.fitness_center, title: config.appName, subtitle: 'Ενεργό μέλος'),
+              _MenuTile(icon: Icons.fitness_center, title: config.appName, subtitle: AppStrings.of(context).activeMember),
             ],
           ),
         ),
@@ -209,6 +210,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             listenable: LanguageService.instance,
             builder: (_, __) {
               final isEl = LanguageService.instance.isGreek;
+              final s = AppStrings.of(context);
               return ListTile(
                 leading: Container(
                   width: 36, height: 36,
@@ -219,7 +221,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: const Icon(Icons.language_rounded, size: 18, color: Colors.white60),
                 ),
                 title: Text(
-                  isEl ? 'Γλώσσα' : 'Language',
+                  s.languageLabel,
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                 ),
                 trailing: Row(
@@ -239,7 +241,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: EdgeInsets.zero,
           child: _MenuTile(
             icon: Icons.logout,
-            title: 'Αποσύνδεση',
+            title: AppStrings.of(context).profileLogout,
             iconColor: AppColors.orange,
             titleColor: AppColors.orange,
             onTap: () async {

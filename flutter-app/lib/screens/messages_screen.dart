@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
@@ -144,7 +145,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         items.add({
           ...peer,
           'id': null,
-          'last_message_preview': 'Ξεκίνα συνομιλία',
+          'last_message_preview': AppStrings.of(context).messagesStartConversation,
           'unread_count': 0,
           'is_new': true,
         });
@@ -343,7 +344,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Αποτυχία αποστολής εικόνας. Έλεγξε τη σύνδεση με το Wi‑Fi.')),
+          SnackBar(content: Text(AppStrings.of(context).messagesFailedImage)),
         );
       }
     } finally {
@@ -386,11 +387,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
   Widget _buildThreadList() {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Μηνύματα'),
+        title: Text(AppStrings.of(context).messagesTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_square),
-            tooltip: 'Νέα συνομιλία',
+            tooltip: AppStrings.of(context).messagesNewConversationTooltip,
             onPressed: () async {
               setState(() => _showNew = true);
               await _loadPeers();
@@ -408,13 +409,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: [
                         const SizedBox(height: 120),
-                        const Center(
+                        Center(
                           child: Padding(
-                            padding: EdgeInsets.all(24),
+                            padding: const EdgeInsets.all(24),
                             child: Text(
-                              'Δεν υπάρχουν διαθέσιμες επαφές.\nΕπικοινώνησε με τη διαχείριση του γυμναστηρίου.',
+                              AppStrings.of(context).messagesNoContacts,
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: AppColors.textSecondary),
+                              style: const TextStyle(color: AppColors.textSecondary),
                             ),
                           ),
                         ),
@@ -438,14 +439,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
                             ),
                           ),
                           title: Text(
-                            t['peer_name'] as String? ?? 'Συνομιλία',
+                            t['peer_name'] as String? ?? AppStrings.of(context).messagesDefaultThread,
                             style: TextStyle(
                               fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
                             ),
                           ),
                           subtitle: Text(
                             isNew
-                                ? (t['peer_subtitle'] as String? ?? 'Ξεκίνα συνομιλία')
+                                ? (t['peer_subtitle'] as String? ?? AppStrings.of(context).messagesStartConversation)
                                 : (t['last_message_preview'] as String? ?? ''),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -491,7 +492,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => setState(() => _showNew = false),
         ),
-        title: const Text('Νέα συνομιλία'),
+        title: Text(AppStrings.of(context).messagesNewConversation),
       ),
       body: _peers.isEmpty
           ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
@@ -519,7 +520,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Widget _buildChat() {
-    final title = _activeThread?['peer_name'] as String? ?? 'Συνομιλία';
+    final title = _activeThread?['peer_name'] as String? ?? AppStrings.of(context).messagesDefaultThread;
 
     return Scaffold(
       appBar: AppBar(
@@ -643,7 +644,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       minLines: 1,
                       maxLines: 4,
                       decoration: InputDecoration(
-                        hintText: 'Γράψε μήνυμα...',
+                        hintText: AppStrings.of(context).messagesWriteHint,
                         filled: true,
                         fillColor: AppColors.surface,
                         border: OutlineInputBorder(

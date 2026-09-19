@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_strings.dart';
 import '../models/booking.dart';
 import '../models/user_stats.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import 'workout_complete_screen.dart';
@@ -72,7 +74,7 @@ class _CompletedBookingsScreenState extends State<CompletedBookingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ολοκληρωμένα'),
+        title: Text(AppStrings.of(context).completedTitle),
       ),
       body: _loading
           ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
@@ -83,7 +85,7 @@ class _CompletedBookingsScreenState extends State<CompletedBookingsScreen> {
                     children: [
                       Text(_error!),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _load, child: const Text('Δοκίμασε ξανά')),
+                      ElevatedButton(onPressed: _load, child: Text(AppStrings.of(context).retryBtn)),
                     ],
                   ),
                 )
@@ -97,20 +99,20 @@ class _CompletedBookingsScreenState extends State<CompletedBookingsScreen> {
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          Text('Ιστορικό', style: Theme.of(context).textTheme.titleMedium),
+                          Text(AppStrings.of(context).completedHistory, style: Theme.of(context).textTheme.titleMedium),
                           const Spacer(),
                           TextButton(
                             onPressed: () => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const GoalsScreen()),
                             ),
-                            child: const Text('Στόχοι'),
+                            child: Text(AppStrings.of(context).completedGoalsBtn),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
                       if (_pendingConfirm.isNotEmpty) ...[
-                        Text('Εκκρεμεί επιβεβαίωση', style: Theme.of(context).textTheme.titleMedium),
+                        Text(AppStrings.of(context).completedPendingSection, style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 10),
                         ...List.generate(_pendingConfirm.length, (index) {
                           final booking = _pendingConfirm[index];
@@ -124,17 +126,17 @@ class _CompletedBookingsScreenState extends State<CompletedBookingsScreen> {
                         }),
                       ],
                       if (_completed.isEmpty && _pendingConfirm.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 32),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 32),
                           child: EmptyState(
                             icon: Icons.check_circle_outline,
-                            title: 'Καμία ολοκληρωμένη προπόνηση',
-                            subtitle: 'Όταν επιβεβαιώσεις παρουσία, θα εμφανίζεται εδώ.',
+                            title: AppStrings.of(context).completedNoneTitle,
+                            subtitle: AppStrings.of(context).completedNoneSubtitle,
                           ),
                         )
                       else if (_completed.isNotEmpty) ...[
                         if (_pendingConfirm.isNotEmpty)
-                          Text('Ολοκληρωμένες', style: Theme.of(context).textTheme.titleMedium),
+                          Text(AppStrings.of(context).completedCompletedSection, style: Theme.of(context).textTheme.titleMedium),
                         if (_pendingConfirm.isNotEmpty) const SizedBox(height: 10),
                         ...List.generate(_completed.length, (index) {
                           final booking = _completed[index];
@@ -166,7 +168,7 @@ class _KpiSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Επιδόσεις', style: Theme.of(context).textTheme.titleMedium),
+        Text(AppStrings.of(context).completedPerformance, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -175,7 +177,7 @@ class _KpiSection extends StatelessWidget {
                 icon: Icons.fitness_center,
                 color: AppColors.lime,
                 value: '${stats.sessionsThisMonth}',
-                label: 'Αυτόν τον μήνα',
+                label: AppStrings.of(context).completedThisMonth,
               ),
             ),
             const SizedBox(width: 10),
@@ -184,7 +186,7 @@ class _KpiSection extends StatelessWidget {
                 icon: Icons.flag_outlined,
                 color: AppColors.purple,
                 value: '${stats.goal.targetSessions}',
-                label: 'Στόχος μήνα',
+                label: AppStrings.of(context).completedMonthGoal,
               ),
             ),
             const SizedBox(width: 10),
@@ -193,7 +195,7 @@ class _KpiSection extends StatelessWidget {
                 icon: Icons.stars_rounded,
                 color: AppColors.orange,
                 value: '${stats.loyaltyPoints}',
-                label: 'Πόντοι',
+                label: AppStrings.of(context).completedPoints,
               ),
             ),
           ],
@@ -207,14 +209,14 @@ class _KpiSection extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Πρόοδος στόχου',
+                      AppStrings.of(context).completedGoalProgress,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
                   if (stats.goalMet)
-                    const PillChip(
-                      label: 'Επιτεύχθηκε',
-                      color: Color(0x3322C55E),
+                    PillChip(
+                      label: AppStrings.of(context).completedAchieved,
+                      color: const Color(0x3322C55E),
                       textColor: AppColors.lime,
                     ),
                 ],
@@ -231,7 +233,7 @@ class _KpiSection extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '${stats.sessionsThisMonth} / ${stats.goal.targetSessions} προπονήσεις · $totalCompleted συνολικά ολοκληρωμένες',
+                AppStrings.of(context).completedStats(stats.sessionsThisMonth, stats.goal.targetSessions, totalCompleted),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -283,7 +285,8 @@ class _PendingConfirmCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFmt = DateFormat('EEE d MMM, HH:mm', 'el_GR');
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    final dateFmt = DateFormat('EEE d MMM, HH:mm', locale);
     return SurfaceCard(
       child: Row(
         children: [
@@ -295,15 +298,15 @@ class _PendingConfirmCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(dateFmt.format(booking.startsAt), style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: 8),
-                const PillChip(
-                  label: 'Χωρίς check-in',
-                  color: Color(0x33F97316),
+                PillChip(
+                  label: AppStrings.of(context).completedNoCheckin,
+                  color: const Color(0x33F97316),
                   textColor: AppColors.orange,
                 ),
               ],
             ),
           ),
-          TextButton(onPressed: onConfirm, child: const Text('Επιβεβαίωση')),
+          TextButton(onPressed: onConfirm, child: Text(AppStrings.of(context).confirmAttendance)),
         ],
       ),
     );
@@ -323,7 +326,8 @@ class _CompletedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFmt = DateFormat('EEE d MMM, HH:mm', 'el_GR');
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    final dateFmt = DateFormat('EEE d MMM, HH:mm', locale);
     final accent = AppColors.cardGradient(index).first;
 
     return SurfaceCard(
@@ -358,16 +362,16 @@ class _CompletedCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
                       const SizedBox(width: 6),
-                      Text('Με ${booking.staffName}', style: Theme.of(context).textTheme.bodyMedium),
+                      Text(AppStrings.of(context).withStaff(booking.staffName), style: Theme.of(context).textTheme.bodyMedium),
                     ],
                   ),
                 ],
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    const PillChip(
-                      label: 'Ολοκληρωμένη',
-                      color: Color(0x3320B2AA),
+                    PillChip(
+                      label: AppStrings.of(context).completedLabel,
+                      color: const Color(0x3320B2AA),
                       textColor: AppColors.teal,
                     ),
                     if (booking.feedbackRating != null) ...[
@@ -399,7 +403,7 @@ class _CompletedCard extends StatelessWidget {
                     child: TextButton(
                       onPressed: onOpenTips,
                       child: Text(
-                        booking.feedbackRating == null ? 'Σχόλια & φωτό' : 'Δες tips & share',
+                        booking.feedbackRating == null ? AppStrings.of(context).completedFeedbackBtn : AppStrings.of(context).completedViewTipsBtn,
                       ),
                     ),
                   ),

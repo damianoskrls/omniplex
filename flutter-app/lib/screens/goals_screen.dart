@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/fitness_profile.dart';
 import '../models/user_stats.dart';
 import '../services/api_service.dart';
@@ -83,11 +84,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
     final weight = _parseWeight(_weightCtrl.text);
     final targetWeight = _parseWeight(_targetWeightCtrl.text);
     if (weight != null && (weight <= 0 || weight > 500)) {
-      _showSnack('Το βάρος πρέπει να είναι μεταξύ 0 και 500 kg', success: false);
+      _showSnack(AppStrings.of(context).goalsWeightRange, success: false);
       return;
     }
     if (targetWeight != null && (targetWeight <= 0 || targetWeight > 500)) {
-      _showSnack('Ο στόχος βάρους πρέπει να είναι μεταξύ 0 και 500 kg', success: false);
+      _showSnack(AppStrings.of(context).goalsTargetWeightRange, success: false);
       return;
     }
 
@@ -99,7 +100,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
             fitnessGoal: _selectedFitnessGoal,
           );
       await context.read<AuthService>().refreshUser();
-      if (mounted) _showSnack('Τα στοιχεία σου αποθηκεύτηκαν');
+      if (mounted) _showSnack(AppStrings.of(context).goalsSaved);
     } on ApiException catch (e) {
       if (mounted) _showSnack(e.message, success: false);
     } finally {
@@ -112,7 +113,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     try {
       final stats = await context.read<AuthService>().api.updateMyGoal(_target);
       setState(() => _stats = stats);
-      if (mounted) _showSnack('Ο μηνιαίος στόχος ενημερώθηκε');
+      if (mounted) _showSnack(AppStrings.of(context).goalsMonthlyGoalSaved);
     } on ApiException catch (e) {
       if (mounted) _showSnack(e.message, success: false);
     } finally {
@@ -145,16 +146,16 @@ class _GoalsScreenState extends State<GoalsScreen> {
     final showLoyalty = config.featureLoyaltyPoints;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Στόχοι')),
+      appBar: AppBar(title: Text(AppStrings.of(context).goalsTitle)),
       body: _loading
           ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                Text('Φυσική κατάσταση', style: Theme.of(context).textTheme.titleLarge),
+                Text(AppStrings.of(context).goalsFitnessSection, style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 8),
                 Text(
-                  'Ορίσε τον στόχο σου (π.χ. απώλεια βάρους) και καταχώρησε το τρέχον και το επιθυμητό βάρος.',
+                  AppStrings.of(context).goalsFitnessDesc,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 16),
@@ -162,7 +163,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('Τύπος στόχου', style: Theme.of(context).textTheme.titleMedium),
+                      Text(AppStrings.of(context).goalsGoalType, style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
@@ -188,9 +189,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                               ],
-                              decoration: const InputDecoration(
-                                labelText: 'Τρέχον βάρος (kg)',
-                                prefixIcon: Icon(Icons.monitor_weight_outlined),
+                              decoration: InputDecoration(
+                                labelText: AppStrings.of(context).goalsCurrentWeight,
+                                prefixIcon: const Icon(Icons.monitor_weight_outlined),
                               ),
                             ),
                           ),
@@ -202,9 +203,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                               ],
-                              decoration: const InputDecoration(
-                                labelText: 'Στόχος βάρους (kg)',
-                                prefixIcon: Icon(Icons.flag_outlined),
+                              decoration: InputDecoration(
+                                labelText: AppStrings.of(context).goalsTargetWeight,
+                                prefixIcon: const Icon(Icons.flag_outlined),
                               ),
                             ),
                           ),
@@ -215,7 +216,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                           profile.targetWeightKg != null) ...[
                         const SizedBox(height: 16),
                         Text(
-                          'Απόσταση από στόχο: ${(profile.weightKg! - profile.targetWeightKg!).toStringAsFixed(1)} kg',
+                          AppStrings.of(context).goalsWeightDistance(profile.weightKg! - profile.targetWeightKg!),
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.lime),
                         ),
                       ],
@@ -230,7 +231,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                   width: 20,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                                 )
-                              : const Text('Αποθήκευση στοιχείων'),
+                              : Text(AppStrings.of(context).goalsSaveDetails),
                         ),
                       ),
                     ],
@@ -238,14 +239,14 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
                 if (showLoyalty && stats != null) ...[
                   const SizedBox(height: 28),
-                  Text('Προπόνηση & πόντοι', style: Theme.of(context).textTheme.titleLarge),
+                  Text(AppStrings.of(context).goalsWorkoutSection, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
                   GradientCard(
                     colors: const [Color(0xFF3D2F8F), AppColors.purple],
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Loyalty πόντοι', style: TextStyle(color: Colors.white70)),
+                        Text(AppStrings.of(context).goalsLoyaltyPoints, style: const TextStyle(color: Colors.white70)),
                         Text(
                           '${stats.loyaltyPoints}',
                           style: const TextStyle(
@@ -262,7 +263,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Πρόοδος μήνα', style: Theme.of(context).textTheme.titleMedium),
+                        Text(AppStrings.of(context).goalsMonthProgress, style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 12),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
@@ -274,12 +275,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text('${stats.sessionsThisMonth} / ${stats.goal.targetSessions} προπονήσεις'),
+                        Text(AppStrings.of(context).goalsSessionsProgress(stats.sessionsThisMonth, stats.goal.targetSessions)),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text('Μηνιαίος στόχος προπονήσεων', style: Theme.of(context).textTheme.titleMedium),
+                  Text(AppStrings.of(context).goalsMonthlyGoal, style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -304,7 +305,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     alignment: WrapAlignment.center,
                     children: [4, 6, 8, 12].map((n) {
                       return ActionChip(
-                        label: Text('$n/μήνα'),
+                        label: Text(AppStrings.of(context).goalsPerMonth(n)),
                         onPressed: () => setState(() => _target = n),
                         backgroundColor:
                             _target == n ? AppColors.lime.withValues(alpha: 0.2) : AppColors.surface,
@@ -322,7 +323,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                             )
-                          : const Text('Αποθήκευση στόχου προπονήσεων'),
+                          : Text(AppStrings.of(context).goalsSaveWorkoutGoal),
                     ),
                   ),
                 ],

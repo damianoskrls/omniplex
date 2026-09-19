@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/service.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/slot_visual.dart';
 import '../widgets/ui_kit.dart';
@@ -105,9 +107,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   String _creditsLabel(BookService service) {
-    if (service.isUnlimited) return 'Απεριόριστο';
-    if (!service.canBook) return 'Χωρίς υπόλοιπο';
-    return '${service.creditsRemaining} συνεδρίες';
+    final s = AppStrings.of(context);
+    if (service.isUnlimited) return s.servicesUnlimited;
+    if (!service.canBook) return s.servicesNoCredits;
+    return s.servicesCredits(service.creditsRemaining);
   }
 
   @override
@@ -123,17 +126,17 @@ class _ServicesScreenState extends State<ServicesScreen> {
           children: [
             Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('Δοκίμασε ξανά')),
+            ElevatedButton(onPressed: _load, child: Text(AppStrings.of(context).retryBtn)),
           ],
         ),
       );
     }
 
     if (_services.isEmpty && !_showNutritionCard) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.card_membership_outlined,
-        title: 'Δεν έχεις ενεργά πακέτα',
-        subtitle: 'Επικοινώνησε με το γυμναστήριο για εγγραφή σε πρόγραμμα.',
+        title: AppStrings.of(context).servicesNoPackages,
+        subtitle: AppStrings.of(context).servicesNoPackagesSub,
       );
     }
 
@@ -180,16 +183,16 @@ class _ServicesScreenState extends State<ServicesScreen> {
                         ),
                         Text(
                           _nutritionPendingBooking != null
-                              ? 'Αίτημα σε αναμονή — επιβεβαίωση από διατροφολόγο'
+                              ? AppStrings.of(context).servicesPendingNutrition
                               : _nutritionUpcomingBooking != null
-                                  ? 'Επιβεβαιωμένο ραντεβού με διατροφολόγο'
+                                  ? AppStrings.of(context).servicesConfirmedNutrition
                                   : _nutritionConsultCanBook
                                   ? _nutritionConsultService!.isUnlimited
-                                      ? 'Μέτρηση / συνεδρία — απεριόριστες επισκέψεις'
-                                      : '${_nutritionCredits['remaining'] ?? 0} επισκέψεις διαθέσιμες'
+                                      ? AppStrings.of(context).servicesUnlimitedNutrition
+                                      : AppStrings.of(context).servicesNutritionCredits(_nutritionCredits['remaining'] ?? 0)
                                   : _nutritionCredits['has_access'] == true
-                                      ? 'Δεν υπάρχει διαθέσιμος διατροφολόγος αυτή τη στιγμή'
-                                      : 'Επικοινώνησε με το γυμναστήριο για επισκέψεις',
+                                      ? AppStrings.of(context).servicesNoNutritionist
+                                      : AppStrings.of(context).servicesContactForVisits,
                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ],
@@ -205,7 +208,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
           ...List.generate(_services.length, (index) {
             final service = _services[index];
             final renewal = service.creditsValidUntil != null
-                ? DateFormat('d MMM yyyy', 'el_GR').format(service.creditsValidUntil!)
+                ? DateFormat('d MMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US').format(service.creditsValidUntil!)
                 : null;
             final colors = AppColors.cardGradient(index);
 
@@ -300,7 +303,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Ανανέωση $renewal',
+                            AppStrings.of(context).servicesRenewal(renewal),
                             style: TextStyle(
                               fontSize: 12,
                               color: service.canBook ? Colors.white70 : AppColors.textSecondary,
@@ -313,9 +316,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          const Text(
-                            'Κράτηση',
-                            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.lime),
+                          Text(
+                            AppStrings.of(context).servicesBook,
+                            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.lime),
                           ),
                           const SizedBox(width: 4),
                           Icon(Icons.arrow_forward, size: 16, color: AppColors.lime.withValues(alpha: 0.9)),

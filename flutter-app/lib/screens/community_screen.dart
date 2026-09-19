@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
@@ -124,11 +125,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Διαγραφή;', style: TextStyle(color: AppColors.textPrimary)),
-        content: const Text('Να διαγραφεί η ανάρτηση;', style: TextStyle(color: AppColors.textSecondary)),
+        title: Text(AppStrings.of(context).communityDeleteTitle, style: const TextStyle(color: AppColors.textPrimary)),
+        content: Text(AppStrings.of(context).communityDeletePost, style: const TextStyle(color: AppColors.textSecondary)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Άκυρο')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Διαγραφή', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppStrings.of(context).cancel)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(AppStrings.of(context).communityDeleteAction, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -169,7 +170,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     if (peers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Δεν βρέθηκαν διαθέσιμες επαφές')),
+        SnackBar(content: Text(AppStrings.of(context).communityNoContacts)),
       );
       return;
     }
@@ -191,7 +192,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Επικοινωνία με:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textPrimary)),
+              Text(AppStrings.of(context).communityContactWith, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textPrimary)),
               const SizedBox(height: 12),
               ...peers.map((p) => ListTile(
                 leading: CircleAvatar(
@@ -220,9 +221,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   String _roleLabel(String role) {
     switch (role) {
-      case 'admin': return 'Διαχειριστής';
-      case 'secretary': return 'Γραμματεία';
-      case 'receptionist': return 'Ρεσεψιόν';
+      case 'admin': return AppStrings.of(context).communityRoleAdmin;
+      case 'secretary': return AppStrings.of(context).communityRoleSecretary;
+      case 'receptionist': return AppStrings.of(context).communityRoleReceptionist;
       default: return role;
     }
   }
@@ -242,19 +243,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('Κοινότητα', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
+        title: Text(AppStrings.of(context).communityTitle, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
         backgroundColor: AppColors.surface,
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.message_outlined, color: AppColors.lime),
             onPressed: _openMessagePicker,
-            tooltip: 'Μήνυμα',
+            tooltip: AppStrings.of(context).communityMessageTooltip,
           ),
           IconButton(
             icon: const Icon(Icons.add_circle_outline, color: AppColors.lime),
             onPressed: _openNewPost,
-            tooltip: 'Νέα ανάρτηση',
+            tooltip: AppStrings.of(context).communityNewPostTooltip,
           ),
         ],
       ),
@@ -269,13 +270,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         SizedBox(height: MediaQuery.of(context).size.height * 0.25),
                         const Icon(Icons.people_outline, size: 64, color: AppColors.textSecondary),
                         const SizedBox(height: 16),
-                        const Center(child: Text('Δεν υπάρχουν αναρτήσεις ακόμα', style: TextStyle(color: AppColors.textSecondary, fontSize: 16))),
+                        Center(child: Text(AppStrings.of(context).communityNoPosts, style: const TextStyle(color: AppColors.textSecondary, fontSize: 16))),
                         const SizedBox(height: 12),
                         Center(
                           child: TextButton.icon(
                             onPressed: _openNewPost,
                             icon: const Icon(Icons.add, color: AppColors.lime),
-                            label: Text('Πρώτη ανάρτηση', style: TextStyle(color: AppColors.lime)),
+                            label: Text(AppStrings.of(context).communityFirstPost, style: const TextStyle(color: AppColors.lime)),
                           ),
                         ),
                       ],
@@ -290,7 +291,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             child: Center(
                               child: _loadingMore
                                   ? const CircularProgressIndicator(color: AppColors.lime)
-                                  : TextButton(onPressed: _loadMore, child: Text('Περισσότερα', style: TextStyle(color: AppColors.lime))),
+                                  : TextButton(onPressed: _loadMore, child: Text(AppStrings.of(context).communityLoadMore, style: const TextStyle(color: AppColors.lime))),
                             ),
                           );
                         }
@@ -311,7 +312,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openNewPost,
         icon: const Icon(Icons.edit_outlined),
-        label: const Text('Ανάρτηση'),
+        label: Text(AppStrings.of(context).communityNewPost),
         backgroundColor: AppColors.lime,
         foregroundColor: Colors.black,
       ),
@@ -331,20 +332,20 @@ class _PostCard extends StatelessWidget {
 
   const _PostCard({super.key, required this.post, required this.base, required this.onReact, required this.onComment, this.onDelete, this.highlighted = false});
 
-  String _fmtDate(String iso) {
+  String _fmtDate(String iso, BuildContext context) {
     final d = DateTime.tryParse(iso)?.toLocal();
     if (d == null) return '';
     final now = DateTime.now();
     final diff = now.difference(d);
-    if (diff.inSeconds < 60) return 'μόλις τώρα';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} λ. πριν';
-    if (diff.inHours < 24) return '${diff.inHours} ω. πριν';
+    if (diff.inSeconds < 60) return AppStrings.of(context).communityJustNow;
+    if (diff.inMinutes < 60) return AppStrings.of(context).communityMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return AppStrings.of(context).communityHoursAgo(diff.inHours);
     return '${d.day}/${d.month}/${d.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final authorName = (post['staff_name'] ?? post['user_name'] ?? 'Άγνωστος') as String;
+    final authorName = (post['staff_name'] ?? post['user_name'] ?? AppStrings.of(context).communityUnknownAuthor) as String;
     final isStaff = post['staff_id'] != null;
     final body = post['body'] as String?;
     final media = List<Map<String, dynamic>>.from(post['media'] ?? []);
@@ -372,10 +373,10 @@ class _PostCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(
-                children: const [
-                  Text('📌', style: TextStyle(fontSize: 13)),
-                  SizedBox(width: 4),
-                  Text('Καρφιτσωμένο', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFD97706))),
+                children: [
+                  const Text('📌', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 4),
+                  Text(AppStrings.of(context).communityPinned, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFD97706))),
                 ],
               ),
             ),
@@ -402,7 +403,7 @@ class _PostCard extends StatelessWidget {
                           ],
                         ],
                       ),
-                      Text(_fmtDate(post['created_at'] as String? ?? ''), style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                      Text(_fmtDate(post['created_at'] as String? ?? '', context), style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
                     ],
                   ),
                 ),
@@ -410,8 +411,8 @@ class _PostCard extends StatelessWidget {
                   PopupMenuButton<String>(
                     color: AppColors.surfaceLight,
                     onSelected: (v) { if (v == 'delete') onDelete!(); },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, color: Colors.red, size: 16), SizedBox(width: 8), Text('Διαγραφή', style: TextStyle(color: Colors.red))])),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'delete', child: Row(children: [const Icon(Icons.delete_outline, color: Colors.red, size: 16), const SizedBox(width: 8), Text(AppStrings.of(context).communityDeleteAction, style: const TextStyle(color: Colors.red))])),
                     ],
                     icon: const Icon(Icons.more_horiz, color: AppColors.textSecondary),
                   ),
@@ -469,7 +470,7 @@ class _PostCard extends StatelessWidget {
                     if (comments.length > 1)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text('+ ${comments.length - 1} ακόμα σχόλια', style: TextStyle(fontSize: 12, color: AppColors.lime, fontWeight: FontWeight.w600)),
+                        child: Text(AppStrings.of(context).communityMoreComments(comments.length - 1), style: const TextStyle(fontSize: 12, color: AppColors.lime, fontWeight: FontWeight.w600)),
                       ),
                   ],
                 ),
@@ -660,11 +661,11 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Διαγραφή;', style: TextStyle(color: AppColors.textPrimary)),
-        content: const Text('Να διαγραφεί το σχόλιο;', style: TextStyle(color: AppColors.textSecondary)),
+        title: Text(AppStrings.of(context).communityDeleteTitle, style: const TextStyle(color: AppColors.textPrimary)),
+        content: Text(AppStrings.of(context).communityDeleteComment, style: const TextStyle(color: AppColors.textSecondary)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Άκυρο')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Διαγραφή', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppStrings.of(context).cancel)),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(AppStrings.of(context).communityDeleteAction, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -673,7 +674,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       await widget.api.deleteCommunityComment(widget.post['id'] as String, comment['id'] as String);
       setState(() => _comments.removeAt(index));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Σφάλμα: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppStrings.of(context).communityError(e.toString()))));
     }
   }
 
@@ -717,9 +718,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
           children: [
             const SizedBox(height: 8),
             Container(width: 36, height: 4, decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Text('Σχόλια', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textPrimary)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Text(AppStrings.of(context).communityComments, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textPrimary)),
             ),
             const Divider(height: 1, color: AppColors.border),
             Expanded(

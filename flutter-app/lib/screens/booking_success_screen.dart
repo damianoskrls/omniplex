@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../app.dart';
+import '../l10n/app_strings.dart';
 import '../theme/app_colors.dart';
 import '../widgets/preparation_tips_card.dart';
 import '../widgets/ui_kit.dart';
@@ -145,7 +146,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                           child: Column(
                             children: [
                               Text(
-                                'Η κράτηση ολοκληρώθηκε!',
+                                AppStrings.of(context).bookingSuccessTitle,
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                       fontWeight: FontWeight.w800,
@@ -153,7 +154,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                               ),
                               const SizedBox(height: 10),
                               Text(
-                                'Το ραντεβού σου καταχωρήθηκε με επιτυχία.',
+                                AppStrings.of(context).bookingSuccessSubtitle,
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
@@ -183,7 +184,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                               ],
                               const SizedBox(height: 28),
                               Text(
-                                'Θα μεταφερθείς στις κρατήσεις σου σε λίγα δευτερόλεπτα',
+                                AppStrings.of(context).bookingSuccessRedirect,
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: AppColors.textSecondary,
@@ -194,7 +195,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                                 width: double.infinity,
                                 child: ElevatedButton(
                                   onPressed: _goToBookings,
-                                  child: const Text('Δες τις κρατήσεις μου'),
+                                  child: Text(AppStrings.of(context).bookingSuccessViewBtn),
                                 ),
                               ),
                             ],

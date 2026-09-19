@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import 'community_screen.dart';
 import 'staff_schedule_screen.dart';
@@ -18,12 +20,15 @@ class StaffHomeScreen extends StatefulWidget {
 class _StaffHomeScreenState extends State<StaffHomeScreen> {
   int _index = 0;
 
-  static const _tabs = [
-    _StaffTab(icon: Icons.calendar_today_outlined, label: 'Πρόγραμμα'),
-    _StaffTab(icon: Icons.people_outline, label: 'Κοινότητα'),
-    _StaffTab(icon: Icons.beach_access_outlined, label: 'Άδειες'),
-    _StaffTab(icon: Icons.person_outline, label: 'Προφίλ'),
-  ];
+  List<_StaffTab> _buildTabs(BuildContext context) {
+    final s = AppStrings.of(context);
+    return [
+      _StaffTab(icon: Icons.calendar_today_outlined, label: s.staffScheduleTab),
+      _StaffTab(icon: Icons.people_outline, label: s.staffCommunityTab),
+      _StaffTab(icon: Icons.beach_access_outlined, label: s.staffLeavesTab),
+      _StaffTab(icon: Icons.person_outline, label: s.staffProfileTab),
+    ];
+  }
 
   late final List<Widget> _screens;
 
@@ -61,8 +66,8 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
         ),
         child: SafeArea(
           child: Row(
-            children: List.generate(_tabs.length, (i) {
-              final t = _tabs[i];
+            children: List.generate(4, (i) {
+              final t = _buildTabs(context)[i];
               final sel = _index == i;
               return Expanded(
                 child: GestureDetector(

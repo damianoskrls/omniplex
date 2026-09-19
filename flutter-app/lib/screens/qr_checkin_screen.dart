@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import 'workout_complete_screen.dart';
 
 class QrCheckinScreen extends StatefulWidget {
@@ -145,10 +147,10 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: const Color(0xFF1A1A1A),
-          title: const Text('Επιβεβαίωση check-in', style: TextStyle(color: Colors.white)),
+          title: Text(AppStrings.of(context).qrConfirmCheckin, style: const TextStyle(color: Colors.white)),
           content: _BookingCheckinCard(booking: options.first),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Ακύρωση')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).cancel)),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black),
@@ -185,14 +187,14 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Επέλεξε κράτηση',
+                Text(
+                  AppStrings.of(context).qrSelectBooking,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Έχεις περισσότερα από ένα μάθημα διαθέσιμο για check-in τώρα.',
+                Text(
+                  AppStrings.of(context).qrMultipleAvail,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white60, fontSize: 14, height: 1.4),
                 ),
@@ -243,7 +245,7 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
       final m = RegExp(r'\{.*\}').firstMatch(raw);
       if (m != null) {
         final body = jsonDecode(m.group(0)!) as Map;
-        return body['error'] as String? ?? 'Σφάλμα check-in';
+        return body['error'] as String? ?? AppStrings.of(null).qrError;
       }
     } catch (_) {}
     return 'Σφάλμα. Προσπάθησε ξανά.';
@@ -290,7 +292,7 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
-        title: const Text('Check-in με QR'),
+        title: Text(AppStrings.of(context).qrCheckinWithQr),
       ),
       body: _done ? _buildResult() : _buildScanner(),
     );
@@ -326,16 +328,16 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
               child: CircularProgressIndicator(color: Colors.greenAccent),
             ),
           ),
-        const Positioned(
+        Positioned(
           bottom: 40,
           left: 0,
           right: 0,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'Σκανάρετε το QR του γυμναστηρίου.\nΘα επιλέξετε για ποια κράτηση κάνετε check-in.',
+              AppStrings.of(context).qrScanGym,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.4),
+              style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.4),
             ),
           ),
         ),
@@ -362,7 +364,7 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              subtitle ?? 'Κάμερα μη διαθέσιμη σε αυτή τη συσκευή',
+              subtitle ?? AppStrings.of(context).qrCameraUnavailable,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white54, fontSize: 14),
             ),
@@ -377,7 +379,7 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                       )
                     : const Icon(Icons.bug_report, size: 18),
-                label: Text(_processing ? 'Γίνεται check-in...' : 'Simulate Scan (debug)'),
+                label: Text(_processing ? AppStrings.of(context).qrCheckinInProgress : 'Simulate Scan (debug)'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.black,
@@ -403,7 +405,7 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
               const Icon(Icons.cancel_rounded, color: Colors.redAccent, size: 80),
               const SizedBox(height: 24),
               Text(
-                _errorMessage ?? 'Σφάλμα.',
+                _errorMessage ?? AppStrings.of(context).qrError,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white, fontSize: 20, height: 1.5),
               ),
@@ -420,12 +422,12 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                   ),
-                  child: const Text('Επιβεβαίωση χειροκίνητα'),
+                  child: Text(AppStrings.of(context).qrManualConfirm),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: _reset,
-                  child: const Text('Δοκίμασε ξανά', style: TextStyle(color: Colors.white70)),
+                  child: Text(AppStrings.of(context).qrRetry, style: const TextStyle(color: Colors.white70)),
                 ),
               ],
             ],
@@ -448,13 +450,13 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
             const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 80),
             const SizedBox(height: 20),
             Text(
-              'Check-in ολοκληρώθηκε',
+              AppStrings.of(context).qrCheckinDone,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Καλώς ήρθες, ${r['userName'] ?? ''}!',
+              AppStrings.of(context).qrWelcome(r['userName'] as String? ?? ''),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 16),
             ),
@@ -465,8 +467,8 @@ class _QrCheckinScreenState extends State<QrCheckinScreen> {
             const SizedBox(height: 16),
             Text(
               isUnlimited
-                  ? 'Απεριόριστη συνδρομή'
-                  : 'Απομένουν $remaining συνεδρίες',
+                  ? AppStrings.of(context).qrUnlimitedSub
+                  : AppStrings.of(context).qrRemaining(remaining ?? 0),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 15),
             ),

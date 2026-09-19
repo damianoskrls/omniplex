@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 
@@ -80,9 +82,10 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
     final dayLabel = _isToday(_selectedDate)
-        ? 'Σήμερα'
-        : DateFormat('EEEE, d MMM', 'el_GR').format(_selectedDate);
+        ? AppStrings.of(context).staffScheduleToday
+        : DateFormat('EEEE, d MMM', locale).format(_selectedDate);
 
     return Column(
       children: [
@@ -105,7 +108,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
                     children: [
                       Text(dayLabel,
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.textPrimary)),
-                      Text(DateFormat('d MMMM yyyy', 'el_GR').format(_selectedDate),
+                      Text(DateFormat('d MMMM yyyy', locale).format(_selectedDate),
                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
@@ -122,7 +125,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
                   onPressed: () { setState(() => _selectedDate = DateTime.now()); _load(); },
                   style: TextButton.styleFrom(foregroundColor: AppColors.lime, padding: EdgeInsets.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                  child: const Text('Σήμερα', style: TextStyle(fontSize: 12)),
+                  child: Text(AppStrings.of(context).staffScheduleToday, style: const TextStyle(fontSize: 12)),
                 ),
             ],
           ),
@@ -137,10 +140,10 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
                   : _bookings.isEmpty
                       ? EmptyState(
                           icon: Icons.calendar_today_outlined,
-                          title: 'Δεν υπάρχουν κρατήσεις',
+                          title: AppStrings.of(context).staffScheduleNoBookings,
                           subtitle: _isToday(_selectedDate)
-                              ? 'Δεν έχεις κρατήσεις σήμερα.'
-                              : 'Δεν υπάρχουν κρατήσεις αυτή την ημέρα.',
+                              ? AppStrings.of(context).staffScheduleNoneToday
+                              : AppStrings.of(context).staffScheduleNoneDay,
                         )
                       : RefreshIndicator(
                           onRefresh: _load,
@@ -219,7 +222,7 @@ class _BookingCard extends StatelessWidget {
                               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                         ),
                         if (isTrial)
-                          PillChip(label: 'Δοκιμαστικό',
+                          PillChip(label: AppStrings.of(context).staffScheduleTrial,
                               color: AppColors.purple.withValues(alpha: 0.15), textColor: AppColors.purple),
                       ],
                     ),
@@ -268,7 +271,7 @@ class _BookingCard extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onToggleAttendance,
               icon: Icon(confirmed ? Icons.check_circle : Icons.radio_button_unchecked, size: 18),
-              label: Text(confirmed ? 'Παρουσία επιβεβαιωμένη' : 'Επιβεβαίωση παρουσίας'),
+              label: Text(confirmed ? AppStrings.of(context).staffScheduleConfirmed : AppStrings.of(context).staffScheduleConfirmAttendance),
               style: OutlinedButton.styleFrom(
                 foregroundColor: confirmed ? AppColors.lime : AppColors.textSecondary,
                 side: BorderSide(color: confirmed ? AppColors.lime : AppColors.border),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../main.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -69,11 +70,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final phone = _phoneCtrl.text.trim();
     final pin   = _pinCtrl.text.trim();
     if (phone.isEmpty) {
-      setState(() => _error = 'Εισάγετε τον αριθμό κινητού σας');
+      setState(() => _error = AppStrings.of(context).loginEnterMobile);
       return;
     }
     if (pin.length != 4) {
-      setState(() => _error = 'Εισάγετε 4ψήφιο PIN');
+      setState(() => _error = AppStrings.of(context).loginEnterPin);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -88,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
     } catch (_) {
-      if (mounted) setState(() { _error = 'Απροσδόκητο σφάλμα. Δοκίμασε ξανά.'; _loading = false; });
+      if (mounted) setState(() { _error = AppStrings.of(context).unexpectedError; _loading = false; });
     }
   }
 
@@ -96,11 +97,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final email    = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
     if (email.isEmpty) {
-      setState(() => _error = 'Εισάγετε το email σας');
+      setState(() => _error = AppStrings.of(context).loginEnterEmail);
       return;
     }
     if (password.isEmpty) {
-      setState(() => _error = 'Εισάγετε τον κωδικό σας');
+      setState(() => _error = AppStrings.of(context).loginEnterPassword);
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -111,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
     } catch (_) {
-      if (mounted) setState(() { _error = 'Απροσδόκητο σφάλμα. Δοκίμασε ξανά.'; _loading = false; });
+      if (mounted) setState(() { _error = AppStrings.of(context).unexpectedError; _loading = false; });
     }
   }
 
@@ -123,11 +124,11 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: Text('Είσοδος με $label;'),
-        content: Text('Θέλεις να χρησιμοποιείς $label την επόμενη φορά;'),
+        title: Text(AppStrings.of(context).loginEnableBiometricTitle(label)),
+        content: Text(AppStrings.of(context).loginEnableBiometricBody(label)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Όχι τώρα')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ενεργοποίηση')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).loginNotNow)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(AppStrings.of(context).loginEnableBiometricEnable)),
         ],
       ),
     );
@@ -139,14 +140,12 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Ξέχασες τον κωδικό;'),
-        content: const Text(
-          'Επικοινώνησε με το γυμναστήριο για επαναφορά του κωδικού σου.',
-        ),
+        title: Text(AppStrings.of(context).loginForgotPinTitle),
+        content: Text(AppStrings.of(context).loginForgotPinBody),
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Εντάξει'),
+            child: Text(AppStrings.of(context).ok),
           ),
         ],
       ),
@@ -158,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final ok = await context.read<AuthService>().unlockWithBiometrics();
     if (!mounted) return;
     if (!ok && !silentFail) {
-      setState(() { _error = 'Η βιομετρική είσοδος απέτυχε.'; _biometricLoading = false; });
+      setState(() { _error = AppStrings.of(context).loginBiometricFailed; _biometricLoading = false; });
       return;
     }
     if (mounted) setState(() => _biometricLoading = false);
@@ -196,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    config.label('home_hero', 'Κράτησε εύκολα το επόμενο ραντεβού σου.'),
+                    config.label('home_hero', AppStrings.of(context).loginBookEasy),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
@@ -207,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: _biometricLoading
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                           : Icon(_biometricIcon, size: 24),
-                      label: Text('Είσοδος με $_biometricLabel'),
+                      label: Text('${AppStrings.of(context).loginWithBiometric} $_biometricLabel'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.lime,
                         side: BorderSide(color: AppColors.lime),
@@ -215,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text('ή συνδέσου με κινητό & PIN',
+                    Text(AppStrings.of(context).loginOrWith,
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium),
                   ],
@@ -237,8 +236,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             keyboardType: TextInputType.phone,
                             textInputAction: TextInputAction.next,
                             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d\+\-\s]'))],
-                            decoration: const InputDecoration(
-                              labelText: 'Κινητό τηλέφωνο',
+                            decoration: InputDecoration(
+                              labelText: AppStrings.of(context).loginMobile,
                               prefixIcon: Icon(Icons.phone_outlined, color: AppColors.textSecondary),
                               hintText: '6901234567',
                             ),
@@ -253,8 +252,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             obscureText: true,
                             maxLength: 4,
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                            decoration: const InputDecoration(
-                              labelText: 'Κωδικός PIN',
+                            decoration: InputDecoration(
+                              labelText: AppStrings.of(context).loginPin,
                               prefixIcon: Icon(Icons.lock_outline, color: AppColors.textSecondary),
                               counterText: '',
                             ),
@@ -269,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: const Icon(Icons.arrow_back, color: AppColors.textSecondary, size: 20),
                               ),
                               const SizedBox(width: 10),
-                              const Text('Είσοδος προσωπικού',
+                              Text(AppStrings.of(context).loginStaffTitle,
                                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                             ],
                           ),
@@ -290,7 +289,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             obscureText: !_passwordVisible,
                             textInputAction: TextInputAction.done,
                             decoration: InputDecoration(
-                              labelText: 'Κωδικός',
+                              labelText: AppStrings.of(context).loginPassword,
                               prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textSecondary),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -321,7 +320,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 padding: EdgeInsets.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              child: const Text('Ξέχασες τον κωδικό;', style: TextStyle(fontSize: 13)),
+                              child: Text(AppStrings.of(context).loginForgotPin, style: const TextStyle(fontSize: 13)),
                             ),
                           ),
                         ],
@@ -333,7 +332,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: _loading
                                 ? const SizedBox(height: 20, width: 20,
                                     child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                                : const Text('Σύνδεση'),
+                                : Text(AppStrings.of(context).loginTitle),
                           ),
                         ),
                       ],
@@ -342,7 +341,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (showBiometric && !auth.canUnlockWithBiometrics) ...[
                     const SizedBox(height: 12),
                     Text(
-                      'Μετά την πρώτη σύνδεση μπορείς να ενεργοποιήσεις βιομετρική είσοδο.',
+                      AppStrings.of(context).loginAfterFirst,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
                     ),
@@ -351,19 +350,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (!_staffMode) ...[
                     TextButton(
                       onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                      child: const Text('Δεν έχεις λογαριασμό; Εγγραφή'),
+                      child: Text(AppStrings.of(context).loginNoAccount),
                     ),
                     const SizedBox(height: 4),
                     TextButton(
                       onPressed: () => setState(() { _staffMode = true; _error = null; }),
                       style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.badge_outlined, size: 15, color: AppColors.textSecondary),
-                          SizedBox(width: 6),
-                          Text('Είσοδος ως Προσωπικό', style: TextStyle(fontSize: 13)),
+                          const Icon(Icons.badge_outlined, size: 15, color: AppColors.textSecondary),
+                          const SizedBox(width: 6),
+                          Text(AppStrings.of(context).loginAsStaff, style: const TextStyle(fontSize: 13)),
                         ],
                       ),
                     ),
@@ -373,7 +372,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _switchBusiness,
                     style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
                     child: Text(
-                      '${config.appName} · Αλλαγή γυμναστηρίου',
+                      '${config.appName} · ${AppStrings.of(context).loginSwitchGym}',
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),

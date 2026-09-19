@@ -6,8 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/media_url.dart';
@@ -199,7 +201,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => NotificationDetailScreen(
-              title: n['title'] as String? ?? 'Ειδοποίηση',
+              title: n['title'] as String? ?? AppStrings.of(context).notificationDefault,
               body: body,
               imageUrl: imageUrl,
               when: _when(n),
@@ -210,13 +212,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   String _relativeTime(DateTime when) {
+    final s = AppStrings.of(context);
     final diff = DateTime.now().difference(when);
-    if (diff.inMinutes < 1) return 'Μόλις τώρα';
-    if (diff.inMinutes < 60) return 'Πριν ${diff.inMinutes} λεπτά';
-    if (diff.inHours < 24) return 'Πριν ${diff.inHours} ώρες';
-    if (diff.inDays == 1) return 'Χθες';
-    if (diff.inDays < 7) return 'Πριν ${diff.inDays} μέρες';
-    return DateFormat('d MMM', 'el_GR').format(when);
+    if (diff.inMinutes < 1) return s.notificationsJustNow;
+    if (diff.inMinutes < 60) return s.notificationsMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return s.notificationsHoursAgo(diff.inHours);
+    if (diff.inDays == 1) return s.notificationsYesterday;
+    if (diff.inDays < 7) return s.notificationsDaysAgo(diff.inDays);
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    return DateFormat('d MMM', locale).format(when);
   }
 
   Widget _buildList() {
@@ -224,11 +228,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return const Center(child: CircularProgressIndicator(color: AppColors.lime));
     }
     if (_items.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('Δεν υπάρχουν ειδοποιήσεις',
-              style: TextStyle(color: AppColors.textSecondary)),
+          padding: const EdgeInsets.all(24),
+          child: Text(AppStrings.of(context).notificationsEmpty,
+              style: const TextStyle(color: AppColors.textSecondary)),
         ),
       );
     }
@@ -298,7 +302,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  n['title'] as String? ?? 'Ειδοποίηση',
+                                  n['title'] as String? ?? AppStrings.of(context).notificationDefault,
                                   style: TextStyle(
                                     fontWeight: isRead ? FontWeight.w600 : FontWeight.w800,
                                     color: AppColors.textPrimary,
@@ -324,7 +328,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 if (!isRead && hasDetail) ...[
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Πάτα για ανάγνωση',
+                                    AppStrings.of(context).notificationTapToRead,
                                     style: TextStyle(
                                       fontSize: 12, fontWeight: FontWeight.w600,
                                       color: AppColors.lime.withValues(alpha: 0.9),
@@ -364,9 +368,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       padding: EdgeInsets.fromLTRB(16, fullPage ? 0 : 8, 8, 0),
       child: Row(
         children: [
-          const Expanded(
-            child: Text('Ειδοποιήσεις',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          Expanded(
+            child: Text(AppStrings.of(context).notificationsTitle,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           ),
           if (hasUnread)
             TextButton(
@@ -374,8 +378,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               child: _markingAll
                   ? const SizedBox(width: 14, height: 14,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
-                  : const Text('Όλα διαβαστέντα',
-                      style: TextStyle(fontSize: 13, color: AppColors.lime)),
+                  : Text(AppStrings.of(context).notificationsMarkRead,
+                      style: const TextStyle(fontSize: 13, color: AppColors.lime)),
             ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
@@ -397,7 +401,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ειδοποιήσεις'),
+        title: Text(AppStrings.of(context).notificationsTitle),
         actions: [
           if (_items.any((n) => n['is_read'] != 1 && n['is_read'] != true))
             TextButton(
@@ -405,8 +409,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               child: _markingAll
                   ? const SizedBox(width: 14, height: 14,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
-                  : const Text('Όλα διαβαστέντα',
-                      style: TextStyle(fontSize: 13, color: AppColors.lime)),
+                  : Text(AppStrings.of(context).notificationsMarkRead,
+                      style: const TextStyle(fontSize: 13, color: AppColors.lime)),
             ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
