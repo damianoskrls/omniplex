@@ -128,10 +128,9 @@ class ApiService {
         {'confirmed': confirmed});
   }
 
-  Future<List<Map<String, dynamic>>> fetchStaffLeaves() async {
+  Future<Map<String, dynamic>> fetchStaffLeaves() async {
     final res = await _get('/api/mobile/staff/leaves');
-    final data = _decode(res) as Map<String, dynamic>;
-    return (data['leaves'] as List).cast<Map<String, dynamic>>();
+    return _decode(res) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> addStaffLeave({

@@ -120,10 +120,9 @@ export default function StaffLeaves() {
                     </span>
                   </div>
                   <div className="text-muted" style={{ fontSize: 13 }}>
-                    {fmtDate(lv.start_date)} – {fmtDate(lv.end_date)}
+                    {fmtDate(lv.date_from)} – {fmtDate(lv.date_to)}
                     {' · '}
                     <strong>{lv.days_count} ημέρες</strong>
-                    {lv.leave_type ? ` · ${lv.leave_type}` : ''}
                   </div>
                   {lv.reason && (
                     <div style={{ fontSize: 13, color: '#475569', marginTop: 6 }}>"{lv.reason}"</div>
