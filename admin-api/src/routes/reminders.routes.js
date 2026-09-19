@@ -8,7 +8,7 @@ function requireAdmin(req, res, next) {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     if (payload.role !== 'owner' && payload.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-    req.bizId = payload.business_id || payload.bizId;
+    req.bizId = payload.businessId || payload.business_id || payload.bizId;
     next();
   } catch { return res.status(401).json({ error: 'Unauthorized' }); }
 }
