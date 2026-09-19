@@ -20,9 +20,11 @@ export default function StaffLeaves() {
   const [statusFilter, setStatusFilter] = useState('');
   const [actionNote, setActionNote] = useState({});
   const [acting, setActing] = useState(null);
+  const [error, setError] = useState('');
 
   const load = async () => {
     setLoading(true);
+    setError('');
     try {
       const [leavesRes, settingsRes] = await Promise.all([
         api.get('/client-admin/staff-leaves', { params: statusFilter ? { status: statusFilter } : {} }),
@@ -30,7 +32,9 @@ export default function StaffLeaves() {
       ]);
       setLeaves(leavesRes.data.leaves || leavesRes.data);
       setAnnualDays(settingsRes.data.annual_leave_days ?? 20);
-    } catch { /* silent */ }
+    } catch (e) {
+      setError(e?.response?.data?.error || e?.message || 'Σφάλμα φόρτωσης');
+    }
     finally { setLoading(false); }
   };
 
@@ -97,6 +101,11 @@ export default function StaffLeaves() {
         ))}
       </div>
 
+      {error && (
+        <div style={{ background: '#FEE2E2', color: '#DC2626', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
+          {error}
+        </div>
+      )}
       {loading ? (
         <div className="loading">Φόρτωση…</div>
       ) : !leaves.length ? (

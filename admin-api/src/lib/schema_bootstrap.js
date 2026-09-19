@@ -330,7 +330,7 @@ async function bootstrapSchema() {
     console.warn('staff_leaves table skipped:', err.message);
   }
 
-  // staff_leaves.status + admin_note + reviewed_at — add if table existed without them
+  // staff_leaves.status + admin_note + reviewed_at + created_at — add if table existed without them
   try {
     await db.query(`ALTER TABLE staff_leaves ADD COLUMN status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'`);
     console.log('✓ Schema: staff_leaves.status added');
@@ -343,6 +343,10 @@ async function bootstrapSchema() {
     await db.query(`ALTER TABLE staff_leaves ADD COLUMN reviewed_at DATETIME NULL`);
     console.log('✓ Schema: staff_leaves.reviewed_at added');
   } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('staff_leaves.reviewed_at skipped:', err.message); }
+  try {
+    await db.query(`ALTER TABLE staff_leaves ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`);
+    console.log('✓ Schema: staff_leaves.created_at added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('staff_leaves.created_at skipped:', err.message); }
 }
 
 module.exports = { bootstrapSchema };

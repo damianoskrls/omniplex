@@ -4606,7 +4606,7 @@ router.get('/staff-leaves', requireClientAdmin, async (req, res) => {
     FROM staff_leaves sl
     LEFT JOIN staff s ON s.id = sl.staff_id
     WHERE ${where}
-    ORDER BY sl.created_at DESC, sl.date_from DESC
+    ORDER BY sl.date_from DESC
   `, params);
   const [[cfg]] = await db.query(
     'SELECT annual_leave_days FROM business_configs WHERE business_id=?', [bizId]);
