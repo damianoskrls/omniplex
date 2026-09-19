@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/booking.dart';
 import '../models/location.dart';
 import '../models/opening_hours.dart';
 import '../models/service.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import 'booking_success_screen.dart';
 import '../widgets/slot_visual.dart';
@@ -53,25 +55,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   GymLocation? _selectedLocation;
   bool _loadingLocations = true;
 
-  static const _weekdayLabels = {
-    1: 'Δε',
-    2: 'Τρ',
-    3: 'Τε',
-    4: 'Πε',
-    5: 'Πα',
-    6: 'Σα',
-    7: 'Κυ',
-  };
-
-  static const _weekdayFull = {
-    1: 'Δευτέρα',
-    2: 'Τρίτη',
-    3: 'Τετάρτη',
-    4: 'Πέμπτη',
-    5: 'Παρασκευή',
-    6: 'Σάββατο',
-    7: 'Κυριακή',
-  };
+  Map<int, String> get _weekdayLabels => AppStrings.of(context).bookingFlowWeekdayLabels;
+  Map<int, String> get _weekdayFull => AppStrings.of(context).bookingFlowWeekdayFull;
 
   ApiService get _api => context.read<AuthService>().api;
   TenantConfig get _config => context.read<TenantConfig>();
@@ -265,7 +250,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     if (_openingHours != null && !_openingHours!.isWeekdayOpen(day)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Το γυμναστήριο είναι κλειστό κάθε ${_weekdayFull[day] ?? 'αυτή την ημέρα'}.'),
+          content: Text(AppStrings.of(context).bookingFlowClosedDay(_weekdayFull[day] ?? '')),
         ),
       );
       return;
@@ -314,8 +299,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         _slotsMessage = result.message ??
             (filtered.isEmpty
                 ? (_isToday(date)
-                    ? 'Δεν υπάρχουν διαθέσιμες ώρες για σήμερα — δοκίμασε αργότερα ή άλλη ημέρα.'
-                    : 'Δεν υπάρχουν διαθέσιμες ώρες')
+                    ? AppStrings.of(context).bookingFlowNoSlotsToday
+                    : AppStrings.of(context).bookingFlowNoSlots)
                 : null);
         if (_selectedTime != null && !_isSlotBookable(dateStr, _selectedTime!)) {
           _selectedTime = null;
@@ -336,7 +321,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   Future<void> _pickBulkMonth() async {
     final now = DateTime.now();
     final options = List.generate(12, (i) => DateTime(now.year, now.month + i));
-    final monthFmt = DateFormat('MMMM yyyy', 'el_GR');
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    final monthFmt = DateFormat('MMMM yyyy', locale);
 
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
@@ -351,7 +337,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Text('Επίλεξε μήνα', style: Theme.of(ctx).textTheme.titleMedium),
+                child: Text(AppStrings.of(context).bookingFlowSelectMonth, style: Theme.of(ctx).textTheme.titleMedium),
               ),
               Flexible(
                 child: ListView.builder(
@@ -419,8 +405,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     final isClosed = _dayStatus == 'closed';
     final message = _slotsMessage ??
         (_isToday(_selectedDate)
-            ? 'Δεν υπάρχουν διαθέσιμες ώρες για σήμερα — δοκίμασε αργότερα ή άλλη ημέρα.'
-            : 'Δεν υπάρχουν διαθέσιμες ώρες');
+            ? AppStrings.of(context).bookingFlowNoSlotsToday
+            : AppStrings.of(context).bookingFlowNoSlots);
 
     return SurfaceCard(
       child: Row(
@@ -438,7 +424,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               children: [
                 if (isClosed)
                   Text(
-                    'Κλειστό',
+                    AppStrings.of(context).bookingFlowClosed,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: AppColors.orange,
@@ -528,22 +514,22 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Πλήρης ώρα'),
+        title: Text(AppStrings.of(context).bookingFlowFullSlotTitle),
         content: Text(
           next != null
-              ? 'Η ώρα ${slot.time} είναι πλήρης.\n\nΗ επόμενη διαθέσιμη είναι στις ${next.time}. Θέλεις να κλείσεις εκεί ή να περιμένεις στη λίστα αναμονής αν αλλάξει κάτι;'
-              : 'Η ώρα ${slot.time} είναι πλήρης και δεν υπάρχει άλλη διαθέσιμη ώρα αυτή την ημέρα.\n\nΘέλεις να μπεις στη λίστα αναμονής και να σε ενημερώσουμε αν ανοίξει θέση;',
+              ? AppStrings.of(context).bookingFlowFullSlotBody(slot.time, next.time)
+              : AppStrings.of(context).bookingFlowFullSlotNoNext(slot.time),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, 'cancel'), child: const Text('Ακύρωση')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'cancel'), child: Text(AppStrings.of(context).cancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, 'waitlist'),
-            child: const Text('Περίμενε στη λίστα', style: TextStyle(color: AppColors.orange)),
+            child: Text(AppStrings.of(context).bookingFlowJoinWaitlist, style: const TextStyle(color: AppColors.orange)),
           ),
           if (next != null)
             TextButton(
               onPressed: () => Navigator.pop(ctx, 'book'),
-              child: Text('Κλείσε ${next.time}', style: TextStyle(color: AppColors.lime)),
+              child: Text(AppStrings.of(context).bookingFlowBookNext(next.time), style: const TextStyle(color: AppColors.lime)),
             ),
         ],
       ),
@@ -624,13 +610,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Λίστα αναμονής'),
+          title: Text(AppStrings.of(context).bookingFlowWaitlistTitle),
           content: Text(
             '${r['message'] as String? ?? 'Μπήκες στη λίστα αναμονής.'}\n\n'
             'Θα το δεις στα Ραντεβού μου με ένδειξη «Σε αναμονή».',
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppStrings.of(context).ok)),
           ],
         ),
       );
@@ -723,22 +709,22 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: AppColors.surface,
-            title: const Text('Πλήρες'),
+            title: Text(AppStrings.of(context).bookingFlowSlotFull),
             content: Text(
               next != null
                   ? '${e.message}\n\nΗ επόμενη διαθέσιμη ώρα είναι στις ${next.time}.'
                   : e.message,
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, 'no'), child: const Text('Όχι')),
+              TextButton(onPressed: () => Navigator.pop(ctx, 'no'), child: Text(AppStrings.of(context).no)),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, 'waitlist'),
-                child: const Text('Λίστα αναμονής', style: TextStyle(color: AppColors.orange)),
+                child: Text(AppStrings.of(context).bookingFlowWaitlistTitle, style: const TextStyle(color: AppColors.orange)),
               ),
               if (next != null)
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, 'book'),
-                  child: Text('Κλείσε ${next.time}', style: TextStyle(color: AppColors.lime)),
+                  child: Text(AppStrings.of(context).bookingFlowBookNext(next.time), style: const TextStyle(color: AppColors.lime)),
                 ),
             ],
           ),
@@ -785,7 +771,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         .toList();
     if (withAlt.isEmpty) return null;
 
-    final dateFmt = DateFormat('EEE d MMM', 'el_GR');
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    final dateFmt = DateFormat('EEE d MMM', locale);
     final selectedKeys = <String>{};
 
     final proceed = await showDialog<bool>(
@@ -795,14 +782,14 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           builder: (ctx, setDialogState) {
             return AlertDialog(
               backgroundColor: AppColors.surface,
-              title: const Text('Εναλλακτικές ώρες'),
+              title: Text(AppStrings.of(context).bookingFlowAlternativesTitle),
               content: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Μερικές ημέρες δεν ήταν διαθέσιμες. Θέλεις να κλείσεις τις προτεινόμενες εναλλακτικές;',
+                    Text(
+                      AppStrings.of(context).bookingFlowAlternativesBody,
                     ),
                     const SizedBox(height: 16),
                     ...withAlt.map((raw) {
@@ -840,11 +827,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Όχι'),
+                  child: Text(AppStrings.of(context).no),
                 ),
                 TextButton(
                   onPressed: selectedKeys.isEmpty ? null : () => Navigator.pop(ctx, true),
-                  child: const Text('Κλείσε επιλεγμένες'),
+                  child: Text(AppStrings.of(context).bookingFlowBookSelected),
                 ),
               ],
             );
@@ -878,18 +865,18 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Ολοκληρώθηκε'),
+        title: Text(AppStrings.of(context).bookingFlowBulkDoneTitle),
         content: Text(
           failed > 0
               ? '$message\n\nΟι υπόλοιπες ημέρες κλείστηκαν κανονικά.'
               : message.isNotEmpty
                   ? message
-                  : 'Κλείστηκαν $created ραντεβού.',
+                  : AppStrings.of(context).bookingFlowBulkDoneBody(created),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+            child: Text(AppStrings.of(context).ok),
           ),
         ],
       ),
@@ -906,7 +893,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
     final slots = _generateBulkSlots();
     if (slots.isEmpty) {
-      setState(() => _error = 'Δεν βρέθηκαν μελλοντικές ημέρες για κράτηση');
+      setState(() => _error = AppStrings.of(context).bookingFlowNoBulkDays);
       return;
     }
 
@@ -914,13 +901,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Επαναλαμβανόμενη κράτηση'),
-        content: Text(
-          'Θα κλειστούν ${slots.length} ραντεβού στις ${_selectedTime!}. Συνέχεια;',
-        ),
+        title: Text(AppStrings.of(context).bookingFlowBulkTitle),
+        content: Text(AppStrings.of(context).bookingFlowBulkConfirmBody(slots.length, _selectedTime!)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Όχι')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ναι')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).no)),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(AppStrings.of(context).yes)),
         ],
       ),
     );
@@ -1067,7 +1052,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                     if (isWaitlist) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Λίστα αναμονής',
+                        AppStrings.of(context).bookingFlowWaitlistTitle,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontSize: 12,
                               color: AppColors.orange,
@@ -1138,7 +1123,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   ],
                   const SizedBox(height: 4),
                   Text(
-                    'Πάτα για προφίλ και φωτογραφία',
+                    AppStrings.of(context).bookingFlowStaffProfileHint,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontSize: 11,
                       color: AppColors.textSecondary,
@@ -1150,7 +1135,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             const Icon(Icons.check_circle, color: AppColors.lime, size: 26),
             if (onChange != null) ...[
               const SizedBox(width: 4),
-              TextButton(onPressed: onChange, child: const Text('Αλλαγή')),
+              TextButton(onPressed: onChange, child: Text(AppStrings.of(context).bookingFlowChange)),
             ],
           ],
         ),
@@ -1182,7 +1167,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    'Πάτα για προφίλ · το ✓ για γρήγορη επιλογή',
+                    AppStrings.of(context).bookingFlowStaffHint,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
                   ),
                 ],
@@ -1416,14 +1401,14 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   const Spacer(),
                   TextButton(
                     onPressed: _clearSelectedTime,
-                    child: const Text('Αλλαγή ώρας'),
+                    child: Text(AppStrings.of(context).bookingFlowChangeTime),
                   ),
                 ],
               ),
               if (_selectedIsWaitlist) ...[
                 const SizedBox(height: 12),
                 Text(
-                  'Θα μπεις στη λίστα αναμονής για τις $_selectedTime.',
+                  AppStrings.of(context).bookingFlowWaitlistFor(_selectedTime!),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ] else if (staffForTime.isNotEmpty) ...[
@@ -1449,9 +1434,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                         )
                       : Text(
                           _bulkMode
-                              ? 'Κλείσε όλες (${_generateBulkSlots().length})'
+                              ? AppStrings.of(context).bookingFlowBookAll(_generateBulkSlots().length)
                               : _selectedIsWaitlist
-                                  ? 'Λίστα αναμονής'
+                                  ? AppStrings.of(context).bookingFlowWaitlistTitle
                                   : _config.label('book_cta', 'Κράτηση'),
                         ),
                 ),
@@ -1531,10 +1516,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   Expanded(
                     child: Text(
                       widget.service.isUnlimited
-                          ? 'Απεριόριστες συνεδρίες διαθέσιμες'
+                          ? AppStrings.of(context).bookingFlowUnlimitedSessions
                           : widget.service.canBook
-                              ? '${widget.service.creditsRemaining} διαθέσιμες συνεδρίες αυτόν τον μήνα'
-                              : 'Δεν υπάρχουν διαθέσιμες συνεδρίες',
+                              ? AppStrings.of(context).bookingFlowSessionsAvailable(widget.service.creditsRemaining)
+                              : AppStrings.of(context).bookingFlowNoSessionsAvailable,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: widget.service.canBook ? AppColors.lime : Colors.orange,
@@ -1553,7 +1538,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               ),
             )
           else if (_needsLocationChoice) ...[
-            Text('Τοποθεσία', style: Theme.of(context).textTheme.titleMedium),
+            Text(AppStrings.of(context).bookingFlowLocation, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             ..._locations.map((loc) {
               final selected = _selectedLocation?.id == loc.id;
@@ -1596,19 +1581,19 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             if (!_locationReady) ...[
               const SizedBox(height: 8),
               Text(
-                'Επίλεξε πρώτα το γυμναστήριο για να δεις διαθέσιμες ημέρες και ώρες.',
+                AppStrings.of(context).bookingFlowSelectLocationFirst,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ],
           if (_locationReady) ...[
           SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('Μία ημέρα'), icon: Icon(Icons.today, size: 18)),
+            segments: [
+              ButtonSegment(value: false, label: Text(AppStrings.of(context).bookingFlowOneDay), icon: const Icon(Icons.today, size: 18)),
               ButtonSegment(
                 value: true,
-                label: Text('Επανάληψη'),
-                icon: Icon(Icons.event_repeat, size: 18),
+                label: Text(AppStrings.of(context).bookingFlowRepeat),
+                icon: const Icon(Icons.event_repeat, size: 18),
               ),
             ],
             selected: {_bulkMode},
@@ -1626,7 +1611,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           ),
           const SizedBox(height: 20),
           if (!_bulkMode) ...[
-            Text('Ημερομηνία', style: Theme.of(context).textTheme.titleMedium),
+            Text(AppStrings.of(context).bookingFlowDate, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             SurfaceCard(
               padding: EdgeInsets.zero,
@@ -1640,13 +1625,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   ),
                   child: const Icon(Icons.calendar_today, color: AppColors.purple, size: 20),
                 ),
-                title: Text(DateFormat('EEEE d MMM yyyy', 'el_GR').format(_selectedDate)),
+                title: Text(DateFormat('EEEE d MMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US').format(_selectedDate)),
                 trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
                 onTap: _pickDate,
               ),
             ),
           ] else ...[
-            Text('Ημέρες εβδομάδας', style: Theme.of(context).textTheme.titleMedium),
+            Text(AppStrings.of(context).bookingFlowWeekdays, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -1670,13 +1655,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               }).toList(),
             ),
             const SizedBox(height: 16),
-            Text('Περίοδος', style: Theme.of(context).textTheme.titleMedium),
+            Text(AppStrings.of(context).bookingFlowPeriod, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               children: [
                 ChoiceChip(
-                  label: const Text('Συγκεκριμένος μήνας'),
+                  label: Text(AppStrings.of(context).bookingFlowSpecificMonth),
                   selected: _bulkPeriod == _BulkPeriod.specificMonth,
                   onSelected: (_) {
                     setState(() {
@@ -1692,7 +1677,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   selectedColor: AppColors.purple.withValues(alpha: 0.2),
                 ),
                 ChoiceChip(
-                  label: const Text('Επόμενες 4 εβδ.'),
+                  label: Text(AppStrings.of(context).bookingFlowNextFourWeeks),
                   selected: _bulkPeriod == _BulkPeriod.nextFourWeeks,
                   onSelected: (_) {
                     setState(() {
@@ -1725,8 +1710,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                     ),
                     child: const Icon(Icons.date_range, color: AppColors.purple, size: 20),
                   ),
-                  title: Text(DateFormat('MMMM yyyy', 'el_GR').format(_bulkMonth)),
-                  subtitle: const Text('Πάτα για αλλαγή μήνα'),
+                  title: Text(DateFormat('MMMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US').format(_bulkMonth)),
+                  subtitle: Text(AppStrings.of(context).bookingFlowTapToChangeMonth),
                   trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
                   onTap: _pickBulkMonth,
                 ),
@@ -1737,15 +1722,15 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               SurfaceCard(
                 child: Text(
                   _bulkPeriod == _BulkPeriod.specificMonth
-                      ? 'Θα κλειστούν ${_generateBulkSlots().length} ραντεβού τον ${DateFormat('MMMM yyyy', 'el_GR').format(_bulkMonth)} στις $_selectedTime'
-                      : 'Θα κλειστούν ${_generateBulkSlots().length} ραντεβού στις $_selectedTime (επόμενες 4 εβδ.)',
+                      ? AppStrings.of(context).bookingFlowBulkSummaryMonth(_generateBulkSlots().length, DateFormat('MMMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US').format(_bulkMonth), _selectedTime!)
+                      : AppStrings.of(context).bookingFlowBulkSummaryFour(_generateBulkSlots().length, _selectedTime!),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
             ],
           ],
           const SizedBox(height: 24),
-          Text('Διαθέσιμες ώρες', style: Theme.of(context).textTheme.titleMedium),
+          Text(AppStrings.of(context).bookingFlowAvailableTimes, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           if (_loadingSlots)
             const Center(
@@ -1774,7 +1759,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Θα σε ενημερώσουμε αν ανοίξει θέση στη λίστα αναμονής.',
+                    AppStrings.of(context).bookingFlowWaitlistNotify,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   if (_nextAvailableSlotAfter(_selectedTime!) != null) ...[
@@ -1785,8 +1770,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                         if (next != null) _applySlotSelection(next);
                       },
                       child: Text(
-                        'Ή κλείσε την επόμενη διαθέσιμη (${_nextAvailableSlotAfter(_selectedTime!)!.time})',
-                        style: TextStyle(color: AppColors.lime),
+                        AppStrings.of(context).bookingFlowBookNextAlt(_nextAvailableSlotAfter(_selectedTime!)!.time),
+                        style: const TextStyle(color: AppColors.lime),
                       ),
                     ),
                   ],

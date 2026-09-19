@@ -5,10 +5,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../app.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/booking.dart';
 import '../models/user_stats.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../models/workout_share_details.dart';
 import '../services/share_photo_service.dart';
 import '../theme/app_colors.dart';
@@ -148,13 +150,13 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
       await _shareService.saveToGallery(_photoFile!);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Η φωτογραφία αποθηκεύτηκε στη συλλογή σου')),
+          SnackBar(content: Text(AppStrings.of(context).workoutCompletePhotoSaved)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Αποτυχία αποθήκευσης: $e')),
+          SnackBar(content: Text(AppStrings.of(context).workoutCompletePhotoError(e.toString()))),
         );
       }
     } finally {
@@ -173,7 +175,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
 
   Future<void> _submit() async {
     if (!_attendedConfirmed) {
-      setState(() => _error = 'Πρέπει να επιβεβαιώσεις την παρουσία σου.');
+      setState(() => _error = AppStrings.of(context).workoutCompleteRequired);
       return;
     }
 
@@ -200,11 +202,11 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
         await context.read<AuthService>().refreshUser();
 
         final msg = points > 0
-            ? 'Επιβεβαιώθηκε! +$points πόντοι loyalty 🎉'
-            : (result['message'] as String? ?? 'Επιβεβαιώθηκε!');
+            ? AppStrings.of(context).workoutCompleteConfirmedPoints(points)
+            : (result['message'] as String? ?? AppStrings.of(context).workoutCompleteConfirmed);
         final health = result['health_workout'];
         final healthMsg = health is Map && health['calories_kcal'] != null
-            ? ' · ${health['calories_kcal']} kcal από ρολόι'
+            ? AppStrings.of(context).workoutCompleteCaloriesFromWatch(health['calories_kcal'] as int)
             : '';
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$msg$healthMsg')));
@@ -227,11 +229,11 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
   @override
   Widget build(BuildContext context) {
     final config = context.read<TenantConfig>();
-    final dateFmt = DateFormat('EEE d MMM, HH:mm', 'el_GR');
+    final dateFmt = DateFormat('EEE d MMM, HH:mm', LanguageService.instance.isGreek ? 'el_GR' : 'en_US');
     final stats = _stats;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Επιβεβαίωση παρουσίας')),
+      appBar: AppBar(title: Text(AppStrings.of(context).workoutCompleteTitle)),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -240,9 +242,9 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Τελείωσες την προπόνηση;',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+                Text(
+                  AppStrings.of(context).workoutCompleteQuestion,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -265,7 +267,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Μπορείς να τραβήξεις φωτό και να κοινοποιήσεις τώρα. Η επιβεβαίωση παρουσίας ενεργοποιείται μετά το τέλος της προπόνησης.',
+                      AppStrings.of(context).workoutCompleteEarlyMsg,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
                     ),
                   ),
@@ -280,14 +282,14 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
               onChanged: widget.booking.isInProgress
                   ? null
                   : (v) => setState(() => _attendedConfirmed = v ?? false),
-              title: const Text(
-                'Επιβεβαιώνω ότι πήγα στην προπόνηση',
-                style: TextStyle(fontWeight: FontWeight.w700),
+              title: Text(
+                AppStrings.of(context).workoutCompleteCheckbox,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
                 widget.booking.isInProgress
-                    ? 'Διαθέσιμο μετά το τέλος της προπόνησης'
-                    : 'Απαιτείται για να καταχωρηθεί η συμμετοχή σου',
+                    ? AppStrings.of(context).workoutCompleteAfterEnd
+                    : AppStrings.of(context).workoutCompleteRequired,
               ),
               activeColor: AppColors.lime,
               controlAffinity: ListTileControlAffinity.leading,
@@ -311,7 +313,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Στόχος ${stats.goal.targetSessions} προπονήσεις/μήνα',
+                  Text(AppStrings.of(context).workoutCompleteGoalTarget(stats.goal.targetSessions),
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 10),
                   ClipRRect(
@@ -325,14 +327,14 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${stats.sessionsThisMonth} / ${stats.goal.targetSessions} αυτόν τον μήνα',
+                    AppStrings.of(context).workoutCompleteSessions(stats.sessionsThisMonth, stats.goal.targetSessions),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   if (stats.goalMet)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        '🎯 Συγχαρητήρια — πέτυχες τον στόχο σου!',
+                        AppStrings.of(context).workoutCompleteGoalAchieved,
                         style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -343,11 +345,11 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
           const SizedBox(height: 20),
           PreparationTipsCard(
             tips: _postTips,
-            title: 'Recovery & διατροφή',
+            title: AppStrings.of(context).workoutCompleteRecovery,
             icon: Icons.favorite_outline,
           ),
           const SizedBox(height: 24),
-          Text('Πώς ήταν; (προαιρετικό)', style: Theme.of(context).textTheme.titleMedium),
+          Text(AppStrings.of(context).workoutCompleteHowWas, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -366,13 +368,13 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
           TextField(
             controller: _noteController,
             maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Σχόλιο (προαιρετικό)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: AppStrings.of(context).workoutCompleteComment,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 20),
-          Text('Φωτογραφία για social (Strava style)', style: Theme.of(context).textTheme.titleMedium),
+          Text(AppStrings.of(context).workoutCompletePhotoTitle, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
           if (_photoFile != null) ...[
             WorkoutShareThumbnail(
@@ -387,7 +389,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () => _pickPhoto(ImageSource.camera),
                   icon: const Icon(Icons.camera_alt_outlined),
-                  label: const Text('Κάμερα'),
+                  label: Text(AppStrings.of(context).workoutCompleteCameraLabel),
                 ),
               ),
               const SizedBox(width: 10),
@@ -413,7 +415,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.download_outlined),
-                  label: const Text('Αποθήκευση'),
+                  label: Text(AppStrings.of(context).workoutCompleteSaveLabel),
                 ),
               ),
               const SizedBox(width: 10),
@@ -428,7 +430,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Πάνω στη φωτό προστίθενται αυτόματα: πρόγραμμα, ημερομηνία, ώρα και logo του γυμναστηρίου.',
+            AppStrings.of(context).workoutCompletePhotoNote,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
           ),
           if (_error != null) ...[
@@ -446,7 +448,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                     )
-                  : const Text('Επιβεβαίωση παρουσίας'),
+                  : Text(AppStrings.of(context).workoutCompleteBtn),
             ),
           ),
         ],

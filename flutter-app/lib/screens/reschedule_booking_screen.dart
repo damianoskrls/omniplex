@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/app_strings.dart';
 import '../models/booking.dart';
 import '../models/opening_hours.dart';
 import '../models/service.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
@@ -145,7 +147,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
         _slots = filtered;
         _dayStatus = result.dayStatus;
         _slotsMessage = result.message ??
-            (filtered.isEmpty ? 'Δεν υπάρχουν διαθέσιμες ώρες' : null);
+            (filtered.isEmpty ? AppStrings.of(context).rescheduleNoSlotsMsg : null);
         if (_selectedTime != null &&
             !filtered.any((s) => s.time == _selectedTime && s.isBookable)) {
           _selectedTime = null;
@@ -253,11 +255,13 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFmt = DateFormat('EEE d MMM, HH:mm', 'el_GR');
+    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
+    final dateFmt = DateFormat('EEE d MMM, HH:mm', locale);
     final staffNoun = _config.label('staff_noun', 'Γυμναστής');
+    final s = AppStrings.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Αλλαγή ραντεβού')),
+      appBar: AppBar(title: Text(s.rescheduleTitle)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
@@ -268,26 +272,26 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
                 Text(widget.booking.serviceName, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 6),
                 Text(
-                  'Τρέχον: ${dateFmt.format(widget.booking.startsAt)}',
+                  s.rescheduleCurrentDate(dateFmt.format(widget.booking.startsAt)),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          Text('Νέα ημερομηνία', style: Theme.of(context).textTheme.titleMedium),
+          Text(s.rescheduleNewDate, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
           SurfaceCard(
             padding: EdgeInsets.zero,
             child: ListTile(
               leading: const Icon(Icons.calendar_today, color: AppColors.purple),
-              title: Text(DateFormat('EEEE d MMM yyyy', 'el_GR').format(_selectedDate)),
+              title: Text(DateFormat('EEEE d MMM yyyy', locale).format(_selectedDate)),
               trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
               onTap: _pickDate,
             ),
           ),
           const SizedBox(height: 24),
-          Text('Νέα ώρα', style: Theme.of(context).textTheme.titleMedium),
+          Text(s.rescheduleNewTime, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           if (_loadingSlots)
             const Center(
@@ -313,7 +317,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
                       children: [
                         if (_dayStatus == 'closed') ...[
                           Text(
-                            'Κλειστό',
+                            s.rescheduleClosedDay,
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.orange,
@@ -322,7 +326,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
                           const SizedBox(height: 4),
                         ],
                         Text(
-                          _slotsMessage ?? _error ?? 'Δεν υπάρχουν διαθέσιμες ώρες αυτή την ημέρα',
+                          _slotsMessage ?? _error ?? s.rescheduleNoSlots,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -390,7 +394,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                     )
-                  : const Text('Αποθήκευση αλλαγής'),
+                  : Text(s.rescheduleSave),
             ),
           ),
         ],
