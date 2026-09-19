@@ -304,6 +304,12 @@ async function bootstrapSchema() {
     console.log('✓ Schema: users.avatar_url added');
   } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('users.avatar_url skipped:', err.message); }
 
+  // business_configs.annual_leave_days
+  try {
+    await db.query('ALTER TABLE business_configs ADD COLUMN annual_leave_days INT NOT NULL DEFAULT 20');
+    console.log('✓ Schema: business_configs.annual_leave_days added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('annual_leave_days skipped:', err.message); }
+
   // staff_leaves — leave requests with status workflow
   try {
     await db.query(`
