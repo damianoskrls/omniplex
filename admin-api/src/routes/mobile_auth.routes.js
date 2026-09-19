@@ -669,6 +669,54 @@ router.patch('/staff/bookings/:id/attendance', requireMobileStaff, async (req, r
   }
 });
 
+// PATCH /api/mobile/staff/bookings/:id/claim — staff claims (assigns themselves to) a booking
+router.patch('/staff/bookings/:id/claim', requireMobileStaff, async (req, res) => {
+  try {
+    const [result] = await db.query(
+      'UPDATE bookings SET staff_id = ? WHERE id = ? AND business_id = ?',
+      [req.staffId, req.params.id, req.businessId],
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Booking not found' });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/mobile/staff/trials/:id/claim — staff claims a trial booking + optional note
+router.patch('/staff/trials/:id/claim', requireMobileStaff, async (req, res) => {
+  const { notes } = req.body;
+  try {
+    const sets = ['staff_id = ?'];
+    const params = [req.staffId];
+    if (notes !== undefined) { sets.push('notes = ?'); params.push(notes); }
+    params.push(req.params.id, req.businessId);
+    const [result] = await db.query(
+      `UPDATE bookings SET ${sets.join(', ')} WHERE id = ? AND business_id = ? AND is_trial = 1`,
+      params,
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Trial not found' });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/mobile/staff/trials/:id/note — update notes on a trial (membership interest etc.)
+router.patch('/staff/trials/:id/note', requireMobileStaff, async (req, res) => {
+  const { notes } = req.body;
+  try {
+    const [result] = await db.query(
+      'UPDATE bookings SET notes = ? WHERE id = ? AND business_id = ? AND is_trial = 1',
+      [notes || null, req.params.id, req.businessId],
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Trial not found' });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/mobile/staff/leaves — includes status and annual balance
 router.get('/staff/leaves', requireMobileStaff, async (req, res) => {
   try {

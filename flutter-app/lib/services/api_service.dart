@@ -143,6 +143,24 @@ class ApiService {
     return _decode(res) as Map<String, dynamic>;
   }
 
+  Future<List<dynamic>> fetchStaffTrials() async {
+    final res = await _get('/api/mobile/staff/trials');
+    return _decode(res) as List<dynamic>;
+  }
+
+  Future<void> claimBooking(String bookingId) async {
+    await _patch('/api/mobile/staff/bookings/$bookingId/claim', {});
+  }
+
+  Future<void> claimTrial(String bookingId, {String? notes}) async {
+    await _patch('/api/mobile/staff/trials/$bookingId/claim',
+        {if (notes != null) 'notes': notes});
+  }
+
+  Future<void> updateTrialNote(String bookingId, String notes) async {
+    await _patch('/api/mobile/staff/trials/$bookingId/note', {'notes': notes});
+  }
+
   Future<void> deleteStaffLeave(String leaveId) async {
     final res = await _withTimeout(http.delete(
       Uri.parse('$_base/api/mobile/staff/leaves/$leaveId'),

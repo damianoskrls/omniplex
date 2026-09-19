@@ -24,6 +24,7 @@ class AuthService extends ChangeNotifier {
 
   AppUser? get user                => _user;
   bool     get isLoggedIn          => _user != null;
+  String?  get staffId             => (_user?.isStaff == true) ? _user?.id : null;
   bool     get loading             => _loading;
   bool     get isLocked            => _locked;
   bool     get biometricAvailable  => _biometricAvailable;
