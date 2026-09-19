@@ -323,6 +323,12 @@ async function bootstrapSchema() {
   } catch (err) {
     console.warn('staff_leaves table skipped:', err.message);
   }
+
+  // staff_leaves.status — add if table existed without it
+  try {
+    await db.query(`ALTER TABLE staff_leaves ADD COLUMN status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'`);
+    console.log('✓ Schema: staff_leaves.status added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('staff_leaves.status skipped:', err.message); }
 }
 
 module.exports = { bootstrapSchema };

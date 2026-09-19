@@ -110,7 +110,7 @@ class StaffProfileScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Text('Bookup Staff · ${config.appName}',
+        Text(config.appName,
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ],
