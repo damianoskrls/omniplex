@@ -297,6 +297,32 @@ async function bootstrapSchema() {
   } catch (err) {
     console.warn('business_expenses table skipped:', err.message);
   }
+
+  // users.avatar_url — profile photo for mobile clients
+  try {
+    await db.query('ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) NULL');
+    console.log('✓ Schema: users.avatar_url added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('users.avatar_url skipped:', err.message); }
+
+  // staff_leaves — leave requests with status workflow
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS staff_leaves (
+        id          VARCHAR(36)  NOT NULL PRIMARY KEY,
+        staff_id    VARCHAR(36)  NOT NULL,
+        business_id VARCHAR(36)  NOT NULL,
+        date_from   DATE         NOT NULL,
+        date_to     DATE         NOT NULL,
+        reason      VARCHAR(500) NULL,
+        status      ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+        created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sl_staff (staff_id, business_id)
+      )
+    `);
+    console.log('✓ Schema: staff_leaves table ready');
+  } catch (err) {
+    console.warn('staff_leaves table skipped:', err.message);
+  }
 }
 
 module.exports = { bootstrapSchema };
