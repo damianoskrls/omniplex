@@ -15,6 +15,7 @@ import '../widgets/ui_kit.dart';
 import 'home_screen.dart';
 import 'notification_detail_screen.dart';
 import 'messages_screen.dart';
+import 'payments_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({
@@ -67,7 +68,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (id == null || item['is_read'] == 1 || item['is_read'] == true) return;
     await _api.markNotificationRead(id);
     if (!mounted) return;
-    setState(() => item['is_read'] = 1);
+    setState(() {
+      item['is_read'] = 1;
+      // Remove from list after a short delay so user sees it disappear
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (!mounted) return;
+        setState(() => _items.removeWhere((n) => n['id'] == id));
+        _notifyUnread();
+      });
+    });
     _notifyUnread();
   }
 
@@ -138,39 +147,66 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _onTap(Map<String, dynamic> n) async {
     final type = n['type'] as String? ?? '';
-    if (type == 'message') {
-      await _markRead(n);
-      if (!mounted) return;
-      await Navigator.push(context, MaterialPageRoute(builder: (_) => const MessagesScreen()));
-      return;
-    }
+    final payload = _parsePayload(n);
 
-    if (type == 'community_mention' || type == 'community_comment' || type == 'community_post') {
-      final postId = _parsePayload(n)?['post_id'] as String?;
-      await _markRead(n);
-      if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
-      HomeScreen.openCommunityPost(postId);
-      return;
-    }
-
-    final imageUrl = _imageUrl(n);
-    final body = n['body'] as String?;
-    final title = n['title'] as String? ?? 'Ειδοποίηση';
-    final when = _when(n);
-    final hasDetail = imageUrl != null || (body?.isNotEmpty == true);
-
+    // Mark read first, then navigate
     await _markRead(n);
-    if (!mounted || !hasDetail) return;
+    if (!mounted) return;
 
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => NotificationDetailScreen(
-          title: title, body: body, imageUrl: imageUrl, when: when,
-        ),
-      ),
-    );
+    switch (type) {
+      // ── Messages ────────────────────────────────────────────────────────────
+      case 'message':
+        final threadId = payload?['thread_id'] as String?;
+        Navigator.of(context).popUntil((r) => r.isFirst);
+        HomeScreen.openMessages(threadId: threadId);
+        return;
+
+      // ── Bookings ─────────────────────────────────────────────────────────────
+      case 'booking_reminder_24h':
+      case 'prep_reminder':
+      case 'checkin_reminder':
+      case 'workout_complete':
+        Navigator.of(context).popUntil((r) => r.isFirst);
+        HomeScreen.selectTab(1); // Ραντεβού tab
+        return;
+
+      // ── Payments / memberships ────────────────────────────────────────────────
+      case 'payment_reminder':
+      case 'payment_reminder_auto':
+        Navigator.of(context).popUntil((r) => r.isFirst);
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PaymentsScreen()),
+        );
+        return;
+
+      // ── Community ─────────────────────────────────────────────────────────────
+      case 'community_mention':
+      case 'community_comment':
+      case 'community_post':
+        final postId = payload?['post_id'] as String?;
+        Navigator.of(context).popUntil((r) => r.isFirst);
+        HomeScreen.openCommunityPost(postId);
+        return;
+
+      // ── Announcements / generic with image or body ────────────────────────────
+      default:
+        final imageUrl = _imageUrl(n);
+        final body = n['body'] as String?;
+        final hasDetail = imageUrl != null || (body?.isNotEmpty == true);
+        if (!hasDetail) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NotificationDetailScreen(
+              title: n['title'] as String? ?? 'Ειδοποίηση',
+              body: body,
+              imageUrl: imageUrl,
+              when: _when(n),
+            ),
+          ),
+        );
+    }
   }
 
   String _relativeTime(DateTime when) {
