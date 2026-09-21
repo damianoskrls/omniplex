@@ -618,6 +618,7 @@ router.get('/discovery/gyms/:slug/opening-hours', async (req, res) => {
 // ============================================================
 // POST /api/global/auth/login-phone
 // Body: { phone, pin }  — PIN = last 4 digits of phone
+// Also auto-links existing per-gym users who don't have a global account yet
 // ============================================================
 router.post('/auth/login-phone', async (req, res) => {
   const { phone, pin } = req.body;
@@ -626,15 +627,66 @@ router.post('/auth/login-phone', async (req, res) => {
   const digits = phone.replace(/\D/g, '');
   if (pin !== digits.slice(-4)) return res.status(401).json({ error: 'Λάθος PIN' });
 
-  try {
-    const [rows] = await db.query(
-      'SELECT * FROM global_users WHERE REPLACE(REPLACE(phone, " ", ""), "+", "") LIKE ?',
-      [`%${digits.slice(-9)}`],
-    );
-    if (!rows.length) return res.status(401).json({ error: 'Δεν βρέθηκε λογαριασμός με αυτό το τηλέφωνο' });
+  // Normalise to last 9 digits for fuzzy match (handles +30 prefix etc)
+  const last9 = digits.slice(-9);
 
-    const user = rows[0];
-    const gyms = await getGymsForGlobalUser(user.id);
+  try {
+    // 1. Try global_users first
+    const [guRows] = await db.query(
+      `SELECT * FROM global_users
+       WHERE REPLACE(REPLACE(REPLACE(phone,' ',''),'+',''),'-','') LIKE ?`,
+      [`%${last9}`],
+    );
+
+    if (guRows.length) {
+      const user = guRows[0];
+      const gyms = await getGymsForGlobalUser(user.id);
+      return res.json({
+        token: makeGlobalToken(user),
+        user:  { id: user.id, email: user.email, full_name: user.full_name },
+        gyms,
+      });
+    }
+
+    // 2. Fall back: look in per-gym users table
+    const [gymUsers] = await db.query(
+      `SELECT u.*, b.slug, b.name AS biz_name, c.app_name, c.primary_color, c.logo_url
+       FROM users u
+       JOIN businesses b ON b.id = u.business_id
+       LEFT JOIN business_configs c ON c.business_id = b.id
+       WHERE REPLACE(REPLACE(REPLACE(u.phone,' ',''),'+',''),'-','') LIKE ?
+         AND u.deleted_at IS NULL AND b.is_active = 1`,
+      [`%${last9}`],
+    );
+
+    if (!gymUsers.length) {
+      return res.status(401).json({ error: 'Δεν βρέθηκε λογαριασμός με αυτό το τηλέφωνο' });
+    }
+
+    // Create global_user and link all matching gym accounts
+    const firstUser = gymUsers[0];
+    const newId = uuidv4();
+    await db.query(
+      `INSERT INTO global_users (id, email, full_name, phone) VALUES (?,?,?,?)
+       ON DUPLICATE KEY UPDATE id=id`,
+      [newId, firstUser.email || '', firstUser.full_name || '', firstUser.phone || ''],
+    );
+
+    // Re-fetch (in case ON DUPLICATE KEY triggered)
+    const [[createdGU]] = await db.query('SELECT * FROM global_users WHERE id = ?', [newId]);
+    const globalUserId = createdGU ? createdGU.id : newId;
+
+    // Link all gym users to this global account
+    const userIds = [...new Set(gymUsers.map(u => u.id))];
+    for (const uid of userIds) {
+      await db.query(
+        'UPDATE users SET global_user_id = ? WHERE id = ? AND global_user_id IS NULL',
+        [globalUserId, uid],
+      );
+    }
+
+    const user = createdGU || { id: globalUserId, email: firstUser.email || '', full_name: firstUser.full_name || '' };
+    const gyms = await getGymsForGlobalUser(globalUserId);
     return res.json({
       token: makeGlobalToken(user),
       user:  { id: user.id, email: user.email, full_name: user.full_name },
