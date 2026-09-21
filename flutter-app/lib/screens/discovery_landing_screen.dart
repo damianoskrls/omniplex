@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -31,6 +32,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   List<Map<String, dynamic>> _results = [];
   bool _searching = false;
   bool _searched = false;
+  Timer? _debounce;
 
   static const _serviceFilters = [
     ('', 'Όλα'),
@@ -42,8 +44,18 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     ('Fitness', 'Fitness'),
   ];
 
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    if (value.trim().length < 2) {
+      if (_searched) setState(() { _results = []; _searched = false; });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 400), _search);
+  }
+
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchCtrl.dispose();
     _cityCtrl.dispose();
     super.dispose();
@@ -58,12 +70,19 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
 
     setState(() { _searching = true; _searched = true; });
     try {
-      final params = <String, String>{};
-      if (q.isNotEmpty)       params['q']       = q;
-      if (city.isNotEmpty)    params['city']    = city;
-      if (service.isNotEmpty) params['service'] = service;
+      Uri uri;
+      // Name-only search: use /tenants/search (returns all active gyms, not just discoverable)
+      // Service/city filter: use /global/discovery/gyms (discoverable only)
+      if (q.isNotEmpty && city.isEmpty && service.isEmpty) {
+        uri = Uri.parse('$_apiBase/tenants/search').replace(queryParameters: {'q': q});
+      } else {
+        final params = <String, String>{};
+        if (q.isNotEmpty)       params['q']       = q;
+        if (city.isNotEmpty)    params['city']    = city;
+        if (service.isNotEmpty) params['service'] = service;
+        uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: params);
+      }
 
-      final uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: params);
       final res = await http.get(uri);
       if (res.statusCode == 200) {
         setState(() {
@@ -131,7 +150,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'BookUp',
+                    'OmniPlex',
                     style: TextStyle(
                       fontSize: 28, fontWeight: FontWeight.w900,
                       color: AppColors.lime, letterSpacing: -0.5,
@@ -171,6 +190,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                               borderSide: const BorderSide(color: AppColors.lime),
                             ),
                           ),
+                          onChanged: _onSearchChanged,
                           onSubmitted: (_) => _search(),
                         ),
                       ),
@@ -214,6 +234,10 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                         borderSide: const BorderSide(color: AppColors.lime),
                       ),
                     ),
+                    onChanged: (_) {
+                      _debounce?.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 500), _search);
+                    },
                     onSubmitted: (_) => _search(),
                   ),
                   const SizedBox(height: 10),
