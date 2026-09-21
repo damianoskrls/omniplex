@@ -240,7 +240,11 @@ router.post('/link-gym', requireGlobal, async (req, res) => {
 router.get('/discovery/gyms', async (req, res) => {
   const { q = '', service = '', city = '' } = req.query;
 
-  const conditions = ['b.is_active = 1', 'b.is_discoverable = 1'];
+  // Require is_discoverable only for pure browse (no query, no service filter)
+  const requireDiscoverable = !q.trim() && !service.trim() && !city.trim();
+  const conditions = requireDiscoverable
+    ? ['b.is_active = 1', 'b.is_discoverable = 1']
+    : ['b.is_active = 1'];
   const params = [];
 
   if (q.trim().length >= 2) {

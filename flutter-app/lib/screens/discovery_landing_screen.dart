@@ -31,7 +31,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   String _selectedService = '';
   List<Map<String, dynamic>> _results = [];
   bool _searching = false;
-  bool _searched = false;
+  bool _searched  = false;
   Timer? _debounce;
 
   static const _serviceFilters = [
@@ -46,7 +46,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
 
   void _onSearchChanged(String value) {
     _debounce?.cancel();
-    if (value.trim().length < 2) {
+    if (value.trim().length < 2 && _cityCtrl.text.trim().isEmpty && _selectedService.isEmpty) {
       if (_searched) setState(() { _results = []; _searched = false; });
       return;
     }
@@ -71,11 +71,11 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     setState(() { _searching = true; _searched = true; });
     try {
       Uri uri;
-      // Name-only search: use /tenants/search (returns all active gyms, not just discoverable)
-      // Service/city filter: use /global/discovery/gyms (discoverable only)
+      // Name-only (no city/service): use /tenants/search — returns ALL active gyms
       if (q.isNotEmpty && city.isEmpty && service.isEmpty) {
         uri = Uri.parse('$_apiBase/tenants/search').replace(queryParameters: {'q': q});
       } else {
+        // With filters: use discovery endpoint (now returns all active gyms when filters present)
         final params = <String, String>{};
         if (q.isNotEmpty)       params['q']       = q;
         if (city.isNotEmpty)    params['city']    = city;
@@ -138,30 +138,44 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasResults = _searched && _results.isNotEmpty;
+    final noResults  = _searched && _results.isEmpty && !_searching;
+
     return Scaffold(
       backgroundColor: AppColors.bg,
+      // Don't resize when keyboard opens — we handle it ourselves
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           children: [
-            // Header
+            // ── Top search header (fixed) ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'OmniPlex',
-                    style: TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.w900,
-                      color: AppColors.lime, letterSpacing: -0.5,
-                    ),
+                  // OmniPlex logo
+                  Row(
+                    children: [
+                      Image.asset(
+                        'assets/logo.png',
+                        height: 36,
+                        errorBuilder: (_, __, ___) => const Text(
+                          'OmniPlex',
+                          style: TextStyle(
+                            fontSize: 26, fontWeight: FontWeight.w900,
+                            color: AppColors.lime, letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   const Text(
                     'Βρες το γυμναστήριό σου',
-                    style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   // Search bar
                   Row(
@@ -177,18 +191,9 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                             filled: true,
                             fillColor: AppColors.surfaceLight,
                             contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(color: AppColors.border),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(color: AppColors.border),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.lime),
-                            ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.border)),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.border)),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.lime)),
                           ),
                           onChanged: _onSearchChanged,
                           onSubmitted: (_) => _search(),
@@ -199,16 +204,13 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                         onTap: _search,
                         child: Container(
                           padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.lime,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
+                          decoration: BoxDecoration(color: AppColors.lime, borderRadius: BorderRadius.circular(14)),
                           child: const Icon(Icons.arrow_forward_rounded, color: AppColors.bg, size: 20),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
 
                   // City filter
                   TextField(
@@ -221,18 +223,9 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                       filled: true,
                       fillColor: AppColors.surfaceLight,
                       contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: AppColors.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: AppColors.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.lime),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.lime)),
                     ),
                     onChanged: (_) {
                       _debounce?.cancel();
@@ -261,15 +254,12 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                               decoration: BoxDecoration(
                                 color: selected ? AppColors.lime : AppColors.surfaceLight,
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: selected ? AppColors.lime : AppColors.border,
-                                ),
+                                border: Border.all(color: selected ? AppColors.lime : AppColors.border),
                               ),
                               child: Text(
                                 f.$2,
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13, fontWeight: FontWeight.w600,
                                   color: selected ? AppColors.bg : AppColors.textSecondary,
                                 ),
                               ),
@@ -283,29 +273,28 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
               ),
             ),
 
-            // Results or auth buttons
+            // ── Results / empty state ──
             Expanded(
               child: _searching
                   ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
-                  : _searched && _results.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Δεν βρέθηκαν αποτελέσματα',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
+                  : noResults
+                      ? const Center(
+                          child: Text('Δεν βρέθηκαν αποτελέσματα',
+                              style: TextStyle(color: AppColors.textSecondary)),
                         )
-                      : _results.isNotEmpty
+                      : hasResults
                           ? ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
                               itemCount: _results.length,
                               itemBuilder: (_, i) {
                                 final g = _results[i];
                                 final color = _parseColor(g['primary_color'] as String?);
+                                final name = g['app_name'] as String? ?? g['name'] as String? ?? '';
                                 return GestureDetector(
                                   onTap: () => _openGym(g),
                                   child: Container(
                                     margin: const EdgeInsets.only(bottom: 10),
-                                    padding: const EdgeInsets.all(16),
+                                    padding: const EdgeInsets.all(14),
                                     decoration: BoxDecoration(
                                       color: AppColors.surfaceLight,
                                       borderRadius: BorderRadius.circular(18),
@@ -314,7 +303,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                                     child: Row(
                                       children: [
                                         Container(
-                                          width: 48, height: 48,
+                                          width: 46, height: 46,
                                           decoration: BoxDecoration(
                                             color: color.withValues(alpha: 0.12),
                                             borderRadius: BorderRadius.circular(12),
@@ -322,38 +311,23 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                                           child: g['logo_url'] != null
                                               ? ClipRRect(
                                                   borderRadius: BorderRadius.circular(11),
-                                                  child: Image.network(g['logo_url'] as String, fit: BoxFit.contain,
+                                                  child: Image.network(g['logo_url'] as String,
+                                                      fit: BoxFit.contain,
                                                       errorBuilder: (_, __, ___) => Center(
-                                                        child: Text(
-                                                          (g['app_name'] as String? ?? g['name'] as String? ?? '?')[0].toUpperCase(),
-                                                          style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800),
-                                                        ),
-                                                      )),
-                                                )
-                                              : Center(
-                                                  child: Text(
-                                                    (g['app_name'] as String? ?? g['name'] as String? ?? '?')[0].toUpperCase(),
-                                                    style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800),
-                                                  ),
-                                                ),
+                                                        child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                                            style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800)),
+                                                      )))
+                                              : Center(child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                                  style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800))),
                                         ),
-                                        const SizedBox(width: 14),
+                                        const SizedBox(width: 12),
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                g['app_name'] as String? ?? g['name'] as String? ?? '',
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w700, fontSize: 15,
-                                                  color: AppColors.textPrimary,
-                                                ),
-                                              ),
+                                              Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary)),
                                               if ((g['city'] as String?)?.isNotEmpty == true)
-                                                Text(
-                                                  g['city'] as String,
-                                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                                ),
+                                                Text(g['city'] as String, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                                             ],
                                           ),
                                         ),
@@ -364,15 +338,14 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                                 );
                               },
                             )
-                          : Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 32, 20, 32),
+                          // No search yet — show illustration + Login/Register
+                          : SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                               child: Column(
-                                mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  const Spacer(),
-                                  // Illustration / placeholder
+                                  const SizedBox(height: 24),
                                   Container(
-                                    padding: const EdgeInsets.all(32),
+                                    padding: const EdgeInsets.all(28),
                                     decoration: BoxDecoration(
                                       color: AppColors.surfaceLight,
                                       borderRadius: BorderRadius.circular(24),
@@ -380,15 +353,14 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                                     ),
                                     child: Column(
                                       children: [
-                                        Icon(Icons.fitness_center_rounded, size: 56, color: AppColors.lime.withValues(alpha: 0.7)),
-                                        const SizedBox(height: 16),
+                                        Icon(Icons.fitness_center_rounded,
+                                            size: 52, color: AppColors.lime.withValues(alpha: 0.7)),
+                                        const SizedBox(height: 14),
                                         const Text(
                                           'Βρες & κράτησε θέση\nστο γυμναστήριό σου',
                                           textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 18, fontWeight: FontWeight.w800,
-                                            color: AppColors.textPrimary, height: 1.3,
-                                          ),
+                                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800,
+                                              color: AppColors.textPrimary, height: 1.3),
                                         ),
                                         const SizedBox(height: 8),
                                         const Text(
@@ -399,9 +371,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                                       ],
                                     ),
                                   ),
-                                  const Spacer(),
-
-                                  // Login / Register buttons
+                                  const SizedBox(height: 24),
                                   SizedBox(
                                     width: double.infinity,
                                     child: FilledButton(
