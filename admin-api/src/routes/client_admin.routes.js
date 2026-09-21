@@ -732,7 +732,7 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
     );
 
     if (!guRows.length) {
-      // 2. Maybe they exist only as a per-gym user (legacy, no global_users yet)
+      // 2a. Maybe they exist in THIS gym as a legacy user (no global_users yet)
       const [legacyRows] = await db.query(
         `SELECT id, full_name, email, phone, account_status
          FROM users
@@ -744,6 +744,35 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
       if (legacyRows.length) {
         return res.json({ status: 'in_this_gym', user: legacyRows[0] });
       }
+
+      // 2b. Maybe they exist in ANOTHER gym as a legacy user (no global_users record yet)
+      const [otherLegacyRows] = await db.query(
+        `SELECT u.id, u.full_name, u.email, u.phone, b.name AS gym_name
+         FROM users u
+         JOIN businesses b ON b.id = u.business_id
+         WHERE u.business_id != ?
+           AND REPLACE(REPLACE(REPLACE(COALESCE(u.phone,''),' ',''),'+',''),'-','') LIKE ?
+           AND (u.deleted_at IS NULL OR u.deleted_at > NOW())
+         LIMIT 1`,
+        [bizId, `%${last9}`],
+      );
+      if (otherLegacyRows.length) {
+        const lu = otherLegacyRows[0];
+        // Auto-create the global_users record so future lookups work properly
+        const conn = await db.getConnection();
+        let guId;
+        try {
+          guId = await findOrCreateGlobalUser(conn, { full_name: lu.full_name, email: lu.email, phone: lu.phone });
+          // Link the existing user record
+          await conn.query(`UPDATE users SET global_user_id = ? WHERE id = ?`, [guId, lu.id]);
+        } finally { conn.release(); }
+        return res.json({
+          status: 'global_user_elsewhere',
+          global_user: { id: guId, masked_name: maskName(lu.full_name) },
+          other_gyms: [lu.gym_name],
+        });
+      }
+
       return res.json({ status: 'not_found' });
     }
 
