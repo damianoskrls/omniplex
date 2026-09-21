@@ -758,14 +758,26 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
       );
       if (otherLegacyRows.length) {
         const lu = otherLegacyRows[0];
-        // Auto-create the global_users record so future lookups work properly
-        const conn = await db.getConnection();
+        // Auto-create the global_users record using the pool directly (no transaction needed)
+        const luDigits = String(lu.phone || '').replace(/\D/g, '');
+        const luLast9  = luDigits.slice(-9);
         let guId;
-        try {
-          guId = await findOrCreateGlobalUser(conn, { full_name: lu.full_name, email: lu.email, phone: lu.phone });
-          // Link the existing user record
-          await conn.query(`UPDATE users SET global_user_id = ? WHERE id = ?`, [guId, lu.id]);
-        } finally { conn.release(); }
+        const [existingGu] = await db.query(
+          `SELECT id FROM global_users
+           WHERE REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE ?`,
+          [`%${luLast9}`],
+        );
+        if (existingGu.length) {
+          guId = existingGu[0].id;
+        } else {
+          guId = uuidv4();
+          await db.query(
+            `INSERT INTO global_users (id, full_name, email, phone) VALUES (?,?,?,?)`,
+            [guId, lu.full_name || '', lu.email || '', lu.phone || ''],
+          );
+        }
+        // Link the legacy user record
+        await db.query(`UPDATE users SET global_user_id = ? WHERE id = ? AND global_user_id IS NULL`, [guId, lu.id]);
         return res.json({
           status: 'global_user_elsewhere',
           global_user: { id: guId, masked_name: maskName(lu.full_name) },
@@ -856,9 +868,9 @@ router.post('/clients/invite', requireClientAdmin, async (req, res) => {
       );
     } else {
       await db.query(
-        `INSERT INTO gym_join_requests (id, global_user_id, business_id, status)
-         VALUES (?, ?, ?, 'pending')`,
-        [uuidv4(), global_user_id, bizId],
+        `INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, status)
+         VALUES (?, ?, ?, ?, ?, 'pending')`,
+        [uuidv4(), global_user_id, bizId, gu.full_name || '', gu.email || ''],
       );
     }
     return res.json({ ok: true });

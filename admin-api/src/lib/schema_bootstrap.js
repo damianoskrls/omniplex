@@ -386,19 +386,37 @@ async function bootstrapSchema() {
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS global_users (
-        id           VARCHAR(36)  NOT NULL PRIMARY KEY,
-        email        VARCHAR(255) NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        full_name    VARCHAR(200) NOT NULL,
-        phone        VARCHAR(50)  NULL,
-        created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY idx_gu_email (email)
+        id            VARCHAR(36)  NOT NULL PRIMARY KEY,
+        email         VARCHAR(255) NULL,
+        password_hash VARCHAR(255) NULL,
+        full_name     VARCHAR(200) NOT NULL DEFAULT '',
+        phone         VARCHAR(50)  NULL,
+        created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
     console.log('✓ Schema: global_users table ready');
   } catch (err) {
     console.warn('global_users table skipped:', err.message);
+  }
+  // Make email/password_hash nullable on existing deployments
+  for (const [col, def] of [
+    ['email',         'VARCHAR(255) NULL'],
+    ['password_hash', 'VARCHAR(255) NULL'],
+  ]) {
+    try {
+      await db.query(`ALTER TABLE global_users MODIFY COLUMN ${col} ${def}`);
+      console.log(`✓ Schema: global_users.${col} made nullable`);
+    } catch (err) {
+      if (err.code !== 'ER_BAD_FIELD_ERROR') console.warn(`global_users.${col} modify skipped:`, err.message);
+    }
+  }
+  // Drop the old UNIQUE email index (nulls don't work well with unique in MySQL)
+  try {
+    await db.query('ALTER TABLE global_users DROP INDEX idx_gu_email');
+    console.log('✓ Schema: global_users.idx_gu_email dropped');
+  } catch (err) {
+    if (err.code !== 'ER_CANT_DROP_FIELD_OR_KEY') {}
   }
 
   // ── users.global_user_id ────────────────────────────────────
