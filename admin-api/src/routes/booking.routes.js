@@ -1749,6 +1749,206 @@ router.post('/:bizId/messages', softAuth, requireActiveCustomer, async (req, res
   }
 });
 
+// ============================================================
+// DROP-IN ENDPOINTS
+// ============================================================
+
+// GET /:bizId/dropin/services — services available for drop-in (price > 0)
+router.get('/:bizId/dropin/services', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, name, description, duration_mins, drop_in_price_cents, category, color
+       FROM services
+       WHERE business_id = ? AND is_active = 1 AND drop_in_price_cents > 0
+       ORDER BY category, name`,
+      [req.params.bizId],
+    );
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /:bizId/dropin/payment-intent — create Stripe payment intent for drop-in
+router.post('/:bizId/dropin/payment-intent', softAuth, async (req, res) => {
+  const { service_id, guest_name } = req.body;
+  const conn = await db.getConnection();
+  try {
+    const [[svc]] = await conn.query(
+      'SELECT id, name, drop_in_price_cents FROM services WHERE id = ? AND business_id = ? AND drop_in_price_cents > 0',
+      [service_id, req.params.bizId],
+    );
+    if (!svc) return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε ή δεν έχει drop-in τιμή' });
+
+    const { createPaymentIntent } = require('../lib/online_payments');
+    const intent = await createPaymentIntent(conn, req.params.bizId, {
+      amountCents: svc.drop_in_price_cents,
+      metadata: { service_id, service_name: svc.name },
+      userId: req.user?.userId || null,
+      userEmail: req.user?.email || null,
+      userName: req.user?.fullName || guest_name || null,
+    });
+    return res.json(intent);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// POST /:bizId/dropin/book — create drop-in booking (member or guest)
+router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
+  const bizId = req.params.bizId;
+  const {
+    service_id, date, time,
+    payment_method = 'venue', payment_intent_id,
+    guest_name, guest_email, guest_phone,
+    staff_id,
+  } = req.body;
+
+  if (!service_id || !date || !time) {
+    return res.status(400).json({ error: 'Απαιτούνται υπηρεσία, ημερομηνία και ώρα' });
+  }
+  const isGuest = !req.user;
+  if (isGuest && !guest_name) {
+    return res.status(400).json({ error: 'Απαιτείται όνομα για guests' });
+  }
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [[svc]] = await conn.query(
+      'SELECT id, name, drop_in_price_cents, max_capacity FROM services WHERE id = ? AND business_id = ? AND is_active = 1 AND drop_in_price_cents > 0',
+      [service_id, bizId],
+    );
+    if (!svc) { await conn.rollback(); return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε' }); }
+
+    // Capacity check: count bookings + dropin_bookings for this slot
+    const [[capRow]] = await conn.query(`
+      SELECT
+        COALESCE((SELECT COUNT(*) FROM bookings
+                  WHERE business_id=? AND service_id=? AND booking_date=? AND TIME_FORMAT(starts_at,'%H:%i')=? AND status='confirmed'), 0)
+        + COALESCE((SELECT COUNT(*) FROM dropin_bookings
+                    WHERE business_id=? AND service_id=? AND booking_date=? AND TIME_FORMAT(booking_time,'%H:%i')=? AND status IN ('confirmed','attended')), 0)
+        AS total_booked
+    `, [bizId, service_id, date, time, bizId, service_id, date, time]);
+    if (svc.max_capacity && capRow.total_booked >= svc.max_capacity) {
+      await conn.rollback();
+      return res.status(409).json({ error: 'Η κλάση είναι πλήρης', code: 'SLOT_FULL' });
+    }
+
+    // Verify payment if card
+    let paymentStatus = payment_method === 'venue' ? 'pending' : 'pending';
+    if (payment_method === 'card' && payment_intent_id) {
+      try {
+        const { confirmPayment } = require('../lib/online_payments');
+        const result = await confirmPayment(conn, bizId, payment_intent_id);
+        if (result.status === 'succeeded') {
+          paymentStatus = 'paid';
+        } else {
+          await conn.rollback();
+          return res.status(402).json({ error: 'Η πληρωμή δεν ολοκληρώθηκε' });
+        }
+      } catch (e) {
+        // Payment provider not configured — accept booking, mark pending
+      }
+    }
+
+    // Find staff name for this slot
+    let staffName = null;
+    if (staff_id) {
+      const [[st]] = await conn.query('SELECT full_name FROM staff WHERE id = ? AND business_id = ?', [staff_id, bizId]);
+      staffName = st?.full_name || null;
+    }
+
+    // Create dropin_bookings record
+    const dropinId = uuidv4();
+    const qrToken  = uuidv4();
+    await conn.query(`
+      INSERT INTO dropin_bookings
+        (id, business_id, user_id, guest_name, guest_email, guest_phone,
+         service_id, service_name, booking_date, booking_time, staff_name,
+         price_cents, payment_method, payment_status, payment_intent_id, status, qr_token)
+      VALUES (?,?,?,?,?,?, ?,?,?,?,?, ?,?,?,?,'confirmed',?)
+    `, [
+      dropinId, bizId,
+      req.user?.userId || null, guest_name || null, guest_email || null, guest_phone || null,
+      service_id, svc.name, date, time, staffName,
+      svc.drop_in_price_cents, payment_method, paymentStatus, payment_intent_id || null,
+      qrToken,
+    ]);
+
+    // For registered members, also create a bookings entry so trainers can see them
+    let bookingId = null;
+    if (req.user?.userId) {
+      try {
+        const { createOneBooking } = require('../lib/create_booking');
+        const bookingResult = await createOneBooking(conn, {
+          bizId, userId: req.user.userId, service_id,
+          staff_id: staff_id || null, date, time,
+          use_credit: false, source: 'dropin',
+        });
+        bookingId = bookingResult.bookingId || bookingResult.id;
+        if (bookingId) {
+          await conn.query('UPDATE dropin_bookings SET booking_id=? WHERE id=?', [bookingId, dropinId]);
+        }
+      } catch (_) { /* slot might conflict — dropin booking still stands */ }
+    }
+
+    await conn.commit();
+    return res.status(201).json({
+      id: dropinId,
+      qr_token: qrToken,
+      service_name: svc.name,
+      booking_date: date,
+      booking_time: time,
+      price_cents: svc.drop_in_price_cents,
+      payment_method,
+      payment_status: paymentStatus,
+      status: 'confirmed',
+    });
+  } catch (err) {
+    await conn.rollback();
+    return res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// GET /:bizId/dropin/:bookingId — get dropin booking details (for QR display)
+router.get('/:bizId/dropin/:bookingId', async (req, res) => {
+  try {
+    const [[row]] = await db.query(
+      `SELECT db.*, s.description AS service_description
+       FROM dropin_bookings db
+       LEFT JOIN services s ON s.id = db.service_id
+       WHERE db.id = ? AND db.business_id = ?`,
+      [req.params.bookingId, req.params.bizId],
+    );
+    if (!row) return res.status(404).json({ error: 'Κράτηση δεν βρέθηκε' });
+    return res.json(row);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /:bizId/dropin/my-bookings — member's own dropin bookings
+router.get('/:bizId/dropin/my-bookings', softAuth, requireActiveCustomer, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT * FROM dropin_bookings
+       WHERE user_id = ? AND business_id = ?
+       ORDER BY booking_date DESC, booking_time DESC
+       LIMIT 30`,
+      [req.user.userId, req.params.bizId],
+    );
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/:bizId/messages/read', softAuth, requireActiveCustomer, async (req, res) => {
   try {
     const threadId = req.body?.thread_id;

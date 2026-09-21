@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck, Zap,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
@@ -77,6 +77,7 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/services', icon: Scissors, label: 'Υπηρεσίες & Πακέτα' },
         { to: '/staff', icon: UserCog, label: 'Προσωπικό' },
         { to: '/staff-leaves', icon: CalendarOff, label: 'Άδειες Προσωπικού' },
+        { to: '/dropin-bookings', icon: Zap, label: 'Drop-in' },
         ...(features.trainers ? [{ to: '/trainer-fees', icon: Receipt, label: 'Αμοιβές Συνεργατών' }] : []),
         { to: '/rooms', icon: DoorOpen, label: 'Χώροι & Αίθουσες' },
         { to: '/locations', icon: MapPin, label: 'Τοποθεσίες' },

@@ -4582,6 +4582,54 @@ router.delete('/closures/:id', requireClientAdmin, async (req, res) => {
   return res.json({ ok: true });
 });
 
+// ── Drop-in Bookings (admin) ──────────────────────────────────
+
+router.get('/dropin-bookings', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const { status, from, to } = req.query;
+  const params = [bizId];
+  let where = 'db.business_id = ?';
+  if (status) { where += ' AND db.status = ?'; params.push(status); }
+  if (from)   { where += ' AND db.booking_date >= ?'; params.push(from); }
+  if (to)     { where += ' AND db.booking_date <= ?'; params.push(to); }
+  try {
+    const [rows] = await db.query(`
+      SELECT db.*, s.duration_mins
+      FROM dropin_bookings db
+      LEFT JOIN services s ON s.id = db.service_id
+      WHERE ${where}
+      ORDER BY db.booking_date DESC, db.booking_time DESC
+    `, params);
+    // Revenue stats
+    const [[stats]] = await db.query(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN status IN ('confirmed','attended') THEN 1 ELSE 0 END) AS confirmed,
+        SUM(CASE WHEN payment_status = 'paid' THEN price_cents ELSE 0 END) AS revenue_cents,
+        SUM(CASE WHEN payment_method = 'venue' AND status IN ('confirmed','attended') THEN price_cents ELSE 0 END) AS pending_venue_cents
+      FROM dropin_bookings WHERE business_id = ?
+    `, [bizId]);
+    return res.json({ bookings: rows, stats });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/dropin-bookings/:id', requireClientAdmin, async (req, res) => {
+  const { status, admin_note, payment_status } = req.body;
+  const allowed = ['confirmed', 'rejected', 'attended', 'cancelled'];
+  if (status && !allowed.includes(status)) return res.status(400).json({ error: 'Μη έγκυρο status' });
+  const sets = [];
+  const params = [];
+  if (status)         { sets.push('status = ?');         params.push(status); }
+  if (admin_note !== undefined) { sets.push('admin_note = ?');    params.push(admin_note); }
+  if (payment_status) { sets.push('payment_status = ?'); params.push(payment_status); }
+  if (!sets.length) return res.status(400).json({ error: 'Τίποτα να ενημερωθεί' });
+  params.push(req.params.id, req.admin.businessId);
+  await db.query(`UPDATE dropin_bookings SET ${sets.join(', ')} WHERE id = ? AND business_id = ?`, params);
+  return res.json({ ok: true });
+});
+
 // ── Staff Leaves ──────────────────────────────────────────────
 // Ensure status column exists (migration-safe)
 (async () => {

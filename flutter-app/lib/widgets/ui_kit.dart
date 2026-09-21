@@ -311,14 +311,130 @@ class FloatingNavBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onTap,
     required this.items,
+    this.centerAction,
+    this.centerIcon = Icons.qr_code_2_rounded,
+    this.centerColor,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onTap;
   final List<FloatingNavItem> items;
+  final VoidCallback? centerAction;
+  final IconData centerIcon;
+  final Color? centerColor;
+
+  Widget _buildTab(int i, FloatingNavItem item) {
+    final selected = i == selectedIndex;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(i),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.lime.withValues(alpha: 0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(item.icon, size: 22, color: selected ? AppColors.lime : AppColors.textSecondary),
+                  if (item.badgeCount > 0)
+                    Positioned(
+                      right: -6,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.lime,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          item.badgeCount > 9 ? '9+' : '${item.badgeCount}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                            height: 1.1,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                item.label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? AppColors.lime : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = centerColor ?? AppColors.lime;
+    if (centerAction != null && items.length >= 2) {
+      final mid = items.length ~/ 2;
+      final leftItems  = items.sublist(0, mid);
+      final rightItems = items.sublist(mid);
+      int leftOffset  = 0;
+      int rightOffset = mid;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 24, offset: const Offset(0, 8)),
+            ],
+          ),
+          child: Row(
+            children: [
+              ...leftItems.asMap().entries.map((e) => _buildTab(leftOffset + e.key, e.value)),
+              // Center QR button
+              GestureDetector(
+                onTap: centerAction,
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentColor.withValues(alpha: 0.5),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(centerIcon, color: Colors.black, size: 26),
+                ),
+              ),
+              ...rightItems.asMap().entries.map((e) => _buildTab(rightOffset + e.key, e.value)),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Container(
@@ -332,66 +448,7 @@ class FloatingNavBar extends StatelessWidget {
           ],
         ),
         child: Row(
-          children: List.generate(items.length, (i) {
-            final item = items[i];
-            final selected = i == selectedIndex;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => onTap(i),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.lime.withValues(alpha: 0.15) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Icon(item.icon, size: 22, color: selected ? AppColors.lime : AppColors.textSecondary),
-                          if (item.badgeCount > 0)
-                            Positioned(
-                              right: -6,
-                              top: -4,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                                decoration: BoxDecoration(
-                                  color: AppColors.lime,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  item.badgeCount > 9 ? '9+' : '${item.badgeCount}',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.black,
-                                    height: 1.1,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          color: selected ? AppColors.lime : AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
+          children: List.generate(items.length, (i) => _buildTab(i, items[i])),
         ),
       ),
     );

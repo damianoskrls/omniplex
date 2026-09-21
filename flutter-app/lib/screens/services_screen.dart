@@ -12,6 +12,7 @@ import '../widgets/slot_visual.dart';
 import '../widgets/ui_kit.dart';
 import 'booking_flow_screen.dart';
 import 'nutrition_consultation_booking_screen.dart';
+import 'dropin_screen.dart';
 
 class ServicesScreen extends StatefulWidget {
   const ServicesScreen({super.key});
@@ -148,6 +149,43 @@ class _ServicesScreenState extends State<ServicesScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
+          // Drop-in banner
+          GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DropinScreen())),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1E2A1A), Color(0xFF2A3A1A)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.lime.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(color: AppColors.lime, borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.bolt_rounded, color: Colors.black, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Drop-in', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.lime)),
+                        Text('Κλείσε μία συνεδρία χωρίς συνδρομή', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textSecondary),
+                ],
+              ),
+            ),
+          ),
           if (_showNutritionCard) ...[
             GradientCard(
               colors: const [Color(0xFF0f766e), Color(0xFF134e4a)],

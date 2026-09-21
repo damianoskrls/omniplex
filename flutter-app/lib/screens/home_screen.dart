@@ -15,6 +15,8 @@ import 'community_screen.dart';
 import 'profile_screen.dart';
 import 'services_screen.dart';
 import 'qr_checkin_screen.dart';
+import 'my_qr_screen.dart';
+import 'dropin_screen.dart';
 import 'nutrition_screen.dart';
 import 'workout_programs_screen.dart';
 import 'marketplace_screen.dart';
@@ -366,6 +368,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (hasOverflow)
             FloatingNavItem(icon: Icons.grid_view_rounded, label: AppStrings.of(context).more),
         ],
+        centerAction: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const MyQrScreen()),
+        ),
+        centerIcon: Icons.qr_code_2_rounded,
       ),
     );
   }

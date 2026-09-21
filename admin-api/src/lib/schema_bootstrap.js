@@ -347,6 +347,40 @@ async function bootstrapSchema() {
     await db.query(`ALTER TABLE staff_leaves ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`);
     console.log('✓ Schema: staff_leaves.created_at added');
   } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('staff_leaves.created_at skipped:', err.message); }
+
+  // ── Drop-in bookings ─────────────────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS dropin_bookings (
+        id                VARCHAR(36)   NOT NULL PRIMARY KEY,
+        business_id       VARCHAR(36)   NOT NULL,
+        booking_id        VARCHAR(36)   NULL,
+        user_id           VARCHAR(36)   NULL,
+        guest_name        VARCHAR(200)  NULL,
+        guest_email       VARCHAR(200)  NULL,
+        guest_phone       VARCHAR(50)   NULL,
+        service_id        VARCHAR(36)   NOT NULL,
+        service_name      VARCHAR(200)  NOT NULL,
+        booking_date      DATE          NOT NULL,
+        booking_time      TIME          NOT NULL,
+        staff_name        VARCHAR(200)  NULL,
+        price_cents       INT           NOT NULL DEFAULT 0,
+        payment_method    ENUM('card','venue') NOT NULL DEFAULT 'venue',
+        payment_status    ENUM('pending','paid','failed') NOT NULL DEFAULT 'pending',
+        payment_intent_id VARCHAR(300)  NULL,
+        status            ENUM('pending','confirmed','rejected','attended','cancelled') NOT NULL DEFAULT 'confirmed',
+        admin_note        TEXT          NULL,
+        qr_token          VARCHAR(100)  NOT NULL,
+        created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_dib_biz_date (business_id, booking_date),
+        INDEX idx_dib_user (user_id),
+        UNIQUE idx_dib_qr (qr_token)
+      )
+    `);
+    console.log('✓ Schema: dropin_bookings table ready');
+  } catch (err) {
+    console.warn('dropin_bookings table skipped:', err.message);
+  }
 }
 
 module.exports = { bootstrapSchema };

@@ -1081,4 +1081,58 @@ class ApiService {
     final res = await _post(path, body);
     return Map<String, dynamic>.from(_decode(res) as Map);
   }
+
+  // ── Drop-in ────────────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> fetchDropinServices() async {
+    final res = await _get('/api/booking/$bizId/dropin/services');
+    final data = _decode(res) as List;
+    return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> createDropinPaymentIntent({
+    required String serviceId,
+    String? guestName,
+  }) async {
+    final res = await _post('/api/booking/$bizId/dropin/payment-intent', {
+      'service_id': serviceId,
+      if (guestName != null) 'guest_name': guestName,
+    });
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<Map<String, dynamic>> createDropinBooking({
+    required String serviceId,
+    required String date,
+    required String time,
+    required String paymentMethod,
+    String? staffId,
+    String? guestName,
+    String? guestEmail,
+    String? guestPhone,
+    String? paymentIntentId,
+  }) async {
+    final res = await _post('/api/booking/$bizId/dropin/book', {
+      'service_id': serviceId,
+      'date': date,
+      'time': time,
+      'payment_method': paymentMethod,
+      if (staffId != null) 'staff_id': staffId,
+      if (guestName != null) 'guest_name': guestName,
+      if (guestEmail != null) 'guest_email': guestEmail,
+      if (guestPhone != null) 'guest_phone': guestPhone,
+      if (paymentIntentId != null) 'payment_intent_id': paymentIntentId,
+    });
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<Map<String, dynamic>> fetchDropinBooking(String bookingId) async {
+    final res = await _get('/api/booking/$bizId/dropin/$bookingId');
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchMyDropinBookings() async {
+    final res = await _get('/api/booking/$bizId/dropin/my-bookings');
+    final data = _decode(res) as List;
+    return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
 }
