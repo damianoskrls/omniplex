@@ -597,4 +597,53 @@ router.get('/discovery/gyms/:slug/packages', async (req, res) => {
   }
 });
 
+// ============================================================
+// GET /api/global/discovery/gyms/:slug/opening-hours  (public)
+// ============================================================
+router.get('/discovery/gyms/:slug/opening-hours', async (req, res) => {
+  try {
+    const [[biz]] = await db.query('SELECT id FROM businesses WHERE slug = ? AND is_active = 1', [req.params.slug]);
+    if (!biz) return res.status(404).json({ error: 'Gym not found' });
+
+    const [rows] = await db.query(
+      'SELECT day_of_week, open_time, close_time, is_closed FROM opening_hours WHERE business_id = ? ORDER BY day_of_week ASC',
+      [biz.id],
+    );
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// POST /api/global/auth/login-phone
+// Body: { phone, pin }  — PIN = last 4 digits of phone
+// ============================================================
+router.post('/auth/login-phone', async (req, res) => {
+  const { phone, pin } = req.body;
+  if (!phone || !pin) return res.status(400).json({ error: 'Απαιτούνται τηλέφωνο και PIN' });
+
+  const digits = phone.replace(/\D/g, '');
+  if (pin !== digits.slice(-4)) return res.status(401).json({ error: 'Λάθος PIN' });
+
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM global_users WHERE REPLACE(REPLACE(phone, " ", ""), "+", "") LIKE ?',
+      [`%${digits.slice(-9)}`],
+    );
+    if (!rows.length) return res.status(401).json({ error: 'Δεν βρέθηκε λογαριασμός με αυτό το τηλέφωνο' });
+
+    const user = rows[0];
+    const gyms = await getGymsForGlobalUser(user.id);
+    return res.json({
+      token: makeGlobalToken(user),
+      user:  { id: user.id, email: user.email, full_name: user.full_name },
+      gyms,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

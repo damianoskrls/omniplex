@@ -100,6 +100,18 @@ class GlobalAuthService extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> loginPhone(String phone, String pin) async {
+    final res = await http.post(
+      Uri.parse('$_apiBase/global/auth/login-phone'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'phone': phone, 'pin': pin}),
+    );
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) throw body['error'] ?? 'Login failed';
+    await _persist(body);
+    return body;
+  }
+
   Future<Map<String, dynamic>> login(String email, String password) async {
     final res = await http.post(
       Uri.parse('$_apiBase/global/auth/login'),
