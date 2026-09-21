@@ -646,4 +646,207 @@ router.post('/auth/login-phone', async (req, res) => {
   }
 });
 
+// ============================================================
+// POST /api/global/purchase/:slug/intent
+// Public (or optional auth) — create Stripe PaymentIntent for package
+// Body: { plan_id, user_info?: { full_name, email, phone, password } }
+// ============================================================
+router.post('/purchase/:slug/intent', async (req, res) => {
+  const { plan_id, user_info } = req.body;
+  if (!plan_id) return res.status(400).json({ error: 'Απαιτείται plan_id' });
+
+  const conn = await db.getConnection();
+  try {
+    // Get gym + plan
+    const [[biz]] = await conn.query(
+      `SELECT b.id, b.name, c.app_name FROM businesses b
+       LEFT JOIN business_configs c ON c.business_id = b.id
+       WHERE b.slug = ? AND b.is_active = 1`,
+      [req.params.slug],
+    );
+    if (!biz) return res.status(404).json({ error: 'Γυμναστήριο δεν βρέθηκε' });
+
+    const [[plan]] = await conn.query(
+      `SELECT p.*, s.name AS service_name FROM service_plans p
+       JOIN services s ON s.id = p.service_id
+       WHERE p.id = ? AND s.business_id = ? AND p.is_active = 1`,
+      [plan_id, biz.id],
+    );
+    if (!plan) return res.status(404).json({ error: 'Πακέτο δεν βρέθηκε' });
+
+    // Get Stripe config for this gym
+    const [[provRow]] = await conn.query(
+      `SELECT * FROM payment_providers WHERE business_id = ? AND is_active = 1 LIMIT 1`,
+      [biz.id],
+    );
+    if (!provRow) return res.status(400).json({ error: 'Οι online πληρωμές δεν είναι διαθέσιμες για αυτό το γυμναστήριο' });
+
+    const cfg = typeof provRow.config === 'string' ? JSON.parse(provRow.config) : (provRow.config || {});
+    const stripe = require('stripe')(cfg.secret_key);
+
+    const intent = await stripe.paymentIntents.create({
+      amount:   plan.price_cents,
+      currency: 'eur',
+      metadata: {
+        slug:    req.params.slug,
+        plan_id: plan.id,
+        biz_id:  biz.id,
+        full_name: user_info?.full_name || '',
+        email:     user_info?.email    || '',
+        phone:     user_info?.phone    || '',
+        password:  user_info?.password || '',
+        type: 'global_package_purchase',
+      },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    return res.json({
+      client_secret:   intent.client_secret,
+      intent_id:       intent.id,
+      publishable_key: cfg.publishable_key,
+      amount_cents:    plan.price_cents,
+      plan_name:       plan.name,
+      gym_name:        biz.app_name || biz.name,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// ============================================================
+// POST /api/global/purchase/:slug/confirm
+// After client-side payment success — create membership
+// Body: { intent_id, user_info: { full_name, email, phone, password }, plan_id }
+// ============================================================
+router.post('/purchase/:slug/confirm', async (req, res) => {
+  const { intent_id, user_info, plan_id } = req.body;
+  if (!intent_id || !plan_id || !user_info?.phone)
+    return res.status(400).json({ error: 'Απαιτούνται intent_id, plan_id, user_info.phone' });
+
+  const conn = await db.getConnection();
+  try {
+    // Verify gym
+    const [[biz]] = await conn.query(
+      `SELECT b.id, b.name FROM businesses b WHERE b.slug = ? AND b.is_active = 1`,
+      [req.params.slug],
+    );
+    if (!biz) return res.status(404).json({ error: 'Γυμναστήριο δεν βρέθηκε' });
+
+    // Verify payment with Stripe
+    const [[provRow]] = await conn.query(
+      `SELECT * FROM payment_providers WHERE business_id = ? AND is_active = 1 LIMIT 1`,
+      [biz.id],
+    );
+    const cfg = typeof provRow?.config === 'string' ? JSON.parse(provRow.config) : (provRow?.config || {});
+    const stripe = require('stripe')(cfg.secret_key);
+    const intent = await stripe.paymentIntents.retrieve(intent_id);
+    if (intent.status !== 'succeeded') {
+      return res.status(402).json({ error: 'Η πληρωμή δεν ολοκληρώθηκε' });
+    }
+
+    // Get plan
+    const [[plan]] = await conn.query(
+      `SELECT p.*, s.name AS service_name, s.id AS service_id FROM service_plans p
+       JOIN services s ON s.id = p.service_id
+       WHERE p.id = ? AND s.business_id = ?`,
+      [plan_id, biz.id],
+    );
+    if (!plan) return res.status(404).json({ error: 'Πακέτο δεν βρέθηκε' });
+
+    // Find or create global_user
+    let globalUser;
+    const phone = user_info.phone.trim();
+    const [existingGU] = await conn.query(
+      'SELECT * FROM global_users WHERE phone = ? OR email = ?',
+      [phone, (user_info.email || '').toLowerCase()],
+    );
+    if (existingGU.length) {
+      globalUser = existingGU[0];
+    } else {
+      const hash = user_info.password ? await require('bcryptjs').hash(user_info.password, 10) : null;
+      const guId = require('uuid').v4();
+      await conn.query(
+        'INSERT INTO global_users (id, email, password_hash, full_name, phone) VALUES (?,?,?,?,?)',
+        [guId, (user_info.email || '').toLowerCase(), hash, user_info.full_name || '', phone],
+      );
+      globalUser = { id: guId, email: user_info.email || '', full_name: user_info.full_name || '' };
+    }
+
+    // Find or create gym user
+    let gymUserId;
+    const [existingUser] = await conn.query(
+      'SELECT id FROM users WHERE business_id = ? AND phone = ? AND deleted_at IS NULL',
+      [biz.id, phone],
+    );
+    if (existingUser.length) {
+      gymUserId = existingUser[0].id;
+      // Link global user if not linked
+      await conn.query(
+        'UPDATE users SET global_user_id = ? WHERE id = ? AND global_user_id IS NULL',
+        [globalUser.id, gymUserId],
+      );
+    } else {
+      gymUserId = require('uuid').v4();
+      await conn.query(
+        `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, role, status, created_at)
+         VALUES (?,?,?,?,?,?,'customer','active',NOW())`,
+        [gymUserId, biz.id, globalUser.id, user_info.full_name || '', user_info.email || '', phone],
+      );
+    }
+
+    // Create membership
+    const membershipId = require('uuid').v4();
+    const expiresAt = plan.validity_days
+      ? new Date(Date.now() + plan.validity_days * 86400000).toISOString().slice(0, 10)
+      : null;
+    await conn.query(
+      `INSERT INTO user_memberships
+        (id, business_id, user_id, plan_id, service_id, total_sessions, used_sessions, expires_at, purchase_date, provider_intent_id)
+       VALUES (?,?,?,?,?,?,0,?,NOW(),?)`,
+      [membershipId, biz.id, gymUserId, plan.id, plan.service_id,
+       plan.sessions_included ?? 9999, expiresAt, intent_id],
+    );
+
+    // Approve/upsert join request
+    const [existJR] = await conn.query(
+      'SELECT id FROM gym_join_requests WHERE global_user_id = ? AND business_id = ?',
+      [globalUser.id, biz.id],
+    );
+    if (existJR.length) {
+      await conn.query(
+        "UPDATE gym_join_requests SET status='approved', resolved_at=NOW() WHERE id=?",
+        [existJR[0].id],
+      );
+    } else {
+      await conn.query(
+        `INSERT INTO gym_join_requests (id, global_user_id, business_id, status, resolved_at)
+         VALUES (?,?,?,'approved',NOW())`,
+        [require('uuid').v4(), globalUser.id, biz.id],
+      );
+    }
+
+    const gyms = await getGymsForGlobalUser(globalUser.id);
+    const token = jwt.sign(
+      { globalUserId: globalUser.id, email: globalUser.email, fullName: globalUser.full_name, role: 'global_user' },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' },
+    );
+
+    return res.json({
+      ok: true,
+      token,
+      user: { id: globalUser.id, email: globalUser.email, full_name: globalUser.full_name },
+      gyms,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
 module.exports = router;

@@ -12,10 +12,12 @@ class GlobalLoginScreen extends StatefulWidget {
     required this.globalAuth,
     VoidCallback? onDone,
     VoidCallback? onLoggedIn,
+    this.preselectedGym,
   }) : onLoggedIn = onLoggedIn ?? onDone;
 
   final GlobalAuthService globalAuth;
   final VoidCallback? onLoggedIn;
+  final Map<String, dynamic>? preselectedGym;
 
   @override
   State<GlobalLoginScreen> createState() => _GlobalLoginScreenState();
@@ -101,6 +103,7 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen>
         builder: (_) => GlobalRegisterScreen(
           globalAuth: widget.globalAuth,
           onRegistered: widget.onLoggedIn ?? () {},
+          preselectedGym: widget.preselectedGym,
         ),
       ),
     );

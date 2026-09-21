@@ -9,10 +9,13 @@ class GlobalRegisterScreen extends StatefulWidget {
     super.key,
     required this.globalAuth,
     required this.onRegistered,
+    // If provided, gym search is skipped and this gym is pre-selected
+    this.preselectedGym,
   });
 
   final GlobalAuthService globalAuth;
   final VoidCallback onRegistered;
+  final Map<String, dynamic>? preselectedGym;
 
   @override
   State<GlobalRegisterScreen> createState() => _GlobalRegisterScreenState();
@@ -38,6 +41,14 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
   bool _gymSearching = false;
   final List<Map<String, dynamic>> _selectedGyms = [];
   final Map<String, String> _joinStatuses = {}; // slug -> status
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.preselectedGym != null) {
+      _selectedGyms.add(widget.preselectedGym!);
+    }
+  }
 
   @override
   void dispose() {
@@ -205,9 +216,11 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Αν είσαι ήδη μέλος ή θέλεις να εγγραφείς σε κάποιο γυμναστήριο, πρόσθεσέ το παρακάτω.',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          Text(
+            widget.preselectedGym != null
+                ? 'Θα σταλεί αίτημα εγγραφής στο επιλεγμένο γυμναστήριο.'
+                : 'Αν είσαι ήδη μέλος ή θέλεις να εγγραφείς σε κάποιο γυμναστήριο, πρόσθεσέ το παρακάτω.',
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
 
@@ -255,8 +268,8 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
             );
           }),
 
-          // Gym search input
-          TextField(
+          // Gym search input — hidden if gym was pre-selected from profile
+          if (widget.preselectedGym == null) TextField(
             controller: _gymSearchCtrl,
             style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
             decoration: InputDecoration(
@@ -279,8 +292,8 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
             onChanged: _searchGyms,
           ),
 
-          // Gym search results
-          if (_gymResults.isNotEmpty)
+          // Gym search results — hidden if gym was pre-selected
+          if (widget.preselectedGym == null && _gymResults.isNotEmpty)
             Container(
               margin: const EdgeInsets.only(top: 4),
               decoration: BoxDecoration(

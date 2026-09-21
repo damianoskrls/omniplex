@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
 import '../theme/app_colors.dart';
 import 'global_login_screen.dart';
+import 'service_detail_screen.dart';
 
 class GymProfileScreen extends StatefulWidget {
   const GymProfileScreen({
@@ -109,6 +110,7 @@ class _GymProfileScreenState extends State<GymProfileScreen> {
       MaterialPageRoute(
         builder: (_) => GlobalLoginScreen(
           globalAuth: widget.globalAuth,
+          preselectedGym: _gym,
           onLoggedIn: () { Navigator.pop(context); widget.onLoggedIn(); setState(() {}); },
         ),
       ),
@@ -359,12 +361,22 @@ class _GymProfileScreenState extends State<GymProfileScreen> {
                     ...services.map((s) => _ServiceRow(
                       service: s,
                       color: color,
-                      onBook: () {
-                        if (!isLoggedIn) { _goLogin(); return; }
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Άνοιξε το γυμναστήριο για κράτηση'),
-                        ));
-                      },
+                      onBook: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ServiceDetailScreen(
+                            service: s,
+                            gymSlug: widget.slug,
+                            gymName: name,
+                            gymColor: color,
+                            globalAuth: widget.globalAuth,
+                            onPurchased: () {
+                              widget.onLoggedIn();
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                      ),
                     )),
                     const SizedBox(height: 24),
                   ],

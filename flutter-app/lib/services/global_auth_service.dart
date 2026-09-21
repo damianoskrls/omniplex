@@ -180,6 +180,9 @@ class GlobalAuthService extends ChangeNotifier {
     await refreshGyms();
   }
 
+  /// Called after a successful package purchase that auto-creates a global account
+  Future<void> persistFromPurchase(Map<String, dynamic> body) => _persist(body);
+
   Future<void> _persist(Map<String, dynamic> body) async {
     _token = body['token'] as String;
     _user  = GlobalUser.fromJson(body['user'] as Map<String, dynamic>);
