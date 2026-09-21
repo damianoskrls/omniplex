@@ -3665,16 +3665,16 @@ router.get('/services', requireClientAdmin, async (req, res) => {
 router.post('/services', requireClientAdmin, async (req, res) => {
   const {
     name, description, duration_mins, price_cents, category,
-    hide_staff_selection, slot_label_mode, location_ids,
+    hide_staff_selection, slot_label_mode, location_ids, is_open_access,
   } = req.body;
   if (!name || !duration_mins) return res.status(400).json({ error: 'Απαιτούνται όνομα και διάρκεια' });
   const id = uuidv4();
   await db.query(
     `INSERT INTO services
-      (id, business_id, name, description, duration_mins, price_cents, category, hide_staff_selection, slot_label_mode)
-     VALUES (?,?,?,?,?,?,?,?,?)`,
+      (id, business_id, name, description, duration_mins, price_cents, category, hide_staff_selection, slot_label_mode, is_open_access)
+     VALUES (?,?,?,?,?,?,?,?,?,?)`,
     [id, req.admin.businessId, name, description || null, duration_mins, price_cents || 0,
-     category || null, hide_staff_selection ? 1 : 0, slot_label_mode || 'time_only']
+     category || null, hide_staff_selection ? 1 : 0, slot_label_mode || 'time_only', is_open_access ? 1 : 0]
   );
   if (Array.isArray(location_ids) && location_ids.length) {
     await replaceServiceLocations(db, id, location_ids);
@@ -3685,11 +3685,12 @@ router.post('/services', requireClientAdmin, async (req, res) => {
 router.patch('/services/:id', requireClientAdmin, async (req, res) => {
   const { name, description, duration_mins, price_cents, drop_in_price_cents, category, is_active,
           hide_staff_selection, slot_label_mode, icon_svg_url, image_url,
-          requires_attendance_confirmation, requires_qr_scan } = req.body;
-  const hideVal = hide_staff_selection === undefined ? undefined : (hide_staff_selection ? 1 : 0);
-  const dropIn = drop_in_price_cents === null ? null : (drop_in_price_cents !== undefined ? Number(drop_in_price_cents) : undefined);
-  const attConf = requires_attendance_confirmation === undefined ? undefined : (requires_attendance_confirmation ? 1 : 0);
-  const qrScan  = requires_qr_scan === undefined ? undefined : (requires_qr_scan ? 1 : 0);
+          requires_attendance_confirmation, requires_qr_scan, is_open_access } = req.body;
+  const hideVal    = hide_staff_selection === undefined ? undefined : (hide_staff_selection ? 1 : 0);
+  const dropIn     = drop_in_price_cents === null ? null : (drop_in_price_cents !== undefined ? Number(drop_in_price_cents) : undefined);
+  const attConf    = requires_attendance_confirmation === undefined ? undefined : (requires_attendance_confirmation ? 1 : 0);
+  const qrScan     = requires_qr_scan === undefined ? undefined : (requires_qr_scan ? 1 : 0);
+  const openAccess = is_open_access === undefined ? undefined : (is_open_access ? 1 : 0);
   await db.query(
     `UPDATE services SET
       name          = COALESCE(?,name),
@@ -3703,11 +3704,12 @@ router.patch('/services/:id', requireClientAdmin, async (req, res) => {
       slot_label_mode = COALESCE(?, slot_label_mode),
       requires_attendance_confirmation = COALESCE(?, requires_attendance_confirmation),
       requires_qr_scan = COALESCE(?, requires_qr_scan),
+      is_open_access = COALESCE(?, is_open_access),
       icon_svg_url  = CASE WHEN ? IS NOT NULL THEN ? ELSE icon_svg_url END,
       image_url     = CASE WHEN ? IS NOT NULL THEN ? ELSE image_url END
     WHERE id=? AND business_id=?`,
     [name, description, duration_mins, price_cents, dropIn, dropIn, category, is_active, hideVal, slot_label_mode,
-     attConf, qrScan,
+     attConf, qrScan, openAccess,
      icon_svg_url, icon_svg_url, image_url, image_url,
      req.params.id, req.admin.businessId]
   );
@@ -6422,6 +6424,31 @@ router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
       [city ?? null, country ?? null, latitude ?? null, longitude ?? null,
        description ?? null, is_discoverable ?? null, req.admin.businessId],
     );
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// GET /api/client-admin/gym-capacity
+// PATCH /api/client-admin/gym-capacity  — set max simultaneous users
+// ============================================================
+router.get('/gym-capacity', requireClientAdmin, async (req, res) => {
+  try {
+    const [[biz]] = await db.query('SELECT gym_capacity FROM businesses WHERE id = ?', [req.admin.businessId]);
+    return res.json({ gym_capacity: biz?.gym_capacity ?? null });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/gym-capacity', requireClientAdmin, async (req, res) => {
+  const { gym_capacity } = req.body;
+  const cap = gym_capacity != null ? parseInt(gym_capacity, 10) : null;
+  if (cap !== null && (isNaN(cap) || cap < 1)) return res.status(400).json({ error: 'Μη έγκυρη χωρητικότητα' });
+  try {
+    await db.query('UPDATE businesses SET gym_capacity = ? WHERE id = ?', [cap, req.admin.businessId]);
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });

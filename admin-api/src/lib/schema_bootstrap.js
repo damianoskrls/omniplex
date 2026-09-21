@@ -455,6 +455,22 @@ async function bootstrapSchema() {
     console.warn('gym_join_requests table skipped:', err.message);
   }
 
+  // ── businesses.gym_capacity ─────────────────────────────────
+  try {
+    await db.query('ALTER TABLE businesses ADD COLUMN gym_capacity INT NULL');
+    console.log('✓ Schema: businesses.gym_capacity added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('businesses.gym_capacity skipped:', err.message);
+  }
+
+  // ── services.is_open_access ──────────────────────────────────
+  try {
+    await db.query('ALTER TABLE services ADD COLUMN is_open_access TINYINT(1) NOT NULL DEFAULT 0');
+    console.log('✓ Schema: services.is_open_access added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('services.is_open_access skipped:', err.message);
+  }
+
   // ── users.global_phone (phone on global_users) ───────────────
   // Add UNIQUE index on global_users.phone if column exists but index doesn't
   try {

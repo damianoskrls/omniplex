@@ -74,7 +74,8 @@ function buildNavGroups({ features, featureNutrition }) {
       key: 'management',
       label: 'Διαχείριση',
       links: [
-        { to: '/services', icon: Scissors, label: 'Υπηρεσίες & Πακέτα' },
+        { to: '/services', icon: Scissors, label: 'Υπηρεσίες' },
+        { to: '/plans', icon: Tag, label: 'Πακέτα' },
         { to: '/staff', icon: UserCog, label: 'Προσωπικό' },
         { to: '/staff-leaves', icon: CalendarOff, label: 'Άδειες Προσωπικού' },
         { to: '/dropin-bookings', icon: Zap, label: 'Drop-in' },

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
@@ -23,6 +25,8 @@ class ServicesScreen extends StatefulWidget {
 
 class _ServicesScreenState extends State<ServicesScreen> {
   List<BookService> _services = [];
+  List<Map<String, dynamic>> _openAccessServices = [];
+  Map<String, dynamic>? _occupancy;
   bool _loading = true;
   String? _error;
   bool _nutritionConsultCanBook = false;
@@ -68,6 +72,14 @@ class _ServicesScreenState extends State<ServicesScreen> {
       final api = context.read<AuthService>().api;
       final config = context.read<TenantConfig>();
       final services = await api.fetchServices();
+
+      // Load occupancy + open-access services in parallel
+      final bizId = config.businessId;
+      final apiBase = config.apiBaseUrl;
+      final [occRes, oaRes] = await Future.wait([
+        http.get(Uri.parse('$apiBase/api/booking/$bizId/gym-occupancy')).catchError((_) => http.Response('{}', 200)),
+        http.get(Uri.parse('$apiBase/api/booking/$bizId/open-access-services')).catchError((_) => http.Response('[]', 200)),
+      ]);
       var consultCanBook = false;
       BookService? consultService;
       Map<String, dynamic> credits = {};
@@ -89,8 +101,20 @@ class _ServicesScreenState extends State<ServicesScreen> {
           needsNutritionistChoice = consult.needsNutritionistChoice;
         } on ApiException catch (_) {}
       }
+      Map<String, dynamic>? occupancy;
+      List<Map<String, dynamic>> openAccess = [];
+      try {
+        final occBody = jsonDecode(occRes.body) as Map<String, dynamic>;
+        if (occBody.containsKey('status')) occupancy = occBody;
+      } catch (_) {}
+      try {
+        openAccess = (jsonDecode(oaRes.body) as List).cast<Map<String, dynamic>>();
+      } catch (_) {}
+
       setState(() {
         _services = services;
+        _openAccessServices = openAccess;
+        _occupancy = occupancy;
         _nutritionConsultCanBook = consultCanBook;
         _nutritionConsultService = consultService;
         _nutritionCredits = credits;
@@ -149,6 +173,23 @@ class _ServicesScreenState extends State<ServicesScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
+          // Gym occupancy card
+          if (_occupancy != null && _occupancy!['status'] != 'unknown')
+            _OccupancyCard(occupancy: _occupancy!),
+
+          // Open-access services (no booking needed)
+          if (_openAccessServices.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.only(top: 8, bottom: 10),
+              child: Text(
+                'Ελεύθερη Πρόσβαση',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              ),
+            ),
+            ..._openAccessServices.map((s) => _OpenAccessCard(service: s)),
+            const SizedBox(height: 8),
+          ],
+
           // Drop-in banner
           GestureDetector(
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DropinScreen())),
@@ -368,6 +409,133 @@ class _ServicesScreenState extends State<ServicesScreen> {
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Occupancy Card ────────────────────────────────────────────
+class _OccupancyCard extends StatelessWidget {
+  const _OccupancyCard({required this.occupancy});
+  final Map<String, dynamic> occupancy;
+
+  @override
+  Widget build(BuildContext context) {
+    final status   = occupancy['status'] as String? ?? 'unknown';
+    final current  = occupancy['current'] as int? ?? 0;
+    final capacity = occupancy['capacity'] as int?;
+
+    final (Color dotColor, String label, Color bg) = switch (status) {
+      'full'  => (Colors.red,          'Γεμάτο αυτή τη στιγμή', Colors.red.withValues(alpha: 0.08)),
+      'busy'  => (Colors.orange,       'Αρκετός κόσμος τώρα',   Colors.orange.withValues(alpha: 0.08)),
+      'quiet' => (AppColors.lime,      'Ελεύθερος χώρος',       AppColors.lime.withValues(alpha: 0.06)),
+      _       => (AppColors.textSecondary, 'Άγνωστο', Colors.transparent),
+    };
+
+    final ratio = (capacity != null && capacity > 0) ? (current / capacity).clamp(0.0, 1.0) : null;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: dotColor.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          // Animated dot
+          Container(
+            width: 10, height: 10,
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: dotColor)),
+                if (ratio != null) ...[
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: ratio,
+                      backgroundColor: dotColor.withValues(alpha: 0.15),
+                      valueColor: AlwaysStoppedAnimation<Color>(dotColor),
+                      minHeight: 5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (capacity != null) ...[
+            const SizedBox(width: 10),
+            Text(
+              '$current/$capacity',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: dotColor.withValues(alpha: 0.7)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Open-access service card ──────────────────────────────────
+class _OpenAccessCard extends StatelessWidget {
+  const _OpenAccessCard({required this.service});
+  final Map<String, dynamic> service;
+
+  @override
+  Widget build(BuildContext context) {
+    final name  = service['name'] as String? ?? '';
+    final desc  = service['description'] as String? ?? '';
+    final hex   = service['color_hex'] as String?;
+    Color color = AppColors.lime;
+    if (hex != null) {
+      try { color = Color(int.parse(hex.replaceFirst('#', '0xFF'))); } catch (_) {}
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42, height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.fitness_center_rounded, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                if (desc.isNotEmpty)
+                  Text(desc, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text('Ελεύθερο', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+          ),
         ],
       ),
     );

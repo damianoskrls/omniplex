@@ -10,6 +10,56 @@ const DAYS_FULL = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτ
 
 const DEFAULT_HOURS = { open: '09:00', close: '21:00' };
 
+function GymCapacitySection() {
+  const [capacity, setCapacity] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get('/client-admin/gym-capacity').then(r => {
+      setCapacity(r.data.gym_capacity != null ? String(r.data.gym_capacity) : '');
+    }).catch(() => {});
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.patch('/client-admin/gym-capacity', {
+        gym_capacity: capacity === '' ? null : parseInt(capacity, 10),
+      });
+      toast.success('Χωρητικότητα αποθηκεύτηκε');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16, marginTop: 4 }}>
+      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Χωρητικότητα χώρου</div>
+      <p className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 10 }}>
+        Ο μέγιστος αριθμός ατόμων που μπορούν να χρησιμοποιούν τον χώρο ταυτόχρονα.
+        Χρησιμοποιείται για να δείχνει στους πελάτες αν ο χώρος είναι ελεύθερος ή γεμάτος.
+      </p>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <input
+          className="form-input"
+          type="number"
+          min="1"
+          placeholder="π.χ. 50"
+          value={capacity}
+          onChange={e => setCapacity(e.target.value)}
+          style={{ maxWidth: 120 }}
+        />
+        <span className="text-muted" style={{ fontSize: '0.82rem' }}>άτομα</span>
+        <button className="btn btn-primary" onClick={save} disabled={saving} style={{ marginLeft: 8 }}>
+          {saving ? 'Αποθήκευση...' : 'Αποθήκευση'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   const logoRef = useRef();
   const [form, setForm] = useState({
@@ -193,6 +243,9 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* Gym capacity */}
+          <GymCapacitySection />
+
           {/* Features */}
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16, marginTop: 4 }}>
             <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 10 }}>Λειτουργίες εφαρμογής</div>
@@ -282,6 +335,7 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* Backup card — intentional last item */}
           {/* Backup card */}
           <div style={{ marginTop: 24, padding: 16, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>Backup συστήματος</div>

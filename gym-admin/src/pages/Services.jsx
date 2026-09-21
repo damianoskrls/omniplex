@@ -7,7 +7,7 @@ import LocationCheckboxes from '../components/LocationCheckboxes';
 import { Plus, Trash2, Pencil, CalendarClock, Upload, X, Check } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
 
-const EMPTY = { name: '', description: '', category: '', duration_mins: 60, hide_staff_selection: false, slot_label_mode: 'time_only', drop_in_price_cents: '', requires_attendance_confirmation: true, requires_qr_scan: true };
+const EMPTY = { name: '', description: '', category: '', duration_mins: 60, hide_staff_selection: false, slot_label_mode: 'time_only', drop_in_price_cents: '', requires_attendance_confirmation: true, requires_qr_scan: true, is_open_access: false };
 
 function ImageUploadBox({ label, accept, currentUrl, onUpload, onRemove, hint }) {
   const inputRef = useRef();
@@ -141,6 +141,7 @@ export default function Services() {
       drop_in_price_cents: s.drop_in_price_cents != null ? String(Math.round(s.drop_in_price_cents / 100)) : '',
       requires_attendance_confirmation: s.requires_attendance_confirmation !== false,
       requires_qr_scan: s.requires_qr_scan !== false,
+      is_open_access: !!s.is_open_access,
       id: s.id,
     });
     setEditingService(s);
@@ -170,6 +171,7 @@ export default function Services() {
       drop_in_price_cents: form.drop_in_price_cents === '' ? null : Math.round(dropInEuros * 100),
       requires_attendance_confirmation: form.requires_attendance_confirmation,
       requires_qr_scan: form.requires_qr_scan,
+      is_open_access: form.is_open_access,
     };
     try {
       let serviceId = form.id;
@@ -490,6 +492,24 @@ export default function Services() {
                   </span>
                 </label>
               </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.is_open_access}
+                    onChange={e => setForm({ ...form, is_open_access: e.target.checked })}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    <strong>Ελεύθερη Πρόσβαση (χωρίς κράτηση)</strong>
+                    <div className="text-muted" style={{ marginTop: 4, lineHeight: 1.4 }}>
+                      Π.χ. αίθουσα οργάνων. Οι πελάτες βλέπουν την υπηρεσία χωρίς να χρειάζεται να κάνουν κράτηση.
+                    </div>
+                  </span>
+                </label>
+              </div>
+
               {rooms.length > 0 && (
                 <div className="form-group">
                   <label className="form-label">

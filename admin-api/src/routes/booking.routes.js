@@ -1966,4 +1966,58 @@ router.post('/:bizId/messages/read', softAuth, requireActiveCustomer, async (req
   }
 });
 
+// ============================================================
+// GET /api/booking/:bizId/gym-occupancy  — live occupancy (public, no auth)
+// Returns current check-in count vs capacity + a status label
+// "currently in gym" = checked in within the last 3 hours
+// ============================================================
+router.get('/:bizId/gym-occupancy', async (req, res) => {
+  try {
+    const [[biz]] = await db.query(
+      'SELECT gym_capacity FROM businesses WHERE id = ? AND is_active = 1',
+      [req.params.bizId],
+    );
+    if (!biz) return res.status(404).json({ error: 'Gym not found' });
+
+    const [[{ count }]] = await db.query(`
+      SELECT COUNT(*) AS count
+      FROM entrance_checkins
+      WHERE business_id = ?
+        AND checked_in_at >= DATE_SUB(NOW(), INTERVAL 3 HOUR)
+    `, [req.params.bizId]);
+
+    const current  = Number(count);
+    const capacity = biz.gym_capacity ? Number(biz.gym_capacity) : null;
+
+    let status = 'unknown';
+    if (capacity) {
+      const ratio = current / capacity;
+      if (ratio >= 0.9)      status = 'full';
+      else if (ratio >= 0.5) status = 'busy';
+      else                   status = 'quiet';
+    }
+
+    return res.json({ current, capacity, status });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// GET /api/booking/:bizId/open-access-services  — open-access services (no booking needed)
+// ============================================================
+router.get('/:bizId/open-access-services', async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT id, name, description, color_hex, image_url
+      FROM services
+      WHERE business_id = ? AND is_open_access = 1 AND is_active = 1
+      ORDER BY name ASC
+    `, [req.params.bizId]);
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
