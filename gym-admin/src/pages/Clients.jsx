@@ -55,6 +55,8 @@ export default function Clients() {
   const [lookupPhone, setLookupPhone] = useState('');
   const [lookupResult, setLookupResult] = useState(null); // null | { status, ... }
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [claimedName, setClaimedName] = useState('');
+  const [nameError, setNameError] = useState('');
   const lookupTimer = useRef(null);
 
   const inTrash = statusFilter === 'trash';
@@ -154,6 +156,8 @@ export default function Clients() {
     setModal(true);
     setLookupPhone('');
     setLookupResult(null);
+    setClaimedName('');
+    setNameError('');
     setForm(EMPTY);
   };
 
@@ -180,28 +184,34 @@ export default function Clients() {
   const handleInvite = async () => {
     const guId = lookupResult?.global_user?.id;
     if (!guId) return;
+    setNameError('');
     setSaving(true);
     try {
-      await api.post('/client-admin/clients/invite', { global_user_id: guId });
+      await api.post('/client-admin/clients/invite', { global_user_id: guId, claimed_name: claimedName });
       toast.success('Η πρόσκληση στάλθηκε — ο πελάτης θα εγκρίνει από το app');
       setModal(false);
       load();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Σφάλμα');
+      const msg = err.response?.data?.message || err.response?.data?.error || 'Σφάλμα';
+      if (err.response?.data?.error === 'name_mismatch') setNameError(msg);
+      else toast.error(msg);
     } finally { setSaving(false); }
   };
 
   const handleAddGlobal = async () => {
     const guId = lookupResult?.global_user?.id;
     if (!guId) return;
+    setNameError('');
     setSaving(true);
     try {
-      await api.post('/client-admin/clients/add-global', { global_user_id: guId });
+      await api.post('/client-admin/clients/add-global', { global_user_id: guId, claimed_name: claimedName });
       toast.success('Ο πελάτης προστέθηκε ενεργός');
       setModal(false);
       load();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Σφάλμα');
+      const msg = err.response?.data?.message || err.response?.data?.error || 'Σφάλμα';
+      if (err.response?.data?.error === 'name_mismatch') setNameError(msg);
+      else toast.error(msg);
     } finally { setSaving(false); }
   };
 
@@ -461,22 +471,38 @@ export default function Clients() {
             {lookupResult?.status === 'global_user_elsewhere' && (
               <div style={{ background: '#eff6ff', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#1d4ed8', marginBottom: 6 }}>
-                  <AlertTriangle size={15} /> Ο πελάτης υπάρχει ήδη στο OmniPlex
+                  <AlertTriangle size={15} /> Υπάρχει ήδη λογαριασμός με αυτό το κινητό στο OmniPlex
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: 4 }}>
-                  <strong>{lookupResult.global_user?.full_name}</strong> είναι πελάτης σε άλλο γυμναστήριο
-                  {lookupResult.other_gyms?.length > 0 && ` (${lookupResult.other_gyms.join(', ')})`}.
-                  Δεν μπορείς να δημιουργήσεις νέο λογαριασμό για το ίδιο κινητό.
+                <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: 12 }}>
+                  Ανήκει σε{' '}
+                  <strong style={{ fontFamily: 'monospace', letterSpacing: 1 }}>
+                    {lookupResult.global_user?.masked_name}
+                  </strong>
+                  {lookupResult.other_gyms?.length > 0 && ` — πελάτης σε: ${lookupResult.other_gyms.join(', ')}`}.
+                  <div style={{ marginTop: 6, color: '#6b7280', fontSize: '0.8rem' }}>
+                    Για λόγους GDPR εμφανίζεται μόνο η αρχή κάθε ονόματος. Για να τον προσθέσεις, εισήγαγε το πλήρες ονοματεπώνυμο για ταυτοποίηση.
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: 12 }}>
-                  Επίλεξε πώς να τον προσθέσεις στο γυμναστήριό σου:
+                <div className="form-group" style={{ marginBottom: 8 }}>
+                  <label className="form-label">Πλήρες ονοματεπώνυμο πελάτη</label>
+                  <input
+                    className="form-input"
+                    placeholder="π.χ. Δημήτρης Βακέρλης"
+                    value={claimedName}
+                    onChange={e => { setClaimedName(e.target.value); setNameError(''); }}
+                  />
+                  {nameError && (
+                    <div style={{ marginTop: 6, color: '#dc2626', fontSize: '0.85rem', fontWeight: 600 }}>
+                      ✗ {nameError}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     className="btn btn-primary"
                     style={{ fontSize: '0.85rem' }}
-                    disabled={saving}
+                    disabled={saving || !claimedName.trim()}
                     onClick={handleInvite}
                   >
                     Στείλε πρόσκληση (ο πελάτης εγκρίνει από app)
@@ -485,7 +511,7 @@ export default function Clients() {
                     type="button"
                     className="btn btn-secondary"
                     style={{ fontSize: '0.85rem' }}
-                    disabled={saving}
+                    disabled={saving || !claimedName.trim()}
                     onClick={handleAddGlobal}
                   >
                     Προσθήκη άμεση (έδωσε συγκατάθεση χειροκίνητα)
