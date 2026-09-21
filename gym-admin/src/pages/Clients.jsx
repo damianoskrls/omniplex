@@ -56,8 +56,10 @@ export default function Clients() {
   const [lookupResult, setLookupResult] = useState(null); // null | { status, ... }
   const [lookupLoading, setLookupLoading] = useState(false);
   const [claimedName, setClaimedName] = useState('');
-  const [nameError, setNameError] = useState('');
+  const [nameVerified, setNameVerified] = useState(false);
+  const [nameChecking, setNameChecking] = useState(false);
   const lookupTimer = useRef(null);
+  const nameTimer = useRef(null);
 
   const inTrash = statusFilter === 'trash';
 
@@ -157,7 +159,8 @@ export default function Clients() {
     setLookupPhone('');
     setLookupResult(null);
     setClaimedName('');
-    setNameError('');
+    setNameVerified(false);
+    setNameChecking(false);
     setForm(EMPTY);
   };
 
@@ -181,10 +184,27 @@ export default function Clients() {
     }, 600);
   };
 
+  const handleClaimedNameChange = (value) => {
+    setClaimedName(value);
+    setNameVerified(false);
+    clearTimeout(nameTimer.current);
+    const guId = lookupResult?.global_user?.id;
+    if (!value.trim() || !guId) return;
+    nameTimer.current = setTimeout(async () => {
+      setNameChecking(true);
+      try {
+        const res = await api.get('/client-admin/clients/verify-name', {
+          params: { global_user_id: guId, claimed_name: value.trim() },
+        });
+        setNameVerified(!!res.data.match);
+      } catch { setNameVerified(false); }
+      setNameChecking(false);
+    }, 400);
+  };
+
   const handleInvite = async () => {
     const guId = lookupResult?.global_user?.id;
-    if (!guId) return;
-    setNameError('');
+    if (!guId || !nameVerified) return;
     setSaving(true);
     try {
       await api.post('/client-admin/clients/invite', { global_user_id: guId, claimed_name: claimedName });
@@ -192,16 +212,13 @@ export default function Clients() {
       setModal(false);
       load();
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || 'Σφάλμα';
-      if (err.response?.data?.error === 'name_mismatch') setNameError(msg);
-      else toast.error(msg);
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Σφάλμα');
     } finally { setSaving(false); }
   };
 
   const handleAddGlobal = async () => {
     const guId = lookupResult?.global_user?.id;
-    if (!guId) return;
-    setNameError('');
+    if (!guId || !nameVerified) return;
     setSaving(true);
     try {
       await api.post('/client-admin/clients/add-global', { global_user_id: guId, claimed_name: claimedName });
@@ -209,9 +226,7 @@ export default function Clients() {
       setModal(false);
       load();
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.error || 'Σφάλμα';
-      if (err.response?.data?.error === 'name_mismatch') setNameError(msg);
-      else toast.error(msg);
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Σφάλμα');
     } finally { setSaving(false); }
   };
 
@@ -477,46 +492,62 @@ export default function Clients() {
                   Ανήκει σε{' '}
                   <strong style={{ fontFamily: 'monospace', letterSpacing: 1 }}>
                     {lookupResult.global_user?.masked_name}
-                  </strong>
-                  {lookupResult.other_gyms?.length > 0 && ` — πελάτης σε: ${lookupResult.other_gyms.join(', ')}`}.
+                  </strong>.
                   <div style={{ marginTop: 6, color: '#6b7280', fontSize: '0.8rem' }}>
-                    Για λόγους GDPR εμφανίζεται μόνο η αρχή κάθε ονόματος. Για να τον προσθέσεις, εισήγαγε το πλήρες ονοματεπώνυμο για ταυτοποίηση.
+                    Για λόγους GDPR εμφανίζεται μόνο η αρχή κάθε ονόματος. Πληκτρολόγησε το πλήρες ονοματεπώνυμο για ταυτοποίηση.
                   </div>
                 </div>
-                <div className="form-group" style={{ marginBottom: 8 }}>
+                <div className="form-group" style={{ marginBottom: 12 }}>
                   <label className="form-label">Πλήρες ονοματεπώνυμο πελάτη</label>
-                  <input
-                    className="form-input"
-                    placeholder="π.χ. Δημήτρης Βακέρλης"
-                    value={claimedName}
-                    onChange={e => { setClaimedName(e.target.value); setNameError(''); }}
-                  />
-                  {nameError && (
-                    <div style={{ marginTop: 6, color: '#dc2626', fontSize: '0.85rem', fontWeight: 600 }}>
-                      ✗ {nameError}
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="form-input"
+                      placeholder="π.χ. Δημήτρης Βακέρλης"
+                      value={claimedName}
+                      onChange={e => handleClaimedNameChange(e.target.value)}
+                      style={{ paddingRight: 36, borderColor: nameVerified ? '#16a34a' : claimedName && !nameChecking ? '#dc2626' : undefined }}
+                      autoFocus
+                    />
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: '1rem', lineHeight: 1 }}>
+                      {nameChecking ? <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>…</span>
+                        : nameVerified ? '✓'
+                        : claimedName ? <span style={{ color: '#dc2626' }}>✗</span>
+                        : null}
+                    </span>
+                  </div>
+                  {nameVerified && (
+                    <div style={{ marginTop: 5, color: '#16a34a', fontSize: '0.82rem', fontWeight: 600 }}>
+                      ✓ Ταυτοποιήθηκε — επίλεξε πώς να τον προσθέσεις
+                    </div>
+                  )}
+                  {claimedName && !nameChecking && !nameVerified && (
+                    <div style={{ marginTop: 5, color: '#dc2626', fontSize: '0.82rem' }}>
+                      Το όνομα δεν ταυτοποιείται
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.85rem' }}
-                    disabled={saving || !claimedName.trim()}
-                    onClick={handleInvite}
-                  >
-                    Στείλε πρόσκληση (ο πελάτης εγκρίνει από app)
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ fontSize: '0.85rem' }}
-                    disabled={saving || !claimedName.trim()}
-                    onClick={handleAddGlobal}
-                  >
-                    Προσθήκη άμεση (έδωσε συγκατάθεση χειροκίνητα)
-                  </button>
-                </div>
+                {nameVerified && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ fontSize: '0.85rem' }}
+                      disabled={saving}
+                      onClick={handleInvite}
+                    >
+                      Στείλε πρόσκληση (εγκρίνει από app)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.85rem' }}
+                      disabled={saving}
+                      onClick={handleAddGlobal}
+                    >
+                      Προσθήκη άμεση
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

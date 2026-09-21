@@ -841,6 +841,22 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
 });
 
 // ============================================================
+// GET /api/client-admin/clients/verify-name — Real-time name check
+// Returns {match: true|false} — never reveals the actual name
+// ============================================================
+router.get('/clients/verify-name', requireClientAdmin, async (req, res) => {
+  const { global_user_id, claimed_name } = req.query;
+  if (!global_user_id || !claimed_name) return res.json({ match: false });
+  try {
+    const [[gu]] = await db.query(`SELECT full_name FROM global_users WHERE id = ?`, [global_user_id]);
+    if (!gu) return res.json({ match: false });
+    return res.json({ match: namesMatch(gu.full_name, claimed_name) });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
 // POST /api/client-admin/clients/invite — Send a join-request
 // invitation for a global_user to join this gym (pending until
 // the client approves from the app)
