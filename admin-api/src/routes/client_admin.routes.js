@@ -3667,13 +3667,15 @@ router.post('/services', requireClientAdmin, async (req, res) => {
     name, description, duration_mins, price_cents, category,
     hide_staff_selection, slot_label_mode, location_ids, is_open_access,
   } = req.body;
-  if (!name || !duration_mins) return res.status(400).json({ error: 'Απαιτούνται όνομα και διάρκεια' });
+  if (!name) return res.status(400).json({ error: 'Απαιτείται όνομα υπηρεσίας' });
+  // open-access services have no fixed duration
+  if (!is_open_access && !duration_mins) return res.status(400).json({ error: 'Απαιτείται διάρκεια για υπηρεσίες με κράτηση' });
   const id = uuidv4();
   await db.query(
     `INSERT INTO services
       (id, business_id, name, description, duration_mins, price_cents, category, hide_staff_selection, slot_label_mode, is_open_access)
      VALUES (?,?,?,?,?,?,?,?,?,?)`,
-    [id, req.admin.businessId, name, description || null, duration_mins, price_cents || 0,
+    [id, req.admin.businessId, name, description || null, is_open_access ? null : (duration_mins || null), price_cents || 0,
      category || null, hide_staff_selection ? 1 : 0, slot_label_mode || 'time_only', is_open_access ? 1 : 0]
   );
   if (Array.isArray(location_ids) && location_ids.length) {

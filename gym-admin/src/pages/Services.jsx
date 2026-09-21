@@ -164,7 +164,7 @@ export default function Services() {
       name: form.name,
       description: form.description || null,
       category: form.category || null,
-      duration_mins: Number(form.duration_mins) || 60,
+      duration_mins: form.is_open_access ? null : (Number(form.duration_mins) || 60),
       hide_staff_selection: form.hide_staff_selection,
       slot_label_mode: form.slot_label_mode,
       location_ids: locationIds,
@@ -318,18 +318,20 @@ export default function Services() {
                 <label className="form-label">Κατηγορία</label>
                 <input className="form-input" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="π.χ. Classes, Training" />
               </div>
-              <div className="form-group">
-                <label className="form-label">Διάρκεια (λεπτά) *</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  min={5}
-                  step={5}
-                  value={form.duration_mins}
-                  onChange={e => setForm({ ...form, duration_mins: e.target.value })}
-                  required
-                />
-              </div>
+              {!form.is_open_access && (
+                <div className="form-group">
+                  <label className="form-label">Διάρκεια (λεπτά) *</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min={5}
+                    step={5}
+                    value={form.duration_mins}
+                    onChange={e => setForm({ ...form, duration_mins: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
 
               <LocationCheckboxes
                 value={locationIds}
