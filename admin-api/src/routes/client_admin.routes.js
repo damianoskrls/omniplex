@@ -125,6 +125,40 @@ const {
   FITNESS_GOAL_LABELS,
 } = require('../lib/client_profile');
 const { sqlActiveClients, sqlTrashClients } = require('../lib/client_soft_delete');
+
+// ── Helper: find or create OmniPlex global_users record ──────
+// Every gym customer is an OmniPlex user first, assigned to a gym second.
+async function findOrCreateGlobalUser(conn, { full_name, email, phone }) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return null;
+  const last9 = digits.slice(-9);
+
+  const [existing] = await conn.query(
+    `SELECT id FROM global_users
+     WHERE REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE ?`,
+    [`%${last9}`],
+  );
+  if (existing.length) {
+    // Fill in name/email if the record is incomplete
+    if (full_name || email) {
+      await conn.query(
+        `UPDATE global_users
+         SET full_name = IF(full_name='' OR full_name IS NULL, ?, full_name),
+             email     = IF(email=''    OR email IS NULL,    ?, email)
+         WHERE id = ?`,
+        [full_name || '', email || '', existing[0].id],
+      );
+    }
+    return existing[0].id;
+  }
+
+  const guId = uuidv4();
+  await conn.query(
+    'INSERT INTO global_users (id, full_name, email, phone) VALUES (?,?,?,?)',
+    [guId, full_name || '', email || '', phone || ''],
+  );
+  return guId;
+}
 const { syncRoomFromId } = require('../lib/rooms');
 const {
   parseReportFilters,
@@ -2696,9 +2730,13 @@ router.post('/trials', requireClientAdmin, async (req, res) => {
     let resolvedUserId = user_id || null;
     if (!resolvedUserId && new_client?.full_name) {
       const newUserId = uuidv4();
+      const guId = await findOrCreateGlobalUser(conn, {
+        full_name: new_client.full_name.trim(),
+        phone: new_client.phone?.trim() || null,
+      });
       await conn.query(
-        'INSERT INTO users (id, business_id, full_name, phone, account_status) VALUES (?, ?, ?, ?, ?)',
-        [newUserId, bizId, new_client.full_name.trim(), new_client.phone?.trim() || null, 'active']
+        'INSERT INTO users (id, business_id, global_user_id, full_name, phone, account_status) VALUES (?, ?, ?, ?, ?, ?)',
+        [newUserId, bizId, guId, new_client.full_name.trim(), new_client.phone?.trim() || null, 'active']
       );
       resolvedUserId = newUserId;
     }
@@ -2836,11 +2874,16 @@ router.patch('/trials/:id', requireClientAdmin, async (req, res) => {
     // Link existing client or create new
     let resolvedUserId = user_id;
     if (new_client?.full_name) {
-      const { v4: uuidv4 } = require('uuid');
       const newId = uuidv4();
+      const conn2 = await db.getConnection();
+      const guId = await findOrCreateGlobalUser(conn2, {
+        full_name: new_client.full_name.trim(),
+        phone: new_client.phone?.trim() || null,
+      });
+      conn2.release();
       await db.query(
-        'INSERT INTO users (id, business_id, full_name, phone, account_status) VALUES (?, ?, ?, ?, ?)',
-        [newId, bizId, new_client.full_name.trim(), new_client.phone?.trim() || null, 'active']
+        'INSERT INTO users (id, business_id, global_user_id, full_name, phone, account_status) VALUES (?, ?, ?, ?, ?, ?)',
+        [newId, bizId, guId, new_client.full_name.trim(), new_client.phone?.trim() || null, 'active']
       );
       resolvedUserId = newId;
     }
@@ -2895,11 +2938,16 @@ router.patch('/trials/:id/refer', requireClientAdmin, async (req, res) => {
     // Auto-create client if becoming member and no user linked
     let createdUserId = null;
     if (trial_became_member && !booking.user_id && new_client?.full_name) {
-      const { v4: uuidv4 } = require('uuid');
       createdUserId = uuidv4();
+      const conn3 = await db.getConnection();
+      const guId = await findOrCreateGlobalUser(conn3, {
+        full_name: new_client.full_name.trim(),
+        phone: new_client.phone?.trim() || null,
+      });
+      conn3.release();
       await db.query(
-        'INSERT INTO users (id, business_id, full_name, phone, account_status) VALUES (?, ?, ?, ?, ?)',
-        [createdUserId, bizId, new_client.full_name.trim(), new_client.phone?.trim() || null, 'active']
+        'INSERT INTO users (id, business_id, global_user_id, full_name, phone, account_status) VALUES (?, ?, ?, ?, ?, ?)',
+        [createdUserId, bizId, guId, new_client.full_name.trim(), new_client.phone?.trim() || null, 'active']
       );
       updates.push('user_id = ?');
       params.push(createdUserId);
@@ -3614,13 +3662,21 @@ router.post('/clients', requireClientAdmin, async (req, res) => {
     const hash = await bcrypt.hash(effectivePin, 10);
 
     const effectiveEmail = email?.trim() || null;
+
+    // Every customer = OmniPlex global user first
+    const globalUserId = await findOrCreateGlobalUser(conn, {
+      full_name: full_name.trim(),
+      email:     effectiveEmail,
+      phone:     normalizedPhone,
+    });
+
     await conn.query(
       `INSERT INTO users
-        (id, business_id, full_name, email, phone, auth_uid, account_status,
+        (id, business_id, global_user_id, full_name, email, phone, auth_uid, account_status,
          date_of_birth, weight_kg, fitness_goal, trainer_notes, notes, referred_by_user_id)
-       VALUES (?,?,?,?,?,?, 'active',?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?, 'active',?,?,?,?,?,?)`,
       [
-        id, bizId, full_name.trim(), effectiveEmail, phone || null, id,
+        id, bizId, globalUserId, full_name.trim(), effectiveEmail, normalizedPhone, id,
         date_of_birth || null,
         normalizedWeight ?? null,
         normalizedGoal ?? null,
@@ -3634,7 +3690,7 @@ router.post('/clients', requireClientAdmin, async (req, res) => {
       [id, hash]
     );
     await conn.commit();
-    return res.status(201).json({ id, message: 'Ο πελάτης δημιουργήθηκε' });
+    return res.status(201).json({ id, global_user_id: globalUserId, message: 'Ο πελάτης δημιουργήθηκε' });
   } catch (err) {
     await conn.rollback();
     if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Το email χρησιμοποιείται ήδη' });
