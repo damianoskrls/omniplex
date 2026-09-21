@@ -6428,4 +6428,96 @@ router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
   }
 });
 
+// ============================================================
+// Join Requests
+// ============================================================
+router.get('/join-requests', requireClientAdmin, async (req, res) => {
+  const { status = 'pending' } = req.query;
+  try {
+    const [rows] = await db.query(`
+      SELECT jr.id, jr.global_user_id, jr.full_name, jr.email, jr.phone,
+             jr.status, jr.admin_note, jr.created_at
+      FROM gym_join_requests jr
+      WHERE jr.business_id = ? ${status !== 'all' ? 'AND jr.status = ?' : ''}
+      ORDER BY jr.created_at DESC
+    `, status !== 'all' ? [req.admin.businessId, status] : [req.admin.businessId]);
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
+  const { status, admin_note } = req.body;
+  if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'status must be approved or rejected' });
+  try {
+    const [[jr]] = await db.query(
+      'SELECT * FROM gym_join_requests WHERE id = ? AND business_id = ?',
+      [req.params.id, req.admin.businessId],
+    );
+    if (!jr) return res.status(404).json({ error: 'Not found' });
+
+    await db.query(
+      'UPDATE gym_join_requests SET status = ?, admin_note = ? WHERE id = ?',
+      [status, admin_note || null, req.params.id],
+    );
+
+    if (status === 'approved') {
+      // Create a user record in this gym for the global user
+      const userId = uuidv4();
+      await db.query(`
+        INSERT INTO users (id, business_id, global_user_id, full_name, email, mobile, role, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'customer', 'active', NOW())
+        ON DUPLICATE KEY UPDATE global_user_id = VALUES(global_user_id), status = 'active'
+      `, [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email, jr.phone || '']);
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// Search by phone (members or staff)
+// GET /api/client-admin/search-by-phone?phone=xxx&type=member|staff|all
+// ============================================================
+router.get('/search-by-phone', requireClientAdmin, async (req, res) => {
+  const { phone, type = 'all' } = req.query;
+  if (!phone || phone.trim().length < 4) return res.status(400).json({ error: 'phone required (min 4 chars)' });
+
+  const normalized = phone.trim().replace(/[\s\-().+]/g, '');
+  const likePattern = `%${normalized}%`;
+  const results = { members: [], staff: [] };
+
+  try {
+    if (type === 'all' || type === 'member') {
+      const [members] = await db.query(`
+        SELECT id, full_name, email, mobile AS phone, status, created_at
+        FROM users
+        WHERE business_id = ?
+          AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(mobile,' ',''),'-',''),'(',''),')',''),'+','') LIKE ?
+          AND deleted_at IS NULL
+        ORDER BY full_name ASC
+        LIMIT 20
+      `, [req.admin.businessId, likePattern]);
+      results.members = members;
+    }
+    if (type === 'all' || type === 'staff') {
+      const [staff] = await db.query(`
+        SELECT id, full_name, portal_email AS email, phone, role, is_active
+        FROM staff
+        WHERE business_id = ?
+          AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')',''),'+','') LIKE ?
+        ORDER BY full_name ASC
+        LIMIT 20
+      `, [req.admin.businessId, likePattern]);
+      results.staff = staff;
+    }
+    return res.json(results);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

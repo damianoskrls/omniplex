@@ -10,6 +10,7 @@ import 'app.dart';
 import 'config/tenant_config.dart';
 import 'l10n/app_strings.dart';
 import 'screens/business_selector_screen.dart';
+import 'screens/discovery_landing_screen.dart';
 import 'screens/global_dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
@@ -291,15 +292,31 @@ class _AppBootstrapState extends State<AppBootstrap> {
     }
 
     if (_needsTenantSelection) {
+      // If user has gyms, show global dashboard; otherwise show discovery landing
+      if (_globalAuth.isLoggedIn && _globalAuth.gyms.isNotEmpty) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: GlobalDashboardScreen(
+            globalAuth: _globalAuth,
+            onEnterGym: (config) {
+              setState(() { _needsTenantSelection = false; _showGlobalDashboard = false; });
+              _onTenantConfigLoaded(config);
+            },
+            onLogout: () => setState(() {
+              _needsTenantSelection = true;
+              _showGlobalDashboard = false;
+            }),
+          ),
+        );
+      }
       return MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: BusinessSelectorScreen(
-          onConfigLoaded: _onTenantConfigLoaded,
-          apiBaseUrl: _selectorApiBase,
+        home: DiscoveryLandingScreen(
           globalAuth: _globalAuth,
-          onGlobalDashboard: _globalAuth.gyms.length >= 2
-              ? () => setState(() { _needsTenantSelection = false; _showGlobalDashboard = true; })
-              : null,
+          onLoggedIn: () {
+            // After login/register, rebuild — will fall into dashboard branch above
+            setState(() {});
+          },
         ),
       );
     }

@@ -431,6 +431,37 @@ async function bootstrapSchema() {
       if (err.code !== 'ER_DUP_FIELDNAME') console.warn(`businesses.${col} skipped:`, err.message);
     }
   }
+
+  // ── gym_join_requests ────────────────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS gym_join_requests (
+        id              VARCHAR(36)  NOT NULL PRIMARY KEY,
+        global_user_id  VARCHAR(36)  NOT NULL,
+        business_id     VARCHAR(36)  NOT NULL,
+        full_name       VARCHAR(200) NOT NULL,
+        email           VARCHAR(255) NOT NULL,
+        phone           VARCHAR(50)  NULL,
+        status          ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+        admin_note      TEXT         NULL,
+        created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_gjr_biz_status (business_id, status),
+        INDEX idx_gjr_global (global_user_id)
+      )
+    `);
+    console.log('✓ Schema: gym_join_requests table ready');
+  } catch (err) {
+    console.warn('gym_join_requests table skipped:', err.message);
+  }
+
+  // ── users.global_phone (phone on global_users) ───────────────
+  // Add UNIQUE index on global_users.phone if column exists but index doesn't
+  try {
+    await db.query('CREATE INDEX idx_gu_phone ON global_users (phone)');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_KEYNAME') {}
+  }
 }
 
 module.exports = { bootstrapSchema };

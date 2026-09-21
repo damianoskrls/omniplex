@@ -180,6 +180,32 @@ class GlobalAuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Called after staff login — stores staff token + gym list
+  Future<void> setStaffSession({
+    required String token,
+    required String fullName,
+    required List<Map<String, dynamic>> gyms,
+  }) async {
+    _token = token;
+    _user  = GlobalUser(id: '', email: '', fullName: fullName);
+    _gyms  = gyms.map((g) => GlobalGym(
+      userId:       g['staff_id'] as String? ?? '',
+      businessId:   g['business_id'] as String,
+      businessName: g['business_name'] as String? ?? '',
+      appName:      g['app_name'] as String? ?? g['business_name'] as String? ?? '',
+      slug:         g['slug'] as String,
+      businessType: g['business_type'] as String? ?? 'gym',
+      primaryColor: g['primary_color'] as String? ?? '#B8F55E',
+      logoUrl:      g['logo_url'] as String?,
+      userStatus:   'active',
+    )).toList();
+
+    await _storage.write(key: _kGlobalToken, value: token);
+    await _storage.write(key: _kGlobalUser,  value: jsonEncode({'id': '', 'email': '', 'full_name': fullName}));
+    await _storage.write(key: _kGlobalGyms,  value: jsonEncode(_gyms.map((g) => g.toJson()).toList()));
+    notifyListeners();
+  }
+
   Future<void> clear() async {
     _token = null; _user = null; _gyms = [];
     await _storage.delete(key: _kGlobalToken);
