@@ -45,6 +45,7 @@ import Reviews from './pages/Reviews';
 import Analytics from './pages/Analytics';
 import StaffLeaves from './pages/StaffLeaves';
 import DropinBookings from './pages/DropinBookings';
+import DiscoveryProfile from './pages/DiscoveryProfile';
 import Trials from './pages/Trials';
 import Export from './pages/Export';
 import Gdpr from './pages/Gdpr';
@@ -116,6 +117,7 @@ export default function App() {
           <Route path="/analytics" element={<PrivateRoute ownerOnly><Analytics /></PrivateRoute>} />
           <Route path="/staff-leaves" element={<PrivateRoute ownerOnly><StaffLeaves /></PrivateRoute>} />
           <Route path="/dropin-bookings" element={<PrivateRoute ownerOnly><DropinBookings /></PrivateRoute>} />
+          <Route path="/discovery-profile" element={<PrivateRoute ownerOnly><DiscoveryProfile /></PrivateRoute>} />
           <Route path="/trials" element={<PrivateRoute ownerOnly><Trials /></PrivateRoute>} />
           <Route path="/export" element={<PrivateRoute ownerOnly><Export /></PrivateRoute>} />
           <Route path="/gdpr" element={<PrivateRoute ownerOnly><Gdpr /></PrivateRoute>} />

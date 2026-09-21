@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../config/tenant_config.dart';
+import '../services/global_auth_service.dart';
 import '../theme/app_colors.dart';
+import 'global_login_screen.dart';
 
 class BusinessSelectorScreen extends StatefulWidget {
   const BusinessSelectorScreen({
@@ -11,11 +13,15 @@ class BusinessSelectorScreen extends StatefulWidget {
     required this.onConfigLoaded,
     this.showBack = false,
     this.apiBaseUrl = 'https://passionate-grace-production-98ad.up.railway.app',
+    this.globalAuth,
+    this.onGlobalDashboard,
   });
 
   final void Function(TenantConfig) onConfigLoaded;
   final bool showBack;
   final String apiBaseUrl;
+  final GlobalAuthService? globalAuth;
+  final VoidCallback? onGlobalDashboard;
 
   @override
   State<BusinessSelectorScreen> createState() => _BusinessSelectorScreenState();
@@ -28,6 +34,9 @@ class _SearchResult {
   final String businessType;
   final String primaryColor;
   final String? logoUrl;
+  final String? city;
+  final String? description;
+  final List<String> services;
 
   const _SearchResult({
     required this.slug,
@@ -36,6 +45,9 @@ class _SearchResult {
     required this.businessType,
     required this.primaryColor,
     this.logoUrl,
+    this.city,
+    this.description,
+    this.services = const [],
   });
 
   factory _SearchResult.fromJson(Map<String, dynamic> j) => _SearchResult(
@@ -45,6 +57,9 @@ class _SearchResult {
     businessType: j['business_type'] as String,
     primaryColor: j['primary_color'] as String? ?? '#B8F55E',
     logoUrl:      j['logo_url']      as String?,
+    city:         j['city']          as String?,
+    description:  j['description']   as String?,
+    services:     (j['services']     as List?)?.cast<String>() ?? [],
   );
 }
 
@@ -62,6 +77,18 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
   String? _error;
   Timer? _debounce;
   bool _searchFocused = false;
+  String _selectedService = '';
+  final _cityCtrl = TextEditingController();
+
+  static const _serviceFilters = [
+    ('', 'Όλα'),
+    ('Pilates', 'Pilates'),
+    ('Yoga', 'Yoga'),
+    ('CrossFit', 'CrossFit'),
+    ('Spinning', 'Spinning'),
+    ('Boxing', 'Boxing'),
+    ('Fitness', 'Fitness'),
+  ];
 
   @override
   void initState() {
@@ -89,7 +116,8 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
 
   void _onSearchChanged(String val) {
     _debounce?.cancel();
-    if (val.trim().length < 2) {
+    final hasFilter = _selectedService.isNotEmpty || _cityCtrl.text.trim().isNotEmpty;
+    if (val.trim().length < 2 && !hasFilter) {
       setState(() { _results = []; _error = null; });
       return;
     }
@@ -97,9 +125,29 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
     _debounce = Timer(const Duration(milliseconds: 400), () => _doSearch(val.trim()));
   }
 
+  void _onFilterChanged() {
+    _debounce?.cancel();
+    setState(() { _searching = true; _error = null; });
+    _debounce = Timer(const Duration(milliseconds: 300), () => _doSearch(_searchCtrl.text.trim()));
+  }
+
   Future<void> _doSearch(String q) async {
+    final city    = _cityCtrl.text.trim();
+    final service = _selectedService;
+    final useDiscovery = service.isNotEmpty || city.isNotEmpty;
+
     try {
-      final uri = Uri.parse('${widget.apiBaseUrl}/api/tenants/search?q=${Uri.encodeComponent(q)}');
+      Uri uri;
+      if (useDiscovery) {
+        final params = <String, String>{};
+        if (q.length >= 2) params['q'] = q;
+        if (service.isNotEmpty) params['service'] = service;
+        if (city.isNotEmpty) params['city'] = city;
+        uri = Uri.parse('${widget.apiBaseUrl}/api/global/discovery/gyms').replace(queryParameters: params);
+      } else {
+        if (q.length < 2) { setState(() { _results = []; _searching = false; }); return; }
+        uri = Uri.parse('${widget.apiBaseUrl}/api/tenants/search?q=${Uri.encodeComponent(q)}');
+      }
       final res = await http.get(uri).timeout(const Duration(seconds: 6));
       if (!mounted) return;
       if (res.statusCode == 200) {
@@ -238,6 +286,55 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                               setState(() { _results = []; _error = null; });
                             },
                           ),
+
+                          const SizedBox(height: 12),
+
+                          // City field
+                          _CityField(
+                            controller: _cityCtrl,
+                            onChanged: (_) => _onFilterChanged(),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Service type filter chips
+                          SizedBox(
+                            height: 34,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _serviceFilters.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (_, i) {
+                                final (val, label) = _serviceFilters[i];
+                                final selected = _selectedService == val;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() => _selectedService = val);
+                                    _onFilterChanged();
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: selected ? AppColors.lime : Colors.white.withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: selected ? AppColors.lime : Colors.white.withValues(alpha: 0.15),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      label,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: selected ? Colors.black : Colors.white.withValues(alpha: 0.75),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -257,6 +354,17 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                     ),
 
                     // Footer
+                    _GlobalAccountBanner(
+                      globalAuth: widget.globalAuth,
+                      onGlobalDashboard: widget.onGlobalDashboard,
+                      onLoginDone: () {
+                        if (widget.onGlobalDashboard != null && (widget.globalAuth?.gyms.length ?? 0) >= 2) {
+                          widget.onGlobalDashboard!();
+                        } else {
+                          setState(() {});
+                        }
+                      },
+                    ),
                     _Footer(),
                   ],
                 ),
@@ -273,11 +381,12 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
 
   Widget _buildResults() {
     final hasQuery = _searchCtrl.text.trim().length >= 2;
+    final hasFilter = _selectedService.isNotEmpty || _cityCtrl.text.trim().isNotEmpty;
 
-    if (!hasQuery) {
+    if (!hasQuery && !hasFilter) {
       return _EmptyState(
         icon: Icons.search_rounded,
-        message: 'Ξεκίνα πληκτρολογώντας\nτο όνομα του χώρου σου',
+        message: 'Ξεκίνα πληκτρολογώντας\nή επέλεξε φίλτρο',
       );
     }
 
@@ -406,6 +515,53 @@ class _SearchField extends StatelessWidget {
   }
 }
 
+// ── City filter field ─────────────────────────────────────────────────────────
+class _CityField extends StatelessWidget {
+  const _CityField({required this.controller, required this.onChanged});
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: const Color(0xFF131319),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          Icon(Icons.location_on_rounded, size: 16, color: Colors.white.withValues(alpha: 0.35)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Πόλη (π.χ. Αθήνα, Θεσσαλονίκη)',
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.22), fontSize: 13),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          if (controller.text.isNotEmpty)
+            GestureDetector(
+              onTap: () { controller.clear(); onChanged(''); },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Icon(Icons.close_rounded, size: 14, color: Colors.white.withValues(alpha: 0.3)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Result card ───────────────────────────────────────────────────────────────
 class _ResultCard extends StatefulWidget {
   const _ResultCard({
@@ -506,8 +662,42 @@ class _ResultCardState extends State<_ResultCard> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        if (widget.biz.city != null) ...[
+                          Text(
+                            ' · ${widget.biz.city}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.30),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
+                    if (widget.biz.services.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        widget.biz.services.take(3).join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: widget.color.withValues(alpha: 0.6),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    if (widget.biz.description != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.biz.description!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.30),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -612,6 +802,85 @@ class _ErrorBanner extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ── Global account banner ─────────────────────────────────────────────────────
+class _GlobalAccountBanner extends StatelessWidget {
+  const _GlobalAccountBanner({required this.globalAuth, required this.onGlobalDashboard, required this.onLoginDone});
+  final GlobalAuthService? globalAuth;
+  final VoidCallback? onGlobalDashboard;
+  final VoidCallback onLoginDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = globalAuth;
+    final isLoggedIn = auth?.isLoggedIn ?? false;
+    final gymCount   = auth?.gyms.length ?? 0;
+
+    if (isLoggedIn && gymCount >= 2 && onGlobalDashboard != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
+        child: GestureDetector(
+          onTap: onGlobalDashboard,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF7C5CFC).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF7C5CFC).withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.grid_view_rounded, color: Color(0xFF7C5CFC), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Τα γυμναστήριά μου ($gymCount)',
+                    style: const TextStyle(color: Color(0xFF9D7BFE), fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF7C5CFC), size: 13),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Not logged in — show login prompt
+    if (auth != null && !isLoggedIn) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
+        child: GestureDetector(
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => GlobalLoginScreen(globalAuth: auth, onDone: () { Navigator.pop(context); onLoginDone(); }),
+            ));
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.person_rounded, color: Colors.white.withValues(alpha: 0.5), size: 18),
+                const SizedBox(width: 10),
+                Text(
+                  'Σύνδεση / Εγγραφή global λογαριασμού',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }
 

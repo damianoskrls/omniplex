@@ -26,6 +26,7 @@ const gdprRoutes            = require('./routes/gdpr.routes');
 const campaignsRoutes       = require('./routes/campaigns.routes');
 const questionnairesRoutes  = require('./routes/questionnaires.routes');
 const remindersRoutes       = require('./routes/reminders.routes');
+const globalRoutes          = require('./routes/global.routes');
 const { startNotificationWorker } = require('./lib/notification_worker');
 const { startMessageAttachmentWorker } = require('./lib/message_attachments');
 const { startReminderWorker } = require('./lib/reminder_worker');
@@ -66,6 +67,7 @@ app.use('/api/gdpr',            gdprRoutes);
 app.use('/api/campaigns',       campaignsRoutes);
 app.use('/api/questionnaires',  questionnairesRoutes);
 app.use('/api/reminders',       remindersRoutes);
+app.use('/api/global',          globalRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

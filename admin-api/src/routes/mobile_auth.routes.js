@@ -63,10 +63,17 @@ router.post('/register', async (req, res) => {
     const id   = uuidv4();
     const hash = await bcrypt.hash(effectivePin, 10);
 
+    // Auto-link to global account if same email exists
+    let globalUserId = null;
+    if (email?.trim()) {
+      const [gu] = await db.query('SELECT id FROM global_users WHERE email = ?', [email.trim().toLowerCase()]);
+      if (gu.length) globalUserId = gu[0].id;
+    }
+
     await db.query(
-      `INSERT INTO users (id, business_id, full_name, phone, email, auth_uid, account_status)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-      [id, business_id, full_name.trim(), normalizedPhone, email?.trim() || null, id]
+      `INSERT INTO users (id, business_id, full_name, phone, email, auth_uid, global_user_id, account_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [id, business_id, full_name.trim(), normalizedPhone, email?.trim() || null, id, globalUserId]
     );
 
     await db.query(

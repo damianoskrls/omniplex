@@ -51,6 +51,8 @@ post_install do |installer|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
       # Firebase / GoogleToolboxForMac use quoted includes in umbrella headers.
       config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+      # Exclude x86_64 simulator arch on Apple Silicon to avoid arm64-only plugin issues.
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'x86_64'
     end
   end
 

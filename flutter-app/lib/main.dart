@@ -10,8 +10,10 @@ import 'app.dart';
 import 'config/tenant_config.dart';
 import 'l10n/app_strings.dart';
 import 'screens/business_selector_screen.dart';
+import 'screens/global_dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
+import 'services/global_auth_service.dart';
 import 'services/language_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_service.dart';
@@ -64,6 +66,8 @@ class _AppBootstrapState extends State<AppBootstrap> {
   String? _error;
   bool _needsTenantSelection = false;
   bool _showOnboarding = false;
+  bool _showGlobalDashboard = false;
+  final _globalAuth = GlobalAuthService();
   String _selectorApiBase = 'https://passionate-grace-production-98ad.up.railway.app';
 
   Future<void> _bootstrap() async {
@@ -99,6 +103,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
       ),
     );
 
+    // Load global auth state
+    await _globalAuth.init();
+
     // Dynamic mode: check for a cached tenant config first
     final cached = await TenantConfig.getCachedTenant();
     TenantConfig config;
@@ -124,6 +131,11 @@ class _AppBootstrapState extends State<AppBootstrap> {
         if (config.businessId.isEmpty || config.slug.isEmpty) {
           await _waitRemainingSplash(splashStarted);
           if (!mounted) return;
+          // If global user with 2+ gyms, show dashboard instead of selector
+          if (_globalAuth.isLoggedIn && _globalAuth.gyms.length >= 2) {
+            setState(() => _showGlobalDashboard = true);
+            return;
+          }
           setState(() {
             _needsTenantSelection = true;
             _selectorApiBase = config.apiBaseUrl.isNotEmpty ? config.apiBaseUrl : _selectorApiBase;
@@ -133,6 +145,10 @@ class _AppBootstrapState extends State<AppBootstrap> {
       } catch (_) {
         await _waitRemainingSplash(splashStarted);
         if (!mounted) return;
+        if (_globalAuth.isLoggedIn && _globalAuth.gyms.length >= 2) {
+          setState(() => _showGlobalDashboard = true);
+          return;
+        }
         setState(() => _needsTenantSelection = true);
         return;
       }
@@ -258,12 +274,32 @@ class _AppBootstrapState extends State<AppBootstrap> {
       );
     }
 
+    if (_showGlobalDashboard) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: GlobalDashboardScreen(
+          globalAuth: _globalAuth,
+          onEnterGym: (config) {
+            setState(() => _showGlobalDashboard = false);
+            _onTenantConfigLoaded(config);
+          },
+          onLogout: () {
+            setState(() { _showGlobalDashboard = false; _needsTenantSelection = true; });
+          },
+        ),
+      );
+    }
+
     if (_needsTenantSelection) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: BusinessSelectorScreen(
           onConfigLoaded: _onTenantConfigLoaded,
           apiBaseUrl: _selectorApiBase,
+          globalAuth: _globalAuth,
+          onGlobalDashboard: _globalAuth.gyms.length >= 2
+              ? () => setState(() { _needsTenantSelection = false; _showGlobalDashboard = true; })
+              : null,
         ),
       );
     }

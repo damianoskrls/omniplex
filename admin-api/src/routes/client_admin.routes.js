@@ -6391,4 +6391,41 @@ router.get('/my-programs', async (req, res) => {
   res.json(result);
 });
 
+// ============================================================
+// GET /api/client-admin/discovery-profile  — get discovery settings
+// PATCH /api/client-admin/discovery-profile — set city, lat, lng, description, is_discoverable
+// ============================================================
+router.get('/discovery-profile', requireClientAdmin, async (req, res) => {
+  try {
+    const [[biz]] = await db.query(
+      'SELECT city, country, latitude, longitude, description, is_discoverable FROM businesses WHERE id = ?',
+      [req.admin.businessId],
+    );
+    return res.json(biz || {});
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
+  const { city, country, latitude, longitude, description, is_discoverable } = req.body;
+  try {
+    await db.query(
+      `UPDATE businesses SET
+         city = COALESCE(?, city),
+         country = COALESCE(?, country),
+         latitude = COALESCE(?, latitude),
+         longitude = COALESCE(?, longitude),
+         description = COALESCE(?, description),
+         is_discoverable = COALESCE(?, is_discoverable)
+       WHERE id = ?`,
+      [city ?? null, country ?? null, latitude ?? null, longitude ?? null,
+       description ?? null, is_discoverable ?? null, req.admin.businessId],
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

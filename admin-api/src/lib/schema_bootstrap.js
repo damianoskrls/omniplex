@@ -381,6 +381,56 @@ async function bootstrapSchema() {
   } catch (err) {
     console.warn('dropin_bookings table skipped:', err.message);
   }
+
+  // ── global_users ────────────────────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS global_users (
+        id           VARCHAR(36)  NOT NULL PRIMARY KEY,
+        email        VARCHAR(255) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        full_name    VARCHAR(200) NOT NULL,
+        phone        VARCHAR(50)  NULL,
+        created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY idx_gu_email (email)
+      )
+    `);
+    console.log('✓ Schema: global_users table ready');
+  } catch (err) {
+    console.warn('global_users table skipped:', err.message);
+  }
+
+  // ── users.global_user_id ────────────────────────────────────
+  try {
+    await db.query('ALTER TABLE users ADD COLUMN global_user_id VARCHAR(36) NULL');
+    console.log('✓ Schema: users.global_user_id added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('users.global_user_id skipped:', err.message);
+  }
+  try {
+    await db.query('CREATE INDEX idx_users_global ON users (global_user_id)');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_KEYNAME') {}
+  }
+
+  // ── businesses discovery fields ─────────────────────────────
+  const bizCols = [
+    ['city',            'VARCHAR(100) NULL'],
+    ['country',         "VARCHAR(100) NULL DEFAULT 'GR'"],
+    ['latitude',        'DECIMAL(10,8) NULL'],
+    ['longitude',       'DECIMAL(11,8) NULL'],
+    ['description',     'TEXT NULL'],
+    ['is_discoverable', 'TINYINT(1) NOT NULL DEFAULT 0'],
+  ];
+  for (const [col, def] of bizCols) {
+    try {
+      await db.query(`ALTER TABLE businesses ADD COLUMN ${col} ${def}`);
+      console.log(`✓ Schema: businesses.${col} added`);
+    } catch (err) {
+      if (err.code !== 'ER_DUP_FIELDNAME') console.warn(`businesses.${col} skipped:`, err.message);
+    }
+  }
 }
 
 module.exports = { bootstrapSchema };
