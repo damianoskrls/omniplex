@@ -318,6 +318,58 @@ export default function Services() {
                 <label className="form-label">Κατηγορία</label>
                 <input className="form-input" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} placeholder="π.χ. Classes, Training" />
               </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.is_open_access}
+                    onChange={e => setForm({ ...form, is_open_access: e.target.checked })}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    <strong>Ελεύθερη Πρόσβαση (χωρίς κράτηση)</strong>
+                    <div className="text-muted" style={{ marginTop: 4, lineHeight: 1.4 }}>
+                      Π.χ. αίθουσα οργάνων. Οι πελάτες βλέπουν την υπηρεσία χωρίς να χρειάζεται να κάνουν κράτηση.
+                    </div>
+                  </span>
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.requires_attendance_confirmation}
+                    onChange={e => setForm({ ...form, requires_attendance_confirmation: e.target.checked })}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    <strong>Απαιτεί επιβεβαίωση παρουσίας</strong>
+                    <div className="text-muted" style={{ marginTop: 4, lineHeight: 1.4 }}>
+                      Μετά τη λήξη, απαιτείται check-in για να επιβεβαιωθεί η παρουσία του πελάτη.
+                    </div>
+                  </span>
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.requires_qr_scan}
+                    onChange={e => setForm({ ...form, requires_qr_scan: e.target.checked })}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    <strong>Απαιτεί QR scan</strong>
+                    <div className="text-muted" style={{ marginTop: 4, lineHeight: 1.4 }}>
+                      Ο πελάτης πρέπει να σκανάρει QR για να αφαιρεθεί συνεδρία. Απενεργοποιήστε για απεριόριστα πακέτα.
+                    </div>
+                  </span>
+                </label>
+              </div>
+
               {!form.is_open_access && (
                 <div className="form-group">
                   <label className="form-label">Διάρκεια (λεπτά) *</label>
@@ -459,57 +511,6 @@ export default function Services() {
                 <div className="text-muted" style={{ marginTop: 4, fontSize: '0.8rem' }}>
                   Τιμή για μεμονωμένη συνεδρία χωρίς πακέτο. Αφήστε κενό αν δεν επιτρέπεται drop-in.
                 </div>
-              </div>
-
-              <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!form.requires_attendance_confirmation}
-                    onChange={e => setForm({ ...form, requires_attendance_confirmation: e.target.checked })}
-                    style={{ marginTop: 3 }}
-                  />
-                  <span>
-                    <strong>Απαιτεί επιβεβαίωση παρουσίας</strong>
-                    <div className="text-muted" style={{ marginTop: 4, lineHeight: 1.4 }}>
-                      Μετά τη λήξη, απαιτείται check-in για να επιβεβαιωθεί η παρουσία του πελάτη.
-                    </div>
-                  </span>
-                </label>
-              </div>
-
-              <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!form.requires_qr_scan}
-                    onChange={e => setForm({ ...form, requires_qr_scan: e.target.checked })}
-                    style={{ marginTop: 3 }}
-                  />
-                  <span>
-                    <strong>Απαιτεί QR scan</strong>
-                    <div className="text-muted" style={{ marginTop: 4, lineHeight: 1.4 }}>
-                      Ο πελάτης πρέπει να σκανάρει QR για να αφαιρεθεί συνεδρία. Απενεργοποιήστε για απεριόριστα πακέτα.
-                    </div>
-                  </span>
-                </label>
-              </div>
-
-              <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!form.is_open_access}
-                    onChange={e => setForm({ ...form, is_open_access: e.target.checked })}
-                    style={{ marginTop: 3 }}
-                  />
-                  <span>
-                    <strong>Ελεύθερη Πρόσβαση (χωρίς κράτηση)</strong>
-                    <div className="text-muted" style={{ marginTop: 4, lineHeight: 1.4 }}>
-                      Π.χ. αίθουσα οργάνων. Οι πελάτες βλέπουν την υπηρεσία χωρίς να χρειάζεται να κάνουν κράτηση.
-                    </div>
-                  </span>
-                </label>
               </div>
 
               {rooms.length > 0 && (

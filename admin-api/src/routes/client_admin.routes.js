@@ -695,6 +695,170 @@ router.get('/search', requireClientAdmin, async (req, res) => {
 });
 
 // ============================================================
+// GET /api/client-admin/clients/lookup?phone=… — Check if a phone
+// already exists in global_users or in this gym before adding
+// ============================================================
+router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const { phone } = req.query;
+  if (!phone) return res.json({ status: 'not_found' });
+
+  const digits = String(phone).replace(/\D/g, '');
+  if (digits.length < 7) return res.json({ status: 'not_found' });
+  const last9 = digits.slice(-9);
+
+  try {
+    // 1. Is there a global_users record with this phone?
+    const [guRows] = await db.query(
+      `SELECT id, full_name, email, phone
+       FROM global_users
+       WHERE REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE ?`,
+      [`%${last9}`],
+    );
+
+    if (!guRows.length) {
+      // 2. Maybe they exist only as a per-gym user (legacy, no global_users yet)
+      const [legacyRows] = await db.query(
+        `SELECT id, full_name, email, phone, account_status
+         FROM users
+         WHERE business_id = ?
+           AND REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE ?
+           AND (deleted_at IS NULL OR deleted_at > NOW())`,
+        [bizId, `%${last9}`],
+      );
+      if (legacyRows.length) {
+        return res.json({ status: 'in_this_gym', user: legacyRows[0] });
+      }
+      return res.json({ status: 'not_found' });
+    }
+
+    const gu = guRows[0];
+
+    // 3. Is this global_user already a client in THIS gym?
+    const [localRows] = await db.query(
+      `SELECT u.id, u.full_name, u.email, u.phone, u.account_status
+       FROM users u
+       WHERE u.business_id = ? AND u.global_user_id = ?
+         AND (u.deleted_at IS NULL OR u.deleted_at > NOW())`,
+      [bizId, gu.id],
+    );
+    if (localRows.length) {
+      return res.json({ status: 'in_this_gym', user: localRows[0] });
+    }
+
+    // 4. Do they have a pending/approved join_request for THIS gym?
+    const [reqRows] = await db.query(
+      `SELECT jr.id, jr.status, b.name AS gym_name
+       FROM gym_join_requests jr
+       JOIN businesses b ON b.id = jr.business_id
+       WHERE jr.global_user_id = ? AND jr.business_id = ?
+       ORDER BY jr.created_at DESC LIMIT 1`,
+      [gu.id, bizId],
+    );
+    if (reqRows.length) {
+      return res.json({
+        status: 'has_request',
+        global_user: gu,
+        request: reqRows[0],
+      });
+    }
+
+    // 5. They exist elsewhere — find which gyms
+    const [otherRows] = await db.query(
+      `SELECT DISTINCT b.name AS gym_name
+       FROM users u
+       JOIN businesses b ON b.id = u.business_id
+       WHERE u.global_user_id = ? AND u.business_id != ?
+         AND (u.deleted_at IS NULL OR u.deleted_at > NOW())
+       LIMIT 3`,
+      [gu.id, bizId],
+    );
+
+    return res.json({
+      status: 'global_user_elsewhere',
+      global_user: gu,
+      other_gyms: otherRows.map(r => r.gym_name),
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// POST /api/client-admin/clients/invite — Send a join-request
+// invitation for a global_user to join this gym (pending until
+// the client approves from the app)
+// ============================================================
+router.post('/clients/invite', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const { global_user_id } = req.body;
+  if (!global_user_id) return res.status(400).json({ error: 'global_user_id required' });
+  try {
+    // Upsert: create if not exists, or reset to pending if previously rejected
+    const [existing] = await db.query(
+      `SELECT id, status FROM gym_join_requests WHERE global_user_id = ? AND business_id = ? LIMIT 1`,
+      [global_user_id, bizId],
+    );
+    if (existing.length) {
+      await db.query(
+        `UPDATE gym_join_requests SET status = 'pending', updated_at = NOW() WHERE id = ?`,
+        [existing[0].id],
+      );
+    } else {
+      await db.query(
+        `INSERT INTO gym_join_requests (id, global_user_id, business_id, status)
+         VALUES (?, ?, ?, 'pending')`,
+        [uuidv4(), global_user_id, bizId],
+      );
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// POST /api/client-admin/clients/add-global — Add an existing
+// global_user directly to this gym (active, no invite flow)
+// ============================================================
+router.post('/clients/add-global', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const { global_user_id } = req.body;
+  if (!global_user_id) return res.status(400).json({ error: 'global_user_id required' });
+  try {
+    const [[gu]] = await db.query(
+      `SELECT id, full_name, email, phone FROM global_users WHERE id = ?`,
+      [global_user_id],
+    );
+    if (!gu) return res.status(404).json({ error: 'global_user not found' });
+
+    // Check not already in this gym
+    const [existing] = await db.query(
+      `SELECT id FROM users WHERE business_id = ? AND global_user_id = ?
+       AND (deleted_at IS NULL OR deleted_at > NOW())`,
+      [bizId, global_user_id],
+    );
+    if (existing.length) return res.status(409).json({ error: 'Ο πελάτης είναι ήδη εγγεγραμμένος' });
+
+    const newId = uuidv4();
+    await db.query(
+      `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, account_status, role)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', 'customer')`,
+      [newId, bizId, global_user_id, gu.full_name, gu.email || '', gu.phone || ''],
+    );
+    // Approve any existing join_request
+    await db.query(
+      `UPDATE gym_join_requests SET status = 'approved', updated_at = NOW()
+       WHERE global_user_id = ? AND business_id = ?`,
+      [global_user_id, bizId],
+    );
+    return res.json({ ok: true, user_id: newId });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
 // GET /api/client-admin/clients — All clients with credits
 // ============================================================
 router.get('/clients', requireClientAdmin, async (req, res) => {

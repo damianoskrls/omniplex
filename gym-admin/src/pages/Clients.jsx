@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { Plus, Eye, Check, Ban, RotateCcw, Trash2 } from 'lucide-react';
+import { Plus, Eye, Check, Ban, RotateCcw, Trash2, Search, UserCheck, AlertTriangle } from 'lucide-react';
 
 const FITNESS_GOALS = [
   { id: '', label: '— Δεν έχει οριστεί —' },
@@ -50,6 +50,12 @@ export default function Clients() {
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Phone lookup state
+  const [lookupPhone, setLookupPhone] = useState('');
+  const [lookupResult, setLookupResult] = useState(null); // null | { status, ... }
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const lookupTimer = useRef(null);
 
   const inTrash = statusFilter === 'trash';
 
@@ -144,6 +150,61 @@ export default function Clients() {
     }
   };
 
+  const openModal = () => {
+    setModal(true);
+    setLookupPhone('');
+    setLookupResult(null);
+    setForm(EMPTY);
+  };
+
+  const handleLookupPhone = (value) => {
+    setLookupPhone(value);
+    setLookupResult(null);
+    clearTimeout(lookupTimer.current);
+    const digits = value.replace(/\D/g, '');
+    if (digits.length < 7) return;
+    lookupTimer.current = setTimeout(async () => {
+      setLookupLoading(true);
+      try {
+        const res = await api.get('/client-admin/clients/lookup', { params: { phone: value } });
+        setLookupResult(res.data);
+        if (res.data.status === 'has_request' || res.data.global_user_elsewhere) {
+          const gu = res.data.global_user;
+          if (gu) setForm(f => ({ ...f, full_name: gu.full_name || '', email: gu.email || '', phone: gu.phone || value }));
+        }
+      } catch { /* ignore */ }
+      setLookupLoading(false);
+    }, 600);
+  };
+
+  const handleInvite = async () => {
+    const guId = lookupResult?.global_user?.id;
+    if (!guId) return;
+    setSaving(true);
+    try {
+      await api.post('/client-admin/clients/invite', { global_user_id: guId });
+      toast.success('Η πρόσκληση στάλθηκε — ο πελάτης θα εγκρίνει από το app');
+      setModal(false);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα');
+    } finally { setSaving(false); }
+  };
+
+  const handleAddGlobal = async () => {
+    const guId = lookupResult?.global_user?.id;
+    if (!guId) return;
+    setSaving(true);
+    try {
+      await api.post('/client-admin/clients/add-global', { global_user_id: guId });
+      toast.success('Ο πελάτης προστέθηκε ενεργός');
+      setModal(false);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα');
+    } finally { setSaving(false); }
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -173,7 +234,7 @@ export default function Clients() {
     <Layout title="Πελάτες">
       <div className="page-header">
         <h1 className="page-title">Πελάτες ({clients.length})</h1>
-        <button className="btn btn-primary" onClick={() => setModal(true)}>
+        <button className="btn btn-primary" onClick={openModal}>
           <Plus size={16} /> Νέος πελάτης
         </button>
       </div>
@@ -344,70 +405,182 @@ export default function Clients() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal" style={{ maxWidth: 520 }}>
             <div className="modal-title">Νέος πελάτης</div>
-            <p className="text-muted" style={{ marginBottom: 16 }}>
-              Πελάτες που δημιουργείς εδώ είναι <strong>ενεργοί αμέσως</strong>. Το PIN είναι τα τελευταία 4 ψηφία του κινητού αν δεν το αλλάξεις.
-            </p>
-            <form onSubmit={handleCreate}>
-              <div className="form-group">
-                <label className="form-label">Ονοματεπώνυμο *</label>
-                <input className="form-input" value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} required />
-              </div>
-              <div className="form-grid-2">
-                <div className="form-group">
-                  <label className="form-label">Κινητό *</label>
-                  <input className="form-input" type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} required placeholder="6901234567" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">PIN (4 ψηφία)</label>
-                  <input
-                    className="form-input"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={4}
-                    placeholder={form.phone ? form.phone.replace(/\D/g,'').slice(-4) || '—' : 'αυτόματο'}
-                    value={form.pin || ''}
-                    onChange={e => setForm({ ...form, pin: e.target.value.replace(/\D/g,'').slice(0,4) })}
-                  />
-                  <small className="text-muted">Κενό = τελευταία 4 ψηφία κινητού</small>
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input className="form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-              </div>
-              <div className="form-grid-2">
-                <div className="form-group">
-                  <label className="form-label">Ημερομηνία γέννησης</label>
-                  <input className="form-input" type="date" value={form.date_of_birth} onChange={e => setForm({ ...form, date_of_birth: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Βάρος (kg)</label>
-                  <input className="form-input" type="number" step="0.1" min="0" placeholder="Προαιρετικό" value={form.weight_kg} onChange={e => setForm({ ...form, weight_kg: e.target.value })} />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Στόχος</label>
-                <select className="form-select" value={form.fitness_goal} onChange={e => setForm({ ...form, fitness_goal: e.target.value })}>
-                  {FITNESS_GOALS.map(g => (
-                    <option key={g.id || 'none'} value={g.id}>{g.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Σημειώσεις για γυμναστή</label>
-                <textarea
+
+            {/* ── Step 1: Phone lookup ── */}
+            <div className="form-group" style={{ marginBottom: 8 }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Search size={14} /> Αναζήτηση με κινητό
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
                   className="form-input"
-                  rows={2}
-                  placeholder="π.χ. χειρουργείο, τραυματισμός..."
-                  value={form.trainer_notes}
-                  onChange={e => setForm({ ...form, trainer_notes: e.target.value })}
+                  type="tel"
+                  placeholder="Πληκτρολόγησε κινητό για αναζήτηση..."
+                  value={lookupPhone}
+                  onChange={e => handleLookupPhone(e.target.value)}
+                  autoFocus
+                  style={{ paddingRight: 36 }}
                 />
+                {lookupLoading && (
+                  <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.75rem' }}>…</span>
+                )}
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Ακύρωση</button>
-                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? '...' : 'Δημιουργία'}</button>
+            </div>
+
+            {/* ── Lookup result banners ── */}
+            {lookupResult?.status === 'in_this_gym' && (
+              <div style={{ background: 'var(--warning-dim, #fef9ec)', border: '1px solid rgba(255,178,36,0.3)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#b45309' }}>
+                  <AlertTriangle size={15} /> Ο πελάτης είναι ήδη εγγεγραμμένος στο γυμναστήριό σου
+                </div>
+                <div className="text-muted" style={{ marginTop: 4, fontSize: '0.85rem' }}>
+                  {lookupResult.user?.full_name} — {lookupResult.user?.phone}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ marginTop: 8, fontSize: '0.85rem' }}
+                  onClick={() => { setModal(false); navigate(`/clients/${lookupResult.user.id}`); }}
+                >
+                  Άνοιγμα προφίλ
+                </button>
               </div>
-            </form>
+            )}
+
+            {lookupResult?.status === 'has_request' && (
+              <div style={{ background: '#f0fdf4', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#16a34a' }}>
+                  <UserCheck size={15} /> Βρέθηκε αίτημα εγγραφής — συμπληρώθηκαν τα στοιχεία
+                </div>
+                <div className="text-muted" style={{ marginTop: 4, fontSize: '0.85rem' }}>
+                  Κατάσταση αιτήματος: <strong>{lookupResult.request?.status}</strong>
+                </div>
+              </div>
+            )}
+
+            {lookupResult?.status === 'global_user_elsewhere' && (
+              <div style={{ background: '#eff6ff', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#1d4ed8', marginBottom: 6 }}>
+                  <AlertTriangle size={15} /> Ο πελάτης υπάρχει ήδη στο OmniPlex
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: 4 }}>
+                  <strong>{lookupResult.global_user?.full_name}</strong> είναι πελάτης σε άλλο γυμναστήριο
+                  {lookupResult.other_gyms?.length > 0 && ` (${lookupResult.other_gyms.join(', ')})`}.
+                  Δεν μπορείς να δημιουργήσεις νέο λογαριασμό για το ίδιο κινητό.
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: 12 }}>
+                  Επίλεξε πώς να τον προσθέσεις στο γυμναστήριό σου:
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.85rem' }}
+                    disabled={saving}
+                    onClick={handleInvite}
+                  >
+                    Στείλε πρόσκληση (ο πελάτης εγκρίνει από app)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.85rem' }}
+                    disabled={saving}
+                    onClick={handleAddGlobal}
+                  >
+                    Προσθήκη άμεση (έδωσε συγκατάθεση χειροκίνητα)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Divider before manual form ── */}
+            {(lookupResult?.status === 'not_found' || !lookupResult) && (
+              <p className="text-muted" style={{ marginBottom: 16, fontSize: '0.85rem' }}>
+                {lookupResult?.status === 'not_found'
+                  ? 'Δεν βρέθηκε στο OmniPlex — συμπλήρωσε τα στοιχεία για νέο πελάτη.'
+                  : 'Ή συμπλήρωσε τα στοιχεία απευθείας για νέο πελάτη.'}
+              </p>
+            )}
+
+            {/* ── New client form — hidden when phone found elsewhere ── */}
+            {lookupResult?.status !== 'global_user_elsewhere' && lookupResult?.status !== 'in_this_gym' && (
+              <form onSubmit={handleCreate}>
+                <div className="form-group">
+                  <label className="form-label">Ονοματεπώνυμο *</label>
+                  <input className="form-input" value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} required />
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Κινητό *</label>
+                    <input
+                      className="form-input"
+                      type="tel"
+                      value={form.phone !== '' ? form.phone : lookupPhone}
+                      onChange={e => setForm({ ...form, phone: e.target.value })}
+                      required
+                      placeholder="6901234567"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">PIN (4 ψηφία)</label>
+                    <input
+                      className="form-input"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder={form.phone ? form.phone.replace(/\D/g,'').slice(-4) || '—' : 'αυτόματο'}
+                      value={form.pin || ''}
+                      onChange={e => setForm({ ...form, pin: e.target.value.replace(/\D/g,'').slice(0,4) })}
+                    />
+                    <small className="text-muted">Κενό = τελευταία 4 ψηφία κινητού</small>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input className="form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+                </div>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Ημερομηνία γέννησης</label>
+                    <input className="form-input" type="date" value={form.date_of_birth} onChange={e => setForm({ ...form, date_of_birth: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Βάρος (kg)</label>
+                    <input className="form-input" type="number" step="0.1" min="0" placeholder="Προαιρετικό" value={form.weight_kg} onChange={e => setForm({ ...form, weight_kg: e.target.value })} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Στόχος</label>
+                  <select className="form-select" value={form.fitness_goal} onChange={e => setForm({ ...form, fitness_goal: e.target.value })}>
+                    {FITNESS_GOALS.map(g => (
+                      <option key={g.id || 'none'} value={g.id}>{g.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Σημειώσεις για γυμναστή</label>
+                  <textarea
+                    className="form-input"
+                    rows={2}
+                    placeholder="π.χ. χειρουργείο, τραυματισμός..."
+                    value={form.trainer_notes}
+                    onChange={e => setForm({ ...form, trainer_notes: e.target.value })}
+                  />
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Ακύρωση</button>
+                  <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? '...' : 'Δημιουργία'}</button>
+                </div>
+              </form>
+            )}
+
+            {/* Footer for blocked states */}
+            {(lookupResult?.status === 'in_this_gym' || lookupResult?.status === 'global_user_elsewhere') && (
+              <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Κλείσιμο</button>
+              </div>
+            )}
           </div>
         </div>
       )}
