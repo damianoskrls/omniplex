@@ -814,7 +814,7 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
     if (reqRows.length) {
       return res.json({
         status: 'has_request',
-        global_user: gu,
+        global_user: { id: gu.id, full_name: gu.full_name },
         request: reqRows[0],
       });
     }
@@ -835,6 +835,25 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
       global_user: { id: gu.id, masked_name: maskName(gu.full_name) },
       other_gyms: otherRows.map(r => r.gym_name),
     });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// DELETE /api/client-admin/clients/cancel-invite — Cancel a pending
+// join_request that was sent by this gym to a global_user
+// ============================================================
+router.delete('/clients/cancel-invite', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const { global_user_id } = req.body;
+  if (!global_user_id) return res.status(400).json({ error: 'global_user_id required' });
+  try {
+    await db.query(
+      `DELETE FROM gym_join_requests WHERE global_user_id = ? AND business_id = ? AND status = 'pending'`,
+      [global_user_id, bizId],
+    );
+    return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -901,17 +920,29 @@ router.post('/clients/invite', requireClientAdmin, async (req, res) => {
 // ============================================================
 router.post('/clients/add-global', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const { global_user_id, claimed_name } = req.body;
+  // claimed_name is optional when the client already has a pending join_request for this gym
+  const { global_user_id, claimed_name, skip_name_check } = req.body;
   if (!global_user_id) return res.status(400).json({ error: 'global_user_id required' });
-  if (!claimed_name) return res.status(400).json({ error: 'claimed_name required' });
   try {
     const [[gu]] = await db.query(
       `SELECT id, full_name, email, phone FROM global_users WHERE id = ?`,
       [global_user_id],
     );
     if (!gu) return res.status(404).json({ error: 'global_user not found' });
-    if (!namesMatch(gu.full_name, claimed_name)) {
-      return res.status(422).json({ error: 'name_mismatch', message: 'Το όνομα δεν ταυτοποιείται' });
+
+    // Skip name check only if client already has a pending join_request for this gym
+    if (!skip_name_check) {
+      if (!claimed_name) return res.status(400).json({ error: 'claimed_name required' });
+      if (!namesMatch(gu.full_name, claimed_name)) {
+        return res.status(422).json({ error: 'name_mismatch', message: 'Το όνομα δεν ταυτοποιείται' });
+      }
+    } else {
+      // Verify there actually is a pending request (security check)
+      const [reqCheck] = await db.query(
+        `SELECT id FROM gym_join_requests WHERE global_user_id = ? AND business_id = ? AND status = 'pending' LIMIT 1`,
+        [global_user_id, bizId],
+      );
+      if (!reqCheck.length) return res.status(403).json({ error: 'Δεν υπάρχει αίτημα εγγραφής για επαλήθευση' });
     }
 
     // Check not already in this gym

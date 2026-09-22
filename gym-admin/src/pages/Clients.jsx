@@ -202,13 +202,17 @@ export default function Clients() {
     }, 400);
   };
 
-  const handleInvite = async () => {
-    const guId = lookupResult?.global_user?.id;
-    if (!guId || !nameVerified) return;
+  const handleAddGlobal = async (guId, name, skipNameCheck = false) => {
+    const id = guId || lookupResult?.global_user?.id;
+    const nm = name || claimedName;
+    if (!id) return;
     setSaving(true);
     try {
-      await api.post('/client-admin/clients/invite', { global_user_id: guId, claimed_name: claimedName });
-      toast.success('Η πρόσκληση στάλθηκε — ο πελάτης θα εγκρίνει από το app');
+      const payload = skipNameCheck
+        ? { global_user_id: id, skip_name_check: true }
+        : { global_user_id: id, claimed_name: nm };
+      await api.post('/client-admin/clients/add-global', payload);
+      toast.success('Ο πελάτης προστέθηκε ενεργός');
       setModal(false);
       load();
     } catch (err) {
@@ -216,17 +220,17 @@ export default function Clients() {
     } finally { setSaving(false); }
   };
 
-  const handleAddGlobal = async () => {
+  const handleCancelInvite = async () => {
     const guId = lookupResult?.global_user?.id;
-    if (!guId || !nameVerified) return;
+    if (!guId) return;
     setSaving(true);
     try {
-      await api.post('/client-admin/clients/add-global', { global_user_id: guId, claimed_name: claimedName });
-      toast.success('Ο πελάτης προστέθηκε ενεργός');
-      setModal(false);
-      load();
+      await api.delete('/client-admin/clients/cancel-invite', { data: { global_user_id: guId } });
+      toast.success('Το αίτημα ακυρώθηκε');
+      setLookupResult(null);
+      setLookupPhone('');
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Σφάλμα');
+      toast.error(err.response?.data?.error || 'Σφάλμα');
     } finally { setSaving(false); }
   };
 
@@ -473,12 +477,33 @@ export default function Clients() {
             )}
 
             {lookupResult?.status === 'has_request' && (
-              <div style={{ background: '#f0fdf4', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#16a34a' }}>
-                  <UserCheck size={15} /> Βρέθηκε αίτημα εγγραφής — συμπληρώθηκαν τα στοιχεία
+              <div style={{ background: '#f0fdf4', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#16a34a', marginBottom: 6 }}>
+                  <UserCheck size={15} /> Υπάρχει εκκρεμές αίτημα εγγραφής για το γυμναστήριό σου
                 </div>
-                <div className="text-muted" style={{ marginTop: 4, fontSize: '0.85rem' }}>
-                  Κατάσταση αιτήματος: <strong>{lookupResult.request?.status}</strong>
+                <div className="text-muted" style={{ marginBottom: 12, fontSize: '0.85rem' }}>
+                  Ο πελάτης <strong>{lookupResult.global_user?.full_name || lookupResult.global_user?.masked_name}</strong> έχει στείλει αίτημα.
+                  Μπορείς να τον προσθέσεις άμεσα ή να ακυρώσεις το αίτημα.
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.85rem' }}
+                    disabled={saving}
+                    onClick={() => handleAddGlobal(lookupResult.global_user?.id, null, true)}
+                  >
+                    Προσθήκη ως πελάτης
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.85rem', color: '#dc2626', borderColor: '#dc2626' }}
+                    disabled={saving}
+                    onClick={handleCancelInvite}
+                  >
+                    Ακύρωση αιτήματος
+                  </button>
                 </div>
               </div>
             )}
@@ -527,26 +552,15 @@ export default function Clients() {
                   )}
                 </div>
                 {nameVerified && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      style={{ fontSize: '0.85rem' }}
-                      disabled={saving}
-                      onClick={handleInvite}
-                    >
-                      Στείλε πρόσκληση (εγκρίνει από app)
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ fontSize: '0.85rem' }}
-                      disabled={saving}
-                      onClick={handleAddGlobal}
-                    >
-                      Προσθήκη άμεση
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.9rem', width: '100%' }}
+                    disabled={saving}
+                    onClick={() => handleAddGlobal()}
+                  >
+                    {saving ? '...' : '✓ Προσθήκη ως πελάτης'}
+                  </button>
                 )}
               </div>
             )}
@@ -633,7 +647,7 @@ export default function Clients() {
             )}
 
             {/* Footer for blocked states */}
-            {(lookupResult?.status === 'in_this_gym' || lookupResult?.status === 'global_user_elsewhere') && (
+            {(lookupResult?.status === 'in_this_gym' || lookupResult?.status === 'global_user_elsewhere' || lookupResult?.status === 'has_request') && (
               <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setModal(false)}>Κλείσιμο</button>
               </div>
