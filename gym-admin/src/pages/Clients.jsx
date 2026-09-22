@@ -175,11 +175,14 @@ export default function Clients() {
       try {
         const res = await api.get('/client-admin/clients/lookup', { params: { phone: value } });
         setLookupResult(res.data);
-        if (res.data.status === 'has_request' || res.data.global_user_elsewhere) {
+        if (res.data.status === 'has_request') {
           const gu = res.data.global_user;
           if (gu) setForm(f => ({ ...f, full_name: gu.full_name || '', email: gu.email || '', phone: gu.phone || value }));
         }
-      } catch { /* ignore */ }
+      } catch (e) {
+        const msg = e.response?.data?.error || e.message || 'Σφάλμα αναζήτησης';
+        setLookupResult({ status: 'error', message: msg });
+      }
       setLookupLoading(false);
     }, 600);
   };
@@ -437,10 +440,9 @@ export default function Clients() {
 
             {/* ── Step 1: Phone lookup ── */}
             <div className="form-group" style={{ marginBottom: 8 }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Search size={14} /> Αναζήτηση με κινητό
-              </label>
+              <label className="form-label">Αναζήτηση με κινητό</label>
               <div style={{ position: 'relative' }}>
+                <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
                 <input
                   className="form-input"
                   type="tel"
@@ -448,7 +450,7 @@ export default function Clients() {
                   value={lookupPhone}
                   onChange={e => handleLookupPhone(e.target.value)}
                   autoFocus
-                  style={{ paddingRight: 36 }}
+                  style={{ paddingLeft: 34, paddingRight: 36 }}
                 />
                 {lookupLoading && (
                   <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.75rem' }}>…</span>
@@ -457,6 +459,14 @@ export default function Clients() {
             </div>
 
             {/* ── Lookup result banners ── */}
+            {lookupResult?.status === 'error' && (
+              <div style={{ background: 'var(--danger-dim, #fef2f2)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#dc2626' }}>
+                  <AlertTriangle size={15} /> Σφάλμα αναζήτησης
+                </div>
+                <div className="text-muted" style={{ marginTop: 4, fontSize: '0.85rem' }}>{lookupResult.message}</div>
+              </div>
+            )}
             {lookupResult?.status === 'in_this_gym' && (
               <div style={{ background: 'var(--warning-dim, #fef9ec)', border: '1px solid rgba(255,178,36,0.3)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#b45309' }}>
