@@ -110,11 +110,11 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
           style: ThemeMode.dark,
           appearance: PaymentSheetAppearance(
             colors: PaymentSheetAppearanceColors(
-              primary: widget.gymColor.value,
-              background: 0xFF1A1A1A,
-              componentBackground: 0xFF2A2A2A,
-              primaryText: 0xFFFFFFFF,
-              secondaryText: 0xFF999999,
+              primary: Color(widget.gymColor.value),
+              background: const Color(0xFF1A1A1A),
+              componentBackground: const Color(0xFF2A2A2A),
+              primaryText: const Color(0xFFFFFFFF),
+              secondaryText: const Color(0xFF999999),
             ),
           ),
         ),

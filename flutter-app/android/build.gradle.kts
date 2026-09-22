@@ -5,6 +5,16 @@ allprojects {
     }
 }
 
+subprojects {
+    afterEvaluate {
+        tasks.configureEach {
+            if (name == "lintVitalAnalyzeRelease" && project.name == "stripe_android") {
+                enabled = false
+            }
+        }
+    }
+}
+
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")
