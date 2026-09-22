@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../config/tenant_config.dart';
-import '../l10n/app_strings.dart';
-import '../models/location.dart';
-import '../services/api_service.dart';
-import '../theme/app_colors.dart';
-import '../widgets/tenant_logo.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../services/auth_service.dart';
+import '../widgets/omni_design.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,366 +12,271 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _name    = TextEditingController();
-  final _phone   = TextEditingController();
-  final _email   = TextEditingController();
-  final _pinCtrl = TextEditingController();
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl  = TextEditingController();
+  final _phoneCtrl     = TextEditingController();
+  final _emailCtrl     = TextEditingController();
+  final _passwordCtrl  = TextEditingController();
+  final _confirmCtrl   = TextEditingController();
 
-  bool _loading        = false;
-  bool _locLoading     = true;
+  final _emailFocus = FocusNode();
+
+  bool _loading = false;
+  bool _passVisible = false;
+  bool _confirmVisible = false;
   String? _error;
-  bool _submitted      = false;
-
-  List<GymLocation> _locations   = [];
-  bool _multiLocation             = false;
-  String? _selectedLocationId;
-
-  String get _pin => _pinCtrl.text;
 
   @override
   void initState() {
     super.initState();
-    _loadLocations();
-  }
-
-  Future<void> _loadLocations() async {
-    try {
-      final config = context.read<TenantConfig>();
-      final api    = ApiService(config);
-      final result = await api.fetchLocations();
-      if (mounted) {
-        setState(() {
-          _locations      = result.locations;
-          _multiLocation  = result.multiLocation;
-          _locLoading     = false;
-          if (_locations.length == 1) _selectedLocationId = _locations.first.id;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _locLoading = false);
-    }
+    _emailFocus.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
-    _name.dispose();
-    _phone.dispose();
-    _email.dispose();
-    _pinCtrl.dispose();
+    _firstNameCtrl.dispose();
+    _lastNameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
+    _emailFocus.dispose();
     super.dispose();
   }
 
-  void _onPinKey(String digit) {
-    if (_pin.length < 4) {
-      _pinCtrl.text = _pin + digit;
-      setState(() {});
-    }
-  }
-
-  void _onPinDelete() {
-    if (_pin.isNotEmpty) {
-      _pinCtrl.text = _pin.substring(0, _pin.length - 1);
-      setState(() {});
-    }
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_multiLocation && _locations.length > 1 && _selectedLocationId == null) {
-      setState(() => _error = AppStrings.of(context).registerSelectBranch);
+  Future<void> _register() async {
+    if (_passwordCtrl.text != _confirmCtrl.text) {
+      setState(() => _error = 'Passwords do not match');
       return;
     }
-    if (_pin.length != 4) {
-      setState(() => _error = AppStrings.of(context).registerEnterPin);
-      return;
-    }
+    FocusScope.of(context).unfocus();
     setState(() { _loading = true; _error = null; });
-
     try {
-      final config = context.read<TenantConfig>();
-      final api    = ApiService(config);
-      await api.registerRequest(
-        fullName:   _name.text.trim(),
-        phone:      _phone.text.trim(),
-        email:      _email.text.trim().isEmpty ? null : _email.text.trim(),
-        pin:        _pin,
-        locationId: _selectedLocationId,
+      final auth = context.read<AuthService>();
+      await auth.registerRequest(
+        fullName: '${_firstNameCtrl.text.trim()} ${_lastNameCtrl.text.trim()}'.trim(),
+        phone: _phoneCtrl.text.trim(),
+        pin: _passwordCtrl.text,
       );
-      if (mounted) setState(() { _submitted = true; _loading = false; });
-    } on ApiException catch (e) {
-      if (mounted) setState(() { _error = e.message; _loading = false; });
-    } catch (_) {
-      if (mounted) setState(() { _error = AppStrings.of(context).unexpectedError; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppStrings.of(context).registerTitle),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1A1035), AppColors.bg, Color(0xFF0D1F1A)],
+      backgroundColor: kBg,
+      resizeToAvoidBottomInset: true,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const CustomPaint(painter: OmniBgPainter()),
+          const OmniCornerBrackets(),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  OmniTopNav(onBack: () => Navigator.maybePop(context)),
+                  const SizedBox(height: 24),
+                  _buildHeading(),
+                  const SizedBox(height: 32),
+                  _buildAvatarPicker(),
+                  const SizedBox(height: 32),
+                  _buildForm(),
+                  const SizedBox(height: 20),
+                  _buildTerms(),
+                  if (_error != null) ...[
+                    const SizedBox(height: 8),
+                    OmniErrorBanner(message: _error!),
+                  ],
+                  const SizedBox(height: 8),
+                  OmniLimeButton(
+                    label: 'Create Account',
+                    loading: _loading,
+                    onTap: _register,
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Already have an account?', style: GoogleFonts.manrope(
+                        fontSize: 14, color: kGray)),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () => Navigator.maybePop(context),
+                        child: Text('Log in', style: GoogleFonts.manrope(
+                          fontSize: 14, fontWeight: FontWeight.w700, color: kLime)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: _submitted ? _buildSuccess() : _buildForm(),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildSuccess() {
+  Widget _buildHeading() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Create your\nOmniPlex account', style: GoogleFonts.spaceGrotesk(
+          fontSize: 30, fontWeight: FontWeight.w700,
+          color: Colors.white, letterSpacing: -0.75, height: 1.25)),
+        const SizedBox(height: 10),
+        Text('Sign up to manage your gyms, bookings and access.',
+          style: GoogleFonts.manrope(fontSize: 14, color: kGray, height: 1.625)),
+      ],
+    );
+  }
+
+  Widget _buildAvatarPicker() {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle_outline, color: AppColors.lime, size: 72),
-            const SizedBox(height: 20),
-            Text(AppStrings.of(context).registerSentTitle,
-                style: Theme.of(context).textTheme.headlineMedium,
-                textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            Text(
-              AppStrings.of(context).registerSentBody,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(AppStrings.of(context).registerBackToLogin),
-            ),
-          ],
-        ),
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 96, height: 96,
+                decoration: BoxDecoration(
+                  color: kCard,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: kBorder2, width: 2),
+                ),
+                child: const Icon(Icons.photo_camera_outlined, color: kGray, size: 28),
+              ),
+              Positioned(
+                right: 0, bottom: 0,
+                child: Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    color: kLime,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: kBg, width: 2),
+                  ),
+                  child: const Icon(Icons.add, color: kBg, size: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('Add photo (optional)', style: GoogleFonts.manrope(
+            fontSize: 12, color: kGray)),
+        ],
       ),
     );
   }
 
   Widget _buildForm() {
-    final config = context.read<TenantConfig>();
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Column(
+      children: [
+        Row(
           children: [
-            // Gym branding header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white12),
-              ),
-              child: Row(
-                children: [
-                  const TenantLogo(size: 44, borderRadius: 12, showShadow: false),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(config.appName,
-                            style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 15)),
-                        Text(AppStrings.of(context).registerMembership,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(AppStrings.of(context).registerCreateAccount,
-                style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            Text(
-              AppStrings.of(context).registerSubtitle,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 28),
-
-            // Name
-            TextFormField(
-              controller: _name,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: AppStrings.of(context).registerFullName,
-                prefixIcon: const Icon(Icons.person_outline, color: AppColors.textSecondary),
-              ),
-              validator: (v) => v == null || v.trim().isEmpty ? AppStrings.of(context).registerNameRequired : null,
-            ),
-            const SizedBox(height: 16),
-
-            // Phone
-            TextFormField(
-              controller: _phone,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.next,
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d\+\-\s]'))],
-              decoration: InputDecoration(
-                labelText: AppStrings.of(context).registerMobile,
-                prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textSecondary),
-                hintText: '6901234567',
-              ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return AppStrings.of(context).registerMobileRequired;
-                final digits = v.replaceAll(RegExp(r'\D'), '');
-                if (digits.length < 10) return AppStrings.of(context).registerInvalidMobile;
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Email (optional)
-            TextFormField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: AppStrings.of(context).registerEmail,
-                prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textSecondary),
-                hintText: 'example@email.com',
-              ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return null;
-                if (!v.contains('@') || !v.contains('.')) return AppStrings.of(context).registerInvalidEmail;
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Location selector — only if multi-location with >1 locations
-            if (!_locLoading && _multiLocation && _locations.length > 1) ...[
-              DropdownButtonFormField<String>(
-                value: _selectedLocationId,
-                decoration: InputDecoration(
-                  labelText: AppStrings.of(context).registerBranch,
-                  prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.textSecondary),
-                ),
-                dropdownColor: AppColors.surface,
-                items: _locations.map((loc) => DropdownMenuItem(
-                  value: loc.id,
-                  child: Text(loc.name),
-                )).toList(),
-                onChanged: (v) => setState(() { _selectedLocationId = v; _error = null; }),
-                validator: (v) => v == null ? AppStrings.of(context).registerBranchRequired : null,
-              ),
-              const SizedBox(height: 16),
-            ],
-            if (_locLoading) ...[
-              const Center(child: CircularProgressIndicator()),
-              const SizedBox(height: 16),
-            ],
-
-            // Password (PIN)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                children: [
-                  Text(AppStrings.of(context).registerChoosePin,
-                      style: Theme.of(context).textTheme.bodyMedium),
-                  const SizedBox(height: 4),
-                  Text(AppStrings.of(context).registerPinHint,
-                      style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(4, (i) {
-                      final filled = i < _pin.length;
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                        width: 18, height: 18,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: filled ? AppColors.lime : Colors.transparent,
-                          border: Border.all(
-                            color: filled ? AppColors.lime : AppColors.border,
-                            width: 2,
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 16),
-                  _Numpad(onKey: _onPinKey, onDelete: _onPinDelete),
-                ],
-              ),
-            ),
-
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.orange.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.orange.withValues(alpha: 0.3)),
-                ),
-                child: Text(_error!, style: const TextStyle(color: AppColors.orange)),
-              ),
-            ],
-            const SizedBox(height: 28),
-            ElevatedButton(
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const SizedBox(height: 20, width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                  : Text(AppStrings.of(context).registerSubmit),
-            ),
+            Expanded(child: OmniField(
+              label: 'FIRST NAME',
+              child: _textInput(_firstNameCtrl, 'John'),
+            )),
+            const SizedBox(width: 16),
+            Expanded(child: OmniField(
+              label: 'LAST NAME',
+              child: _textInput(_lastNameCtrl, 'Doe'),
+            )),
           ],
         ),
+        const SizedBox(height: 20),
+        OmniField(
+          label: 'MOBILE NUMBER',
+          prefix: const OmniPhonePrefix(),
+          child: _textInput(_phoneCtrl, '555 123 4567', type: TextInputType.phone),
+        ),
+        const SizedBox(height: 20),
+        OmniField(
+          label: 'EMAIL',
+          focusNode: _emailFocus,
+          child: _textInput(_emailCtrl, 'john.doe@email.com',
+            type: TextInputType.emailAddress, focus: _emailFocus),
+        ),
+        const SizedBox(height: 20),
+        OmniField(
+          label: 'PASSWORD',
+          suffix: _eyeButton(_passVisible, () => setState(() => _passVisible = !_passVisible)),
+          child: TextField(
+            controller: _passwordCtrl,
+            obscureText: !_passVisible,
+            style: GoogleFonts.manrope(fontSize: 14, color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Create a password',
+              hintStyle: GoogleFonts.manrope(fontSize: 14, color: kDim),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        OmniField(
+          label: 'CONFIRM PASSWORD',
+          suffix: _eyeButton(_confirmVisible, () => setState(() => _confirmVisible = !_confirmVisible)),
+          child: TextField(
+            controller: _confirmCtrl,
+            obscureText: !_confirmVisible,
+            style: GoogleFonts.manrope(fontSize: 14, color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Re-enter your password',
+              hintStyle: GoogleFonts.manrope(fontSize: 14, color: kDim),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            ),
+            onSubmitted: (_) => _register(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _textInput(TextEditingController ctrl, String hint, {
+    TextInputType type = TextInputType.text,
+    FocusNode? focus,
+  }) {
+    return TextField(
+      controller: ctrl,
+      focusNode: focus,
+      keyboardType: type,
+      style: GoogleFonts.manrope(fontSize: 14, color: Colors.white),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.manrope(fontSize: 14, color: kDim),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       ),
     );
   }
-}
 
-class _Numpad extends StatelessWidget {
-  final void Function(String) onKey;
-  final VoidCallback onDelete;
-  const _Numpad({required this.onKey, required this.onDelete});
+  Widget _eyeButton(bool visible, VoidCallback onPressed) {
+    return IconButton(
+      icon: Icon(visible ? Icons.visibility_off : Icons.visibility, color: kDim, size: 20),
+      onPressed: onPressed,
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 2.2,
-      mainAxisSpacing: 4,
-      crossAxisSpacing: 4,
-      children: keys.map((k) {
-        if (k.isEmpty) return const SizedBox();
-        final isDelete = k == '⌫';
-        return TextButton(
-          onPressed: isDelete ? onDelete : () => onKey(k),
-          style: TextButton.styleFrom(
-            foregroundColor: isDelete ? AppColors.textSecondary : AppColors.textPrimary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            backgroundColor: AppColors.surface,
-          ),
-          child: Text(k, style: TextStyle(fontSize: isDelete ? 20 : 22, fontWeight: FontWeight.w600)),
-        );
-      }).toList(),
+  Widget _buildTerms() {
+    return Text.rich(
+      TextSpan(
+        style: GoogleFonts.manrope(fontSize: 12, color: kDim, height: 1.625),
+        children: [
+          const TextSpan(text: 'By continuing you agree to our '),
+          TextSpan(text: 'Terms', style: GoogleFonts.manrope(
+            fontSize: 12, color: kGray, fontWeight: FontWeight.w600)),
+          const TextSpan(text: ' and '),
+          TextSpan(text: 'Privacy Policy', style: GoogleFonts.manrope(
+            fontSize: 12, color: kGray, fontWeight: FontWeight.w600)),
+          const TextSpan(text: '.'),
+        ],
+      ),
     );
   }
 }
