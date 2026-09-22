@@ -1,738 +1,490 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../services/global_auth_service.dart';
-import '../theme/app_colors.dart';
-import 'global_login_screen.dart';
-import 'service_detail_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../widgets/omni_design.dart';
 
 class GymProfileScreen extends StatefulWidget {
-  const GymProfileScreen({
-    super.key,
-    required this.slug,
-    required this.globalAuth,
-    required this.onLoggedIn,
-  });
-
-  final String slug;
-  final GlobalAuthService globalAuth;
-  final VoidCallback onLoggedIn;
+  const GymProfileScreen({super.key, this.gymName = 'Fitness Club Athens'});
+  final String gymName;
 
   @override
   State<GymProfileScreen> createState() => _GymProfileScreenState();
 }
 
 class _GymProfileScreenState extends State<GymProfileScreen> {
-  static const _apiBase = 'https://passionate-grace-production-98ad.up.railway.app/api';
+  int _tab = 0;
+  final _tabs = ['Overview', 'Schedule', 'Memberships', 'Reviews'];
 
-  Map<String, dynamic>? _gym;
-  List<Map<String, dynamic>> _packages = [];
-  List<Map<String, dynamic>> _hours    = [];
-  bool _loading = true;
-  String? _error;
-  bool _joiningRequest = false;
-  String? _joinStatus;
+  final _hours = [
+    ('Monday', '06:00 - 23:00', false),
+    ('Tuesday', '06:00 - 23:00', false),
+    ('Wednesday', '06:00 - 23:00', true),
+    ('Thursday', '06:00 - 23:00', false),
+    ('Friday', '06:00 - 23:00', false),
+    ('Saturday', '08:00 - 20:00', false),
+    ('Sunday', '08:00 - 20:00', false),
+  ];
+
+  final _facilities = [
+    (Icons.fitness_center, 'Free Weights'),
+    (Icons.local_fire_department_outlined, 'Sauna'),
+    (Icons.shower, 'Showers'),
+    (Icons.local_parking, 'Parking'),
+    (Icons.door_back_door_outlined, 'Locker Rooms'),
+    (Icons.directions_run, 'Cardio Zone'),
+  ];
 
   @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      final results = await Future.wait([
-        http.get(Uri.parse('$_apiBase/global/discovery/gyms/${widget.slug}')),
-        http.get(Uri.parse('$_apiBase/global/discovery/gyms/${widget.slug}/packages')),
-        http.get(Uri.parse('$_apiBase/global/discovery/gyms/${widget.slug}/opening-hours')),
-      ]);
-      if (results[0].statusCode == 200) {
-        _gym = jsonDecode(results[0].body) as Map<String, dynamic>;
-      }
-      if (results[1].statusCode == 200) {
-        _packages = (jsonDecode(results[1].body) as List).cast<Map<String, dynamic>>();
-      }
-      if (results[2].statusCode == 200) {
-        _hours = (jsonDecode(results[2].body) as List).cast<Map<String, dynamic>>();
-      }
-    } catch (e) {
-      _error = e.toString();
-    }
-    if (mounted) setState(() => _loading = false);
-  }
-
-  Future<void> _sendJoinRequest() async {
-    if (!widget.globalAuth.isLoggedIn) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => GlobalLoginScreen(
-            globalAuth: widget.globalAuth,
-            onLoggedIn: () { Navigator.pop(context); widget.onLoggedIn(); },
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: kBg,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeroHeader()),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      _buildGymTitle(),
+                      const SizedBox(height: 24),
+                      _buildTabBar(),
+                      const SizedBox(height: 28),
+                      _buildAbout(),
+                      const SizedBox(height: 28),
+                      _buildFacilities(),
+                      const SizedBox(height: 28),
+                      _buildOpeningHours(),
+                      const SizedBox(height: 28),
+                      _buildPhotos(),
+                      const SizedBox(height: 28),
+                      _buildLocation(),
+                      const SizedBox(height: 100), // bottom CTA space
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-      );
-      if (!widget.globalAuth.isLoggedIn) return;
-    }
-
-    setState(() => _joiningRequest = true);
-    try {
-      final res = await http.post(
-        Uri.parse('$_apiBase/global/join-requests'),
-        headers: {'Content-Type': 'application/json',
-                  'Authorization': 'Bearer ${widget.globalAuth.token}'},
-        body: jsonEncode({'business_id': _gym!['id']}),
-      );
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        final body = jsonDecode(res.body) as Map<String, dynamic>;
-        setState(() => _joinStatus = body['status'] as String?);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(body['message'] as String? ?? 'Αίτημα στάλθηκε'),
-          backgroundColor: AppColors.surfaceLight,
-        ));
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(e.toString()),
-        backgroundColor: Colors.red.shade700,
-      ));
-    } finally {
-      if (mounted) setState(() => _joiningRequest = false);
-    }
-  }
-
-  void _goLogin() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => GlobalLoginScreen(
-          globalAuth: widget.globalAuth,
-          preselectedGym: _gym,
-          onLoggedIn: () { Navigator.pop(context); widget.onLoggedIn(); setState(() {}); },
-        ),
+          // Bottom CTA bar
+          Positioned(
+            left: 0, right: 0, bottom: 0,
+            child: _buildBottomBar(context),
+          ),
+        ],
       ),
     );
   }
 
-  Color _parseColor(String? hex) {
-    if (hex == null) return AppColors.lime;
-    try { return Color(int.parse(hex.replaceFirst('#', '0xFF'))); }
-    catch (_) { return AppColors.lime; }
-  }
-
-  String _fmtPrice(int cents) {
-    final eur = cents / 100;
-    return '€${eur % 1 == 0 ? eur.toInt() : eur.toStringAsFixed(2)}';
-  }
-
-  static const _dayNames = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ', 'Κυρ'];
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) {
-      return Scaffold(
-        backgroundColor: AppColors.bg,
-        body: const Center(child: CircularProgressIndicator(color: AppColors.lime)),
-      );
-    }
-    if (_error != null || _gym == null) {
-      return Scaffold(
-        backgroundColor: AppColors.bg,
-        appBar: AppBar(backgroundColor: AppColors.bg, elevation: 0,
-            leading: BackButton(color: AppColors.textPrimary)),
-        body: Center(child: Text(_error ?? 'Δεν βρέθηκε',
-            style: const TextStyle(color: AppColors.textSecondary))),
-      );
-    }
-
-    final gym      = _gym!;
-    final color    = _parseColor(gym['primary_color'] as String?);
-    final name     = gym['app_name'] as String? ?? gym['name'] as String? ?? '';
-    final city     = gym['city'] as String? ?? '';
-    final desc     = gym['description'] as String? ?? '';
-    final phone    = gym['phone'] as String? ?? '';
-    final address  = gym['address'] as String? ?? '';
-    final logoUrl  = gym['logo_url'] as String?;
-    final services = (gym['services'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final isLoggedIn = widget.globalAuth.isLoggedIn;
-
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      // Sticky bottom bar
-      bottomNavigationBar: _StickyBar(
-        isLoggedIn: isLoggedIn,
-        joinStatus: _joinStatus,
-        joiningRequest: _joiningRequest,
-        color: color,
-        onLogin: _goLogin,
-        onJoin: _sendJoinRequest,
-      ),
-      body: CustomScrollView(
-        slivers: [
-          // ── Hero ─────────────────────────────────────────────
-          SliverAppBar(
-            expandedHeight: 260,
-            pinned: true,
-            backgroundColor: AppColors.bg,
-            elevation: 0,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: CircleAvatar(
-                backgroundColor: Colors.black54,
-                radius: 18,
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white, size: 16),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.pin,
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Background: logo fill or gradient
-                  if (logoUrl != null)
-                    Image.network(logoUrl, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _GradientBg(color: color))
-                  else
-                    _GradientBg(color: color),
-
-                  // Dark overlay for readability
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black87],
-                      ),
-                    ),
-                  ),
-
-                  // Name + city at bottom
-                  Positioned(
-                    bottom: 20, left: 20, right: 20,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(name,
-                            style: const TextStyle(
-                              fontSize: 28, fontWeight: FontWeight.w900,
-                              color: Colors.white, height: 1.1,
-                            )),
-                        if (city.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Row(children: [
-                            const Icon(Icons.location_on_rounded,
-                                size: 13, color: Colors.white70),
-                            const SizedBox(width: 4),
-                            Text(city,
-                                style: const TextStyle(
-                                    fontSize: 13, color: Colors.white70)),
-                          ]),
-                        ],
-                      ],
-                    ),
-                  ),
+  Widget _buildHeroHeader() {
+    return SizedBox(
+      height: 320,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(color: const Color(0xFF1A1B20)),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.5),
+                  kBg.withValues(alpha: 0.95),
                 ],
+                stops: const [0.0, 1.0],
               ),
             ),
           ),
-
-          // ── Body ─────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Service chips
-                  if (services.isNotEmpty) ...[
-                    Wrap(
-                      spacing: 8, runSpacing: 8,
-                      children: services.map((s) => _ServiceChip(
-                        label: s['name'] as String? ?? '',
-                        color: color,
-                      )).toList(),
-                    ),
-                    const SizedBox(height: 20),
+          // Top bar
+          Positioned(
+            left: 20, right: 20, top: 56,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _glassBtn(
+                  onTap: () => Navigator.maybePop(context),
+                  child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                ),
+                Row(
+                  children: [
+                    _glassBtn(child: const Icon(Icons.bookmark_border, color: Colors.white, size: 20)),
+                    const SizedBox(width: 10),
+                    _glassBtn(child: const Icon(Icons.share_outlined, color: Colors.white, size: 20)),
                   ],
-
-                  // Description
-                  if (desc.isNotEmpty) ...[
-                    Text(desc,
-                        style: const TextStyle(
-                            fontSize: 14, color: AppColors.textSecondary,
-                            height: 1.65)),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Contact info
-                  if (phone.isNotEmpty || address.isNotEmpty) ...[
-                    _SectionTitle('Στοιχεία επικοινωνίας'),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        children: [
-                          if (phone.isNotEmpty)
-                            _InfoRow(Icons.phone_rounded, phone),
-                          if (phone.isNotEmpty && address.isNotEmpty)
-                            const Divider(color: AppColors.border, height: 20),
-                          if (address.isNotEmpty)
-                            _InfoRow(Icons.location_on_rounded, address),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Opening hours
-                  if (_hours.isNotEmpty) ...[
-                    _SectionTitle('Ωράριο λειτουργίας'),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        children: List.generate(_hours.length, (i) {
-                          final h = _hours[i];
-                          final day = h['day_of_week'] as int? ?? i;
-                          final isClosed = (h['is_closed'] as int?) == 1;
-                          final open  = h['open_time']  as String? ?? '';
-                          final close = h['close_time'] as String? ?? '';
-                          final dayName = day < _dayNames.length ? _dayNames[day] : '';
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 5),
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: 36,
-                                  child: Text(dayName,
-                                      style: const TextStyle(
-                                          fontSize: 13, fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary)),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: isClosed
-                                      ? const Text('Κλειστό',
-                                          style: TextStyle(fontSize: 13,
-                                              color: AppColors.textSecondary))
-                                      : Text('$open – $close',
-                                          style: const TextStyle(fontSize: 13,
-                                              color: AppColors.textPrimary)),
-                                ),
-                                if (!isClosed)
-                                  Container(
-                                    width: 7, height: 7,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF4CAF50),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Υπηρεσίες
-                  if (services.isNotEmpty) ...[
-                    _SectionTitle('Υπηρεσίες'),
-                    const SizedBox(height: 12),
-                    ...services.map((s) => _ServiceRow(
-                      service: s,
-                      color: color,
-                      onBook: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ServiceDetailScreen(
-                            service: s,
-                            gymSlug: widget.slug,
-                            gymName: name,
-                            gymColor: color,
-                            globalAuth: widget.globalAuth,
-                            onPurchased: () {
-                              widget.onLoggedIn();
-                              setState(() {});
-                            },
-                          ),
-                        ),
-                      ),
-                    )),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Πακέτα
-                  if (_packages.isNotEmpty) ...[
-                    _SectionTitle('Πακέτα'),
-                    const SizedBox(height: 12),
-                    ..._packages.map((p) => _PackageCard(
-                          package: p, color: color, fmtPrice: _fmtPrice)),
-                    const SizedBox(height: 8),
-                  ],
-                ],
+                ),
+              ],
+            ),
+          ),
+          // Logo
+          Positioned(
+            left: 20, bottom: -36,
+            child: Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                color: kCard,
+                shape: BoxShape.circle,
+                border: Border.all(color: kBg, width: 4),
               ),
+              child: const Icon(Icons.fitness_center, color: kGray, size: 32),
             ),
           ),
         ],
       ),
     );
   }
-}
 
-// ── Sticky bottom bar ─────────────────────────────────────────
-
-class _StickyBar extends StatelessWidget {
-  const _StickyBar({
-    required this.isLoggedIn,
-    required this.joinStatus,
-    required this.joiningRequest,
-    required this.color,
-    required this.onLogin,
-    required this.onJoin,
-  });
-
-  final bool isLoggedIn;
-  final String? joinStatus;
-  final bool joiningRequest;
-  final Color color;
-  final VoidCallback onLogin;
-  final VoidCallback onJoin;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(20, 12, 20,
-          MediaQuery.of(context).padding.bottom + 12),
-      decoration: const BoxDecoration(
-        color: AppColors.bg,
-        border: Border(top: BorderSide(color: AppColors.border)),
+  Widget _glassBtn({required Widget child, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44, height: 44,
+        decoration: BoxDecoration(
+          color: const Color(0xCC16171B),
+          shape: BoxShape.circle,
+          border: Border.all(color: kBorder),
+        ),
+        child: Center(child: child),
       ),
-      child: isLoggedIn
-          ? _joinedBar()
-          : _loggedOutBar(),
     );
   }
 
-  Widget _loggedOutBar() {
-    return Row(
+  Widget _buildGymTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: onLogin,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textPrimary,
-              side: const BorderSide(color: AppColors.border),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            child: const Text('Σύνδεση', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
+        const SizedBox(height: 40), // space for logo overlap
+        Text(widget.gymName, style: GoogleFonts.spaceGrotesk(
+          fontSize: 24, fontWeight: FontWeight.w700,
+          color: Colors.white, letterSpacing: -0.6)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            const Icon(Icons.star, color: Colors.white, size: 14),
+            const SizedBox(width: 4),
+            Text('4.8', style: GoogleFonts.manrope(
+              fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+            const SizedBox(width: 8),
+            Text('(320 reviews)', style: GoogleFonts.manrope(
+              fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 2,
-          child: FilledButton(
-            onPressed: onLogin,
-            style: FilledButton.styleFrom(
-              backgroundColor: color,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        const SizedBox(height: 5),
+        Row(
+          children: [
+            const Icon(Icons.location_on_outlined, color: kGray, size: 14),
+            const SizedBox(width: 6),
+            Text('Kolonaki, Athens · 1.2 km away', style: GoogleFonts.manrope(
+              fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: kCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: kBorder),
+      ),
+      child: Row(
+        children: List.generate(_tabs.length, (i) {
+          final active = _tab == i;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _tab = i),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: active ? kLime : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(_tabs[i], style: GoogleFonts.manrope(
+                    fontSize: 12, fontWeight: FontWeight.w700,
+                    color: active ? kBg : kGray)),
+                ),
+              ),
             ),
-            child: const Text('Αίτηση Εγγραφής',
-                style: TextStyle(fontWeight: FontWeight.w800)),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildAbout() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('About', style: GoogleFonts.spaceGrotesk(
+          fontSize: 18, fontWeight: FontWeight.w700,
+          color: Colors.white, letterSpacing: -0.45)),
+        const SizedBox(height: 8),
+        Text(
+          'Fitness Club Athens is a premium strength and conditioning facility in the heart of Kolonaki. With top-tier equipment, expert coaches, and a vibrant community, we offer CrossFit, strength training, and boxing programs for all levels — from beginners to competitive athletes.',
+          style: GoogleFonts.manrope(fontSize: 14, color: kGray, height: 1.625)),
+      ],
+    );
+  }
+
+  Widget _buildFacilities() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Facilities & Amenities', style: GoogleFonts.spaceGrotesk(
+          fontSize: 18, fontWeight: FontWeight.w700,
+          color: Colors.white, letterSpacing: -0.45)),
+        const SizedBox(height: 14),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 1.7,
+          children: _facilities.map((f) => Container(
+            decoration: BoxDecoration(
+              color: kCard,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: kBorder),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(f.$1, color: Colors.white, size: 18),
+                const SizedBox(height: 6),
+                Text(f.$2, style: GoogleFonts.manrope(
+                  fontSize: 11, fontWeight: FontWeight.w600,
+                  color: Colors.white), textAlign: TextAlign.center),
+              ],
+            ),
+          )).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOpeningHours() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Opening Hours', style: GoogleFonts.spaceGrotesk(
+          fontSize: 18, fontWeight: FontWeight.w700,
+          color: Colors.white, letterSpacing: -0.45)),
+        const SizedBox(height: 14),
+        Container(
+          decoration: BoxDecoration(
+            color: kCard,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: kBorder),
+          ),
+          clipBehavior: Clip.hardEdge,
+          child: Column(
+            children: List.generate(_hours.length, (i) {
+              final h = _hours[i];
+              final isToday = h.$3;
+              return Container(
+                decoration: BoxDecoration(
+                  color: isToday ? kLime.withValues(alpha: 0.10) : Colors.transparent,
+                  border: i < _hours.length - 1
+                      ? const Border(bottom: BorderSide(color: Color(0xFF26272C)))
+                      : null,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        if (isToday) ...[
+                          Container(
+                            width: 6, height: 6,
+                            decoration: const BoxDecoration(
+                              color: kLime, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(h.$1, style: GoogleFonts.manrope(
+                          fontSize: 14,
+                          fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
+                          color: isToday ? kLime : kGray)),
+                      ],
+                    ),
+                    Text(h.$2, style: GoogleFonts.manrope(
+                      fontSize: 14,
+                      fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
+                      color: isToday ? kLime : kGray)),
+                  ],
+                ),
+              );
+            }),
           ),
         ),
       ],
     );
   }
 
-  Widget _joinedBar() {
-    if (joinStatus == 'pending') {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.lime.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.lime.withValues(alpha: 0.3)),
+  Widget _buildPhotos() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.zero,
+          child: Text('Photos', style: GoogleFonts.spaceGrotesk(
+            fontSize: 18, fontWeight: FontWeight.w700,
+            color: Colors.white, letterSpacing: -0.45)),
         ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.hourglass_top_rounded, color: AppColors.lime, size: 18),
-            SizedBox(width: 8),
-            Text('Το αίτημά σου εκκρεμεί',
-                style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w700)),
-          ],
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 128,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: 3,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, i) => Container(
+              width: 128, height: 128,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1B20),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: kBorder),
+              ),
+            ),
+          ),
         ),
-      );
-    }
-    if (joinStatus == 'linked') {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle_rounded, color: Colors.green, size: 18),
-            SizedBox(width: 8),
-            Text('Είσαι ήδη μέλος!',
-                style: TextStyle(color: Colors.green, fontWeight: FontWeight.w700)),
-          ],
-        ),
-      );
-    }
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: joiningRequest ? null : onJoin,
-        style: FilledButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-        child: joiningRequest
-            ? const SizedBox(width: 20, height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-            : const Text('Αίτηση Εγγραφής',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-      ),
+      ],
     );
   }
-}
 
-// ── Sub-widgets ───────────────────────────────────────────────
-
-class _GradientBg extends StatelessWidget {
-  const _GradientBg({required this.color});
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          color.withValues(alpha: 0.6),
-          color.withValues(alpha: 0.15),
-          AppColors.bg,
-        ],
-      ),
-    ),
-  );
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(
-          fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary));
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow(this.icon, this.text);
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(icon, size: 16, color: AppColors.textSecondary),
-      const SizedBox(width: 10),
-      Expanded(child: Text(text,
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary))),
-    ],
-  );
-}
-
-class _ServiceChip extends StatelessWidget {
-  const _ServiceChip({required this.label, required this.color});
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withValues(alpha: 0.3)),
-    ),
-    child: Text(label, style: TextStyle(
-        fontSize: 12, fontWeight: FontWeight.w600, color: color)),
-  );
-}
-
-class _ServiceRow extends StatelessWidget {
-  const _ServiceRow({
-    required this.service,
-    required this.color,
-    required this.onBook,
-  });
-  final Map<String, dynamic> service;
-  final Color color;
-  final VoidCallback onBook;
-
-  @override
-  Widget build(BuildContext context) {
-    final name     = service['name'] as String? ?? '';
-    final duration = service['duration_mins'] as int?;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.fitness_center_rounded, color: color, size: 20),
+  Widget _buildLocation() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Location', style: GoogleFonts.spaceGrotesk(
+          fontSize: 18, fontWeight: FontWeight.w700,
+          color: Colors.white, letterSpacing: -0.45)),
+        const SizedBox(height: 14),
+        Container(
+          decoration: BoxDecoration(
+            color: kCard,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: kBorder),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 14,
-                    color: AppColors.textPrimary)),
-                if (duration != null)
-                  Text('$duration λεπτά',
-                      style: const TextStyle(fontSize: 12,
-                          color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: onBook,
-            style: TextButton.styleFrom(
-              foregroundColor: color,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(color: color.withValues(alpha: 0.4))),
-            ),
-            child: const Text('Κράτηση',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PackageCard extends StatelessWidget {
-  const _PackageCard({
-    required this.package,
-    required this.color,
-    required this.fmtPrice,
-  });
-  final Map<String, dynamic> package;
-  final Color color;
-  final String Function(int) fmtPrice;
-
-  @override
-  Widget build(BuildContext context) {
-    final name     = package['name'] as String? ?? '';
-    final desc     = package['description'] as String? ?? '';
-    final sessions = package['sessions_included'] as int?;
-    final days     = package['validity_days'] as int?;
-    final price    = package['price_cents'] as int? ?? 0;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 15,
-                    color: AppColors.textPrimary)),
-                if (desc.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(desc, style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
-                ],
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
+          clipBehavior: Clip.hardEdge,
+          child: Column(
+            children: [
+              // Map placeholder
+              Container(
+                height: 160,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [const Color(0xFF1C1D22), kCard],
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: kLime.withValues(alpha: 0.20),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Container(
+                      width: 32, height: 32,
+                      margin: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: kLime, shape: BoxShape.circle),
+                      child: const Icon(Icons.location_on, color: kBg, size: 16),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    if (sessions != null)
-                      _pill('$sessions συνεδρίες'),
-                    if (days != null)
-                      _pill('$days ημέρες'),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('15 Skoufa Street', style: GoogleFonts.manrope(
+                          fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                        Text('Kolonaki, Athens 10673', style: GoogleFonts.manrope(
+                          fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text('Get Directions', style: GoogleFonts.manrope(
+                          fontSize: 12, fontWeight: FontWeight.w700, color: kCyan)),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.open_in_new, color: kCyan, size: 12),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomBar(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: kBg.withValues(alpha: 0.95),
+        border: const Border(top: BorderSide(color: kBorder)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: kBorder2),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 16),
+                  const SizedBox(width: 8),
+                  Text('Book Drop-in', style: GoogleFonts.manrope(
+                    fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(fmtPrice(price),
-                  style: TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w900, color: color)),
-            ],
+          Expanded(
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: kLime,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.badge_outlined, color: kBg, size: 16),
+                  const SizedBox(width: 8),
+                  Text('View Memberships', style: GoogleFonts.manrope(
+                    fontSize: 14, fontWeight: FontWeight.w700, color: kBg)),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-
-  Widget _pill(String text) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(text, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
-  );
 }
