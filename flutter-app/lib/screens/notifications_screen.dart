@@ -1,421 +1,245 @@
-import 'dart:async';
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../widgets/omni_design.dart';
 
-import '../config/tenant_config.dart';
-import '../l10n/app_strings.dart';
-import '../services/api_service.dart';
-import '../services/auth_service.dart';
-import '../services/language_service.dart';
-import '../services/notification_service.dart';
-import '../theme/app_colors.dart';
-import '../utils/media_url.dart';
-import '../widgets/ui_kit.dart';
-import 'home_screen.dart';
-import 'notification_detail_screen.dart';
-import 'messages_screen.dart';
-import 'payments_screen.dart';
-
-class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({
-    super.key,
-    this.embedded = false,
-    this.onUnreadChanged,
-  });
-
-  final bool embedded;
-  final ValueChanged<int>? onUnreadChanged;
+class NotificationsScreen extends StatelessWidget {
+  const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
-}
-
-class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<Map<String, dynamic>> _items = [];
-  bool _loading = true;
-  bool _markingAll = false;
-
-  ApiService get _api => context.read<AuthService>().api;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-    NotificationService.instance.clearBadge();
-  }
-
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    try {
-      final result = await _api.fetchNotifications();
-      if (mounted) {
-        setState(() => _items = result.notifications);
-        _notifyUnread();
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  void _notifyUnread() {
-    final count = _items.where((n) => n['is_read'] != 1 && n['is_read'] != true).length;
-    widget.onUnreadChanged?.call(count);
-  }
-
-  Future<void> _markRead(Map<String, dynamic> item) async {
-    final id = item['id'] as String?;
-    if (id == null || item['is_read'] == 1 || item['is_read'] == true) return;
-    await _api.markNotificationRead(id);
-    if (!mounted) return;
-    setState(() {
-      item['is_read'] = 1;
-      // Remove from list after a short delay so user sees it disappear
-      Future.delayed(const Duration(milliseconds: 350), () {
-        if (!mounted) return;
-        setState(() => _items.removeWhere((n) => n['id'] == id));
-        _notifyUnread();
-      });
-    });
-    _notifyUnread();
-  }
-
-  Future<void> _markAllRead() async {
-    final hasUnread = _items.any((n) => n['is_read'] != 1 && n['is_read'] != true);
-    if (!hasUnread) return;
-    setState(() => _markingAll = true);
-    try {
-      await _api.markAllNotificationsRead();
-      if (!mounted) return;
-      setState(() {
-        for (final n in _items) n['is_read'] = 1;
-      });
-      _notifyUnread();
-      NotificationService.instance.clearBadge();
-    } finally {
-      if (mounted) setState(() => _markingAll = false);
-    }
-  }
-
-  String? _imageUrl(Map<String, dynamic> n) {
-    final config = context.read<TenantConfig>();
-    final direct = n['image_url'] as String?;
-    if (direct != null && direct.isNotEmpty) return resolveMediaUrl(config, direct);
-    final payload = n['payload'];
-    Map<String, dynamic>? map;
-    if (payload is Map) {
-      map = payload.cast<String, dynamic>();
-    } else if (payload is String && payload.isNotEmpty) {
-      try { map = (jsonDecode(payload) as Map).cast<String, dynamic>(); } catch (_) {}
-    }
-    final fromPayload = map?['image_url'] as String?;
-    if (fromPayload != null && fromPayload.isNotEmpty) return resolveMediaUrl(config, fromPayload);
-    return null;
-  }
-
-  DateTime? _when(Map<String, dynamic> n) {
-    final created = n['created_at'] as String?;
-    if (created == null) return null;
-    try { return DateTime.parse(created).toLocal(); } catch (_) { return null; }
-  }
-
-  IconData _iconFor(String? type) {
-    switch (type) {
-      case 'announcement': return Icons.campaign_outlined;
-      case 'payment_reminder':
-      case 'payment_reminder_auto': return Icons.payments_outlined;
-      case 'booking_reminder_24h':
-      case 'prep_reminder': return Icons.calendar_today_outlined;
-      case 'workout_complete':
-      case 'checkin_reminder': return Icons.fitness_center;
-      case 'message': return Icons.chat_bubble_outline;
-      case 'community_mention':
-      case 'community_comment':
-      case 'community_post': return Icons.people_outline;
-      default: return Icons.notifications_outlined;
-    }
-  }
-
-  Map<String, dynamic>? _parsePayload(Map<String, dynamic> n) {
-    final payload = n['payload'];
-    if (payload is Map) return payload.cast<String, dynamic>();
-    if (payload is String && payload.isNotEmpty) {
-      try { return (jsonDecode(payload) as Map).cast<String, dynamic>(); } catch (_) {}
-    }
-    return null;
-  }
-
-  Future<void> _onTap(Map<String, dynamic> n) async {
-    final type = n['type'] as String? ?? '';
-    final payload = _parsePayload(n);
-
-    // Mark read first, then navigate
-    await _markRead(n);
-    if (!mounted) return;
-
-    switch (type) {
-      // ── Messages ────────────────────────────────────────────────────────────
-      case 'message':
-        final threadId = payload?['thread_id'] as String?;
-        Navigator.of(context).popUntil((r) => r.isFirst);
-        HomeScreen.openMessages(threadId: threadId);
-        return;
-
-      // ── Bookings ─────────────────────────────────────────────────────────────
-      case 'booking_reminder_24h':
-      case 'prep_reminder':
-      case 'checkin_reminder':
-      case 'workout_complete':
-        Navigator.of(context).popUntil((r) => r.isFirst);
-        HomeScreen.selectTab(1); // Ραντεβού tab
-        return;
-
-      // ── Payments / memberships ────────────────────────────────────────────────
-      case 'payment_reminder':
-      case 'payment_reminder_auto':
-        Navigator.of(context).popUntil((r) => r.isFirst);
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const PaymentsScreen()),
-        );
-        return;
-
-      // ── Community ─────────────────────────────────────────────────────────────
-      case 'community_mention':
-      case 'community_comment':
-      case 'community_post':
-        final postId = payload?['post_id'] as String?;
-        Navigator.of(context).popUntil((r) => r.isFirst);
-        HomeScreen.openCommunityPost(postId);
-        return;
-
-      // ── Announcements / generic with image or body ────────────────────────────
-      default:
-        final imageUrl = _imageUrl(n);
-        final body = n['body'] as String?;
-        final hasDetail = imageUrl != null || (body?.isNotEmpty == true);
-        if (!hasDetail) return;
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => NotificationDetailScreen(
-              title: n['title'] as String? ?? AppStrings.of(context).notificationDefault,
-              body: body,
-              imageUrl: imageUrl,
-              when: _when(n),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: kBg,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Lime top glow (subtle)
+          Positioned(
+            left: 0, top: 0,
+            child: Container(
+              width: 375, height: 256,
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topCenter,
+                  radius: 1.0,
+                  colors: [
+                    kLime.withValues(alpha: 0.08),
+                    kLime.withValues(alpha: 0.02),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.35, 0.6],
+                ),
+              ),
             ),
           ),
-        );
-    }
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTopBar(context),
+                  const SizedBox(height: 28),
+                  _buildSectionLabel('TODAY'),
+                  const SizedBox(height: 12),
+                  _buildNotificationCard(
+                    icon: Icons.notifications_outlined,
+                    iconBg: const Color(0xFF1D2410),
+                    iconBorder: kLime.withValues(alpha: 0.30),
+                    iconColor: kLime,
+                    title: 'CrossFit starts in 1 hour',
+                    subtitle: 'Fitness Club Athens',
+                    time: '17:30',
+                    unread: true,
+                    hasLimeBar: true,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildNotificationCard(
+                    icon: Icons.warning_amber_outlined,
+                    iconBg: const Color(0xFF2B2110),
+                    iconBorder: const Color(0xFFFFB238).withValues(alpha: 0.30),
+                    iconColor: const Color(0xFFFFB238),
+                    title: 'Membership expires in 5 days',
+                    subtitle: 'Urban Fitness · Monthly Unlimited',
+                    time: '09:12',
+                    unread: true,
+                    hasLimeBar: true,
+                  ),
+                  const SizedBox(height: 28),
+                  _buildSectionLabel('EARLIER'),
+                  const SizedBox(height: 12),
+                  _buildNotificationCard(
+                    icon: Icons.check_circle_outline,
+                    iconBg: const Color(0xFF1D2410),
+                    iconBorder: kLime.withValues(alpha: 0.30),
+                    iconColor: kLime,
+                    title: 'Booking confirmed',
+                    subtitle: 'Yoga · Tomorrow 20:00',
+                    time: 'Yesterday',
+                    unread: false,
+                    hasLimeBar: false,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildNotificationCard(
+                    icon: Icons.check_circle_outline,
+                    iconBg: const Color(0xFF1D2410),
+                    iconBorder: kLime.withValues(alpha: 0.30),
+                    iconColor: kLime,
+                    title: 'Gym membership approved',
+                    subtitle: 'Iron Works Gym',
+                    time: '2 days ago',
+                    unread: false,
+                    hasLimeBar: false,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildNotificationCard(
+                    icon: Icons.credit_card_outlined,
+                    iconBg: const Color(0xFF1F2024),
+                    iconBorder: kBorder2,
+                    iconColor: kGray,
+                    title: 'Payment successful\n€90.00',
+                    subtitle: '10 Class Pack · Fitness Club Athens',
+                    time: '3 days ago',
+                    unread: false,
+                    hasLimeBar: false,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  String _relativeTime(DateTime when) {
-    final s = AppStrings.of(context);
-    final diff = DateTime.now().difference(when);
-    if (diff.inMinutes < 1) return s.notificationsJustNow;
-    if (diff.inMinutes < 60) return s.notificationsMinutesAgo(diff.inMinutes);
-    if (diff.inHours < 24) return s.notificationsHoursAgo(diff.inHours);
-    if (diff.inDays == 1) return s.notificationsYesterday;
-    if (diff.inDays < 7) return s.notificationsDaysAgo(diff.inDays);
-    final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
-    return DateFormat('d MMM', locale).format(when);
-  }
-
-  Widget _buildList() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.lime));
-    }
-    if (_items.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(AppStrings.of(context).notificationsEmpty,
-              style: const TextStyle(color: AppColors.textSecondary)),
+  Widget _buildTopBar(BuildContext context) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.maybePop(context),
+          child: Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: kCard,
+              shape: BoxShape.circle,
+              border: Border.all(color: kBorder),
+            ),
+            child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+          ),
         ),
-      );
-    }
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text('Notifications', style: GoogleFonts.spaceGrotesk(
+            fontSize: 20, fontWeight: FontWeight.w700,
+            color: Colors.white, letterSpacing: -0.5)),
+        ),
+        Text('Mark all as read', style: GoogleFonts.manrope(
+          fontSize: 12, fontWeight: FontWeight.w700, color: kLime)),
+      ],
+    );
+  }
 
-    return RefreshIndicator(
-      color: AppColors.lime,
-      onRefresh: _load,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        itemCount: _items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (_, i) {
-          final n = _items[i];
-          final isRead = n['is_read'] == 1 || n['is_read'] == true;
-          final imageUrl = _imageUrl(n);
-          final when = _when(n);
-          final hasDetail = imageUrl != null || (n['body'] as String?)?.isNotEmpty == true;
+  Widget _buildSectionLabel(String label) {
+    return Text(label, style: GoogleFonts.manrope(
+      fontSize: 11, fontWeight: FontWeight.w700,
+      color: kGray, letterSpacing: 1.1));
+  }
 
-          return Opacity(
-            opacity: isRead ? 0.65 : 1.0,
-            child: SurfaceCard(
-              padding: EdgeInsets.zero,
-              child: InkWell(
-                onTap: () => _onTap(n),
-                borderRadius: BorderRadius.circular(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (imageUrl != null)
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: AppColors.surface,
-                              child: const Icon(Icons.broken_image_outlined,
-                                  color: AppColors.textSecondary),
+  Widget _buildNotificationCard({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconBorder,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required String time,
+    required bool unread,
+    required bool hasLimeBar,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: kCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: kBorder),
+        ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: iconBg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: iconBorder),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(title, style: GoogleFonts.spaceGrotesk(
+                                fontSize: 14, fontWeight: FontWeight.w700,
+                                color: Colors.white)),
                             ),
-                          ),
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (imageUrl == null)
-                            Container(
-                              width: 40, height: 40,
-                              decoration: BoxDecoration(
-                                color: (isRead ? AppColors.textSecondary : AppColors.lime)
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                _iconFor(n['type'] as String?),
-                                color: isRead ? AppColors.textSecondary : AppColors.lime,
-                                size: 20,
-                              ),
-                            ),
-                          if (imageUrl == null) const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            const SizedBox(width: 8),
+                            Row(
                               children: [
-                                Text(
-                                  n['title'] as String? ?? AppStrings.of(context).notificationDefault,
-                                  style: TextStyle(
-                                    fontWeight: isRead ? FontWeight.w600 : FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                if ((n['body'] as String?)?.isNotEmpty == true) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    n['body'] as String,
-                                    maxLines: hasDetail ? 2 : null,
-                                    overflow: hasDetail ? TextOverflow.ellipsis : null,
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                  ),
-                                ],
-                                if (when != null) ...[
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    _relativeTime(when),
-                                    style: Theme.of(context).textTheme.bodyMedium
-                                        ?.copyWith(fontSize: 12, color: AppColors.textSecondary),
-                                  ),
-                                ],
-                                if (!isRead && hasDetail) ...[
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    AppStrings.of(context).notificationTapToRead,
-                                    style: TextStyle(
-                                      fontSize: 12, fontWeight: FontWeight.w600,
-                                      color: AppColors.lime.withValues(alpha: 0.9),
+                                Text(time, style: GoogleFonts.manrope(
+                                  fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
+                                if (unread) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    width: 6, height: 6,
+                                    decoration: BoxDecoration(
+                                      color: kLime,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(color: kLime.withValues(alpha: 0.9), blurRadius: 8),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ],
                             ),
-                          ),
-                          if (!isRead)
-                            Container(
-                              width: 8, height: 8,
-                              margin: const EdgeInsets.only(top: 6),
-                              decoration: const BoxDecoration(
-                                color: AppColors.lime, shape: BoxShape.circle,
-                              ),
-                            ),
-                          if (isRead)
-                            const Icon(Icons.check_circle_outline,
-                                size: 16, color: AppColors.textSecondary),
-                        ],
-                      ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(subtitle, style: GoogleFonts.manrope(
+                          fontSize: 12, fontWeight: FontWeight.w400, color: kGray)),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          );
-        },
+            // Left lime accent bar for unread
+            if (hasLimeBar)
+              Positioned(
+                left: 0, top: 0, bottom: 0,
+                child: Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: kLime,
+                    boxShadow: [
+                      BoxShadow(color: kLime.withValues(alpha: 0.6), blurRadius: 10),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildHeader({bool fullPage = false}) {
-    final hasUnread = _items.any((n) => n['is_read'] != 1 && n['is_read'] != true);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, fullPage ? 0 : 8, 8, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(AppStrings.of(context).notificationsTitle,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-          ),
-          if (hasUnread)
-            TextButton(
-              onPressed: _markingAll ? null : _markAllRead,
-              child: _markingAll
-                  ? const SizedBox(width: 14, height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
-                  : Text(AppStrings.of(context).notificationsMarkRead,
-                      style: const TextStyle(fontSize: 13, color: AppColors.lime)),
-            ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.embedded) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildHeader(),
-          Expanded(child: _buildList()),
-        ],
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppStrings.of(context).notificationsTitle),
-        actions: [
-          if (_items.any((n) => n['is_read'] != 1 && n['is_read'] != true))
-            TextButton(
-              onPressed: _markingAll ? null : _markAllRead,
-              child: _markingAll
-                  ? const SizedBox(width: 14, height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime))
-                  : Text(AppStrings.of(context).notificationsMarkRead,
-                      style: const TextStyle(fontSize: 13, color: AppColors.lime)),
-            ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-        ],
-      ),
-      body: _buildList(),
     );
   }
 }
