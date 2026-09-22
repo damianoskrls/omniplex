@@ -1,12 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../config/tenant_config.dart';
-import '../theme/app_colors.dart';
-import '../utils/media_url.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key, this.config});
-  final TenantConfig? config;
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -14,31 +11,29 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late final AnimationController _entry;
+  late final AnimationController _spin;
   late final AnimationController _pulse;
-  late final AnimationController _orb;
 
-  late final Animation<double> _logoScale;
-  late final Animation<double> _logoOpacity;
-  late final Animation<double> _textOpacity;
+  late final Animation<double> _fadeIn;
+  late final Animation<double> _logoFade;
+  late final Animation<double> _textFade;
   late final Animation<Offset> _textSlide;
-  late final Animation<double> _dotsOpacity;
 
   @override
   void initState() {
     super.initState();
 
-    _entry = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
-    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))
-      ..repeat(reverse: true);
-    _orb   = AnimationController(vsync: this, duration: const Duration(milliseconds: 4000))
+    _entry = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
+    _spin  = AnimationController(vsync: this, duration: const Duration(milliseconds: 3000))
       ..repeat();
+    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000))
+      ..repeat(reverse: true);
 
-    _logoScale   = CurvedAnimation(parent: _entry, curve: const Interval(0, 0.6, curve: Curves.easeOutBack));
-    _logoOpacity = CurvedAnimation(parent: _entry, curve: const Interval(0, 0.4, curve: Curves.easeOut));
-    _textOpacity = CurvedAnimation(parent: _entry, curve: const Interval(0.45, 0.85, curve: Curves.easeOut));
-    _textSlide   = Tween<Offset>(begin: const Offset(0, 0.25), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _entry, curve: const Interval(0.45, 0.85, curve: Curves.easeOutCubic)));
-    _dotsOpacity = CurvedAnimation(parent: _entry, curve: const Interval(0.75, 1, curve: Curves.easeOut));
+    _fadeIn   = CurvedAnimation(parent: _entry, curve: const Interval(0.0, 0.4, curve: Curves.easeOut));
+    _logoFade = CurvedAnimation(parent: _entry, curve: const Interval(0.2, 0.6, curve: Curves.easeOut));
+    _textFade = CurvedAnimation(parent: _entry, curve: const Interval(0.5, 0.9, curve: Curves.easeOut));
+    _textSlide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _entry, curve: const Interval(0.5, 0.9, curve: Curves.easeOutCubic)));
 
     _entry.forward();
   }
@@ -46,325 +41,479 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void dispose() {
     _entry.dispose();
+    _spin.dispose();
     _pulse.dispose();
-    _orb.dispose();
     super.dispose();
   }
-
-  bool get _hasGym => widget.config != null;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF09090E),
+      backgroundColor: const Color(0xFF0A0A0A),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Ambient orb background
-          AnimatedBuilder(
-            animation: _orb,
-            builder: (_, __) => CustomPaint(
-              painter: _OrbPainter(
-                progress: _orb.value,
-                hasGym: _hasGym,
-                gymColor: _hasGym ? _gymColor() : null,
+          // Background radial gradients
+          CustomPaint(painter: _BackgroundPainter()),
+
+          // Corner brackets
+          const _CornerBrackets(),
+
+          // Systems ready indicator (top center)
+          FadeTransition(
+            opacity: _fadeIn,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 32),
+                  child: _SystemsReady(),
+                ),
               ),
             ),
           ),
 
-          // Content
-          SafeArea(
+          // Main centered content
+          Center(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Spacer(flex: 2),
-
-                // Logo
+                // Crosshair / target icon with glow
                 FadeTransition(
-                  opacity: _logoOpacity,
-                  child: ScaleTransition(
-                    scale: _logoScale,
-                    child: _hasGym ? _GymLogo(config: widget.config!) : _OmniplexLogo(),
+                  opacity: _logoFade,
+                  child: AnimatedBuilder(
+                    animation: _pulse,
+                    builder: (_, __) => _CrosshairIcon(pulseValue: _pulse.value),
                   ),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
-                // Name / wordmark
+                // OMNIPLEX wordmark
+                FadeTransition(
+                  opacity: _logoFade,
+                  child: _OmniplexWordmark(),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Horizontal divider
+                FadeTransition(
+                  opacity: _textFade,
+                  child: Container(
+                    width: 64,
+                    height: 1,
+                    color: const Color(0xFF2A2B30),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Spinning arc
+                FadeTransition(
+                  opacity: _textFade,
+                  child: AnimatedBuilder(
+                    animation: _spin,
+                    builder: (_, __) => _SpinningArc(progress: _spin.value),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // OMNIPLEX label
+                FadeTransition(
+                  opacity: _textFade,
+                  child: Text(
+                    'OMNIPLEX',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF9A9CA3),
+                      letterSpacing: 3.85,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Tagline
                 SlideTransition(
                   position: _textSlide,
                   child: FadeTransition(
-                    opacity: _textOpacity,
-                    child: _hasGym ? _GymTitle(config: widget.config!) : _OmniplexWordmark(),
+                    opacity: _textFade,
+                    child: _Tagline(),
                   ),
                 ),
-
-                const Spacer(flex: 3),
-
-                // Loading indicator
-                FadeTransition(
-                  opacity: _dotsOpacity,
-                  child: AnimatedBuilder(
-                    animation: _pulse,
-                    builder: (_, __) => _LoadingDots(progress: _pulse.value),
-                  ),
-                ),
-
-                const SizedBox(height: 56),
               ],
+            ),
+          ),
+
+          // Bottom label
+          FadeTransition(
+            opacity: _textFade,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 40),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(width: 128, height: 1, color: const Color(0xFF2A2B30)),
+                      const SizedBox(height: 12),
+                      Text(
+                        'PRECISION FITNESS ACCESS',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF5A5C63),
+                          letterSpacing: 2.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
   }
-
-  Color _gymColor() {
-    try {
-      return Color(int.parse(widget.config!.primaryColor.replaceFirst('#', '0xFF')));
-    } catch (_) {
-      return AppColors.lime;
-    }
-  }
 }
 
-// ── Omniplex logo ─────────────────────────────────────────────────────────────
-class _OmniplexLogo extends StatelessWidget {
+// ── Background painter ────────────────────────────────────────────────────────
+class _BackgroundPainter extends CustomPainter {
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Glow behind logo
-        Container(
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF7C5CFC).withValues(alpha: 0.35),
-                blurRadius: 60,
-                spreadRadius: 10,
-              ),
-            ],
-          ),
-          child: Image.asset(
-            'assets/logo.png',
-            width: 220,
-            errorBuilder: (_, __, ___) => _FallbackMark(size: 120),
-          ),
+  void paint(Canvas canvas, Size size) {
+    // Main lime radial glow (center)
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height * 0.38),
+      size.width * 0.82,
+      Paint()
+        ..shader = RadialGradient(colors: [
+          const Color(0xFFC6FF3D).withValues(alpha: 0.16),
+          const Color(0xFFC6FF3D).withValues(alpha: 0.05),
+          Colors.transparent,
+        ], stops: const [0.0, 0.32, 0.6]).createShader(
+          Rect.fromCircle(center: Offset(size.width / 2, size.height * 0.38), radius: size.width * 0.82),
         ),
-      ],
+    );
+    // Top-right cyan glow
+    canvas.drawCircle(
+      Offset(size.width - 15, 120),
+      80,
+      Paint()
+        ..shader = RadialGradient(colors: [
+          const Color(0xFF3EE6FF).withValues(alpha: 0.10),
+          Colors.transparent,
+        ], stops: const [0.0, 0.7]).createShader(
+          Rect.fromCircle(center: Offset(size.width - 15, 120), radius: 80),
+        ),
+    );
+    // Bottom-left lime glow
+    canvas.drawCircle(
+      Offset(80, size.height - 192),
+      64,
+      Paint()
+        ..shader = RadialGradient(colors: [
+          const Color(0xFFC6FF3D).withValues(alpha: 0.08),
+          Colors.transparent,
+        ], stops: const [0.0, 0.7]).createShader(
+          Rect.fromCircle(center: Offset(80, size.height - 192), radius: 64),
+        ),
     );
   }
+
+  @override
+  bool shouldRepaint(_BackgroundPainter old) => false;
 }
 
-// ── Gym logo (from network) ───────────────────────────────────────────────────
-class _GymLogo extends StatelessWidget {
-  const _GymLogo({required this.config});
-  final TenantConfig config;
-
-  Color get _primary {
-    try { return Color(int.parse(config.primaryColor.replaceFirst('#', '0xFF'))); }
-    catch (_) { return AppColors.lime; }
-  }
+// ── Corner brackets ───────────────────────────────────────────────────────────
+class _CornerBrackets extends StatelessWidget {
+  const _CornerBrackets();
 
   @override
   Widget build(BuildContext context) {
-    final networkUrl = resolveMediaUrl(config, config.logoUrl);
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 160, height: 160,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(colors: [_primary.withValues(alpha: 0.10), Colors.transparent]),
-          ),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Stack(
+          fit: StackFit.expand,
+          children: const [
+            Align(alignment: Alignment.topLeft,     child: _Bracket(corners: {_C.topLeft})),
+            Align(alignment: Alignment.topRight,    child: _Bracket(corners: {_C.topRight})),
+            Align(alignment: Alignment.bottomLeft,  child: _Bracket(corners: {_C.bottomLeft})),
+            Align(alignment: Alignment.bottomRight, child: _Bracket(corners: {_C.bottomRight})),
+          ],
         ),
-        Container(
-          width: 120, height: 120,
-          decoration: BoxDecoration(
-            color: const Color(0xFF111118),
-            shape: BoxShape.circle,
-            border: Border.all(color: _primary.withValues(alpha: 0.30), width: 1.5),
-            boxShadow: [
-              BoxShadow(color: _primary.withValues(alpha: 0.22), blurRadius: 56, spreadRadius: 6),
-            ],
-          ),
-          child: ClipOval(
-            child: networkUrl != null
-                ? Image.network(
-                    networkUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => _FallbackMark(size: 120, color: _primary),
-                  )
-                : _FallbackMark(size: 120, color: _primary),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Wordmarks ─────────────────────────────────────────────────────────────────
-class _OmniplexWordmark extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      'flow for all',
-      style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.30),
-        fontSize: 13,
-        letterSpacing: 4,
-        fontWeight: FontWeight.w400,
       ),
     );
   }
 }
 
-class _GymTitle extends StatelessWidget {
-  const _GymTitle({required this.config});
-  final TenantConfig config;
+enum _C { topLeft, topRight, bottomLeft, bottomRight }
+
+class _Bracket extends StatelessWidget {
+  const _Bracket({required this.corners});
+  final Set<_C> corners;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final c = corners.first;
+    final showTop    = c == _C.topLeft || c == _C.topRight;
+    final showBottom = c == _C.bottomLeft || c == _C.bottomRight;
+    final showLeft   = c == _C.topLeft || c == _C.bottomLeft;
+    final showRight  = c == _C.topRight || c == _C.bottomRight;
+
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: CustomPaint(
+        painter: _BracketPainter(
+          showTop: showTop, showBottom: showBottom,
+          showLeft: showLeft, showRight: showRight,
+        ),
+      ),
+    );
+  }
+}
+
+class _BracketPainter extends CustomPainter {
+  const _BracketPainter({
+    required this.showTop, required this.showBottom,
+    required this.showLeft, required this.showRight,
+  });
+  final bool showTop, showBottom, showLeft, showRight;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF2A2B30)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    if (showTop)    canvas.drawLine(Offset(0, 0), Offset(size.width, 0), paint);
+    if (showBottom) canvas.drawLine(Offset(0, size.height), Offset(size.width, size.height), paint);
+    if (showLeft)   canvas.drawLine(Offset(0, 0), Offset(0, size.height), paint);
+    if (showRight)  canvas.drawLine(Offset(size.width, 0), Offset(size.width, size.height), paint);
+  }
+
+  @override
+  bool shouldRepaint(_BracketPainter old) => false;
+}
+
+// ── Systems ready indicator ───────────────────────────────────────────────────
+class _SystemsReady extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          config.appName.toUpperCase(),
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 4,
+        Container(
+          width: 6, height: 6,
+          decoration: const BoxDecoration(
+            color: Color(0xFFC6FF3D),
+            shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 24, height: 1, color: Colors.white12),
-            const SizedBox(width: 10),
-            Text(
-              'ΣΥΝΔΕΣΗ...',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.30),
-                fontSize: 11,
-                letterSpacing: 3,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(width: 24, height: 1, color: Colors.white12),
-          ],
+        const SizedBox(width: 8),
+        Text(
+          'SYSTEMS READY',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 10,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF9A9CA3),
+            letterSpacing: 3.0,
+          ),
         ),
       ],
     );
   }
 }
 
-// ── Loading dots ──────────────────────────────────────────────────────────────
-class _LoadingDots extends StatelessWidget {
-  const _LoadingDots({required this.progress});
-  final double progress;
+// ── Crosshair icon ────────────────────────────────────────────────────────────
+class _CrosshairIcon extends StatelessWidget {
+  const _CrosshairIcon({required this.pulseValue});
+  final double pulseValue;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(3, (i) {
-        final delay = i / 3;
-        final t = ((progress - delay) % 1.0).clamp(0.0, 1.0);
-        final opacity = (math.sin(t * math.pi)).clamp(0.15, 1.0);
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Opacity(
-            opacity: opacity,
-            child: Container(
-              width: 5, height: 5,
-              decoration: const BoxDecoration(
-                color: AppColors.lime,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-        );
-      }),
+    final glowOpacity = 0.7 + pulseValue * 0.3;
+    return SizedBox(
+      width: 80, height: 80,
+      child: CustomPaint(
+        painter: _CrosshairPainter(glowOpacity: glowOpacity),
+      ),
     );
   }
 }
 
-// ── Background orb painter ────────────────────────────────────────────────────
-class _OrbPainter extends CustomPainter {
-  const _OrbPainter({required this.progress, required this.hasGym, this.gymColor});
-  final double progress;
-  final bool hasGym;
-  final Color? gymColor;
+class _CrosshairPainter extends CustomPainter {
+  const _CrosshairPainter({required this.glowOpacity});
+  final double glowOpacity;
 
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
     final cy = size.height / 2;
-    final accent = gymColor ?? AppColors.lime;
+    const lime = Color(0xFFC6FF3D);
 
-    // Slow-drifting orb
-    final ox = cx + math.sin(progress * math.pi * 2) * size.width * 0.08;
-    final oy = cy + math.cos(progress * math.pi * 2 * 0.7) * size.height * 0.06;
-
+    // Outer circle
     canvas.drawCircle(
-      Offset(ox, oy),
-      size.width * 0.65,
+      Offset(cx, cy),
+      cx - 1,
       Paint()
-        ..shader = RadialGradient(
-          colors: [
-            accent.withValues(alpha: 0.045),
-            accent.withValues(alpha: 0.02),
-            Colors.transparent,
-          ],
-        ).createShader(Rect.fromCircle(center: Offset(ox, oy), radius: size.width * 0.65)),
+        ..color = lime.withValues(alpha: 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
     );
 
-    // Bottom accent
+    // Inner ring
     canvas.drawCircle(
-      Offset(size.width * 0.5, size.height),
-      size.width * 0.4,
+      Offset(cx, cy),
+      cx - 13,
       Paint()
-        ..shader = RadialGradient(
-          colors: [
-            AppColors.purple.withValues(alpha: 0.08),
-            Colors.transparent,
-          ],
-        ).createShader(Rect.fromCircle(
-          center: Offset(size.width * 0.5, size.height),
-          radius: size.width * 0.4,
-        )),
+        ..color = const Color(0xFF3A3C42)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+
+    // Center dot with glow
+    canvas.drawCircle(
+      Offset(cx, cy),
+      6,
+      Paint()
+        ..color = lime
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * glowOpacity),
+    );
+    canvas.drawCircle(
+      Offset(cx, cy),
+      6,
+      Paint()..color = lime,
+    );
+
+    // Crosshair lines (top, bottom, left, right)
+    final linePaint = Paint()
+      ..color = lime
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    final fadePaint = Paint()
+      ..color = lime.withValues(alpha: 0.4)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(Offset(cx, 0), Offset(cx, 8), linePaint);          // top
+    canvas.drawLine(Offset(cx, size.height - 8), Offset(cx, size.height), fadePaint); // bottom
+    canvas.drawLine(Offset(0, cy), Offset(8, cy), fadePaint);           // left
+    canvas.drawLine(Offset(size.width - 8, cy), Offset(size.width, cy), fadePaint); // right
+  }
+
+  @override
+  bool shouldRepaint(_CrosshairPainter old) => old.glowOpacity != glowOpacity;
+}
+
+// ── OMNIPLEX wordmark ─────────────────────────────────────────────────────────
+class _OmniplexWordmark extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: TextSpan(
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 48,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -1.2,
+          height: 1,
+        ),
+        children: const [
+          TextSpan(text: 'OMNI', style: TextStyle(color: Colors.white)),
+          TextSpan(text: 'PLEX', style: TextStyle(color: Color(0xFFC6FF3D))),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Spinning arc ──────────────────────────────────────────────────────────────
+class _SpinningArc extends StatelessWidget {
+  const _SpinningArc({required this.progress});
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 56, height: 56,
+      child: CustomPaint(
+        painter: _ArcPainter(progress: progress),
+      ),
+    );
+  }
+}
+
+class _ArcPainter extends CustomPainter {
+  const _ArcPainter({required this.progress});
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    const cyan = Color(0xFF3EE6FF);
+
+    // Outer border circle
+    canvas.drawCircle(
+      Offset(cx, cy),
+      cx - 0.5,
+      Paint()
+        ..color = const Color(0xFF26272C)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+
+    // Center dot
+    canvas.drawCircle(
+      Offset(cx, cy),
+      3,
+      Paint()..color = cyan,
+    );
+
+    // Spinning arc (270° sweep, rotating)
+    final rect = Rect.fromCircle(center: Offset(cx, cy), radius: cx - 0.5);
+    canvas.drawArc(
+      rect,
+      progress * 2 * math.pi - math.pi / 2,
+      math.pi * 1.5,
+      false,
+      Paint()
+        ..color = cyan.withValues(alpha: 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..strokeCap = StrokeCap.round,
     );
   }
 
   @override
-  bool shouldRepaint(_OrbPainter old) => old.progress != progress;
+  bool shouldRepaint(_ArcPainter old) => old.progress != progress;
 }
 
-// ── Fallback mark ─────────────────────────────────────────────────────────────
-class _FallbackMark extends StatelessWidget {
-  _FallbackMark({required this.size, this.color = AppColors.lime});
-  final double size;
-  final Color color;
-
+// ── Tagline ───────────────────────────────────────────────────────────────────
+class _Tagline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size, height: size,
-      color: const Color(0xFF111118),
-      child: Center(
-        child: Text(
-          'O',
-          style: TextStyle(
-            color: color,
-            fontSize: size * 0.42,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -2,
-          ),
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        style: GoogleFonts.manrope(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: const Color(0xFF9A9CA3),
+          height: 1.625,
         ),
+        children: const [
+          TextSpan(text: 'Your gyms. Your schedule. '),
+          TextSpan(text: 'Your access.', style: TextStyle(color: Colors.white)),
+        ],
       ),
     );
   }

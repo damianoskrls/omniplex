@@ -190,7 +190,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                   }
                   if (auth.isLoggedIn) {
                     if (_gymSplashActive) {
-                      return SplashScreen(config: widget.config);
+                      return const SplashScreen();
                     }
                     if (auth.user!.isStaff) return const StaffHomeScreen();
                     return const HomeScreen();

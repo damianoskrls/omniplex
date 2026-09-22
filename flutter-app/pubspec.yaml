@@ -36,6 +36,7 @@ dependencies:
   fl_chart: ^0.70.2
   speech_to_text: ^7.5.0
   flutter_stripe: ^11.4.0
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
