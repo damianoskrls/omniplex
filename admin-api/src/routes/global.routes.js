@@ -396,7 +396,7 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
     let matchQuery = null;
     if (email) {
       const [r] = await db.query(
-        'SELECT id, global_user_id FROM users WHERE business_id = ? AND email = ? AND deleted_at IS NULL',
+        `SELECT id, global_user_id FROM users WHERE business_id = ? AND email = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci AND deleted_at IS NULL`,
         [business_id, email.toLowerCase()],
       );
       if (r.length) matchQuery = r[0];
@@ -406,7 +406,7 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
       const [r] = await db.query(
         `SELECT id, global_user_id FROM users
          WHERE business_id = ?
-           AND REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') = ?
+           AND REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
            AND deleted_at IS NULL`,
         [business_id, normalizedPhone],
       );
