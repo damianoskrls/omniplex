@@ -634,7 +634,7 @@ router.post('/auth/login-phone', async (req, res) => {
     // 1. Try global_users first
     const [guRows] = await db.query(
       `SELECT * FROM global_users
-       WHERE REPLACE(REPLACE(REPLACE(phone,' ',''),'+',''),'-','') LIKE ?`,
+       WHERE REPLACE(REPLACE(REPLACE(phone,' ',''),'+',''),'-','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`,
       [`%${last9}`],
     );
 
@@ -654,7 +654,7 @@ router.post('/auth/login-phone', async (req, res) => {
        FROM users u
        JOIN businesses b ON b.id = u.business_id
        LEFT JOIN business_configs c ON c.business_id = b.id
-       WHERE REPLACE(REPLACE(REPLACE(u.phone,' ',''),'+',''),'-','') LIKE ?
+       WHERE REPLACE(REPLACE(REPLACE(u.phone,' ',''),'+',''),'-','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
          AND u.deleted_at IS NULL AND b.is_active = 1`,
       [`%${last9}`],
     );

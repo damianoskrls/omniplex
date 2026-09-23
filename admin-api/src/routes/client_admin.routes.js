@@ -135,7 +135,7 @@ async function findOrCreateGlobalUser(conn, { full_name, email, phone }) {
 
   const [existing] = await conn.query(
     `SELECT id FROM global_users
-     WHERE REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE ?`,
+     WHERE REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`,
     [`%${last9}`],
   );
   if (existing.length) {
@@ -727,7 +727,7 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
     const [guRows] = await db.query(
       `SELECT id, full_name, email, phone
        FROM global_users
-       WHERE REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE ? COLLATE utf8mb4_unicode_ci`,
+       WHERE REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`,
       [`%${last9}`],
     );
 
@@ -737,7 +737,7 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
         `SELECT id, full_name, email, phone, account_status
          FROM users
          WHERE business_id = ?
-           AND REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE ? COLLATE utf8mb4_unicode_ci
+           AND REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
            AND (deleted_at IS NULL OR deleted_at > NOW())`,
         [bizId, `%${last9}`],
       );
@@ -751,7 +751,7 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
          FROM users u
          JOIN businesses b ON b.id = u.business_id
          WHERE u.business_id != ?
-           AND REPLACE(REPLACE(REPLACE(COALESCE(u.phone,''),' ',''),'+',''),'-','') LIKE ? COLLATE utf8mb4_unicode_ci
+           AND REPLACE(REPLACE(REPLACE(COALESCE(u.phone,''),' ',''),'+',''),'-','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
            AND (u.deleted_at IS NULL OR u.deleted_at > NOW())
          LIMIT 1`,
         [bizId, `%${last9}`],
@@ -764,7 +764,7 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
         let guId;
         const [existingGu] = await db.query(
           `SELECT id FROM global_users
-           WHERE REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE ? COLLATE utf8mb4_unicode_ci`,
+           WHERE REPLACE(REPLACE(REPLACE(COALESCE(phone,''),' ',''),'+',''),'-','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`,
           [`%${luLast9}`],
         );
         if (existingGu.length) {
