@@ -13,6 +13,7 @@ import 'services/notification_service.dart';
 import 'services/push_service.dart';
 import 'services/user_notification_sync.dart';
 import 'screens/staff_home_screen.dart';
+import 'screens/admin_shell_screen.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/splash_screen.dart';
@@ -192,6 +193,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                     if (_gymSplashActive) {
                       return const SplashScreen();
                     }
+                    if (auth.user!.isAdmin) return const AdminShellScreen();
                     if (auth.user!.isStaff) return const StaffHomeScreen();
                     return const HomeScreen();
                   }

@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../widgets/omni_design.dart';
+import '../services/auth_service.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  Map<String, dynamic>? _data;
+  bool _loading = true;
 
   static const _kGray6B = Color(0xFF6B7280);
   static const _kGray9C = Color(0xFF9CA3AF);
@@ -13,38 +23,49 @@ class AdminDashboardScreen extends StatelessWidget {
   static const _kRed = Color(0xFFEF4444);
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final api = context.read<AuthService>().api;
+      final data = await api.fetchAdminDashboard();
+      if (mounted) setState(() { _data = data; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBg,
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 96),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildKeyMetrics(),
-                      const SizedBox(height: 32),
-                      _buildRevenueChart(),
-                      const SizedBox(height: 32),
-                      _buildManagementSection(),
-                      const SizedBox(height: 32),
-                      _buildAlertsSection(),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
-              ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildKeyMetrics(),
+                  const SizedBox(height: 32),
+                  _buildRevenueChart(),
+                  const SizedBox(height: 32),
+                  _buildManagementSection(),
+                  const SizedBox(height: 32),
+                  _buildAlertsSection(),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
-          ),
-          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomNav()),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -140,23 +161,26 @@ class AdminDashboardScreen extends StatelessWidget {
           childAspectRatio: 1.85,
           children: [
             _buildMetricCard(
-              label: 'ACTIVE MEMBERS', value: '1,240',
-              badge: '+12%', badgeColor: kLime,
+              label: 'ACTIVE MEMBERS',
+              value: _data != null ? '${_data!['active_members'] ?? _data!['total_clients'] ?? '—'}' : '—',
+              badge: _loading ? null : '+', badgeColor: kLime,
               accentBorder: kLime,
             ),
             _buildMetricCard(
-              label: "TODAY'S REVENUE", value: '€12,450',
-              badge: '+8%', badgeColor: kCyan,
+              label: "TODAY'S BOOKINGS",
+              value: _data != null ? '${_data!['today_bookings'] ?? '—'}' : '—',
               accentBorder: kCyan,
             ),
             _buildMetricCard(
-              label: "TODAY'S BOOKINGS", value: '85',
-              sub: 'avg 92', subColor: _kGray6B,
+              label: 'TOTAL CLIENTS',
+              value: _data != null ? '${_data!['total_clients'] ?? '—'}' : '—',
               accentBorder: Colors.white.withValues(alpha: 0.20),
             ),
             _buildMetricCard(
-              label: 'CHECK-INS', value: '112',
-              badge: '▲ Peak', badgeColor: kLime,
+              label: 'PENDING',
+              value: _data != null ? '${_data!['pending_clients'] ?? '—'}' : '—',
+              badge: (_data?['pending_clients'] ?? 0) > 0 ? '!' : null,
+              badgeColor: _kRed,
               accentBorder: Colors.white.withValues(alpha: 0.20),
             ),
           ],
@@ -416,38 +440,6 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        color: kBg.withValues(alpha: 0.95),
-        border: const Border(top: BorderSide(color: Color(0xFF262626))),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavItem(Icons.pie_chart_outline, 'DASHBOARD', true),
-          _buildNavItem(Icons.group_outlined, 'MEMBERS', false),
-          _buildNavItem(Icons.description_outlined, 'REPORTS', false),
-          _buildNavItem(Icons.settings_outlined, 'SETTINGS', false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool active) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: active ? kLime : _kGray6B, size: 20),
-        const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.manrope(
-          fontSize: 9, fontWeight: FontWeight.w700,
-          color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
-      ],
-    );
-  }
 }
 
 class _RevenuePainter extends CustomPainter {

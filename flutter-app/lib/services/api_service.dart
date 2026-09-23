@@ -169,6 +169,63 @@ class ApiService {
     _decode(res);
   }
 
+  // ─── Gym Admin (client-admin) ────────────────────────────────────────
+
+  Future<Map<String, dynamic>> adminLogin({required String email, required String password}) async {
+    final res = await _post('/api/client-admin/login', {'email': email, 'password': password});
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> fetchAdminDashboard() async {
+    final res = await _get('/api/client-admin/dashboard');
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> fetchAdminDashboardExtras() async {
+    final res = await _get('/api/client-admin/dashboard-extras');
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  Future<List<dynamic>> fetchAdminClients({String? status, String? search, int page = 1}) async {
+    final q = <String, String>{'page': '$page'};
+    if (status != null && status != 'all') q['status'] = status;
+    if (search != null && search.isNotEmpty) q['q'] = search;
+    final res = await _get('/api/client-admin/clients', query: q);
+    final data = _decode(res);
+    if (data is Map) return (data['clients'] as List? ?? data['data'] as List? ?? []);
+    return data as List;
+  }
+
+  Future<List<dynamic>> fetchAdminPendingClients() async {
+    final res = await _get('/api/client-admin/clients/pending');
+    final data = _decode(res);
+    if (data is List) return data;
+    return (data as Map)['clients'] as List? ?? [];
+  }
+
+  Future<void> approveAdminClient(String userId) async {
+    await _post('/api/client-admin/clients/$userId/approve', {});
+  }
+
+  Future<void> rejectAdminClient(String userId) async {
+    await _post('/api/client-admin/clients/$userId/reject', {});
+  }
+
+  Future<List<dynamic>> fetchAdminStaff() async {
+    final res = await _get('/api/client-admin/staff');
+    final data = _decode(res);
+    if (data is List) return data;
+    return (data as Map)['staff'] as List? ?? [];
+  }
+
+  Future<Map<String, dynamic>> fetchAdminSchedule({String? date}) async {
+    final q = date != null ? {'date': date} : null;
+    final res = await _get('/api/client-admin/schedule', query: q);
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+
   Future<List<FitnessGoalOption>> fetchFitnessGoals() async {
     final res = await _get('/api/mobile/fitness-goals');
     final data = _decode(res) as List;

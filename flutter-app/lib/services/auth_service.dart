@@ -140,7 +140,32 @@ class AuthService extends ChangeNotifier {
   Future<AppUser> _fetchMe(String token) {
     final role = _jwtRole(token);
     if (role == 'staff') return api.staffMe();
+    if (role == 'client_admin') return _adminUserFromToken(token);
     return api.me();
+  }
+
+  Future<AppUser> _adminUserFromToken(String token) async {
+    try {
+      final parts = token.split('.');
+      if (parts.length < 2) throw Exception('bad token');
+      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final map = jsonDecode(payload) as Map<String, dynamic>;
+      return AppUser(
+        id: 'admin-${map['businessId'] ?? ''}',
+        fullName: map['name'] as String? ?? 'Admin',
+        email: map['email'] as String? ?? '',
+        businessId: map['businessId'] as String? ?? '',
+        role: UserRole.admin,
+      );
+    } catch (_) {
+      return AppUser(
+        id: 'admin',
+        fullName: 'Admin',
+        email: '',
+        businessId: config.businessId,
+        role: UserRole.admin,
+      );
+    }
   }
 
   Future<void> login(String phone, String pin) async {
@@ -154,6 +179,19 @@ class AuthService extends ChangeNotifier {
 
   Future<void> staffLogin(String email, String password) async {
     _user = await api.staffLogin(email: email, password: password);
+    await _persistToken();
+    _locked       = false;
+    _reconnecting = false;
+    _retryCount   = 0;
+    notifyListeners();
+  }
+
+  Future<void> adminLogin(String email, String password) async {
+    final data = await api.adminLogin(email: email, password: password);
+    final token = data['token'] as String?;
+    if (token == null) throw Exception('No token in admin login response');
+    api.token = token;
+    _user = AppUser.fromAdminJson(data);
     await _persistToken();
     _locked       = false;
     _reconnecting = false;

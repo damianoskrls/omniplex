@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../widgets/omni_design.dart';
+import '../services/auth_service.dart';
 
 const _kAmber = Color(0xFFFFB93D);
 const _kAmberBg = Color(0xFF2A210F);
@@ -16,33 +18,42 @@ class AdminMembersScreen extends StatefulWidget {
 
 class _AdminMembersScreenState extends State<AdminMembersScreen> {
   int _filterIndex = 0; // 0=Active, 1=Expired, 2=Pending
+  bool _loadingData = true;
+  List<_MemberData> _members = [];
 
-  final _members = [
-    _MemberData(
-      name: 'Damianos Karalis',
-      package: '10 Class Pack',
-      lastVisit: 'Last visit: Today',
-      status: 'Active',
-    ),
-    _MemberData(
-      name: 'Eleni Papadaki',
-      package: 'Monthly Unlimited',
-      lastVisit: 'Last visit: 2 days ago',
-      status: 'Active',
-    ),
-    _MemberData(
-      name: 'Nikos Anagnostou',
-      package: '10 Class Pack',
-      lastVisit: 'Last visit: 2 days ago',
-      status: 'Expired',
-    ),
-    _MemberData(
-      name: 'Maria Papadopoulou',
-      package: 'Monthly Unlimited',
-      lastVisit: 'Last visit: Today',
-      status: 'Pending',
-    ),
-  ];
+  static const _statusKeys = ['active', 'expired', 'pending'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final api = context.read<AuthService>().api;
+      final status = _statusKeys[_filterIndex];
+      final raw = await api.fetchAdminClients(status: status);
+      final list = raw.map((c) {
+        final credits = c['credits'] as List? ?? [];
+        final pkg = credits.isNotEmpty
+            ? (credits.first['service_name'] as String? ?? 'No Package')
+            : 'No Package';
+        final acctStatus = c['account_status'] as String? ?? 'active';
+        return _MemberData(
+          name: c['full_name'] as String? ?? '',
+          package: pkg,
+          lastVisit: c['last_visit'] as String? ?? '—',
+          status: acctStatus == 'active' ? 'Active'
+              : acctStatus == 'expired' ? 'Expired'
+              : 'Pending',
+        );
+      }).toList();
+      if (mounted) setState(() { _members = list; _loadingData = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingData = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -173,18 +184,23 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
                           ),
                         ),
                         // Member cards
-                        Column(
-                          children: _members.asMap().entries.map((e) => Padding(
-                            padding: EdgeInsets.only(bottom: e.key < _members.length - 1 ? 12 : 0),
-                            child: _buildMemberCard(e.value),
-                          )).toList(),
-                        ),
+                        if (_loadingData)
+                          const Center(child: Padding(
+                            padding: EdgeInsets.all(32),
+                            child: CircularProgressIndicator(color: kLime),
+                          ))
+                        else
+                          Column(
+                            children: _members.asMap().entries.map((e) => Padding(
+                              padding: EdgeInsets.only(bottom: e.key < _members.length - 1 ? 12 : 0),
+                              child: _buildMemberCard(e.value),
+                            )).toList(),
+                          ),
                         const SizedBox(height: 16),
                       ],
                     ),
                   ),
                 ),
-                _buildBottomNav(),
               ],
             ),
           ),
@@ -196,7 +212,7 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
   Widget _buildFilterChip(String label, int index) {
     final active = _filterIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _filterIndex = index),
+      onTap: () { setState(() { _filterIndex = index; _loadingData = true; }); _load(); },
       child: Container(
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -379,65 +395,6 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: kCard,
-        border: Border(top: BorderSide(color: kBorder)),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavItem(Icons.home_outlined, 'Home', false, false),
-          _buildNavItem(Icons.people_outlined, 'Members', true, false),
-          _buildNavItem(Icons.assignment_outlined, 'Staff', false, false),
-          _buildNavItem(Icons.inbox_outlined, 'Requests', false, true),
-          _buildNavItem(Icons.person_outline, 'Profile', false, false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool active, bool hasBadge) {
-    return SizedBox(
-      width: 68,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            children: [
-              SizedBox(
-                width: 44, height: 44,
-                child: Center(child: Icon(icon, color: active ? kLime : kDim, size: 22)),
-              ),
-              if (hasBadge)
-                Positioned(
-                  top: 4, right: 10,
-                  child: Container(
-                    width: 8, height: 8,
-                    decoration: BoxDecoration(
-                      color: _kAmber,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(color: _kAmber.withValues(alpha: 0.90), blurRadius: 8),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(label, style: active
-            ? GoogleFonts.spaceGrotesk(
-                fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
-            : GoogleFonts.manrope(
-                fontSize: 10, fontWeight: FontWeight.w600, color: kGray),
-            textAlign: TextAlign.center),
-        ],
-      ),
-    );
-  }
 }
 
 class _MemberData {

@@ -1,6 +1,6 @@
 import 'fitness_profile.dart';
 
-enum UserRole { customer, staff }
+enum UserRole { customer, staff, admin }
 
 class AppUser {
   AppUser({
@@ -26,12 +26,13 @@ class AppUser {
   final int loyaltyPoints;
   final FitnessProfile fitnessProfile;
   final UserRole role;
-  final String? staffRole;   // e.g. "Trainer", "Καθηγητής Φυσικής Αγωγής"
+  final String? staffRole;
   final String? avatarUrl;
   final String? colorHex;
   final String? bio;
 
   bool get isStaff => role == UserRole.staff;
+  bool get isAdmin => role == UserRole.admin;
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
         id: json['id'] as String,
@@ -54,4 +55,15 @@ class AppUser {
         colorHex: json['color_hex'] as String?,
         bio: json['bio'] as String?,
       );
+
+  factory AppUser.fromAdminJson(Map<String, dynamic> json) {
+    final biz = json['business'] as Map<String, dynamic>? ?? {};
+    return AppUser(
+      id: biz['id'] as String? ?? 'admin',
+      fullName: json['name'] as String? ?? biz['name'] as String? ?? 'Admin',
+      email: json['email'] as String? ?? '',
+      businessId: biz['id'] as String? ?? '',
+      role: UserRole.admin,
+    );
+  }
 }

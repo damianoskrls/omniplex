@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../widgets/omni_design.dart';
+import '../services/auth_service.dart';
 
 const _kAmber = Color(0xFFFFB93D);
 const _kAmberBg = Color(0xFF2A210F);
@@ -18,6 +20,55 @@ class AdminRequestsScreen extends StatefulWidget {
 
 class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
   int _tabIndex = 0; // 0=Membership, 1=Staff
+  bool _loadingData = true;
+  List<Map<String, dynamic>> _pendingClients = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPending());
+  }
+
+  Future<void> _loadPending() async {
+    try {
+      final api = context.read<AuthService>().api;
+      final raw = await api.fetchAdminPendingClients();
+      if (mounted) {
+        setState(() {
+          _pendingClients = raw.cast<Map<String, dynamic>>();
+          _loadingData = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) { setState(() => _loadingData = false); }
+    }
+  }
+
+  Future<void> _approve(String userId) async {
+    try {
+      final api = context.read<AuthService>().api;
+      await api.approveAdminClient(userId);
+      setState(() => _pendingClients.removeWhere((c) => c['id'] == userId));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
+  Future<void> _reject(String userId) async {
+    try {
+      final api = context.read<AuthService>().api;
+      await api.rejectAdminClient(userId);
+      setState(() => _pendingClients.removeWhere((c) => c['id'] == userId));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,17 +191,24 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                         ),
                         const SizedBox(height: 12),
                         // Membership request cards
-                        _buildMembershipCard(
-                          name: 'Damianos Karalis',
-                          description: 'Wants to connect existing membership to Fitness Club Athens',
-                          timeAgo: '2 hours ago',
-                        ),
-                        const SizedBox(height: 12),
-                        _buildMembershipCard(
-                          name: 'Sofia Konstantinou',
-                          description: 'Wants to connect existing membership to Fitness Club Athens',
-                          timeAgo: '5 hours ago',
-                        ),
+                        if (_loadingData)
+                          const Center(child: CircularProgressIndicator(color: kLime))
+                        else if (_pendingClients.isEmpty)
+                          Center(child: Text('No pending requests', style: GoogleFonts.manrope(
+                            fontSize: 14, color: kGray)))
+                        else
+                          ...List.generate(_pendingClients.length, (i) {
+                            final c = _pendingClients[i];
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: i < _pendingClients.length - 1 ? 12 : 0),
+                              child: _buildMembershipCard(
+                                name: c['full_name'] as String? ?? '',
+                                description: c['email'] as String? ?? 'Pending registration',
+                                timeAgo: c['created_at'] as String? ?? '',
+                                userId: c['id'] as String?,
+                              ),
+                            );
+                          }),
                         const SizedBox(height: 32),
                         // Divider with label
                         Row(
@@ -188,7 +246,6 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                     ),
                   ),
                 ),
-                _buildBottomNav(),
               ],
             ),
           ),
@@ -239,6 +296,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
     required String name,
     required String description,
     required String timeAgo,
+    String? userId,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -338,40 +396,46 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: kLime,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.check, color: kBg, size: 12),
-                          const SizedBox(width: 8),
-                          Text('Approve', style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
-                        ],
+                    child: GestureDetector(
+                      onTap: userId != null ? () => _approve(userId) : null,
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: kLime,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.check, color: kBg, size: 12),
+                            const SizedBox(width: 8),
+                            Text('Approve', style: GoogleFonts.spaceGrotesk(
+                              fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: _kRedBg,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _kRed.withValues(alpha: 0.40)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.close, color: _kRed, size: 12),
-                          const SizedBox(width: 8),
-                          Text('Reject', style: GoogleFonts.manrope(
-                            fontSize: 12, fontWeight: FontWeight.w600, color: _kRed)),
-                        ],
+                    child: GestureDetector(
+                      onTap: userId != null ? () => _reject(userId) : null,
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: _kRedBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _kRed.withValues(alpha: 0.40)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.close, color: _kRed, size: 12),
+                            const SizedBox(width: 8),
+                            Text('Reject', style: GoogleFonts.manrope(
+                              fontSize: 12, fontWeight: FontWeight.w600, color: _kRed)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -512,63 +576,4 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: kCard,
-        border: Border(top: BorderSide(color: kBorder)),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavItem(Icons.home_outlined, 'Home', false, false),
-          _buildNavItem(Icons.people_outlined, 'Members', false, false),
-          _buildNavItem(Icons.assignment_outlined, 'Staff', false, false),
-          _buildNavItem(Icons.inbox_outlined, 'Requests', true, false),
-          _buildNavItem(Icons.person_outline, 'Profile', false, false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool active, bool hasBadge) {
-    return SizedBox(
-      width: 68,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            children: [
-              SizedBox(
-                width: 44, height: 44,
-                child: Center(child: Icon(icon, color: active ? kLime : kDim, size: 22)),
-              ),
-              if (hasBadge)
-                Positioned(
-                  top: 4, right: 10,
-                  child: Container(
-                    width: 8, height: 8,
-                    decoration: BoxDecoration(
-                      color: _kAmber,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(color: _kAmber.withValues(alpha: 0.90), blurRadius: 8),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(label, style: active
-            ? GoogleFonts.spaceGrotesk(
-                fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
-            : GoogleFonts.manrope(
-                fontSize: 10, fontWeight: FontWeight.w600, color: kGray),
-            textAlign: TextAlign.center),
-        ],
-      ),
-    );
-  }
 }
