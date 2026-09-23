@@ -47,6 +47,9 @@ const uploadDir = process.env.UPLOAD_DIR || './uploads';
 fs.mkdirSync(uploadDir, { recursive: true });
 app.use('/uploads', express.static(path.resolve(uploadDir)));
 app.use('/icons', express.static(path.resolve(__dirname, '../public/icons')));
+const gymAdminDist = path.resolve(__dirname, '../public/gym-admin');
+app.use('/gym-admin', express.static(gymAdminDist));
+app.get('/gym-admin/*', (req, res) => res.sendFile(path.join(gymAdminDist, 'index.html')));
 
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/auth',        authRoutes);
