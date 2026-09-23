@@ -9,6 +9,7 @@ const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const db       = require('../db');
+const { phoneDigitsEq } = require('../lib/phone_sql');
 const { createAdminNotification } = require('../lib/notifications');
 const { STATUS_MESSAGES, getCustomerStatus } = require('../lib/customer_auth');
 const {
@@ -52,9 +53,9 @@ router.post('/register', async (req, res) => {
     // Check phone not already used
     const [existing] = await db.query(
       `SELECT id FROM users WHERE business_id = ?
-       AND REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') = ?
+       AND ${phoneDigitsEq('phone')}
        AND deleted_at IS NULL`,
-      [business_id, normalizedPhone]
+      [business_id, normalizedPhone.replace(/\D/g, '')]
     );
     if (existing.length) {
       return res.status(409).json({ error: 'Ο αριθμός κινητού χρησιμοποιείται ήδη' });
@@ -129,8 +130,8 @@ router.post('/login', async (req, res) => {
       FROM users u
       LEFT JOIN user_passwords p ON p.user_id = u.id
       WHERE u.business_id = ?
-        AND REPLACE(REPLACE(REPLACE(REPLACE(u.phone,' ',''),'-',''),'(',''),')','') = ?
-    `, [business_id, normalised]);
+        AND ${phoneDigitsEq('u.phone')}
+    `, [business_id, normalised.replace(/\D/g, '')]);
 
     if (!rows.length || !rows[0].password_hash) {
       return res.status(401).json({ error: 'Λάθος κινητό ή PIN' });

@@ -8,6 +8,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../db');
+const { phoneDigitsLike, phoneDigitsEq } = require('../lib/phone_sql');
 
 const router = express.Router();
 
@@ -406,9 +407,9 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
       const [r] = await db.query(
         `SELECT id, global_user_id FROM users
          WHERE business_id = ?
-           AND REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')','') = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
+           AND ${phoneDigitsEq('phone')}
            AND deleted_at IS NULL`,
-        [business_id, normalizedPhone],
+        [business_id, normalizedPhone.replace(/\D/g, '')],
       );
       if (r.length) matchQuery = r[0];
     }
@@ -652,7 +653,7 @@ router.post('/auth/login-phone', async (req, res) => {
     // 1. Try global_users first
     const [guRows] = await db.query(
       `SELECT * FROM global_users
-       WHERE REPLACE(REPLACE(REPLACE(phone,' ',''),'+',''),'-','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`,
+       WHERE ${phoneDigitsLike('phone')}`,
       [`%${last9}`],
     );
 
@@ -672,7 +673,7 @@ router.post('/auth/login-phone', async (req, res) => {
        FROM users u
        JOIN businesses b ON b.id = u.business_id
        LEFT JOIN business_configs c ON c.business_id = b.id
-       WHERE REPLACE(REPLACE(REPLACE(u.phone,' ',''),'+',''),'-','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
+       WHERE ${phoneDigitsLike('u.phone')}
          AND u.deleted_at IS NULL AND b.is_active = 1`,
       [`%${last9}`],
     );
