@@ -5,8 +5,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
-import 'global_login_screen.dart';
 import 'global_register_screen.dart';
+import 'phone_otp_login_screen.dart';
 import 'gym_profile_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
@@ -151,7 +151,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
 
   void _goLogin() {
     Navigator.push(context, MaterialPageRoute(
-      builder: (_) => GlobalLoginScreen(
+      builder: (_) => PhoneOtpLoginScreen(
         globalAuth: widget.globalAuth,
         onLoggedIn: widget.onLoggedIn,
       ),

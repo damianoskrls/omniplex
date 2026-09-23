@@ -506,11 +506,29 @@ async function bootstrapSchema() {
   }
 
   // ── users.global_phone (phone on global_users) ───────────────
-  // Add UNIQUE index on global_users.phone if column exists but index doesn't
   try {
     await db.query('CREATE INDEX idx_gu_phone ON global_users (phone)');
   } catch (err) {
     if (err.code !== 'ER_DUP_KEYNAME') {}
+  }
+
+  // ── global_otps table ────────────────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS global_otps (
+        id         VARCHAR(36) NOT NULL PRIMARY KEY,
+        phone      VARCHAR(30) NOT NULL,
+        code       VARCHAR(6)  NOT NULL,
+        expires_at DATETIME    NOT NULL,
+        used       TINYINT(1)  NOT NULL DEFAULT 0,
+        created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_otp_phone_code (phone, code),
+        INDEX idx_otp_expires (expires_at)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: global_otps table ready');
+  } catch (err) {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('global_otps skipped:', err.message);
   }
 }
 

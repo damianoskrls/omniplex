@@ -920,4 +920,147 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
   }
 });
 
+// ── Helper: auto-link global user to existing tenant records ──
+async function autoLinkGlobalUser(globalUserId, phone, email) {
+  // Match by normalized phone digits OR email
+  const normalizePhone = (p) => (p || '').replace(/\D/g, '');
+  const phoneDigits = normalizePhone(phone);
+
+  if (phoneDigits) {
+    await db.query(
+      `UPDATE users
+       SET global_user_id = ?
+       WHERE global_user_id IS NULL
+         AND deleted_at IS NULL
+         AND REGEXP_REPLACE(COALESCE(phone, mobile, ''), '[^0-9]', '') = ?`,
+      [globalUserId, phoneDigits],
+    );
+  }
+  if (email) {
+    await db.query(
+      `UPDATE users
+       SET global_user_id = ?
+       WHERE global_user_id IS NULL
+         AND deleted_at IS NULL
+         AND LOWER(TRIM(email)) = LOWER(TRIM(?))`,
+      [globalUserId, email],
+    );
+  }
+}
+
+// ── Brevo SMS helper ──────────────────────────────────────────
+async function sendBrevoSms(phone, message) {
+  const apiKey = process.env.BREVO_API_KEY;
+  const sender = process.env.BREVO_SMS_SENDER || 'OmniPlex';
+  if (!apiKey) throw new Error('BREVO_API_KEY not configured');
+
+  // Normalize to E.164 (Greek +30 prefix if starts with 6/2)
+  let to = phone.replace(/\s/g, '');
+  if (!to.startsWith('+')) {
+    to = '+30' + to.replace(/^0+/, '');
+  }
+
+  const resp = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
+    method: 'POST',
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sender, recipient: to, content: message }),
+  });
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`Brevo SMS error ${resp.status}: ${body}`);
+  }
+}
+
+// ============================================================
+// POST /api/global/auth/send-otp
+// Body: { phone }   — sends 6-digit OTP via SMS
+// ============================================================
+router.post('/auth/send-otp', async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'Απαιτείται τηλέφωνο' });
+
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 10) return res.status(400).json({ error: 'Μη έγκυρος αριθμός τηλεφώνου' });
+
+  try {
+    // Rate limit: max 3 OTPs per phone per 10 minutes
+    const [[{ cnt }]] = await db.query(
+      `SELECT COUNT(*) AS cnt FROM global_otps
+       WHERE phone = ? AND created_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)`,
+      [digits],
+    );
+    if (cnt >= 3) return res.status(429).json({ error: 'Πολλές προσπάθειες. Δοκίμασε σε 10 λεπτά.' });
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const id   = uuidv4();
+    await db.query(
+      `INSERT INTO global_otps (id, phone, code, expires_at)
+       VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))`,
+      [id, digits, code],
+    );
+
+    await sendBrevoSms(phone, `Ο κωδικός σου OmniPlex είναι: ${code}. Ισχύει για 10 λεπτά.`);
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('send-otp error:', err.message);
+    return res.status(500).json({ error: 'Αποτυχία αποστολής SMS. Δοκίμασε ξανά.' });
+  }
+});
+
+// ============================================================
+// POST /api/global/auth/verify-otp
+// Body: { phone, code, full_name? }
+// Returns: { token, user, gyms, is_new }
+// ============================================================
+router.post('/auth/verify-otp', async (req, res) => {
+  const { phone, code, full_name } = req.body;
+  if (!phone || !code) return res.status(400).json({ error: 'Απαιτούνται τηλέφωνο και κωδικός' });
+
+  const digits = phone.replace(/\D/g, '');
+
+  try {
+    // Find valid unused OTP
+    const [[otp]] = await db.query(
+      `SELECT id FROM global_otps
+       WHERE phone = ? AND code = ? AND used = 0 AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1`,
+      [digits, code],
+    );
+    if (!otp) return res.status(400).json({ error: 'Λάθος ή ληγμένος κωδικός' });
+
+    // Mark used
+    await db.query('UPDATE global_otps SET used = 1 WHERE id = ?', [otp.id]);
+
+    // Find or create global user by phone
+    let [[user]] = await db.query(
+      `SELECT id, email, full_name, phone FROM global_users WHERE phone = ?`,
+      [digits],
+    );
+
+    let is_new = false;
+    if (!user) {
+      const id = uuidv4();
+      const name = (full_name || '').trim() || `Χρήστης ${digits.slice(-4)}`;
+      await db.query(
+        `INSERT INTO global_users (id, phone, full_name, email) VALUES (?, ?, ?, NULL)`,
+        [id, digits, name],
+      );
+      [[user]] = await db.query('SELECT id, email, full_name, phone FROM global_users WHERE id = ?', [id]);
+      is_new = true;
+    }
+
+    // Auto-link to any existing tenant records
+    await autoLinkGlobalUser(user.id, digits, user.email);
+
+    const gyms = await getGymsForGlobalUser(user.id);
+    const token = makeGlobalToken(user);
+
+    return res.json({ token, user, gyms, is_new });
+  } catch (err) {
+    console.error('verify-otp error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

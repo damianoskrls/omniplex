@@ -100,6 +100,30 @@ class GlobalAuthService extends ChangeNotifier {
     }
   }
 
+  /// Send OTP to phone number
+  Future<void> sendOtp(String phone) async {
+    final res = await http.post(
+      Uri.parse('$_apiBase/global/auth/send-otp'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'phone': phone}),
+    );
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) throw body['error'] ?? 'Αποτυχία αποστολής SMS';
+  }
+
+  /// Verify OTP and login/register
+  Future<Map<String, dynamic>> verifyOtp(String phone, String code, {String? fullName}) async {
+    final res = await http.post(
+      Uri.parse('$_apiBase/global/auth/verify-otp'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'phone': phone, 'code': code, if (fullName != null) 'full_name': fullName}),
+    );
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) throw body['error'] ?? 'Λάθος κωδικός';
+    await _persist(body);
+    return body;
+  }
+
   Future<Map<String, dynamic>> loginPhone(String phone, String pin) async {
     final res = await http.post(
       Uri.parse('$_apiBase/global/auth/login-phone'),
