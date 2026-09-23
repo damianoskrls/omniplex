@@ -12,7 +12,7 @@ const pool = mysql.createPool({
   user:            process.env.DB_USER     || 'root',
   password:        process.env.DB_PASSWORD || '',
   database:        process.env.DB_NAME     || 'bookup',
-  charset:         'UTF8MB4_0900_AI_CI',
+  charset:         'UTF8MB4_UNICODE_CI',
   waitForConnections: true,
   connectionLimit:    10,
   queueLimit:         0,
