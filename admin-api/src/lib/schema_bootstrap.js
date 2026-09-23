@@ -393,11 +393,19 @@ async function bootstrapSchema() {
         phone         VARCHAR(50)  NULL,
         created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
+      ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
     console.log('✓ Schema: global_users table ready');
   } catch (err) {
     console.warn('global_users table skipped:', err.message);
+  }
+  try {
+    await db.query(
+      'ALTER TABLE global_users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
+    );
+    console.log('✓ Schema: global_users collation → utf8mb4_unicode_ci');
+  } catch (err) {
+    console.warn('global_users collation convert skipped:', err.message);
   }
   // Make email/password_hash nullable on existing deployments
   for (const [col, def] of [
@@ -466,11 +474,19 @@ async function bootstrapSchema() {
         updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_gjr_biz_status (business_id, status),
         INDEX idx_gjr_global (global_user_id)
-      )
+      ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
     console.log('✓ Schema: gym_join_requests table ready');
   } catch (err) {
     console.warn('gym_join_requests table skipped:', err.message);
+  }
+  try {
+    await db.query(
+      'ALTER TABLE gym_join_requests CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
+    );
+    console.log('✓ Schema: gym_join_requests collation → utf8mb4_unicode_ci');
+  } catch (err) {
+    console.warn('gym_join_requests collation convert skipped:', err.message);
   }
 
   // ── businesses.gym_capacity ─────────────────────────────────
