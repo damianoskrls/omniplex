@@ -225,6 +225,20 @@ export default function Clients() {
     } finally { setSaving(false); }
   };
 
+  const handleInviteGlobal = async () => {
+    const guId = lookupResult?.global_user?.id;
+    if (!guId) return;
+    setSaving(true);
+    try {
+      await api.post('/client-admin/clients/invite', { global_user_id: guId, claimed_name: claimedName });
+      toast.success('Η πρόσκληση στάλθηκε στο OmniPlex app του πελάτη');
+      setModal(false);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Σφάλμα');
+    } finally { setSaving(false); }
+  };
+
   const handleCancelInvite = async () => {
     const guId = lookupResult?.global_user?.id;
     if (!guId) return;
@@ -564,15 +578,29 @@ export default function Clients() {
                   )}
                 </div>
                 {nameVerified && (
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.9rem', width: '100%' }}
-                    disabled={saving}
-                    onClick={() => handleAddGlobal()}
-                  >
-                    {saving ? '...' : '✓ Προσθήκη ως πελάτης'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ fontSize: '0.9rem', width: '100%' }}
+                      disabled={saving}
+                      onClick={() => handleAddGlobal()}
+                    >
+                      {saving ? '...' : '✓ Προσθήκη ως πελάτης (άμεσα)'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.85rem', width: '100%' }}
+                      disabled={saving}
+                      onClick={handleInviteGlobal}
+                    >
+                      📱 Πρόσκληση μέσω OmniPlex App
+                    </button>
+                    <small className="text-muted" style={{ textAlign: 'center' }}>
+                      Η πρόσκληση θα εμφανιστεί στο app του χρήστη — θα μπει ενεργός μόλις την αποδεχτεί.
+                    </small>
+                  </div>
                 )}
               </div>
             )}

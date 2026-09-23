@@ -483,6 +483,23 @@ router.get('/join-requests', requireGlobal, async (req, res) => {
 });
 
 // ============================================================
+// DELETE /api/global/join-requests/:id  (auth)
+// Cancel a pending join request
+// ============================================================
+router.delete('/join-requests/:id', requireGlobal, async (req, res) => {
+  try {
+    const [result] = await db.query(
+      `DELETE FROM gym_join_requests WHERE id = ? AND global_user_id = ? AND status = 'pending'`,
+      [req.params.id, req.globalUser.globalUserId],
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Not found or already processed' });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
 // POST /api/global/staff/login  — staff multi-gym login
 // Body: { email, password }
 // Returns global staff token + list of gyms where user works

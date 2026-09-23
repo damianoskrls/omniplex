@@ -824,7 +824,7 @@ class _ScheduleTab extends StatelessWidget {
 // MY GYMS TAB
 // ─────────────────────────────────────────
 
-class _MyGymsTab extends StatelessWidget {
+class _MyGymsTab extends StatefulWidget {
   const _MyGymsTab({
     required this.globalAuth,
     required this.enteringGym,
@@ -840,93 +840,165 @@ class _MyGymsTab extends StatelessWidget {
   final Color Function(String?) parseColor;
 
   @override
+  State<_MyGymsTab> createState() => _MyGymsTabState();
+}
+
+class _MyGymsTabState extends State<_MyGymsTab> {
+  static const _apiBase = 'https://passionate-grace-production-98ad.up.railway.app/api';
+
+  List<Map<String, dynamic>> _pendingRequests = [];
+  bool _loadingRequests = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPendingRequests();
+  }
+
+  Future<void> _loadPendingRequests() async {
+    setState(() => _loadingRequests = true);
+    try {
+      final res = await http.get(
+        Uri.parse('$_apiBase/global/join-requests'),
+        headers: {'Authorization': 'Bearer ${widget.globalAuth.token}'},
+      );
+      if (res.statusCode == 200 && mounted) {
+        final all = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
+        setState(() => _pendingRequests = all.where((r) => r['status'] == 'pending').toList());
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loadingRequests = false);
+  }
+
+  Future<void> _cancelRequest(String requestId) async {
+    final req = _pendingRequests.firstWhere((r) => r['id'] == requestId, orElse: () => {});
+    final bizId = req['business_id'] as String?;
+    if (bizId == null) return;
+    try {
+      await http.delete(
+        Uri.parse('$_apiBase/global/join-requests/$requestId'),
+        headers: {'Authorization': 'Bearer ${widget.globalAuth.token}'},
+      );
+      if (mounted) setState(() => _pendingRequests.removeWhere((r) => r['id'] == requestId));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Σφάλμα: $e'), backgroundColor: Colors.red.shade700));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final gyms = globalAuth.gyms;
+    final gyms = widget.globalAuth.gyms;
+    final totalCount = gyms.length + _pendingRequests.length;
     return Scaffold(
       backgroundColor: _kBg,
       body: SafeArea(
         child: Stack(
           children: [
-            ListView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
-              children: [
-                // Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Τα Γυμναστήριά Μου',
-                        style: GoogleFonts.manrope(
-                          fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-                      Text('${gyms.length} συνδεδεμένα γυμναστήρια',
-                        style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
-                    ]),
-                    GestureDetector(
-                      onTap: onAddGym,
-                      child: Container(
-                        height: 38,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: _kLime.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _kLime.withValues(alpha: 0.3)),
+            RefreshIndicator(
+              color: _kLime,
+              backgroundColor: _kCard,
+              onRefresh: () async {
+                await widget.globalAuth.refreshGyms();
+                await _loadPendingRequests();
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
+                children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Τα Γυμναστήριά Μου',
+                          style: GoogleFonts.manrope(
+                            fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                        Text('$totalCount γυμναστήρια',
+                          style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                      ]),
+                      GestureDetector(
+                        onTap: widget.onAddGym,
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: _kLime.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _kLime.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.add_rounded, color: _kLime, size: 16),
+                            const SizedBox(width: 4),
+                            Text('Προσθήκη', style: GoogleFonts.manrope(
+                              fontSize: 12, fontWeight: FontWeight.w700, color: _kLime)),
+                          ]),
                         ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.add_rounded, color: _kLime, size: 16),
-                          const SizedBox(width: 4),
-                          Text('Προσθήκη', style: GoogleFonts.manrope(
-                            fontSize: 12, fontWeight: FontWeight.w700, color: _kLime)),
-                        ]),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Gym cards
-                ...gyms.map((gym) {
-                  final color = parseColor(gym.primaryColor);
-                  return _MyGymCard(
-                    gym: gym,
-                    accentColor: color,
-                    onOpen: () => onEnterGym(gym),
-                  );
-                }),
-
-                // Add gym dashed card
-                GestureDetector(
-                  onTap: onAddGym,
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _kBorder, style: BorderStyle.solid),
-                    ),
-                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(
-                          color: _kCard,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: _kBorder),
-                        ),
-                        child: const Icon(Icons.add_rounded, color: Colors.white, size: 16),
-                      ),
-                      const SizedBox(height: 6),
-                      Text('Σύνδεσε νέο γυμναστήριο',
-                        style: GoogleFonts.manrope(
-                          fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                      Text('Αναζήτηση και εγγραφή σε γυμναστήρια κοντά σου',
-                        style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
-                    ]),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+
+                  // Active gym cards
+                  ...gyms.map((gym) {
+                    final color = widget.parseColor(gym.primaryColor);
+                    return _MyGymCard(
+                      gym: gym,
+                      accentColor: color,
+                      onOpen: () => widget.onEnterGym(gym),
+                    );
+                  }),
+
+                  // Pending join requests
+                  if (!_loadingRequests && _pendingRequests.isNotEmpty) ...[
+                    if (gyms.isNotEmpty) const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text('Εκκρεμή αιτήματα',
+                        style: GoogleFonts.manrope(
+                          fontSize: 12, fontWeight: FontWeight.w700,
+                          color: _kGray, letterSpacing: 0.5)),
+                    ),
+                    ..._pendingRequests.map((req) => _PendingRequestCard(
+                      request: req,
+                      onCancel: () => _cancelRequest(req['id'] as String),
+                    )),
+                  ],
+
+                  // Add gym dashed card
+                  GestureDetector(
+                    onTap: widget.onAddGym,
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _kBorder),
+                      ),
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                            color: _kCard, shape: BoxShape.circle,
+                            border: Border.all(color: _kBorder),
+                          ),
+                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 16),
+                        ),
+                        const SizedBox(height: 6),
+                        Text('Σύνδεσε νέο γυμναστήριο',
+                          style: GoogleFonts.manrope(
+                            fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                        Text('Αναζήτηση και εγγραφή σε γυμναστήρια κοντά σου',
+                          style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            if (enteringGym)
+            if (widget.enteringGym)
               const ColoredBox(
                 color: Color(0xAA000000),
                 child: Center(child: CircularProgressIndicator(color: _kLime)),
@@ -934,6 +1006,59 @@ class _MyGymsTab extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PendingRequestCard extends StatelessWidget {
+  const _PendingRequestCard({required this.request, required this.onCancel});
+  final Map<String, dynamic> request;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFFA500).withValues(alpha: 0.3)),
+      ),
+      child: Row(children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFA500).withValues(alpha: 0.10),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.schedule_rounded, color: Color(0xFFFFA500), size: 22),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(request['business_name'] as String? ?? 'Γυμναστήριο',
+              style: GoogleFonts.manrope(
+                fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+            const SizedBox(height: 2),
+            Text('Εκκρεμεί έγκριση από τον διαχειριστή',
+              style: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFFFFA500))),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: onCancel,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: _kBorder,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text('Ακύρωση',
+              style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600, color: _kGray)),
+          ),
+        ),
+      ]),
     );
   }
 }

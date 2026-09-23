@@ -47,6 +47,10 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   bool _loadingPkgs = true;
   bool _enteringGym = false;
 
+  // join request state: null=unknown, 'loading', 'none', 'pending', 'linked'
+  String? _joinStatus;
+  bool _joiningGym = false;
+
   String? get _slug => widget.slug ?? _gym?['slug'] as String?;
   bool get _isMember => widget.globalAuth != null &&
       _slug != null &&
@@ -61,6 +65,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       _loadingGym = false;
     }
     _loadAll();
+    _loadJoinStatus();
   }
 
   @override
@@ -77,6 +82,76 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       _loadPackages(slug),
       _loadHours(slug),
     ]);
+  }
+
+  Future<void> _loadJoinStatus() async {
+    if (widget.globalAuth == null || !widget.globalAuth!.isLoggedIn) return;
+    if (_isMember) { setState(() => _joinStatus = 'linked'); return; }
+    setState(() => _joinStatus = 'loading');
+    try {
+      final res = await http.get(
+        Uri.parse('$_apiBase/global/join-requests'),
+        headers: {'Authorization': 'Bearer ${widget.globalAuth!.token}'},
+      );
+      if (!mounted) return;
+      if (res.statusCode == 200) {
+        final list = jsonDecode(res.body) as List;
+        final bizId = widget.gymData?['business_id'] as String? ?? _gym?['business_id'] as String?;
+        final match = bizId != null
+          ? list.firstWhere((r) => r['business_id'] == bizId, orElse: () => null)
+          : null;
+        setState(() {
+          if (match == null) _joinStatus = 'none';
+          else if (match['status'] == 'pending') _joinStatus = 'pending';
+          else if (match['status'] == 'approved') _joinStatus = 'linked';
+          else _joinStatus = 'none';
+        });
+      } else {
+        setState(() => _joinStatus = 'none');
+      }
+    } catch (_) {
+      if (mounted) setState(() => _joinStatus = 'none');
+    }
+  }
+
+  Future<void> _requestJoin() async {
+    if (widget.globalAuth == null || !widget.globalAuth!.isLoggedIn) {
+      _showLoginPrompt(); return;
+    }
+    final bizId = _gym?['business_id'] as String?;
+    if (bizId == null) return;
+    setState(() => _joiningGym = true);
+    try {
+      final res = await http.post(
+        Uri.parse('$_apiBase/global/join-requests'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.globalAuth!.token}',
+        },
+        body: jsonEncode({'business_id': bizId}),
+      );
+      if (!mounted) return;
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final status = body['status'] as String?;
+        setState(() => _joinStatus = status == 'linked' ? 'linked' : 'pending');
+        final msg = status == 'linked'
+          ? 'Συνδέθηκες αυτόματα!'
+          : 'Το αίτημά σου στάλθηκε. Ο διαχειριστής θα σε ειδοποιήσει.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: _kCard));
+      } else {
+        final err = body['message'] ?? body['error'] ?? 'Σφάλμα';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(err.toString()), backgroundColor: Colors.red.shade700));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red.shade700));
+    } finally {
+      if (mounted) setState(() => _joiningGym = false);
+    }
   }
 
   Future<void> _loadGym(String slug) async {
@@ -783,24 +858,73 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       ),
       padding: EdgeInsets.fromLTRB(20, 16, 20,
         MediaQuery.of(context).padding.bottom + 16),
-      child: _isMember
+      child: _isMember || _joinStatus == 'linked'
         ? _limeButton('Άνοιξε το Γυμναστήριο', _enteringGym ? null : _enterGym,
             icon: Icons.fitness_center_rounded)
-        : Row(children: [
-            Expanded(
-              child: _outlineButton('Κλείσε Drop-in', () {
-                _tabCtrl.animateTo(2);
-              }),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _limeButton('Δες Πακέτα', () => _tabCtrl.animateTo(2)),
-            ),
-          ]),
+        : _joinStatus == 'pending'
+          ? _pendingJoinBanner()
+          : Column(mainAxisSize: MainAxisSize.min, children: [
+              Row(children: [
+                Expanded(
+                  child: _outlineButton('Κλείσε Drop-in', () => _tabCtrl.animateTo(2)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _limeButton('Δες Πακέτα', () => _tabCtrl.animateTo(2)),
+                ),
+              ]),
+              if (widget.globalAuth != null && widget.globalAuth!.isLoggedIn) ...[
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: _joiningGym ? null : _requestJoin,
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: _kCard,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: _kBorder),
+                    ),
+                    alignment: Alignment.center,
+                    child: _joiningGym
+                      ? const SizedBox(width: 18, height: 18,
+                          child: CircularProgressIndicator(color: _kLime, strokeWidth: 2))
+                      : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Icon(Icons.add_circle_outline, color: _kLime, size: 16),
+                          const SizedBox(width: 6),
+                          Text('Προσθήκη στα γυμναστήριά μου',
+                            style: GoogleFonts.manrope(
+                              fontSize: 13, fontWeight: FontWeight.w600, color: _kLime)),
+                        ]),
+                  ),
+                ),
+              ],
+            ]),
     );
   }
 
   // ── Helpers ──
+
+  Widget _pendingJoinBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFA500).withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFA500).withValues(alpha: 0.4)),
+      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.schedule_rounded, color: Color(0xFFFFA500), size: 18),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text('Το αίτημά σου εκκρεμεί έγκριση από τον διαχειριστή',
+            style: GoogleFonts.manrope(
+              fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFFFFA500)),
+            textAlign: TextAlign.center),
+        ),
+      ]),
+    );
+  }
 
   Widget _limeButton(String label, VoidCallback? onTap, {IconData? icon}) {
     return GestureDetector(
