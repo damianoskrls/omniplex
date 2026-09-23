@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../services/global_auth_service.dart';
 
 class GymProfileScreen extends StatefulWidget {
-  const GymProfileScreen({super.key, this.gymName = 'Fitness Club Athens'});
+  const GymProfileScreen({
+    super.key,
+    this.gymName = 'Fitness Club Athens',
+    this.slug,
+    this.globalAuth,
+    this.onLoggedIn,
+  });
   final String gymName;
+  final String? slug;
+  final GlobalAuthService? globalAuth;
+  final VoidCallback? onLoggedIn;
 
   @override
   State<GymProfileScreen> createState() => _GymProfileScreenState();

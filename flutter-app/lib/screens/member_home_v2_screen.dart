@@ -3,7 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
 
 class MemberHomeV2Screen extends StatefulWidget {
-  const MemberHomeV2Screen({super.key});
+  const MemberHomeV2Screen({super.key, this.userName, this.onTabChange});
+  final String? userName;
+  final void Function(int)? onTabChange;
 
   @override
   State<MemberHomeV2Screen> createState() => _MemberHomeV2ScreenState();
@@ -11,7 +13,6 @@ class MemberHomeV2Screen extends StatefulWidget {
 
 class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
   int _selectedDay = 1; // Mon = 1 (active)
-  int _navIndex = 0;
 
   static const _kDark = Color(0xFF161616);
   static const _kBorder26 = Color(0xFF262626);
@@ -25,55 +26,30 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBg,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildMyGymSection(),
-                        const SizedBox(height: 32),
-                        _buildQuickActions(),
-                        const SizedBox(height: 32),
-                        _buildThisWeekSection(),
-                      ],
-                    ),
-                  ),
-                ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildMyGymSection(),
+                    const SizedBox(height: 32),
+                    _buildQuickActions(),
+                    const SizedBox(height: 32),
+                    _buildThisWeekSection(),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-          // AI badge
-          Positioned(
-            left: 16,
-            bottom: 96,
-            child: Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                color: const Color(0xFF00FFD1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(
-                child: Text('AI', style: GoogleFonts.manrope(
-                  fontSize: 10, fontWeight: FontWeight.w800,
-                  color: Colors.black)),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0, right: 0, bottom: 0,
-            child: _buildBottomNav(),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -91,7 +67,7 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
               Text('Good morning,', style: GoogleFonts.manrope(
                 fontSize: 14, fontWeight: FontWeight.w500, color: _kGray9C)),
               const SizedBox(height: 2),
-              Text('Damianos 👋', style: GoogleFonts.spaceGrotesk(
+              Text('${widget.userName?.split(' ').first ?? 'there'} 👋', style: GoogleFonts.spaceGrotesk(
                 fontSize: 24, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.6)),
             ],
@@ -486,75 +462,4 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    final items = [
-      (Icons.home_rounded, 'HOME'),
-      (Icons.search, 'SEARCH'),
-      (Icons.calendar_today_outlined, 'SCHEDULE'),
-      (Icons.fitness_center_outlined, 'MY GYMS'),
-    ];
-
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        color: kBg.withValues(alpha: 0.95),
-        border: const Border(top: BorderSide(color: Color(0xFF262626))),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          ...items.asMap().entries.map((e) {
-            final i = e.key;
-            final item = e.value;
-            final active = _navIndex == i;
-            return GestureDetector(
-              onTap: () => setState(() => _navIndex = i),
-              child: SizedBox(
-                width: 60,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(item.$1, color: active ? kLime : _kGray6B, size: 22),
-                    const SizedBox(height: 4),
-                    Text(item.$2, style: GoogleFonts.manrope(
-                      fontSize: 9, fontWeight: FontWeight.w700,
-                      color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
-                  ],
-                ),
-              ),
-            );
-          }),
-          GestureDetector(
-            onTap: () => setState(() => _navIndex = 4),
-            child: SizedBox(
-              width: 60,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 24, height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _navIndex == 4 ? kLime : _kGray6B),
-                    ),
-                    child: ClipOval(
-                      child: Container(
-                        color: const Color(0xFF3A3C42),
-                        child: const Icon(Icons.person, color: Colors.white, size: 14),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text('PROFILE', style: GoogleFonts.manrope(
-                    fontSize: 9, fontWeight: FontWeight.w700,
-                    color: _navIndex == 4 ? kLime : _kGray6B, letterSpacing: 0.9)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

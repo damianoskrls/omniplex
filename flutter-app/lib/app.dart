@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/tenant_config.dart';
 import 'models/booking.dart';
-import 'screens/home_screen.dart';
+import 'screens/omni_member_shell_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/my_orders_screen.dart';
 import 'screens/workout_complete_screen.dart';
@@ -120,20 +120,18 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
       } catch (_) {}
     } else if (action == 'notif') {
       nav.popUntil((route) => route.isFirst);
-      HomeScreen.openNotifications();
+      OmniMemberShellScreen.openNotifications();
     } else if (action == 'messages') {
       nav.popUntil((route) => route.isFirst);
-      HomeScreen.openMessages(threadId: parts.length > 1 && parts[1] != 'open' ? parts[1] : null);
+      OmniMemberShellScreen.openMessages(threadId: parts.length > 1 && parts[1] != 'open' ? parts[1] : null);
     } else if (action == 'community') {
       nav.popUntil((route) => route.isFirst);
-      final postId = parts.length > 1 ? parts[1] : null;
-      HomeScreen.openCommunityPost(postId);
     } else if (action == 'order') {
       nav.popUntil((route) => route.isFirst);
       nav.push(MaterialPageRoute(builder: (_) => const MyOrdersScreen()));
     } else if (action == 'prep' || action == 'open') {
       nav.popUntil((route) => route.isFirst);
-      HomeScreen.selectTab(1);
+      OmniMemberShellScreen.selectTab(1);
     }
   }
 
@@ -195,7 +193,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                     }
                     if (auth.user!.isAdmin) return const AdminShellScreen();
                     if (auth.user!.isStaff) return const StaffHomeScreen();
-                    return const HomeScreen();
+                    return const OmniMemberShellScreen();
                   }
                   return const LoginScreen();
                 },

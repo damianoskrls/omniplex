@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
 
 class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({super.key});
+  const NotificationsScreen({super.key, this.onUnreadChanged});
+  final ValueChanged<int>? onUnreadChanged;
 
   @override
   Widget build(BuildContext context) {

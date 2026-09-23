@@ -344,7 +344,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: SplashScreen(key: ValueKey(_config?.businessId ?? 'splash'), config: _config),
+      home: SplashScreen(key: ValueKey(_config?.businessId ?? 'splash')),
     );
   }
 }
