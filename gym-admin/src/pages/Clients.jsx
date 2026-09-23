@@ -178,6 +178,8 @@ export default function Clients() {
         if (res.data.status === 'has_request') {
           const gu = res.data.global_user;
           if (gu) setForm(f => ({ ...f, full_name: gu.full_name || '', email: gu.email || '', phone: gu.phone || value }));
+        } else if (res.data.status === 'not_found') {
+          setForm(f => ({ ...f, phone: f.phone || value }));
         }
       } catch (e) {
         const msg = e.response?.data?.error || e.message || 'Σφάλμα αναζήτησης';
