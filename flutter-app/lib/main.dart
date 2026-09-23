@@ -338,6 +338,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
           key: const ValueKey('app-ready'),
           config: _config!,
           auth: _auth!,
+          globalAuth: _globalAuth,
         ),
       );
     }

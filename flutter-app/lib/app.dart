@@ -5,6 +5,8 @@ import 'config/tenant_config.dart';
 import 'models/booking.dart';
 import 'screens/omni_member_shell_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/discovery_landing_screen.dart';
+import 'services/global_auth_service.dart';
 import 'screens/my_orders_screen.dart';
 import 'screens/workout_complete_screen.dart';
 import 'services/auth_service.dart';
@@ -21,10 +23,11 @@ import 'widgets/splash_screen.dart';
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 class BookUpApp extends StatefulWidget {
-  const BookUpApp({super.key, required this.config, required this.auth});
+  const BookUpApp({super.key, required this.config, required this.auth, this.globalAuth});
 
   final TenantConfig config;
   final AuthService auth;
+  final GlobalAuthService? globalAuth;
 
   @override
   State<BookUpApp> createState() => _BookUpAppState();
@@ -195,7 +198,17 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                     if (auth.user!.isStaff) return const StaffHomeScreen();
                     return const OmniMemberShellScreen();
                   }
-                  return const LoginScreen();
+                  // Not logged in — show gym discovery with login option
+                  return DiscoveryLandingScreen(
+                    globalAuth: widget.globalAuth ?? GlobalAuthService(),
+                    onLoggedIn: () {
+                      // After global login, trigger a rebuild; tenant auth
+                      // is still needed so we show LoginScreen for PIN.
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    },
+                  );
                 },
               ),
             ),

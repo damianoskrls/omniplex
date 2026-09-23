@@ -245,8 +245,9 @@ class AuthService extends ChangeNotifier {
     required String fullName,
     required String phone,
     required String pin,
+    String? email,
   }) async {
-    await api.registerRequest(fullName: fullName, phone: phone, pin: pin);
+    await api.registerRequest(fullName: fullName, phone: phone, pin: pin, email: email);
   }
 
   Future<void> refreshUser() async {
