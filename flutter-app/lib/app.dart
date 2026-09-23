@@ -202,10 +202,12 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                   return DiscoveryLandingScreen(
                     globalAuth: widget.globalAuth ?? GlobalAuthService(),
                     onLoggedIn: () {
-                      // After global login, trigger a rebuild; tenant auth
-                      // is still needed so we show LoginScreen for PIN.
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      // After global login/register, push tenant PIN login
+                      // so the user can enter their gym with phone+PIN.
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => LoginScreen(
+                          globalAuth: widget.globalAuth,
+                        )),
                       );
                     },
                   );

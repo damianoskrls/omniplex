@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../services/global_auth_service.dart';
 import '../widgets/omni_design.dart';
-import 'register_screen.dart';
+import 'global_register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.globalAuth});
+  final GlobalAuthService? globalAuth;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -310,7 +312,10 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         GestureDetector(
           onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const RegisterScreen())),
+            MaterialPageRoute(builder: (_) => GlobalRegisterScreen(
+              globalAuth: widget.globalAuth ?? GlobalAuthService(),
+              onRegistered: () => Navigator.pop(context),
+            ))),
           child: Container(
             height: 56,
             decoration: BoxDecoration(
