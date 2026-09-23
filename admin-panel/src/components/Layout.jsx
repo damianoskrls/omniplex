@@ -1,6 +1,6 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Building2, LogOut, Menu, X, Euro } from 'lucide-react';
+import { LayoutDashboard, Building2, LogOut, Menu, X, Euro, Users } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import { useEffect, useState } from 'react';
 
@@ -26,6 +26,7 @@ export default function Layout({ children, title }) {
         <nav className="sidebar-nav">
           <NavLink to="/" end><LayoutDashboard size={16} /> Dashboard</NavLink>
           <NavLink to="/tenants"><Building2 size={16} /> Clients</NavLink>
+          <NavLink to="/global-users"><Users size={16} /> OmniPlex Users</NavLink>
         </nav>
         <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <button className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={handleLogout}>

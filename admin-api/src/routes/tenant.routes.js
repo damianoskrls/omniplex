@@ -723,4 +723,101 @@ router.get('/dashboard/overview', authenticate, requireMasterAdmin, async (req, 
   } catch (err) { return res.status(500).json({ error: err.message }); }
 });
 
+// ── Global Users (OmniPlex app users) ─────────────────────────
+
+// List all global users with search + pagination
+router.get('/global-users', authenticate, requireMasterAdmin, async (req, res) => {
+  try {
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 50);
+    const q     = (req.query.q || '').trim();
+    const offset = (page - 1) * limit;
+
+    let where = '';
+    const params = [];
+    if (q) {
+      where = `WHERE (gu.email LIKE ? OR gu.full_name LIKE ? OR gu.phone LIKE ?)`;
+      const like = `%${q}%`;
+      params.push(like, like, like);
+    }
+
+    const [[{ total }]] = await db.query(
+      `SELECT COUNT(*) AS total FROM global_users gu ${where}`,
+      params,
+    );
+
+    const [rows] = await db.query(
+      `SELECT gu.id, gu.email, gu.full_name, gu.phone, gu.created_at,
+              COUNT(DISTINCT gjr.business_id) AS linked_gyms_count
+       FROM global_users gu
+       LEFT JOIN gym_join_requests gjr ON gjr.global_user_id = gu.id AND gjr.status = 'approved'
+       ${where}
+       GROUP BY gu.id
+       ORDER BY gu.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
+    );
+
+    return res.json({ total, page, limit, rows });
+  } catch (err) { return res.status(500).json({ error: err.message }); }
+});
+
+// Get single global user details
+router.get('/global-users/:id', authenticate, requireMasterAdmin, async (req, res) => {
+  try {
+    const [[user]] = await db.query(
+      `SELECT id, email, full_name, phone, created_at FROM global_users WHERE id = ?`,
+      [req.params.id],
+    );
+    if (!user) return res.status(404).json({ error: 'Not found' });
+
+    const [gyms] = await db.query(
+      `SELECT gjr.id, gjr.status, gjr.created_at AS requested_at, gjr.updated_at AS updated_at,
+              b.id AS business_id, b.name AS business_name, b.slug, b.business_type
+       FROM gym_join_requests gjr
+       JOIN businesses b ON b.id = gjr.business_id
+       WHERE gjr.global_user_id = ?
+       ORDER BY gjr.created_at DESC`,
+      [req.params.id],
+    );
+
+    return res.json({ user, gyms });
+  } catch (err) { return res.status(500).json({ error: err.message }); }
+});
+
+// Update global user (email, full_name, phone, password)
+router.put('/global-users/:id', authenticate, requireMasterAdmin, async (req, res) => {
+  try {
+    const { email, full_name, phone, password } = req.body;
+    const sets = [];
+    const vals = [];
+
+    if (email)     { sets.push('email = ?');     vals.push(email.toLowerCase().trim()); }
+    if (full_name) { sets.push('full_name = ?');  vals.push(full_name.trim()); }
+    if (phone !== undefined) { sets.push('phone = ?'); vals.push(phone || null); }
+    if (password)  {
+      const hash = await bcrypt.hash(password, 12);
+      sets.push('password_hash = ?');
+      vals.push(hash);
+    }
+
+    if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+
+    vals.push(req.params.id);
+    await db.query(`UPDATE global_users SET ${sets.join(', ')} WHERE id = ?`, vals);
+    return res.json({ ok: true });
+  } catch (err) { return res.status(500).json({ error: err.message }); }
+});
+
+// Delete global user
+router.delete('/global-users/:id', authenticate, requireMasterAdmin, async (req, res) => {
+  try {
+    await db.query('DELETE FROM gym_join_requests WHERE global_user_id = ?', [req.params.id]);
+    await db.query('UPDATE users SET global_user_id = NULL WHERE global_user_id = ?', [req.params.id]);
+    const [result] = await db.query('DELETE FROM global_users WHERE id = ?', [req.params.id]);
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Not found' });
+    return res.json({ ok: true });
+  } catch (err) { return res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;

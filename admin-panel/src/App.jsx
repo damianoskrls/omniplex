@@ -6,6 +6,7 @@ import Dashboard     from './pages/Dashboard';
 import Tenants       from './pages/Tenants';
 import TenantDetail  from './pages/TenantDetail';
 import TenantBilling from './pages/TenantBilling';
+import GlobalUsers   from './pages/GlobalUsers';
 
 function PrivateRoute({ children }) {
   const { isLoggedIn } = useAuth();
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/tenants" element={<PrivateRoute><Tenants /></PrivateRoute>} />
           <Route path="/tenants/:id" element={<PrivateRoute><TenantDetail /></PrivateRoute>} />
           <Route path="/tenants/:id/billing" element={<PrivateRoute><TenantBilling /></PrivateRoute>} />
+          <Route path="/global-users" element={<PrivateRoute><GlobalUsers /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
