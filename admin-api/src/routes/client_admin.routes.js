@@ -6871,7 +6871,7 @@ router.get('/search-by-phone', requireClientAdmin, async (req, res) => {
         SELECT id, full_name, email, mobile AS phone, status, created_at
         FROM users
         WHERE business_id = ?
-          AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(mobile,' ',''),'-',''),'(',''),')',''),'+','') LIKE ?
+          AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(mobile,' ',''),'-',''),'(',''),')',''),'+','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
           AND deleted_at IS NULL
         ORDER BY full_name ASC
         LIMIT 20
@@ -6883,7 +6883,7 @@ router.get('/search-by-phone', requireClientAdmin, async (req, res) => {
         SELECT id, full_name, portal_email AS email, phone, role, is_active
         FROM staff
         WHERE business_id = ?
-          AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')',''),'+','') LIKE ?
+          AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')',''),'+','') LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
         ORDER BY full_name ASC
         LIMIT 20
       `, [req.admin.businessId, likePattern]);
