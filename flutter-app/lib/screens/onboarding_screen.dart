@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _kOnboardingKey = 'omniplex_onboarding_done';
+const _kOnboardingKey = 'bookup_onboarding_v2_done';
 
 Future<bool> hasSeenOnboarding() async {
   final prefs = await SharedPreferences.getInstance();
