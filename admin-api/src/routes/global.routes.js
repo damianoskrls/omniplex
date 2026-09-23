@@ -472,9 +472,9 @@ router.get('/join-requests', requireGlobal, async (req, res) => {
       SELECT jr.id, jr.business_id, jr.status, jr.created_at, jr.admin_note,
              b.name AS business_name, bc.app_name, bc.logo_url, bc.primary_color
       FROM gym_join_requests jr
-      JOIN businesses b ON b.id = jr.business_id
-      LEFT JOIN business_configs bc ON bc.business_id = jr.business_id
-      WHERE jr.global_user_id = ?
+      JOIN businesses b ON b.id = (jr.business_id COLLATE utf8mb4_unicode_ci)
+      LEFT JOIN business_configs bc ON bc.business_id = (jr.business_id COLLATE utf8mb4_unicode_ci)
+      WHERE (jr.global_user_id COLLATE utf8mb4_unicode_ci) = ?
       ORDER BY jr.created_at DESC
     `, [req.globalUser.globalUserId]);
     return res.json(rows);

@@ -807,8 +807,9 @@ router.get('/clients/lookup', requireClientAdmin, async (req, res) => {
     const [reqRows] = await db.query(
       `SELECT jr.id, jr.status, b.name AS gym_name
        FROM gym_join_requests jr
-       JOIN businesses b ON b.id = jr.business_id
-       WHERE jr.global_user_id = ? AND jr.business_id = ?
+       JOIN businesses b ON b.id = (jr.business_id COLLATE utf8mb4_unicode_ci)
+       WHERE (jr.global_user_id COLLATE utf8mb4_unicode_ci) = ?
+         AND (jr.business_id COLLATE utf8mb4_unicode_ci) = ?
        ORDER BY jr.created_at DESC LIMIT 1`,
       [gu.id, bizId],
     );
