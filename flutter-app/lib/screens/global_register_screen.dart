@@ -1,15 +1,21 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
-import '../theme/app_colors.dart';
+import 'role_selection_screen.dart';
+
+const _kBg     = Color(0xFF0A0A0A);
+const _kCard   = Color(0xFF16171B);
+const _kBorder = Color(0xFF2A2B30);
+const _kGray   = Color(0xFF9A9CA3);
+const _kLime   = Color(0xFFC6FF3D);
 
 class GlobalRegisterScreen extends StatefulWidget {
   const GlobalRegisterScreen({
     super.key,
     required this.globalAuth,
     required this.onRegistered,
-    // If provided, gym search is skipped and this gym is pre-selected
     this.preselectedGym,
   });
 
@@ -24,23 +30,21 @@ class GlobalRegisterScreen extends StatefulWidget {
 class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
   static const _apiBase = 'https://passionate-grace-production-98ad.up.railway.app/api';
 
-  final _nameCtrl     = TextEditingController();
-  final _emailCtrl    = TextEditingController();
-  final _phoneCtrl    = TextEditingController();
-  final _passCtrl     = TextEditingController();
-  final _confirmCtrl  = TextEditingController();
+  final _nameCtrl    = TextEditingController();
+  final _emailCtrl   = TextEditingController();
+  final _phoneCtrl   = TextEditingController();
+  final _passCtrl    = TextEditingController();
+  final _confirmCtrl = TextEditingController();
   final _gymSearchCtrl = TextEditingController();
 
   bool _loading = false;
   String? _error;
-  bool _obscurePass = true;
-  bool _obscureConfirm = true;
+  bool _passObscure    = true;
+  bool _confirmObscure = true;
 
-  // Gym search
-  List<Map<String, dynamic>> _gymResults = [];
+  List<Map<String, dynamic>> _gymResults  = [];
   bool _gymSearching = false;
   final List<Map<String, dynamic>> _selectedGyms = [];
-  final Map<String, String> _joinStatuses = {}; // slug -> status
 
   @override
   void initState() {
@@ -52,23 +56,18 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _emailCtrl.dispose();
-    _phoneCtrl.dispose();
-    _passCtrl.dispose();
-    _confirmCtrl.dispose();
-    _gymSearchCtrl.dispose();
+    _nameCtrl.dispose(); _emailCtrl.dispose();
+    _phoneCtrl.dispose(); _passCtrl.dispose();
+    _confirmCtrl.dispose(); _gymSearchCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _searchGyms(String q) async {
-    if (q.trim().length < 2) {
-      setState(() => _gymResults = []);
-      return;
-    }
+    if (q.trim().length < 2) { setState(() => _gymResults = []); return; }
     setState(() => _gymSearching = true);
     try {
-      final uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: {'q': q.trim()});
+      final uri = Uri.parse('$_apiBase/global/discovery/gyms')
+          .replace(queryParameters: {'q': q.trim()});
       final res = await http.get(uri);
       if (res.statusCode == 200) {
         setState(() {
@@ -84,18 +83,9 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
 
   void _addGym(Map<String, dynamic> gym) {
     setState(() {
-      if (!_selectedGyms.any((g) => g['id'] == gym['id'])) {
-        _selectedGyms.add(gym);
-      }
+      if (!_selectedGyms.any((g) => g['id'] == gym['id'])) _selectedGyms.add(gym);
       _gymResults = [];
       _gymSearchCtrl.clear();
-    });
-  }
-
-  void _removeGym(String id) {
-    setState(() {
-      _selectedGyms.removeWhere((g) => g['id'] == id);
-      _joinStatuses.remove(id);
     });
   }
 
@@ -126,265 +116,315 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
       );
 
       // Send join requests for selected gyms
+      final token = widget.globalAuth.token;
       for (final gym in _selectedGyms) {
         try {
-          final status = await _sendJoinRequest(gym['id'] as String);
-          _joinStatuses[gym['id'] as String] = status;
+          await http.post(
+            Uri.parse('$_apiBase/global/join-requests'),
+            headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+            body: jsonEncode({'business_id': gym['id']}),
+          );
         } catch (_) {}
       }
 
       if (!mounted) return;
-      widget.onRegistered();
+      // Show role selection for new users
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (roleCtx) => RoleSelectionScreen(
+            onContinue: (_) {
+              Navigator.of(roleCtx).popUntil((r) => r.isFirst);
+              widget.onRegistered();
+            },
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
     }
   }
 
-  Future<String> _sendJoinRequest(String businessId) async {
-    final token = widget.globalAuth.token;
-    final res = await http.post(
-      Uri.parse('$_apiBase/global/join-requests'),
-      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
-      body: jsonEncode({'business_id': businessId}),
-    );
-    if (res.statusCode == 200 || res.statusCode == 201) {
-      final body = jsonDecode(res.body) as Map<String, dynamic>;
-      return body['status'] as String? ?? 'pending';
-    }
-    return 'error';
-  }
-
   Color _parseColor(String? hex) {
-    if (hex == null) return AppColors.lime;
+    if (hex == null) return _kLime;
     try { return Color(int.parse(hex.replaceFirst('#', '0xFF'))); }
-    catch (_) { return AppColors.lime; }
+    catch (_) { return _kLime; }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.bg,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Εγγραφή',
-          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 17),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
-        children: [
-          if (_error != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      backgroundColor: _kBg,
+      body: SafeArea(
+        child: Column(children: [
+          // Top bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Row(children: [
+              GestureDetector(
+                onTap: () => Navigator.maybePop(context),
+                child: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: _kCard,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _kBorder),
+                  ),
+                  child: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
+                ),
               ),
-              child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
-            ),
-
-          _buildField(_nameCtrl,  'Ονοματεπώνυμο', Icons.person_outline_rounded),
-          const SizedBox(height: 12),
-          _buildField(_emailCtrl, 'Email', Icons.email_outlined, type: TextInputType.emailAddress),
-          const SizedBox(height: 12),
-          _buildField(_phoneCtrl, 'Κινητό (προαιρετικό)', Icons.phone_outlined, type: TextInputType.phone),
-          const SizedBox(height: 12),
-          _buildField(
-            _passCtrl, 'Κωδικός', Icons.lock_outline_rounded,
-            obscure: _obscurePass,
-            toggleObscure: () => setState(() => _obscurePass = !_obscurePass),
-          ),
-          const SizedBox(height: 12),
-          _buildField(
-            _confirmCtrl, 'Επιβεβαίωση κωδικού', Icons.lock_outline_rounded,
-            obscure: _obscureConfirm,
-            toggleObscure: () => setState(() => _obscureConfirm = !_obscureConfirm),
+              const Spacer(),
+              Text('OmniPlex', style: GoogleFonts.manrope(
+                fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              const Spacer(),
+              const SizedBox(width: 40),
+            ]),
           ),
 
-          const SizedBox(height: 28),
-          const Text(
-            'Γυμναστήρια',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            widget.preselectedGym != null
-                ? 'Θα σταλεί αίτημα εγγραφής στο επιλεγμένο γυμναστήριο.'
-                : 'Αν είσαι ήδη μέλος ή θέλεις να εγγραφείς σε κάποιο γυμναστήριο, πρόσθεσέ το παρακάτω.',
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 12),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
+              children: [
+                Text('Δημιουργία\nΛογαριασμού',
+                  style: GoogleFonts.manrope(
+                    fontSize: 28, fontWeight: FontWeight.w700,
+                    color: Colors.white, letterSpacing: -0.7, height: 1.1)),
+                const SizedBox(height: 8),
+                Text('Εγγράψου δωρεάν και ανακάλυψε γυμναστήρια.',
+                  style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.5)),
+                const SizedBox(height: 28),
 
-          // Selected gyms
-          ..._selectedGyms.map((g) {
-            final color = _parseColor(g['primary_color'] as String?);
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
+                if (_error != null) ...[
                   Container(
-                    width: 36, height: 36,
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(9),
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
-                    child: Center(
-                      child: Text(
-                        (g['app_name'] as String? ?? g['name'] as String? ?? '?')[0].toUpperCase(),
-                        style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 15),
-                      ),
-                    ),
+                    child: Text(_error!,
+                      style: GoogleFonts.manrope(color: Colors.redAccent, fontSize: 13)),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      g['app_name'] as String? ?? g['name'] as String? ?? '',
-                      style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => _removeGym(g['id'] as String),
-                    icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
+                  const SizedBox(height: 16),
                 ],
-              ),
-            );
-          }),
 
-          // Gym search input — hidden if gym was pre-selected from profile
-          if (widget.preselectedGym == null) TextField(
-            controller: _gymSearchCtrl,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Αναζήτηση γυμναστηρίου...',
-              hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-              prefixIcon: _gymSearching
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(width: 16, height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.lime)),
-                    )
-                  : const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 18),
-              filled: true,
-              fillColor: AppColors.surfaceLight,
-              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.border)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.lime)),
-            ),
-            onChanged: _searchGyms,
-          ),
+                _fieldLabel('Ονοματεπώνυμο'),
+                const SizedBox(height: 8),
+                _inputField(ctrl: _nameCtrl, hint: 'Γιώργης Παπαδόπουλος'),
+                const SizedBox(height: 14),
 
-          // Gym search results — hidden if gym was pre-selected
-          if (widget.preselectedGym == null && _gymResults.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(top: 4),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                children: _gymResults.take(5).map((g) {
-                  return InkWell(
-                    onTap: () => _addGym(g),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.fitness_center_rounded, size: 16, color: AppColors.textSecondary),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  g['app_name'] as String? ?? g['name'] as String? ?? '',
-                                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-                                ),
-                                if ((g['city'] as String?)?.isNotEmpty == true)
-                                  Text(g['city'] as String, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                              ],
-                            ),
+                _fieldLabel('Email'),
+                const SizedBox(height: 8),
+                _inputField(ctrl: _emailCtrl, hint: 'email@example.com',
+                    type: TextInputType.emailAddress),
+                const SizedBox(height: 14),
+
+                _fieldLabel('Κινητό (προαιρετικό)'),
+                const SizedBox(height: 8),
+                _inputField(ctrl: _phoneCtrl, hint: '69XXXXXXXX',
+                    type: TextInputType.phone),
+                const SizedBox(height: 14),
+
+                _fieldLabel('Κωδικός'),
+                const SizedBox(height: 8),
+                _inputField(
+                  ctrl: _passCtrl, hint: '••••••••', obscure: _passObscure,
+                  suffix: IconButton(
+                    onPressed: () => setState(() => _passObscure = !_passObscure),
+                    icon: Icon(_passObscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      color: _kGray, size: 18)),
+                ),
+                const SizedBox(height: 14),
+
+                _fieldLabel('Επιβεβαίωση κωδικού'),
+                const SizedBox(height: 8),
+                _inputField(
+                  ctrl: _confirmCtrl, hint: '••••••••', obscure: _confirmObscure,
+                  suffix: IconButton(
+                    onPressed: () => setState(() => _confirmObscure = !_confirmObscure),
+                    icon: Icon(_confirmObscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      color: _kGray, size: 18)),
+                ),
+                const SizedBox(height: 28),
+
+                // Gyms section
+                Text('Γυμναστήρια',
+                  style: GoogleFonts.manrope(
+                    fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                const SizedBox(height: 4),
+                Text(
+                  widget.preselectedGym != null
+                    ? 'Θα σταλεί αίτημα εγγραφής στο επιλεγμένο γυμναστήριο.'
+                    : 'Είσαι ήδη μέλος κάπου; Πρόσθεσέ το για αυτόματη σύνδεση.',
+                  style: GoogleFonts.manrope(fontSize: 12, color: _kGray, height: 1.5)),
+                const SizedBox(height: 12),
+
+                // Selected gyms chips
+                ..._selectedGyms.map((g) {
+                  final color = _parseColor(g['primary_color'] as String?);
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _kCard,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: _kBorder),
+                    ),
+                    child: Row(children: [
+                      Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8)),
+                        child: Center(child: Text(
+                          (g['app_name'] as String? ?? g['name'] as String? ?? '?')[0].toUpperCase(),
+                          style: GoogleFonts.manrope(
+                            color: color, fontWeight: FontWeight.w800, fontSize: 14))),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(
+                        g['app_name'] as String? ?? g['name'] as String? ?? '',
+                        style: GoogleFonts.manrope(
+                          color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14))),
+                      GestureDetector(
+                        onTap: () => setState(() => _selectedGyms.removeWhere((x) => x['id'] == g['id'])),
+                        child: const Icon(Icons.close_rounded, color: _kGray, size: 18)),
+                    ]),
+                  );
+                }),
+
+                // Gym search
+                if (widget.preselectedGym == null) ...[
+                  TextField(
+                    controller: _gymSearchCtrl,
+                    style: GoogleFonts.manrope(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Αναζήτηση γυμναστηρίου...',
+                      hintStyle: GoogleFonts.manrope(color: _kGray, fontSize: 14),
+                      prefixIcon: _gymSearching
+                        ? const Padding(padding: EdgeInsets.all(12),
+                            child: SizedBox(width: 16, height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: _kLime)))
+                        : const Icon(Icons.search_rounded, color: _kGray, size: 18),
+                      filled: true, fillColor: _kCard,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: _kBorder)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: _kBorder)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: _kLime)),
+                    ),
+                    onChanged: _searchGyms,
+                  ),
+                  if (_gymResults.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _kCard,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _kBorder),
+                      ),
+                      child: Column(
+                        children: _gymResults.take(5).map((g) => InkWell(
+                          onTap: () => _addGym(g),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            child: Row(children: [
+                              const Icon(Icons.fitness_center_rounded, size: 16, color: _kGray),
+                              const SizedBox(width: 10),
+                              Expanded(child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(g['app_name'] as String? ?? g['name'] as String? ?? '',
+                                    style: GoogleFonts.manrope(
+                                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                                  if ((g['city'] as String?)?.isNotEmpty == true)
+                                    Text(g['city'] as String,
+                                      style: GoogleFonts.manrope(color: _kGray, fontSize: 11)),
+                                ],
+                              )),
+                              const Icon(Icons.add_rounded, color: _kLime, size: 18),
+                            ]),
                           ),
-                          const Icon(Icons.add_rounded, color: AppColors.lime, size: 18),
-                        ],
+                        )).toList(),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
+                  ],
+                ],
 
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _loading ? null : _register,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.lime,
-                foregroundColor: AppColors.bg,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: _loading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                  : const Text('Δημιουργία Λογαριασμού', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 32),
+
+                GestureDetector(
+                  onTap: _loading ? null : _register,
+                  child: Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: _kLime,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: _loading
+                      ? const SizedBox(width: 22, height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: _kBg))
+                      : Text('Δημιουργία Λογαριασμού',
+                          style: GoogleFonts.manrope(
+                            fontSize: 15, fontWeight: FontWeight.w700, color: _kBg)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Text('Έχεις ήδη λογαριασμό; ',
+                      style: GoogleFonts.manrope(fontSize: 14, color: _kGray)),
+                    GestureDetector(
+                      onTap: () => Navigator.maybePop(context),
+                      child: Text('Σύνδεση',
+                        style: GoogleFonts.manrope(
+                          fontSize: 14, fontWeight: FontWeight.w700, color: _kLime,
+                          decoration: TextDecoration.underline,
+                          decorationColor: _kLime)),
+                    ),
+                  ]),
+                ),
+              ],
             ),
           ),
-        ],
+        ]),
       ),
     );
   }
 
-  Widget _buildField(
-    TextEditingController ctrl, String hint, IconData icon, {
+  Widget _fieldLabel(String text) => Text(text, style: GoogleFonts.manrope(
+    fontSize: 13, fontWeight: FontWeight.w600, color: _kGray));
+
+  Widget _inputField({
+    required TextEditingController ctrl,
+    required String hint,
     TextInputType type = TextInputType.text,
     bool obscure = false,
-    VoidCallback? toggleObscure,
+    Widget? suffix,
   }) {
     return TextField(
       controller: ctrl,
-      style: const TextStyle(color: AppColors.textPrimary),
       keyboardType: type,
       obscureText: obscure,
+      style: GoogleFonts.manrope(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textSecondary),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
-        suffixIcon: toggleObscure != null
-            ? IconButton(
-                onPressed: toggleObscure,
-                icon: Icon(
-                  obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  color: AppColors.textSecondary, size: 18,
-                ),
-              )
-            : null,
+        hintStyle: GoogleFonts.manrope(color: _kGray),
+        suffixIcon: suffix,
         filled: true,
-        fillColor: AppColors.surfaceLight,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.border)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.border)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.lime)),
+        fillColor: _kCard,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: _kBorder)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: _kBorder)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: _kLime)),
       ),
     );
   }

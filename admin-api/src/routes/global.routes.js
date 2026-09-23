@@ -583,13 +583,14 @@ router.get('/discovery/gyms/:slug/packages', async (req, res) => {
     if (!biz) return res.status(404).json({ error: 'Gym not found' });
 
     const [plans] = await db.query(`
-      SELECT p.id, p.name, p.description, p.sessions_included, p.validity_days, p.price_cents,
-             p.is_active, p.is_public,
-             s.id AS service_id, s.name AS service_name
-      FROM service_plans p
-      JOIN services s ON s.id = p.service_id
-      WHERE s.business_id = ? AND p.is_active = 1 AND p.is_public = 1
-      ORDER BY s.name ASC, p.price_cents ASC
+      SELECT bp.id, bp.name, bp.sessions, bp.price_cents, bp.billing_period, bp.plan_type, bp.sort_order,
+             GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ', ') AS service_name
+      FROM business_plans bp
+      LEFT JOIN plan_service_items psi ON psi.plan_id = bp.id
+      LEFT JOIN services s ON s.id = psi.service_id
+      WHERE bp.business_id = ? AND bp.is_active = 1 AND bp.plan_type != 'nutrition'
+      GROUP BY bp.id
+      ORDER BY bp.sort_order ASC, bp.price_cents ASC
     `, [biz.id]);
     return res.json(plans);
   } catch (err) {

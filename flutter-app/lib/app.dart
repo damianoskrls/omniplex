@@ -6,6 +6,7 @@ import 'models/booking.dart';
 import 'screens/omni_member_shell_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/discovery_landing_screen.dart';
+import 'screens/global_member_home_screen.dart';
 import 'services/global_auth_service.dart';
 import 'screens/my_orders_screen.dart';
 import 'screens/workout_complete_screen.dart';
@@ -198,17 +199,31 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                     if (auth.user!.isStaff) return const StaffHomeScreen();
                     return const OmniMemberShellScreen();
                   }
-                  // Not logged in — show gym discovery with login option
+                  // Not logged in to tenant — check global auth
+                  final gAuth = widget.globalAuth ?? GlobalAuthService();
+                  if (gAuth.isLoggedIn) {
+                    return GlobalMemberHomeScreen(
+                      globalAuth: gAuth,
+                      onEnterGym: (config) {
+                        // Reload app with the selected gym's TenantConfig
+                        // by triggering auth reload via the main.dart flow.
+                        // For now, push the PIN login screen to complete gym auth.
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => LoginScreen(
+                            globalAuth: widget.globalAuth,
+                          )),
+                        );
+                      },
+                      onLogout: () {
+                        gAuth.clear();
+                        if (mounted) setState(() {});
+                      },
+                    );
+                  }
                   return DiscoveryLandingScreen(
-                    globalAuth: widget.globalAuth ?? GlobalAuthService(),
+                    globalAuth: gAuth,
                     onLoggedIn: () {
-                      // After global login/register, push tenant PIN login
-                      // so the user can enter their gym with phone+PIN.
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => LoginScreen(
-                          globalAuth: widget.globalAuth,
-                        )),
-                      );
+                      if (mounted) setState(() {});
                     },
                   );
                 },
