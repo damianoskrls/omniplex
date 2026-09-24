@@ -62,7 +62,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   ];
 
   static const _popularSearches = [
-    'Boxing Gyms', '24h Gyms', 'Personal Training', 'Swimming Pools',
+    'CrossFit', 'Yoga', 'Pilates', 'Boxing', 'Personal Training', '24ωρα γυμναστήρια',
   ];
 
   static const _activities = [
@@ -130,11 +130,13 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
 
   void _onSearchChanged(String v) {
     _debounce?.cancel();
-    if (v.trim().length < 2 && _activeCategory.isEmpty) {
+    if (v.trim().isEmpty && _activeCategory.isEmpty) {
       if (_searched) setState(() { _results = []; _searched = false; });
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 400), _search);
+    // Immediately hide suggestion panels as soon as user types
+    if (!_searched) setState(() { _searched = true; _results = []; });
+    _debounce = Timer(const Duration(milliseconds: 350), _search);
   }
 
   Future<void> _search() async {
@@ -271,21 +273,37 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             ),
           ),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (_, i) => Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: _buildGymCard(
-                  _featured[i],
-                  showLogoBadge: true,
-                ),
+        if (_featured.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.location_off_outlined, color: _kGray, size: 40),
+                  const SizedBox(height: 12),
+                  Text('Δεν βρέθηκαν γυμναστήρια κοντά σου',
+                    style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  Text('Δοκίμασε αναζήτηση με όνομα ή πόλη',
+                    style: GoogleFonts.manrope(color: _kGray.withValues(alpha: 0.6), fontSize: 12)),
+                ],
               ),
-              childCount: _featured.length,
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) => Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: _buildGymCard(_featured[i], showLogoBadge: true),
+                ),
+                childCount: _featured.length,
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -413,28 +431,17 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   }
 
   Widget _buildHomeSectionHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text('Γυμναστήρια κοντά σου',
-          style: GoogleFonts.manrope(
-            fontSize: 18, fontWeight: FontWeight.w700,
-            color: Colors.white, letterSpacing: -0.45)),
-        GestureDetector(
-          onTap: _goRegister,
-          child: Text('Εγγραφή',
-            style: GoogleFonts.manrope(
-              fontSize: 12, fontWeight: FontWeight.w700,
-              color: _kLime, letterSpacing: 0.3)),
-        ),
-      ],
-    );
+    return Text('Γυμναστήρια κοντά σου',
+      style: GoogleFonts.manrope(
+        fontSize: 18, fontWeight: FontWeight.w700,
+        color: Colors.white, letterSpacing: -0.45));
   }
 
   // ─────────── SEARCH FOCUSED STATE (11:463) ───────────
 
   Widget _buildSearchFocusedContent() {
     return CustomScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -443,16 +450,10 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSearchFocusedTopBar(),
-                const SizedBox(height: 16),
-                _buildFilterChipsRow(),
                 const SizedBox(height: 28),
                 _buildRecentSearches(),
                 const SizedBox(height: 24),
                 _buildPopularSearches(),
-                const SizedBox(height: 28),
-                _buildNearbyGymsSection(),
-                const SizedBox(height: 28),
-                _buildPopularActivitiesSection(),
                 const SizedBox(height: 40),
               ],
             ),
@@ -478,7 +479,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             width: 16, height: 16),
         ),
       ),
-      const SizedBox(width: 12),
+      const SizedBox(width: 10),
       Expanded(
         child: Container(
           height: 52,
@@ -488,11 +489,11 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             border: Border.all(color: _kLime, width: 1.5),
           ),
           child: Row(children: [
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             SvgPicture.asset('assets/icons/discovery_search.svg',
               width: 16, height: 16,
               colorFilter: const ColorFilter.mode(_kLime, BlendMode.srcIn)),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: TextField(
                 controller: _searchCtrl,
@@ -501,7 +502,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                 style: GoogleFonts.manrope(fontSize: 14, color: Colors.white),
                 cursorColor: _kLime,
                 decoration: InputDecoration(
-                  hintText: 'Search gyms, classes or activities',
+                  hintText: 'Αναζήτηση γυμναστηρίου, μαθήματος...',
                   hintStyle: GoogleFonts.manrope(fontSize: 14, color: _kGray),
                   border: InputBorder.none,
                   isDense: true,
@@ -518,14 +519,31 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                   setState(() { _results = []; _searched = false; });
                 },
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 14),
+                  padding: const EdgeInsets.only(right: 10),
                   child: SvgPicture.asset('assets/icons/discovery_x.svg',
                     width: 14, height: 14),
                 ),
               )
             else
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
           ]),
+        ),
+      ),
+      const SizedBox(width: 10),
+      // Single filter button
+      GestureDetector(
+        onTap: () => _showFilterSheet('all'),
+        child: Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: _kCard,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _kBorder),
+          ),
+          alignment: Alignment.center,
+          child: SvgPicture.asset('assets/icons/discovery_filter.svg',
+            width: 16, height: 16,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
         ),
       ),
     ]);
@@ -622,13 +640,13 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Recent Searches',
+            Text('Πρόσφατες αναζητήσεις',
               style: GoogleFonts.manrope(
-                fontSize: 14, fontWeight: FontWeight.w700,
+                fontSize: 13, fontWeight: FontWeight.w700,
                 color: Colors.white)),
             GestureDetector(
               onTap: () {},
-              child: Text('Clear all',
+              child: Text('Διαγραφή',
                 style: GoogleFonts.manrope(
                   fontSize: 12, color: _kGray)),
             ),
@@ -670,9 +688,9 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Popular Searches',
+        Text('Δημοφιλείς κατηγορίες',
           style: GoogleFonts.manrope(
-            fontSize: 14, fontWeight: FontWeight.w700,
+            fontSize: 13, fontWeight: FontWeight.w700,
             color: Colors.white)),
         const SizedBox(height: 12),
         Wrap(
