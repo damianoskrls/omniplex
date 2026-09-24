@@ -11,6 +11,7 @@ import 'config/tenant_config.dart';
 import 'l10n/app_strings.dart';
 import 'screens/business_selector_screen.dart';
 import 'screens/discovery_landing_screen.dart';
+import 'screens/global_auth_gate_screen.dart';
 import 'screens/global_dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
@@ -67,6 +68,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
   String? _error;
   bool _needsTenantSelection = false;
   bool _showOnboarding = false;
+  bool _showAuthGate   = false;
   bool _showGlobalDashboard = false;
   final _globalAuth = GlobalAuthService();
   String _selectorApiBase = 'https://passionate-grace-production-98ad.up.railway.app';
@@ -204,6 +206,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
       _config = null;
       _auth = null;
       _needsTenantSelection = false;
+      _showAuthGate = false;
     });
     SchedulerBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
@@ -214,6 +217,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
       _auth = null;
       _error = null;
       _needsTenantSelection = true;
+      _showAuthGate = false;
     });
   }
 
@@ -325,7 +329,24 @@ class _AppBootstrapState extends State<AppBootstrap> {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         home: OnboardingScreen(
-          onDone: () => setState(() => _showOnboarding = false),
+          onDone: () {
+            if (!_globalAuth.isLoggedIn) {
+              setState(() { _showOnboarding = false; _showAuthGate = true; });
+            } else {
+              setState(() => _showOnboarding = false);
+            }
+          },
+        ),
+      );
+    }
+
+    if (_config != null && _auth != null && _showAuthGate) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: GlobalAuthGateScreen(
+          globalAuth: _globalAuth,
+          onLogin: () => setState(() { _showAuthGate = false; }),
+          onExplore: () => setState(() { _showAuthGate = false; }),
         ),
       );
     }
