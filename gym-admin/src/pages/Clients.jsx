@@ -584,19 +584,10 @@ export default function Clients() {
                       disabled={saving}
                       onClick={() => handleAddGlobal()}
                     >
-                      {saving ? '...' : '✓ Προσθήκη ως πελάτης (άμεσα)'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ fontSize: '0.85rem', width: '100%' }}
-                      disabled={saving}
-                      onClick={handleInviteGlobal}
-                    >
-                      📱 Πρόσκληση μέσω OmniPlex App
+                      {saving ? '...' : '✓ Προσθήκη ως πελάτης'}
                     </button>
                     <small className="text-muted" style={{ textAlign: 'center' }}>
-                      Η πρόσκληση θα εμφανιστεί στο app του χρήστη — θα μπει ενεργός μόλις την αποδεχτεί.
+                      Ο πελάτης θα προστεθεί αμέσως και θα λάβει SMS ενημέρωσης.
                     </small>
                   </div>
                 )}
