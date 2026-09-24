@@ -1025,10 +1025,9 @@ router.post('/auth/send-otp', async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error('send-otp error:', err.message);
-    const isDev = process.env.NODE_ENV !== 'production';
     return res.status(500).json({
       error: 'Αποτυχία αποστολής SMS. Δοκίμασε ξανά.',
-      ...(isDev && { debug: err.message }),
+      debug: err.message,
     });
   }
 });
