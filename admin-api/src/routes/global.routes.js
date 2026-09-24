@@ -37,7 +37,7 @@ function makeGlobalToken(user) {
 // ── Helpers ──────────────────────────────────────────────────
 async function getGymsForGlobalUser(globalUserId) {
   const [rows] = await db.query(`
-    SELECT u.id AS user_id, u.business_id, u.full_name, u.status,
+    SELECT u.id AS user_id, u.business_id, u.full_name, u.account_status AS status,
            b.slug, b.name, b.business_type,
            c.app_name, c.primary_color, c.logo_url
     FROM users u
@@ -179,7 +179,7 @@ router.post('/gym-token', requireGlobal, async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT u.id, u.business_id, u.email, u.full_name, u.status, u.phone
+      `SELECT u.id, u.business_id, u.email, u.full_name, u.account_status AS status, u.phone
        FROM users u
        WHERE u.global_user_id = ? AND u.business_id = ? AND u.deleted_at IS NULL`,
       [req.globalUser.globalUserId, business_id],
