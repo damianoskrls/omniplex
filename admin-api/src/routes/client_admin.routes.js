@@ -968,18 +968,30 @@ router.post('/clients/add-global', requireClientAdmin, async (req, res) => {
       [global_user_id, bizId],
     );
 
-    // Notify user via SMS
+    // Notify user via push + SMS
     try {
       const [[biz]] = await db.query(`SELECT name FROM businesses WHERE id = ?`, [bizId]);
       const gymName = biz?.name || 'το γυμναστήριο';
-      const { sendSms } = require('../lib/sms');
-      if (gu.phone) {
+
+      // Push notification (preferred — user has app installed)
+      const { sendFcm }              = require('../lib/push');
+      const { getGlobalUserFcmTokens } = require('./global.routes');
+      const tokens = await getGlobalUserFcmTokens(global_user_id);
+      if (tokens.length) {
+        await sendFcm(tokens, {
+          title: `${gymName} σε πρόσθεσε!`,
+          body:  `Άνοιξε το OmniPlex για να δεις τα πακέτα σου.`,
+          data:  { type: 'gym_added', gym_name: gymName },
+        });
+      } else if (gu.phone) {
+        // Fallback to SMS if no push token (app not yet installed)
+        const { sendSms } = require('../lib/sms');
         await sendSms(gu.phone,
-          `Το ${gymName} σε κατέγραψε ως πελάτη! Άνοιξε το OmniPlex app και σύνδεσε λογαριασμό για να δεις τα πακέτα σου.`
+          `Το ${gymName} σε κατέγραψε ως πελάτη! Άνοιξε το OmniPlex app και σύνδεσε λογαριασμό για να δεις τα πακέτα σου.`,
         );
       }
-    } catch (smsErr) {
-      console.error('[SMS] add-global notification failed:', smsErr.message);
+    } catch (notifErr) {
+      console.error('[NOTIFY] add-global notification failed:', notifErr.message);
     }
 
     return res.json({ ok: true, user_id: newId });

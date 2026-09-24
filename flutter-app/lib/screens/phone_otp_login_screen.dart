@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
 
@@ -90,13 +92,23 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await widget.globalAuth.verifyOtp(_phone, _otp);
+      await _registerFcmToken();
       if (mounted) widget.onLoggedIn();
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
-      // Clear OTP on error
       for (final c in _otpCtrls) c.clear();
       _otpFocus[0].requestFocus();
     }
+  }
+
+  Future<void> _registerFcmToken() async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        final platform = Platform.isIOS ? 'ios' : 'android';
+        await widget.globalAuth.registerFcmToken(token, platform: platform);
+      }
+    } catch (_) {}
   }
 
   void _onOtpDigit(int index, String val) {
@@ -114,6 +126,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await widget.globalAuth.verifyOtp(_phone, pwd);
+      await _registerFcmToken();
       if (mounted) widget.onLoggedIn();
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });

@@ -207,6 +207,20 @@ class GlobalAuthService extends ChangeNotifier {
   /// Called after a successful package purchase that auto-creates a global account
   Future<void> persistFromPurchase(Map<String, dynamic> body) => _persist(body);
 
+  /// Register FCM token for push notifications (call after login)
+  Future<void> registerFcmToken(String fcmToken, {String platform = 'unknown'}) async {
+    if (_token == null) return;
+    try {
+      await http.post(
+        Uri.parse('$_apiBase/global/fcm-token'),
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_token'},
+        body: jsonEncode({'fcm_token': fcmToken, 'platform': platform}),
+      );
+    } catch (e) {
+      debugPrint('FCM global register failed: $e');
+    }
+  }
+
   Future<void> _persist(Map<String, dynamic> body) async {
     _token = body['token'] as String;
     _user  = GlobalUser.fromJson(body['user'] as Map<String, dynamic>);

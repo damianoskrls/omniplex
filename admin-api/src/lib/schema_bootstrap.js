@@ -530,6 +530,24 @@ async function bootstrapSchema() {
   } catch (err) {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('global_otps skipped:', err.message);
   }
+
+  // ── global_device_tokens table ───────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS global_device_tokens (
+        id             VARCHAR(36)  NOT NULL PRIMARY KEY,
+        global_user_id VARCHAR(36)  NOT NULL,
+        fcm_token      TEXT         NOT NULL,
+        platform       VARCHAR(16)  NOT NULL DEFAULT 'unknown',
+        updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_gdt_user (global_user_id),
+        CONSTRAINT fk_gdt_user FOREIGN KEY (global_user_id) REFERENCES global_users (id) ON DELETE CASCADE
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: global_device_tokens table ready');
+  } catch (err) {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('global_device_tokens skipped:', err.message);
+  }
 }
 
 module.exports = { bootstrapSchema };

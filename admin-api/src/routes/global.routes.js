@@ -1081,4 +1081,37 @@ router.post('/auth/verify-otp', async (req, res) => {
   }
 });
 
-module.exports = router;
+// ============================================================
+// POST /api/global/fcm-token
+// Body: { fcm_token, platform? }
+// Registers (upserts) an FCM token for the logged-in global user
+// ============================================================
+router.post('/fcm-token', requireGlobal, async (req, res) => {
+  const { fcm_token, platform = 'unknown' } = req.body;
+  if (!fcm_token) return res.status(400).json({ error: 'fcm_token required' });
+  const globalUserId = req.globalUser.id;
+  try {
+    // Upsert: one row per (global_user_id, token)
+    await db.query(
+      `INSERT INTO global_device_tokens (id, global_user_id, fcm_token, platform)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE platform = VALUES(platform), updated_at = NOW()`,
+      [uuidv4(), globalUserId, fcm_token, platform],
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('fcm-token register error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Helper: get all FCM tokens for a global user ─────────────
+async function getGlobalUserFcmTokens(globalUserId) {
+  const [rows] = await db.query(
+    `SELECT fcm_token FROM global_device_tokens WHERE global_user_id = ?`,
+    [globalUserId],
+  );
+  return rows.map(r => r.fcm_token);
+}
+
+module.exports = { router, getGlobalUserFcmTokens };
