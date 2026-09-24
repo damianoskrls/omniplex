@@ -49,6 +49,11 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   double? _userLat;
   double? _userLng;
 
+  // Active filters (null = not set)
+  double? _filterDistanceKm;
+  double? _filterMinRating;
+  int?    _filterMaxPrice;
+
   // Static recent searches — would come from local storage in prod
   final _recentSearches = ['CrossFit Athens', 'Yoga near me', '24h fitness clubs'];
 
@@ -134,7 +139,11 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       if (_searched) setState(() { _results = []; _searched = false; });
       return;
     }
-    // Immediately hide suggestion panels as soon as user types
+    // Need at least 3 chars to trigger results; below that show suggestion panel
+    if (v.trim().length < 3 && _activeCategory.isEmpty) {
+      if (_searched) setState(() { _results = []; _searched = false; });
+      return;
+    }
     if (!_searched) setState(() { _searched = true; _results = []; });
     _debounce = Timer(const Duration(milliseconds: 350), _search);
   }
@@ -151,6 +160,9 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         params['lat'] = _userLat!.toString();
         params['lng'] = _userLng!.toString();
       }
+      if (_filterDistanceKm != null) params['max_distance'] = _filterDistanceKm!.toString();
+      if (_filterMinRating != null && _filterMinRating! > 0) params['min_rating'] = _filterMinRating!.toString();
+      if (_filterMaxPrice != null) params['max_price'] = _filterMaxPrice!.toString();
       final uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: params);
       final res = await http.get(uri);
       if (res.statusCode == 200 && mounted) {
@@ -199,13 +211,16 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     ));
   }
 
+  bool get _hasActiveFilters =>
+    _filterDistanceKm != null || _filterMinRating != null || _filterMaxPrice != null;
+
   void _exitSearch() {
     _searchFocus.unfocus();
     _searchCtrl.clear();
     setState(() {
-      _searched      = false;
-      _searchFocused = false;
-      _results       = [];
+      _searched       = false;
+      _searchFocused  = false;
+      _results        = [];
       _activeCategory = '';
     });
   }
@@ -486,7 +501,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
           decoration: BoxDecoration(
             color: _kCard,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kLime, width: 1.5),
+            border: Border.all(color: _kBorder),
           ),
           child: Row(children: [
             const SizedBox(width: 14),
@@ -532,7 +547,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       const SizedBox(width: 10),
       // Single filter button
       GestureDetector(
-        onTap: () => _showFilterSheet('all'),
+        onTap: _showFilterSheet,
         child: Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
@@ -583,13 +598,33 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     );
   }
 
-  void _showFilterSheet(String filterType) {
+  void _showFilterSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: _kCard,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => _FilterSheet(filterType: filterType),
+      builder: (_) => _FilterSheet(
+        initialDistance: _filterDistanceKm,
+        initialMinRating: _filterMinRating,
+        initialMaxPrice: _filterMaxPrice,
+        onApply: (dist, rating, price) {
+          setState(() {
+            _filterDistanceKm = dist;
+            _filterMinRating  = rating;
+            _filterMaxPrice   = price;
+          });
+          if (_searched) _search();
+        },
+        onClearAll: () {
+          setState(() {
+            _filterDistanceKm = null;
+            _filterMinRating  = null;
+            _filterMaxPrice   = null;
+          });
+          if (_searched) _search();
+        },
+      ),
     );
   }
 
@@ -870,12 +905,14 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildResultsTopBar(),
-                const SizedBox(height: 16),
-                _buildActiveFiltersRow(),
-                const SizedBox(height: 16),
+                if (_hasActiveFilters) ...[
+                  const SizedBox(height: 12),
+                  _buildActiveFiltersRow(),
+                ],
+                const SizedBox(height: 12),
                 if (!_searching)
                   _buildResultsHeader(gyms.length),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -956,21 +993,19 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
               ),
             ),
             GestureDetector(
-              onTap: () {
-                setState(() => _searchFocused = true);
-                _searchFocus.requestFocus();
-              },
+              onTap: _showFilterSheet,
               child: Container(
                 width: 40, height: 40,
                 margin: const EdgeInsets.only(right: 6),
                 decoration: BoxDecoration(
-                  color: _kLime.withValues(alpha: 0.12),
+                  color: _hasActiveFilters ? _kLime.withValues(alpha: 0.12) : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
                 child: SvgPicture.asset('assets/icons/discovery_filter.svg',
                   width: 14, height: 14,
-                  colorFilter: const ColorFilter.mode(_kLime, BlendMode.srcIn)),
+                  colorFilter: ColorFilter.mode(
+                    _hasActiveFilters ? _kLime : Colors.white, BlendMode.srcIn)),
               ),
             ),
           ]),
@@ -980,43 +1015,58 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   }
 
   Widget _buildActiveFiltersRow() {
+    final chips = <Widget>[];
+    if (_filterDistanceKm != null) {
+      chips.add(_activeFilterChip(
+        label: 'Απόσταση: ${_filterDistanceKm!.toInt()} km',
+        onRemove: () { setState(() => _filterDistanceKm = null); if (_searched) _search(); },
+      ));
+    }
+    if (_filterMinRating != null && _filterMinRating! > 0) {
+      chips.add(_activeFilterChip(
+        label: 'Αξιολόγηση: ${_filterMinRating!.toStringAsFixed(1)}+',
+        onRemove: () { setState(() => _filterMinRating = null); if (_searched) _search(); },
+      ));
+    }
+    if (_filterMaxPrice != null) {
+      chips.add(_activeFilterChip(
+        label: 'Τιμή: ≤€${_filterMaxPrice!}',
+        onRemove: () { setState(() => _filterMaxPrice = null); if (_searched) _search(); },
+      ));
+    }
+    if (chips.isEmpty) return const SizedBox.shrink();
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: Row(children: [
-        _activeFilterChip(label: 'Distance: 5km', removable: true, lime: true),
-        const SizedBox(width: 8),
-        _activeFilterChip(label: 'Drop-in available', removable: true, lime: true),
-        const SizedBox(width: 8),
-        _activeFilterChip(label: 'Rating', removable: false, lime: false),
-      ]),
+      child: Row(
+        children: chips
+          .expand((c) => [c, const SizedBox(width: 8)])
+          .toList()
+          ..removeLast(),
+      ),
     );
   }
 
-  Widget _activeFilterChip({
-    required String label,
-    required bool removable,
-    required bool lime,
-  }) {
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: lime ? _kLime.withValues(alpha: 0.12) : _kCard,
-        borderRadius: BorderRadius.circular(9999),
-        border: Border.all(color: lime ? _kLime : _kBorder),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(label,
-          style: GoogleFonts.manrope(
-            fontSize: 12, fontWeight: FontWeight.w600,
-            color: lime ? _kLime : Colors.white)),
-        if (removable) ...[
+  Widget _activeFilterChip({required String label, required VoidCallback onRemove}) {
+    return GestureDetector(
+      onTap: onRemove,
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: _kLime.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(9999),
+          border: Border.all(color: _kLime),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(label,
+            style: GoogleFonts.manrope(
+              fontSize: 12, fontWeight: FontWeight.w600, color: _kLime)),
           const SizedBox(width: 6),
           SvgPicture.asset('assets/icons/discovery_x.svg',
             width: 10, height: 10,
             colorFilter: const ColorFilter.mode(_kLime, BlendMode.srcIn)),
-        ],
-      ]),
+        ]),
+      ),
     );
   }
 
@@ -1368,25 +1418,41 @@ class _CyanGradientPainter extends CustomPainter {
 // ─────────────────────────────────────────
 
 class _FilterSheet extends StatefulWidget {
-  const _FilterSheet({required this.filterType});
-  final String filterType;
+  const _FilterSheet({
+    required this.onApply,
+    required this.onClearAll,
+    this.initialDistance,
+    this.initialMinRating,
+    this.initialMaxPrice,
+  });
+
+  final double? initialDistance;
+  final double? initialMinRating;
+  final int?    initialMaxPrice;
+  final void Function(double? dist, double? rating, int? price) onApply;
+  final VoidCallback onClearAll;
 
   @override
   State<_FilterSheet> createState() => _FilterSheetState();
 }
 
 class _FilterSheetState extends State<_FilterSheet> {
-  double _distance = 5;
-  double _minRating = 0;
-  int _maxPrice = 100;
+  late double _distance;
+  late double _minRating;
+  late int    _maxPrice;
+  late bool   _distEnabled;
+  late bool   _ratingEnabled;
+  late bool   _priceEnabled;
 
-  String get _title {
-    switch (widget.filterType) {
-      case 'distance': return 'Απόσταση';
-      case 'rating':   return 'Αξιολόγηση';
-      case 'price':    return 'Τιμή';
-      default:         return 'Φίλτρα';
-    }
+  @override
+  void initState() {
+    super.initState();
+    _distEnabled   = widget.initialDistance != null;
+    _ratingEnabled = widget.initialMinRating != null && widget.initialMinRating! > 0;
+    _priceEnabled  = widget.initialMaxPrice != null;
+    _distance  = widget.initialDistance   ?? 10;
+    _minRating = widget.initialMinRating  ?? 0;
+    _maxPrice  = widget.initialMaxPrice   ?? 100;
   }
 
   @override
@@ -1398,7 +1464,6 @@ class _FilterSheetState extends State<_FilterSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle
           Center(
             child: Container(
               width: 40, height: 4,
@@ -1409,67 +1474,87 @@ class _FilterSheetState extends State<_FilterSheet> {
           ),
           const SizedBox(height: 20),
 
-          Text(_title, style: GoogleFonts.manrope(
-            fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Φίλτρα', style: GoogleFonts.manrope(
+                fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onClearAll();
+                },
+                child: Text('Καθαρισμός',
+                  style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
 
-          if (widget.filterType == 'distance' || widget.filterType == 'all') ...[
-            _filterLabel('Απόσταση: ${_distance.toInt()} km'),
-            SliderTheme(
-              data: SliderThemeData(
-                activeTrackColor: _kLime,
-                inactiveTrackColor: const Color(0xFF2A2B30),
-                thumbColor: _kLime,
-                overlayColor: _kLime.withValues(alpha: 0.15),
-              ),
-              child: Slider(
-                value: _distance,
-                min: 1, max: 50, divisions: 49,
-                onChanged: (v) => setState(() => _distance = v),
-              ),
+          // Distance
+          Row(children: [
+            Checkbox(
+              value: _distEnabled,
+              activeColor: _kLime,
+              checkColor: _kBg,
+              side: const BorderSide(color: _kGray),
+              onChanged: (v) => setState(() => _distEnabled = v ?? false),
             ),
-            const SizedBox(height: 16),
-          ],
-
-          if (widget.filterType == 'rating' || widget.filterType == 'all') ...[
-            _filterLabel('Ελάχιστη Αξιολόγηση: ${_minRating == 0 ? 'Όλα' : '${_minRating.toStringAsFixed(1)}+'}'),
-            SliderTheme(
-              data: SliderThemeData(
-                activeTrackColor: _kLime,
-                inactiveTrackColor: const Color(0xFF2A2B30),
-                thumbColor: _kLime,
-                overlayColor: _kLime.withValues(alpha: 0.15),
-              ),
-              child: Slider(
-                value: _minRating,
-                min: 0, max: 5, divisions: 10,
-                onChanged: (v) => setState(() => _minRating = v),
-              ),
+            Expanded(
+              child: _filterLabel('Απόσταση: ${_distance.toInt()} km'),
             ),
-            const SizedBox(height: 16),
-          ],
-
-          if (widget.filterType == 'price' || widget.filterType == 'all') ...[
-            _filterLabel('Μέγιστη Τιμή: €$_maxPrice'),
-            SliderTheme(
-              data: SliderThemeData(
-                activeTrackColor: _kCyan,
-                inactiveTrackColor: const Color(0xFF2A2B30),
-                thumbColor: _kCyan,
-                overlayColor: _kCyan.withValues(alpha: 0.15),
-              ),
-              child: Slider(
-                value: _maxPrice.toDouble(),
-                min: 10, max: 300, divisions: 29,
-                onChanged: (v) => setState(() => _maxPrice = v.toInt()),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
+          ]),
+          if (_distEnabled)
+            _buildSlider(_distance, 1, 50, 49, _kLime,
+              (v) => setState(() => _distance = v)),
           const SizedBox(height: 8),
+
+          // Rating
+          Row(children: [
+            Checkbox(
+              value: _ratingEnabled,
+              activeColor: _kLime,
+              checkColor: _kBg,
+              side: const BorderSide(color: _kGray),
+              onChanged: (v) => setState(() => _ratingEnabled = v ?? false),
+            ),
+            Expanded(
+              child: _filterLabel(
+                'Ελάχιστη Αξιολόγηση: ${_minRating == 0 ? "Όλα" : "${_minRating.toStringAsFixed(1)}+"}'),
+            ),
+          ]),
+          if (_ratingEnabled)
+            _buildSlider(_minRating, 0, 5, 10, _kLime,
+              (v) => setState(() => _minRating = v)),
+          const SizedBox(height: 8),
+
+          // Price
+          Row(children: [
+            Checkbox(
+              value: _priceEnabled,
+              activeColor: _kLime,
+              checkColor: _kBg,
+              side: const BorderSide(color: _kGray),
+              onChanged: (v) => setState(() => _priceEnabled = v ?? false),
+            ),
+            Expanded(
+              child: _filterLabel('Μέγιστη Τιμή: €$_maxPrice'),
+            ),
+          ]),
+          if (_priceEnabled)
+            _buildSlider(_maxPrice.toDouble(), 10, 300, 29, _kCyan,
+              (v) => setState(() => _maxPrice = v.toInt())),
+          const SizedBox(height: 20),
+
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              Navigator.pop(context);
+              widget.onApply(
+                _distEnabled   ? _distance  : null,
+                _ratingEnabled ? _minRating : null,
+                _priceEnabled  ? _maxPrice  : null,
+              );
+            },
             child: Container(
               height: 52,
               decoration: BoxDecoration(
@@ -1488,8 +1573,18 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
-  Widget _filterLabel(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 4),
-    child: Text(text, style: GoogleFonts.manrope(fontSize: 13, color: const Color(0xFF9A9CA3))),
-  );
+  Widget _buildSlider(double value, double min, double max, int divisions, Color color, ValueChanged<double> onChanged) {
+    return SliderTheme(
+      data: SliderThemeData(
+        activeTrackColor: color,
+        inactiveTrackColor: const Color(0xFF2A2B30),
+        thumbColor: color,
+        overlayColor: color.withValues(alpha: 0.15),
+      ),
+      child: Slider(value: value, min: min, max: max, divisions: divisions, onChanged: onChanged),
+    );
+  }
+
+  Widget _filterLabel(String text) => Text(text,
+    style: GoogleFonts.manrope(fontSize: 13, color: const Color(0xFF9A9CA3)));
 }

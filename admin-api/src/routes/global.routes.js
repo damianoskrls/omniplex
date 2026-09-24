@@ -953,7 +953,7 @@ async function autoLinkGlobalUser(globalUserId, phone, email) {
        SET global_user_id = ?
        WHERE global_user_id IS NULL
          AND deleted_at IS NULL
-         AND REGEXP_REPLACE(COALESCE(phone, mobile, ''), '[^0-9]', '') = ?`,
+         AND REGEXP_REPLACE(COALESCE(phone, ''), '[^0-9]', '') = ?`,
       [globalUserId, phoneDigits],
     );
   }
@@ -1020,7 +1020,7 @@ router.post('/auth/send-otp', async (req, res) => {
       [id, digits, code],
     );
 
-    await sendBrevoSms(phone, `Ο κωδικός σου OmniPlex είναι: ${code}. Ισχύει για 10 λεπτά.`);
+    await sendBrevoSms(phone, `Ο κωδικός επαλήθευσής σου για το OmniPlex είναι ${code}. Ισχύει για 10 λεπτά.`);
 
     return res.json({ ok: true });
   } catch (err) {
