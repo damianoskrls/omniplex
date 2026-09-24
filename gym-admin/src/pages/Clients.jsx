@@ -33,7 +33,6 @@ const STATUS_BADGE = {
 const EMPTY = {
   full_name: '',
   phone: '',
-  pin: '',
   email: '',
   date_of_birth: '',
   weight_kg: '',
@@ -260,7 +259,6 @@ export default function Clients() {
       await api.post('/client-admin/clients', {
         full_name: form.full_name,
         phone: form.phone,
-        pin: form.pin || undefined,
         email: form.email || undefined,
         date_of_birth: form.date_of_birth || undefined,
         weight_kg: form.weight_kg !== '' ? Number(form.weight_kg) : undefined,
@@ -621,31 +619,16 @@ export default function Clients() {
                   <label className="form-label">Ονοματεπώνυμο *</label>
                   <input className="form-input" value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} required />
                 </div>
-                <div className="form-grid-2">
-                  <div className="form-group">
-                    <label className="form-label">Κινητό *</label>
-                    <input
-                      className="form-input"
-                      type="tel"
-                      value={form.phone !== '' ? form.phone : lookupPhone}
-                      onChange={e => setForm({ ...form, phone: e.target.value })}
-                      required
-                      placeholder="6901234567"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">PIN (4 ψηφία)</label>
-                    <input
-                      className="form-input"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={4}
-                      placeholder={form.phone ? form.phone.replace(/\D/g,'').slice(-4) || '—' : 'αυτόματο'}
-                      value={form.pin || ''}
-                      onChange={e => setForm({ ...form, pin: e.target.value.replace(/\D/g,'').slice(0,4) })}
-                    />
-                    <small className="text-muted">Κενό = τελευταία 4 ψηφία κινητού</small>
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Κινητό *</label>
+                  <input
+                    className="form-input"
+                    type="tel"
+                    value={form.phone !== '' ? form.phone : lookupPhone}
+                    onChange={e => setForm({ ...form, phone: e.target.value })}
+                    required
+                    placeholder="6901234567"
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Email</label>
