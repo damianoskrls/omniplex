@@ -70,6 +70,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
   bool _showOnboarding = false;
   bool _showAuthGate   = false;
   bool _showGlobalDashboard = false;
+  bool _showExplore    = false; // guest explore without login
   final _globalAuth = GlobalAuthService();
   String _selectorApiBase = 'https://passionate-grace-production-98ad.up.railway.app';
 
@@ -207,6 +208,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
       _auth = null;
       _needsTenantSelection = false;
       _showAuthGate = false;
+      _showExplore  = false;
     });
     SchedulerBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
@@ -218,6 +220,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
       _error = null;
       _needsTenantSelection = true;
       _showAuthGate = false;
+      _showExplore  = false;
     });
   }
 
@@ -313,14 +316,23 @@ class _AppBootstrapState extends State<AppBootstrap> {
           ),
         );
       }
+      // Guest explore (after tapping "Συνέχεια ως επισκέπτης")
+      if (_showExplore) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: DiscoveryLandingScreen(
+            globalAuth: _globalAuth,
+            onLoggedIn: () => setState(() { _showExplore = false; }),
+          ),
+        );
+      }
+      // Auth Gate: primary = login, secondary = explore as guest
       return MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: DiscoveryLandingScreen(
+        home: GlobalAuthGateScreen(
           globalAuth: _globalAuth,
-          onLoggedIn: () {
-            // After login/register, rebuild — will fall into dashboard branch above
-            setState(() {});
-          },
+          onLogin: () => setState(() {}),
+          onExplore: () => setState(() { _showExplore = true; }),
         ),
       );
     }
