@@ -1105,6 +1105,33 @@ router.post('/fcm-token', requireGlobal, async (req, res) => {
   }
 });
 
+// ============================================================
+// PUT /api/global/profile
+// Body: { full_name?, email? }
+// Updates the logged-in global user's profile (name + email)
+// Used after new-user registration flow
+// ============================================================
+router.put('/profile', requireGlobal, async (req, res) => {
+  const { full_name, email } = req.body;
+  if (!full_name && !email) return res.status(400).json({ error: 'Απαιτείται τουλάχιστον ένα πεδίο' });
+  const globalUserId = req.globalUser.id;
+  try {
+    const sets = [];
+    const vals = [];
+    if (full_name) { sets.push('full_name = ?'); vals.push(full_name.trim()); }
+    if (email)     { sets.push('email = ?');     vals.push(email.trim().toLowerCase()); }
+    vals.push(globalUserId);
+    await db.query(`UPDATE global_users SET ${sets.join(', ')} WHERE id = ?`, vals);
+    const [[user]] = await db.query(
+      'SELECT id, email, full_name, phone FROM global_users WHERE id = ?',
+      [globalUserId],
+    );
+    return res.json({ user });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Helper: get all FCM tokens for a global user ─────────────
 async function getGlobalUserFcmTokens(globalUserId) {
   const [rows] = await db.query(

@@ -207,6 +207,27 @@ class GlobalAuthService extends ChangeNotifier {
   /// Called after a successful package purchase that auto-creates a global account
   Future<void> persistFromPurchase(Map<String, dynamic> body) => _persist(body);
 
+  /// Update full_name and/or email after new-user registration
+  Future<void> updateProfile({String? fullName, String? email}) async {
+    if (_token == null) return;
+    final body = <String, String>{};
+    if (fullName != null && fullName.trim().isNotEmpty) body['full_name'] = fullName.trim();
+    if (email != null && email.trim().isNotEmpty)       body['email']     = email.trim();
+    if (body.isEmpty) return;
+    final res = await http.put(
+      Uri.parse('$_apiBase/global/profile'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_token'},
+      body: jsonEncode(body),
+    );
+    final resBody = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) throw resBody['error'] ?? 'Αποτυχία ενημέρωσης προφίλ';
+    if (resBody['user'] != null) {
+      _user = GlobalUser.fromJson(resBody['user'] as Map<String, dynamic>);
+      await _storage.write(key: _kGlobalUser, value: jsonEncode(_user!.toJson()));
+      notifyListeners();
+    }
+  }
+
   /// Register FCM token for push notifications (call after login)
   Future<void> registerFcmToken(String fcmToken, {String platform = 'unknown'}) async {
     if (_token == null) return;

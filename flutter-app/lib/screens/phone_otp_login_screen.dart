@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
+import 'global_role_picker_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -91,9 +92,14 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     if (_otp.length != 6) return;
     setState(() { _loading = true; _error = null; });
     try {
-      await widget.globalAuth.verifyOtp(_phone, _otp);
+      final result = await widget.globalAuth.verifyOtp(_phone, _otp);
       await _registerFcmToken();
-      if (mounted) widget.onLoggedIn();
+      if (!mounted) return;
+      if (result['is_new'] == true) {
+        _goRolePicker();
+      } else {
+        widget.onLoggedIn();
+      }
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
       for (final c in _otpCtrls) c.clear();
@@ -125,12 +131,26 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     if (pwd.isEmpty) return;
     setState(() { _loading = true; _error = null; });
     try {
-      await widget.globalAuth.verifyOtp(_phone, pwd);
+      final result = await widget.globalAuth.verifyOtp(_phone, pwd);
       await _registerFcmToken();
-      if (mounted) widget.onLoggedIn();
+      if (!mounted) return;
+      if (result['is_new'] == true) {
+        _goRolePicker();
+      } else {
+        widget.onLoggedIn();
+      }
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
     }
+  }
+
+  void _goRolePicker() {
+    Navigator.pushReplacement(context, MaterialPageRoute(
+      builder: (_) => GlobalRolePickerScreen(
+        globalAuth: widget.globalAuth,
+        onDone: (_) => widget.onLoggedIn(),
+      ),
+    ));
   }
 
   void _onOtpBackspace(int index) {
