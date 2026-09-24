@@ -6,6 +6,7 @@ import 'models/booking.dart';
 import 'screens/omni_member_shell_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/discovery_landing_screen.dart';
+import 'screens/global_auth_gate_screen.dart';
 import 'screens/global_member_home_screen.dart';
 import 'services/global_auth_service.dart';
 import 'screens/my_orders_screen.dart';
@@ -37,6 +38,7 @@ class BookUpApp extends StatefulWidget {
 class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
   bool _gymSplashActive = false;
   bool _wasLoggedIn = false;
+  bool _guestExplore = false; // true after user taps "Συνέχεια ως επισκέπτης"
   Timer? _splashTimer;
 
   @override
@@ -220,10 +222,21 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                       },
                     );
                   }
-                  return DiscoveryLandingScreen(
+                  if (_guestExplore) {
+                    return DiscoveryLandingScreen(
+                      globalAuth: gAuth,
+                      onLoggedIn: () {
+                        if (mounted) setState(() { _guestExplore = false; });
+                      },
+                    );
+                  }
+                  return GlobalAuthGateScreen(
                     globalAuth: gAuth,
-                    onLoggedIn: () {
+                    onLogin: () {
                       if (mounted) setState(() {});
+                    },
+                    onExplore: () {
+                      if (mounted) setState(() => _guestExplore = true);
                     },
                   );
                 },
