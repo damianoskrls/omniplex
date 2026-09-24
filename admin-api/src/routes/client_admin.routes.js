@@ -3976,6 +3976,18 @@ router.post('/clients', requireClientAdmin, async (req, res) => {
       phone:     normalizedPhone,
     });
 
+    // Check not already in this gym
+    if (globalUserId) {
+      const [[alreadyExists]] = await conn.query(
+        `SELECT id FROM users WHERE business_id = ? AND global_user_id = ? AND deleted_at IS NULL LIMIT 1`,
+        [bizId, globalUserId],
+      );
+      if (alreadyExists) {
+        await conn.rollback();
+        return res.status(409).json({ error: 'Ο πελάτης είναι ήδη εγγεγραμμένος σε αυτό το γυμναστήριο' });
+      }
+    }
+
     await conn.query(
       `INSERT INTO users
         (id, business_id, global_user_id, full_name, email, phone, auth_uid, account_status,
@@ -4012,7 +4024,12 @@ router.post('/clients', requireClientAdmin, async (req, res) => {
     return res.status(201).json({ id, global_user_id: globalUserId, message: 'Ο πελάτης δημιουργήθηκε' });
   } catch (err) {
     await conn.rollback();
-    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Το email χρησιμοποιείται ήδη' });
+    if (err.code === 'ER_DUP_ENTRY') {
+      const msg = err.message?.includes('email')
+        ? 'Το email χρησιμοποιείται ήδη'
+        : 'Ο πελάτης είναι ήδη εγγεγραμμένος σε αυτό το γυμναστήριο';
+      return res.status(409).json({ error: msg });
+    }
     return res.status(500).json({ error: err.message });
   } finally { conn.release(); }
 });
