@@ -19,9 +19,7 @@ class GlobalAuthGateScreen extends StatelessWidget {
   });
 
   final GlobalAuthService globalAuth;
-  /// Called after successful login/OTP verify
   final VoidCallback onLogin;
-  /// Called when user picks "Εξερεύνηση" (skip auth)
   final VoidCallback onExplore;
 
   void _goLogin(BuildContext context) {
@@ -38,25 +36,28 @@ class GlobalAuthGateScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: _kBg,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Subtle lime glow top-left
+          // Background glow — bottom center lime
           Positioned(
-            top: -60, left: -60,
+            bottom: -100,
+            left: size.width / 2 - 180,
             child: SizedBox(
-              width: 320, height: 320,
+              width: 360, height: 360,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _kLime.withValues(alpha: 0.10),
+                      _kLime.withValues(alpha: 0.08),
                       _kLime.withValues(alpha: 0.0),
                     ],
-                    stops: const [0.0, 0.7],
+                    stops: const [0.0, 0.75],
                   ),
                 ),
               ),
@@ -65,140 +66,181 @@ class GlobalAuthGateScreen extends StatelessWidget {
 
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 0, 28, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
 
-                  // Logo
+                  // Logo row
                   Row(children: [
                     Container(
-                      width: 42, height: 42,
+                      width: 38, height: 38,
                       decoration: BoxDecoration(
                         color: _kLime,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
                       child: SvgPicture.asset(
                         'assets/icons/discovery_logo_bolt.svg',
-                        width: 16, height: 16,
+                        width: 14, height: 14,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 9),
                     Text('OmniPlex',
                       style: GoogleFonts.manrope(
-                        fontSize: 20, fontWeight: FontWeight.w700,
-                        color: Colors.white, letterSpacing: -0.5)),
+                        fontSize: 18, fontWeight: FontWeight.w700,
+                        color: Colors.white, letterSpacing: -0.4)),
                   ]),
 
-                  const Spacer(),
+                  const Spacer(flex: 3),
 
-                  // Heading
-                  Text('Καλώς ήρθες!',
+                  // Main headline
+                  Text('Το fitness\nστο χέρι σου.',
                     style: GoogleFonts.manrope(
-                      fontSize: 36, fontWeight: FontWeight.w700,
-                      color: Colors.white, letterSpacing: -0.9, height: 1.1)),
-                  const SizedBox(height: 14),
+                      fontSize: 40, fontWeight: FontWeight.w800,
+                      color: Colors.white, letterSpacing: -1.2, height: 1.1)),
+                  const SizedBox(height: 16),
                   Text(
-                    'Είσαι ήδη πελάτης γυμναστηρίου ή έχεις\nλογαριασμό OmniPlex; Σύνδεσε το κινητό σου\nγια να δεις τα πακέτα και τις κρατήσεις σου.',
+                    'Βρες γυμναστήριο, δες πακέτα και κάνε\nκρατήσεις — όλα σε ένα μέρος.',
                     style: GoogleFonts.manrope(
                       fontSize: 15, color: _kGray, height: 1.6)),
 
-                  const SizedBox(height: 52),
+                  const Spacer(flex: 2),
 
-                  // ── Button 1: Primary (Σύνδεση) ──────────────────────
-                  GestureDetector(
+                  // ── Primary CTA ──────────────────────────────────────
+                  _PrimaryButton(
+                    label: 'Σύνδεση',
+                    subtitle: 'Έχω ήδη λογαριασμό',
+                    icon: Icons.phone_android_rounded,
                     onTap: () => _goLogin(context),
-                    child: Container(
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: _kLime,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _kLime.withValues(alpha: 0.30),
-                            blurRadius: 18, offset: const Offset(0, 6)),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.phone_android_rounded,
-                            color: _kBg, size: 18),
-                          const SizedBox(width: 10),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Σύνδεση με κινητό',
-                                style: GoogleFonts.manrope(
-                                  fontSize: 15, fontWeight: FontWeight.w700,
-                                  color: _kBg, letterSpacing: 0.1)),
-                              Text('Έχω ήδη λογαριασμό / με κατέγραψε γυμναστήριο',
-                                style: GoogleFonts.manrope(
-                                  fontSize: 10.5, fontWeight: FontWeight.w500,
-                                  color: _kBg.withValues(alpha: 0.55))),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
 
-                  // ── Button 2: Secondary (Εξερεύνηση) ─────────────────
-                  GestureDetector(
+                  // ── Secondary CTA ────────────────────────────────────
+                  _SecondaryButton(
+                    label: 'Συνέχεια ως επισκέπτης',
+                    subtitle: 'Εξερεύνηση χωρίς σύνδεση',
                     onTap: onExplore,
-                    child: Container(
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: _kCard,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _kBorder, width: 1.5),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.explore_outlined,
-                            color: Colors.white, size: 18),
-                          const SizedBox(width: 10),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Εξερεύνηση',
-                                style: GoogleFonts.manrope(
-                                  fontSize: 15, fontWeight: FontWeight.w700,
-                                  color: Colors.white, letterSpacing: 0.1)),
-                              Text('Νέος χρήστης · Ψάχνω γυμναστήριο',
-                                style: GoogleFonts.manrope(
-                                  fontSize: 10.5, fontWeight: FontWeight.w500,
-                                  color: _kGray)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
 
-                  const SizedBox(height: 20),
-
-                  // Fine print
-                  Center(
-                    child: Text(
-                      'Μπορείς να συνδεθείς ανά πάσα στιγμή μέσα από\nτην εφαρμογή.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.manrope(
-                        fontSize: 11.5, color: _kGray.withValues(alpha: 0.6), height: 1.5),
-                    ),
-                  ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 64,
+        decoration: BoxDecoration(
+          color: _kLime,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: _kLime.withValues(alpha: 0.25),
+              blurRadius: 20, offset: const Offset(0, 8)),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          children: [
+            Icon(icon, color: _kBg, size: 20),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                    style: GoogleFonts.manrope(
+                      fontSize: 15, fontWeight: FontWeight.w700,
+                      color: _kBg, letterSpacing: 0.1)),
+                  const SizedBox(height: 1),
+                  Text(subtitle,
+                    style: GoogleFonts.manrope(
+                      fontSize: 11, fontWeight: FontWeight.w500,
+                      color: _kBg.withValues(alpha: 0.55))),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: _kBg.withValues(alpha: 0.4), size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SecondaryButton extends StatelessWidget {
+  const _SecondaryButton({
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 64,
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _kBorder, width: 1.5),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          children: [
+            const Icon(Icons.explore_outlined, color: Colors.white, size: 20),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                    style: GoogleFonts.manrope(
+                      fontSize: 15, fontWeight: FontWeight.w700,
+                      color: Colors.white, letterSpacing: 0.1)),
+                  const SizedBox(height: 1),
+                  Text(subtitle,
+                    style: GoogleFonts.manrope(
+                      fontSize: 11, fontWeight: FontWeight.w500,
+                      color: _kGray)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: _kGray.withValues(alpha: 0.5), size: 14),
+          ],
+        ),
       ),
     );
   }
