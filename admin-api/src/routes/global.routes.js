@@ -1040,6 +1040,15 @@ router.get('/debug/sms', async (req, res) => {
   res.json({ brevo_key_set: hasKey, brevo_key_prefix: keyPrefix, sender });
 });
 
+// DELETE /api/global/debug/clear-otps?phone=XXX  — clears rate-limit for a phone (debug only)
+router.delete('/debug/clear-otps', async (req, res) => {
+  const phone = req.query.phone;
+  if (!phone) return res.status(400).json({ error: 'phone required' });
+  const digits = String(phone).replace(/\D/g, '');
+  await db.query(`DELETE FROM global_otps WHERE phone = ?`, [digits]);
+  res.json({ ok: true, cleared: digits });
+});
+
 // ============================================================
 // POST /api/global/auth/verify-otp
 // Body: { phone, code, full_name? }

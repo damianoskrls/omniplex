@@ -2,7 +2,7 @@
 
 async function sendSms(to, body) {
   const apiKey = process.env.BREVO_API_KEY;
-  const sender = process.env.BREVO_SMS_SENDER || 'Handstand';
+  const sender = process.env.BREVO_SMS_SENDER || 'OmniPlex';
 
   if (!apiKey) {
     console.log(`[SMS] (not configured) → ${to}: ${body}`);
