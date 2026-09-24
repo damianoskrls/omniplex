@@ -240,6 +240,9 @@ router.post('/link-gym', requireGlobal, async (req, res) => {
 // ============================================================
 router.get('/discovery/gyms', async (req, res) => {
   const { q = '', service = '', city = '' } = req.query;
+  const lat = parseFloat(req.query.lat);
+  const lng = parseFloat(req.query.lng);
+  const hasLocation = !isNaN(lat) && !isNaN(lng);
 
   // Require is_discoverable only for pure browse (no query, no service filter)
   const requireDiscoverable = !q.trim() && !service.trim() && !city.trim();
@@ -257,33 +260,48 @@ router.get('/discovery/gyms', async (req, res) => {
     params.push(`%${city.trim()}%`);
   }
 
+  // Haversine distance in km (NULL when gym has no coordinates)
+  const distanceExpr = hasLocation
+    ? `(6371 * 2 * ASIN(SQRT(
+         POWER(SIN((RADIANS(b.latitude) - RADIANS(?)) / 2), 2) +
+         COS(RADIANS(?)) * COS(RADIANS(b.latitude)) *
+         POWER(SIN((RADIANS(b.longitude) - RADIANS(?)) / 2), 2)
+       )))`
+    : 'NULL';
+
   try {
     let sql;
+    const distParams = hasLocation ? [lat, lat, lng] : [];
+
     if (service.trim()) {
       sql = `
         SELECT DISTINCT b.id, b.slug, b.name, b.business_type, b.city, b.description,
-               c.app_name, c.primary_color, c.logo_url
+               b.latitude, b.longitude,
+               c.app_name, c.primary_color, c.logo_url,
+               ${distanceExpr} AS distance_km
         FROM businesses b
         LEFT JOIN business_configs c ON c.business_id = b.id
         JOIN services s ON s.business_id = b.id AND s.is_active = 1 AND s.name LIKE ?
         WHERE ${conditions.join(' AND ')}
-        ORDER BY b.name ASC
+        ORDER BY ${hasLocation ? 'distance_km IS NULL ASC, distance_km ASC' : 'b.name ASC'}
         LIMIT 30
       `;
       params.unshift(`%${service.trim()}%`);
     } else {
       sql = `
         SELECT b.id, b.slug, b.name, b.business_type, b.city, b.description,
-               c.app_name, c.primary_color, c.logo_url
+               b.latitude, b.longitude,
+               c.app_name, c.primary_color, c.logo_url,
+               ${distanceExpr} AS distance_km
         FROM businesses b
         LEFT JOIN business_configs c ON c.business_id = b.id
         WHERE ${conditions.join(' AND ')}
-        ORDER BY b.name ASC
+        ORDER BY ${hasLocation ? 'distance_km IS NULL ASC, distance_km ASC' : 'b.name ASC'}
         LIMIT 30
       `;
     }
 
-    const [rows] = await db.query(sql, params);
+    const [rows] = await db.query(sql, [...distParams, ...params]);
 
     // For each gym, also return what services it offers
     const bizIds = rows.map(r => r.id);
@@ -310,6 +328,9 @@ router.get('/discovery/gyms', async (req, res) => {
       primary_color: r.primary_color || '#B8F55E',
       logo_url:      r.logo_url || null,
       services:      serviceMap[r.id] || [],
+      latitude:      r.latitude  != null ? parseFloat(r.latitude)  : null,
+      longitude:     r.longitude != null ? parseFloat(r.longitude) : null,
+      distance_km:   r.distance_km != null ? parseFloat(Number(r.distance_km).toFixed(1)) : null,
     })));
   } catch (err) {
     console.error(err);

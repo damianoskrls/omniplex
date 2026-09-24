@@ -80,6 +80,10 @@
 	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Το OmniPlex χρησιμοποιεί την τοποθεσία σου για να σου δείξει γυμναστήρια κοντά σου.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Το OmniPlex χρησιμοποιεί την τοποθεσία σου για να σου δείξει γυμναστήρια κοντά σου.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

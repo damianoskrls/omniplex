@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
 import '../services/global_auth_service.dart';
 import 'global_register_screen.dart';
 import 'phone_otp_login_screen.dart';
@@ -45,6 +46,9 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   bool _searchFocused = false;
   Timer? _debounce;
 
+  double? _userLat;
+  double? _userLng;
+
   // Static recent searches — would come from local storage in prod
   final _recentSearches = ['CrossFit Athens', 'Yoga near me', '24h fitness clubs'];
 
@@ -74,8 +78,24 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFeatured();
+    _initLocation();
     _searchFocus.addListener(_onFocusChanged);
+  }
+
+  Future<void> _initLocation() async {
+    try {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+        );
+        if (mounted) setState(() { _userLat = pos.latitude; _userLng = pos.longitude; });
+      }
+    } catch (_) {}
+    _loadFeatured();
   }
 
   @override
@@ -93,7 +113,13 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
 
   Future<void> _loadFeatured() async {
     try {
-      final res = await http.get(Uri.parse('$_apiBase/global/discovery/gyms'));
+      final params = <String, String>{};
+      if (_userLat != null && _userLng != null) {
+        params['lat'] = _userLat!.toString();
+        params['lng'] = _userLng!.toString();
+      }
+      final uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: params.isEmpty ? null : params);
+      final res = await http.get(uri);
       if (res.statusCode == 200 && mounted) {
         setState(() {
           _featured = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
@@ -119,6 +145,10 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       final params = <String, String>{};
       if (q.isNotEmpty) params['q'] = q;
       if (_activeCategory.isNotEmpty) params['service'] = _activeCategory;
+      if (_userLat != null && _userLng != null) {
+        params['lat'] = _userLat!.toString();
+        params['lng'] = _userLng!.toString();
+      }
       final uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: params);
       final res = await http.get(uri);
       if (res.statusCode == 200 && mounted) {
@@ -1024,6 +1054,10 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     final logoUrl  = gym['logo_url'] as String?;
     final coverUrl = gym['cover_url'] as String? ?? gym['cover_image_url'] as String?;
     final city     = gym['city'] as String? ?? '';
+    final distKm   = (gym['distance_km'] as num?);
+    final distLabel = distKm != null
+        ? (distKm < 1 ? '${(distKm * 1000).round()} m' : '${distKm.toStringAsFixed(1)} km')
+        : null;
     final rating   = (gym['rating'] as num?)?.toStringAsFixed(1) ?? '4.8';
     final services = (gym['services'] as List?)?.cast<String>() ??
                      (gym['service_types'] as String?)?.split(',').map((s) => s.trim()).toList() ?? [];
@@ -1141,7 +1175,17 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                       style: GoogleFonts.manrope(
                         fontSize: 12, fontWeight: FontWeight.w600,
                         color: Colors.white)),
-                    if (city.isNotEmpty) ...[
+                    if (distLabel != null) ...[
+                      const SizedBox(width: 8),
+                      Container(width: 4, height: 4,
+                        decoration: const BoxDecoration(
+                          color: _kDot, shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.location_on_rounded, size: 10, color: _kLime),
+                      const SizedBox(width: 2),
+                      Text(distLabel,
+                        style: GoogleFonts.manrope(fontSize: 12, color: _kLime, fontWeight: FontWeight.w600)),
+                    ] else if (city.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Container(width: 4, height: 4,
                         decoration: const BoxDecoration(
