@@ -179,7 +179,7 @@ router.get('/global-users/:id', authenticate, requireMasterAdmin, async (req, re
 
     // Linked via users table (gym admin added them OR auto-linked via OTP)
     const [linkedGyms] = await db.query(
-      `SELECT u.id AS user_id, u.status AS user_status, u.created_at AS linked_at,
+      `SELECT u.id AS user_id, u.account_status AS user_status, u.created_at AS linked_at,
               b.id AS business_id, b.name AS business_name, b.slug, b.business_type
        FROM users u
        JOIN businesses b ON b.id = u.business_id
