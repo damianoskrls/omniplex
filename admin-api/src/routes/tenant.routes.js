@@ -155,9 +155,9 @@ router.get('/global-users', authenticate, requireMasterAdmin, async (req, res) =
 
     const [rows] = await db.query(
       `SELECT gu.id, gu.email, gu.full_name, gu.phone, gu.created_at,
-              COUNT(DISTINCT gjr.business_id) AS linked_gyms_count
+              COUNT(DISTINCT u.business_id) AS linked_gyms_count
        FROM global_users gu
-       LEFT JOIN gym_join_requests gjr ON gjr.global_user_id = gu.id AND gjr.status = 'approved'
+       LEFT JOIN users u ON u.global_user_id = gu.id AND u.deleted_at IS NULL
        ${where}
        GROUP BY gu.id
        ORDER BY gu.created_at DESC
@@ -177,17 +177,29 @@ router.get('/global-users/:id', authenticate, requireMasterAdmin, async (req, re
     );
     if (!user) return res.status(404).json({ error: 'Not found' });
 
-    const [gyms] = await db.query(
-      `SELECT gjr.id, gjr.status, gjr.created_at AS requested_at, gjr.updated_at AS updated_at,
+    // Linked via users table (gym admin added them OR auto-linked via OTP)
+    const [linkedGyms] = await db.query(
+      `SELECT u.id AS user_id, u.status AS user_status, u.created_at AS linked_at,
+              b.id AS business_id, b.name AS business_name, b.slug, b.business_type
+       FROM users u
+       JOIN businesses b ON b.id = u.business_id
+       WHERE u.global_user_id = ? AND u.deleted_at IS NULL
+       ORDER BY u.created_at DESC`,
+      [req.params.id],
+    );
+
+    // Pending/rejected join requests (self-serve flow)
+    const [joinRequests] = await db.query(
+      `SELECT gjr.id, gjr.status, gjr.created_at AS requested_at,
               b.id AS business_id, b.name AS business_name, b.slug, b.business_type
        FROM gym_join_requests gjr
        JOIN businesses b ON b.id = gjr.business_id
-       WHERE gjr.global_user_id = ?
+       WHERE gjr.global_user_id = ? AND gjr.status != 'approved'
        ORDER BY gjr.created_at DESC`,
       [req.params.id],
     );
 
-    return res.json({ user, gyms });
+    return res.json({ user, linkedGyms, joinRequests });
   } catch (err) { return res.status(500).json({ error: err.message }); }
 });
 

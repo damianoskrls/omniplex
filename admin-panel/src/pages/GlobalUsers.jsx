@@ -263,30 +263,53 @@ export default function GlobalUsers() {
               </div>
             </div>
 
-            <div style={{ fontWeight: 700, marginBottom: 10 }}>Γυμναστήρια ({detailUser.gyms.length})</div>
-            {detailUser.gyms.length === 0 ? (
-              <p style={{ color: 'var(--text-3)', fontSize: 13 }}>Δεν έχει συνδεθεί με κάποιο γυμναστήριο.</p>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>
+              Συνδεδεμένα Γυμναστήρια ({(detailUser.linkedGyms || []).length})
+            </div>
+            {(detailUser.linkedGyms || []).length === 0 ? (
+              <p style={{ color: 'var(--text-3)', fontSize: 13, marginBottom: 16 }}>Δεν έχει συνδεθεί με κάποιο γυμναστήριο.</p>
             ) : (
-              <div className="table-wrap">
+              <div className="table-wrap" style={{ marginBottom: 16 }}>
                 <table style={{ fontSize: 13 }}>
                   <thead>
-                    <tr><th>Γυμναστήριο</th><th>Status</th><th>Ημ/νία</th></tr>
+                    <tr><th>Γυμναστήριο</th><th>Status</th><th>Σύνδεση</th></tr>
                   </thead>
                   <tbody>
-                    {detailUser.gyms.map(g => (
-                      <tr key={g.id}>
+                    {(detailUser.linkedGyms || []).map(g => (
+                      <tr key={g.user_id}>
                         <td>{g.business_name}</td>
-                        <td>
-                          <span className={`badge ${g.status === 'approved' ? 'badge-green' : g.status === 'pending' ? 'badge-yellow' : 'badge-gray'}`}>
-                            {g.status === 'approved' ? 'Εγκεκριμένο' : g.status === 'pending' ? 'Εκκρεμεί' : 'Απορρίφθηκε'}
-                          </span>
-                        </td>
-                        <td style={{ color: 'var(--text-3)' }}>{new Date(g.requested_at).toLocaleDateString('el-GR')}</td>
+                        <td><span className="badge badge-green">Συνδεδεμένο</span></td>
+                        <td style={{ color: 'var(--text-3)' }}>{new Date(g.linked_at).toLocaleDateString('el-GR')}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            )}
+            {(detailUser.joinRequests || []).length > 0 && (
+              <>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>Εκκρεμή αιτήματα ({detailUser.joinRequests.length})</div>
+                <div className="table-wrap">
+                  <table style={{ fontSize: 13 }}>
+                    <thead>
+                      <tr><th>Γυμναστήριο</th><th>Status</th><th>Ημ/νία</th></tr>
+                    </thead>
+                    <tbody>
+                      {detailUser.joinRequests.map(g => (
+                        <tr key={g.id}>
+                          <td>{g.business_name}</td>
+                          <td>
+                            <span className={`badge ${g.status === 'pending' ? 'badge-yellow' : 'badge-gray'}`}>
+                              {g.status === 'pending' ? 'Εκκρεμεί' : 'Απορρίφθηκε'}
+                            </span>
+                          </td>
+                          <td style={{ color: 'var(--text-3)' }}>{new Date(g.requested_at).toLocaleDateString('el-GR')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
 
             <div className="modal-footer">
