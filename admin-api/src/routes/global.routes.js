@@ -1025,8 +1025,20 @@ router.post('/auth/send-otp', async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error('send-otp error:', err.message);
-    return res.status(500).json({ error: 'Αποτυχία αποστολής SMS. Δοκίμασε ξανά.' });
+    const isDev = process.env.NODE_ENV !== 'production';
+    return res.status(500).json({
+      error: 'Αποτυχία αποστολής SMS. Δοκίμασε ξανά.',
+      ...(isDev && { debug: err.message }),
+    });
   }
+});
+
+// GET /api/global/debug/sms  — checks SMS config (no secrets exposed)
+router.get('/debug/sms', async (req, res) => {
+  const hasKey    = !!process.env.BREVO_API_KEY;
+  const sender    = process.env.BREVO_SMS_SENDER || '(not set, default: OmniPlex)';
+  const keyPrefix = hasKey ? process.env.BREVO_API_KEY.slice(0, 12) + '...' : null;
+  res.json({ brevo_key_set: hasKey, brevo_key_prefix: keyPrefix, sender });
 });
 
 // ============================================================
