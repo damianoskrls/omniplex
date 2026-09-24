@@ -967,6 +967,21 @@ router.post('/clients/add-global', requireClientAdmin, async (req, res) => {
        WHERE global_user_id = ? AND business_id = ?`,
       [global_user_id, bizId],
     );
+
+    // Notify user via SMS
+    try {
+      const [[biz]] = await db.query(`SELECT name FROM businesses WHERE id = ?`, [bizId]);
+      const gymName = biz?.name || 'το γυμναστήριο';
+      const { sendSms } = require('../lib/sms');
+      if (gu.phone) {
+        await sendSms(gu.phone,
+          `Το ${gymName} σε κατέγραψε ως πελάτη! Άνοιξε το OmniPlex app και σύνδεσε λογαριασμό για να δεις τα πακέτα σου.`
+        );
+      }
+    } catch (smsErr) {
+      console.error('[SMS] add-global notification failed:', smsErr.message);
+    }
+
     return res.json({ ok: true, user_id: newId });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -3970,13 +3985,13 @@ router.post('/clients', requireClientAdmin, async (req, res) => {
     );
     await conn.commit();
 
-    // Send welcome SMS with app download + login instructions
+    // Send welcome SMS with app download instructions
     try {
       const [[biz]] = await conn.query(`SELECT name FROM businesses WHERE id = ?`, [bizId]);
       const gymName = biz?.name || 'το γυμναστήριό σου';
       const { sendSms } = require('../lib/sms');
       await sendSms(normalizedPhone,
-        `Καλώς ήρθες στο ${gymName}! Κατέβασε την εφαρμογή OmniPlex και σύνδεσε με κινητό ${normalizedPhone} και PIN: ${effectivePin}`
+        `Το ${gymName} σε κατέγραψε ως πελάτη! Κατέβασε το OmniPlex app, πάτα "Σύνδεση" και βάλε το κινητό σου ${normalizedPhone} για να λάβεις κωδικό επαλήθευσης.`
       );
     } catch (smsErr) {
       console.error('[SMS] welcome failed:', smsErr.message);

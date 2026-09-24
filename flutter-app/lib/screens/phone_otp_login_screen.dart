@@ -28,9 +28,10 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
   // Phase: 'phone' | 'otp'
   String _phase = 'phone';
 
-  final _phoneCtrl = TextEditingController();
-  final _otpCtrls  = List.generate(6, (_) => TextEditingController());
-  final _otpFocus  = List.generate(6, (_) => FocusNode());
+  final _phoneCtrl    = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _otpCtrls     = List.generate(6, (_) => TextEditingController());
+  final _otpFocus     = List.generate(6, (_) => FocusNode());
 
   bool   _loading  = false;
   String? _error;
@@ -46,6 +47,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
   void dispose() {
     _timer?.cancel();
     _phoneCtrl.dispose();
+    _passwordCtrl.dispose();
     for (final c in _otpCtrls) c.dispose();
     for (final f in _otpFocus) f.dispose();
     super.dispose();
@@ -104,6 +106,18 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     // Auto-verify when all 6 filled
     final full = _otpCtrls.map((c) => c.text).join();
     if (full.length == 6) _verifyOtp();
+  }
+
+  Future<void> _verifyPassword() async {
+    final pwd = _passwordCtrl.text.trim();
+    if (pwd.isEmpty) return;
+    setState(() { _loading = true; _error = null; });
+    try {
+      await widget.globalAuth.verifyOtp(_phone, pwd);
+      if (mounted) widget.onLoggedIn();
+    } catch (e) {
+      setState(() { _error = e.toString(); _loading = false; });
+    }
   }
 
   void _onOtpBackspace(int index) {
@@ -224,6 +238,9 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     );
   }
 
+  // true = use OTP boxes, false = use password field
+  bool _useOtpMode = true;
+
   Widget _buildPhaseOtp() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,48 +250,115 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
           color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700,
         )),
         const SizedBox(height: 8),
-        Text.rich(TextSpan(
-          children: [
-            TextSpan(text: 'Στείλαμε 6-ψήφιο κωδικό στο ', style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
-            TextSpan(text: '+30 $_phone', style: GoogleFonts.manrope(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-          ],
-        )),
+        if (_useOtpMode)
+          Text.rich(TextSpan(
+            children: [
+              TextSpan(text: 'Στείλαμε 6-ψήφιο κωδικό στο ', style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
+              TextSpan(text: '+30 $_phone', style: GoogleFonts.manrope(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+            ],
+          ))
+        else
+          Text('Βάλτε τον κωδικό του λογαριασμού σας OmniPlex.',
+            style: GoogleFonts.manrope(color: _kGray, fontSize: 14, height: 1.5),
+          ),
         const SizedBox(height: 40),
 
-        // 6 OTP boxes
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(6, (i) => Padding(
-            padding: EdgeInsets.only(right: i < 5 ? 10 : 0),
-            child: _OtpBox(
-              controller: _otpCtrls[i],
-              focusNode: _otpFocus[i],
-              onChanged: (v) => _onOtpDigit(i, v),
-              onBackspace: () => _onOtpBackspace(i),
+        if (_useOtpMode) ...[
+          // 6 OTP boxes
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(6, (i) => Padding(
+              padding: EdgeInsets.only(right: i < 5 ? 10 : 0),
+              child: _OtpBox(
+                controller: _otpCtrls[i],
+                focusNode: _otpFocus[i],
+                onChanged: (v) => _onOtpDigit(i, v),
+                onBackspace: () => _onOtpBackspace(i),
+              ),
+            )),
+          ),
+        ] else ...[
+          // Password field
+          Container(
+            decoration: BoxDecoration(
+              color: _kCard,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _kBorder),
             ),
-          )),
-        ),
+            child: TextField(
+              controller: _passwordCtrl,
+              obscureText: true,
+              autofocus: true,
+              style: GoogleFonts.manrope(color: Colors.white, fontSize: 15),
+              decoration: InputDecoration(
+                hintText: 'Κωδικός OmniPlex',
+                hintStyle: GoogleFonts.manrope(color: _kGray),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+              ),
+              onSubmitted: (_) => _verifyPassword(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _verifyPassword,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _kLime,
+                foregroundColor: Colors.black,
+                disabledBackgroundColor: _kLime.withOpacity(0.4),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _loading
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                : Text('Σύνδεση', style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
+          ),
+        ],
 
         if (_error != null) ...[
           const SizedBox(height: 20),
           _ErrorBanner(_error!),
         ],
 
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
 
-        // Resend
+        // Toggle between OTP and password
         Center(
-          child: _resendSeconds > 0
-            ? Text('Αποστολή ξανά σε ${_resendSeconds}s', style: GoogleFonts.manrope(color: _kGray, fontSize: 13))
-            : GestureDetector(
-                onTap: _loading ? null : _sendOtp,
-                child: Text('Αποστολή ξανά', style: GoogleFonts.manrope(
-                  color: _kLime, fontSize: 13, fontWeight: FontWeight.w600,
-                )),
+          child: GestureDetector(
+            onTap: () => setState(() {
+              _useOtpMode = !_useOtpMode;
+              _error = null;
+            }),
+            child: Text(
+              _useOtpMode
+                ? 'Έχω κωδικό λογαριασμού OmniPlex'
+                : 'Χρήση κωδικού SMS',
+              style: GoogleFonts.manrope(
+                color: _kLime, fontSize: 13, fontWeight: FontWeight.w600,
               ),
+            ),
+          ),
         ),
 
-        if (_loading) ...[
+        if (_useOtpMode) ...[
+          const SizedBox(height: 16),
+          // Resend
+          Center(
+            child: _resendSeconds > 0
+              ? Text('Αποστολή ξανά σε ${_resendSeconds}s', style: GoogleFonts.manrope(color: _kGray, fontSize: 13))
+              : GestureDetector(
+                  onTap: _loading ? null : _sendOtp,
+                  child: Text('Αποστολή ξανά', style: GoogleFonts.manrope(
+                    color: _kGray, fontSize: 13, fontWeight: FontWeight.w600,
+                  )),
+                ),
+          ),
+        ],
+
+        if (_loading && _useOtpMode) ...[
           const SizedBox(height: 24),
           const Center(child: CircularProgressIndicator(color: _kLime)),
         ],

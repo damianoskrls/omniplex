@@ -1011,6 +1011,7 @@ router.post('/auth/send-otp', async (req, res) => {
 // ============================================================
 // POST /api/global/auth/verify-otp
 // Body: { phone, code, full_name? }
+// code = 6-digit OTP  OR  OmniPlex account password
 // Returns: { token, user, gyms, is_new }
 // ============================================================
 router.post('/auth/verify-otp', async (req, res) => {
@@ -1020,16 +1021,33 @@ router.post('/auth/verify-otp', async (req, res) => {
   const digits = phone.replace(/\D/g, '');
 
   try {
-    // Find valid unused OTP
+    // ── Step 1: try OTP first ────────────────────────────────
     const [[otp]] = await db.query(
       `SELECT id FROM global_otps
        WHERE phone = ? AND code = ? AND used = 0 AND expires_at > NOW()
        ORDER BY created_at DESC LIMIT 1`,
       [digits, code],
     );
-    if (!otp) return res.status(400).json({ error: 'Λάθος ή ληγμένος κωδικός' });
 
-    // Mark used
+    // ── Step 2: if no OTP, try as password on existing global_user ──
+    if (!otp) {
+      const [[userWithPwd]] = await db.query(
+        `SELECT id, email, full_name, phone, password_hash FROM global_users WHERE phone = ?`,
+        [digits],
+      );
+      if (userWithPwd && userWithPwd.password_hash) {
+        const pwdMatch = await bcrypt.compare(code, userWithPwd.password_hash);
+        if (pwdMatch) {
+          await autoLinkGlobalUser(userWithPwd.id, digits, userWithPwd.email);
+          const gyms  = await getGymsForGlobalUser(userWithPwd.id);
+          const token = makeGlobalToken(userWithPwd);
+          return res.json({ token, user: userWithPwd, gyms, is_new: false });
+        }
+      }
+      return res.status(400).json({ error: 'Λάθος ή ληγμένος κωδικός' });
+    }
+
+    // Mark OTP used
     await db.query('UPDATE global_otps SET used = 1 WHERE id = ?', [otp.id]);
 
     // Find or create global user by phone
@@ -1053,7 +1071,7 @@ router.post('/auth/verify-otp', async (req, res) => {
     // Auto-link to any existing tenant records
     await autoLinkGlobalUser(user.id, digits, user.email);
 
-    const gyms = await getGymsForGlobalUser(user.id);
+    const gyms  = await getGymsForGlobalUser(user.id);
     const token = makeGlobalToken(user);
 
     return res.json({ token, user, gyms, is_new });
