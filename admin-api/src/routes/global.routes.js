@@ -59,6 +59,17 @@ async function getGymsForGlobalUser(globalUserId) {
   }));
 }
 
+// ── Debug: outbound IP (temporary) ──────────────────────────
+router.get('/debug/ip', async (req, res) => {
+  try {
+    const r = await fetch('https://api.ipify.org?format=json');
+    const data = await r.json();
+    return res.json({ outbound_ip: data.ip });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // ============================================================
 // POST /api/global/auth/register
 // Body: { full_name, email, password, phone? }
@@ -521,6 +532,25 @@ router.delete('/join-requests/:id', requireGlobal, async (req, res) => {
       [req.params.id, req.globalUser.globalUserId],
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Not found or already processed' });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// DELETE /api/global/gyms/:businessId  (auth)
+// Remove a gym from the user's Omniplex list (unlinks global_user_id)
+// ============================================================
+router.delete('/gyms/:businessId', requireGlobal, async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    const [result] = await db.query(
+      `UPDATE users SET global_user_id = NULL
+       WHERE global_user_id = ? AND business_id = ? AND deleted_at IS NULL`,
+      [req.globalUser.globalUserId, businessId],
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Gym not found in your list' });
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
