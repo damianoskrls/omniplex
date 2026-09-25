@@ -299,9 +299,9 @@ export default function StaffDetail() {
     const gh = parseGymHours(settingsRes.data?.opening_hours);
     setGymHours(gh);
 
-    const allServices = svcRes.data;
+    const allServices = Array.isArray(svcRes.data) ? svcRes.data : [];
     setServices(allServices);
-    const assignedIds = assignedRes.data.map(r => r.service_id);
+    const assignedIds = Array.isArray(assignedRes.data) ? assignedRes.data.map(r => r.service_id) : [];
     setAssigned(assignedIds);
     setLocationIds(locRes.data || []);
     const locs = (allLocsRes.data || []).filter((l) => l.is_active);

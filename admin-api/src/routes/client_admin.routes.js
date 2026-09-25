@@ -6883,6 +6883,9 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
       [status, admin_note || null, req.params.id],
     );
 
+    let recordId = null;
+    let recordRole = jr.role;
+
     if (status === 'approved') {
       if (jr.role === 'staff') {
         // Link global_user_id to staff record (match by phone or create new)
@@ -6895,6 +6898,7 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
             `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?) WHERE id = ?`,
             [jr.global_user_id, jr.phone || '', existingStaff.id],
           );
+          recordId = existingStaff.id;
         } else {
           const staffId = uuidv4();
           await db.query(
@@ -6902,6 +6906,7 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
              VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
             [staffId, req.admin.businessId, jr.full_name, jr.email || '', jr.phone || '', jr.global_user_id, jr.specialty || 'trainer'],
           );
+          recordId = staffId;
         }
       } else {
         // Create a user record in this gym for the global user
@@ -6911,10 +6916,16 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
           VALUES (?, ?, ?, ?, ?, ?, ?, 'customer', 'active')
           ON DUPLICATE KEY UPDATE global_user_id = VALUES(global_user_id), account_status = 'active'
         `, [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email || '', jr.phone || '', jr.date_of_birth || null]);
+        // Get the actual user ID (may differ if ON DUPLICATE KEY triggered)
+        const [[createdUser]] = await db.query(
+          'SELECT id FROM users WHERE global_user_id = ? AND business_id = ? LIMIT 1',
+          [jr.global_user_id, req.admin.businessId],
+        );
+        recordId = createdUser?.id || userId;
       }
     }
 
-    return res.json({ ok: true });
+    return res.json({ ok: true, record_id: recordId, record_role: recordRole });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

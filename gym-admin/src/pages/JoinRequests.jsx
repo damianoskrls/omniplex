@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { UserCheck, UserX, Clock, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { UserCheck, UserX, Clock, Users, ExternalLink } from 'lucide-react';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
@@ -10,6 +11,7 @@ const STATUS_LABELS = { pending: 'Εκκρεμή', approved: 'Εγκεκριμέ
 const ROLE_LABELS = { member: 'Μέλος', staff: 'Trainer/Προσωπικό' };
 
 export default function JoinRequests() {
+  const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [filter, setFilter]     = useState('pending');
@@ -30,9 +32,25 @@ export default function JoinRequests() {
 
   async function decide(id, status) {
     try {
-      await api.patch(`/client-admin/join-requests/${id}`, { status });
+      const { data } = await api.patch(`/client-admin/join-requests/${id}`, { status });
       toast.success(status === 'approved' ? 'Εγκρίθηκε' : 'Απορρίφθηκε');
       setRequests(prev => prev.filter(r => r.id !== id));
+      if (status === 'approved' && data.record_id) {
+        const path = data.record_role === 'staff'
+          ? `/staff/${data.record_id}`
+          : `/clients/${data.record_id}`;
+        toast((t) => (
+          <span>
+            {data.record_role === 'staff' ? 'Trainer' : 'Πελάτης'} δημιουργήθηκε.{' '}
+            <button
+              onClick={() => { toast.dismiss(t.id); navigate(path); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 700, color: '#76C043' }}
+            >
+              Προβολή →
+            </button>
+          </span>
+        ), { duration: 6000 });
+      }
     } catch (e) {
       toast.error(e.response?.data?.error || 'Σφάλμα');
     }
