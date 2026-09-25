@@ -6857,7 +6857,7 @@ router.get('/join-requests', requireClientAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT jr.id, jr.global_user_id, jr.full_name, jr.email, jr.phone,
-             jr.status, jr.role, jr.admin_note, jr.created_at
+             jr.status, jr.role, jr.date_of_birth, jr.specialty, jr.admin_note, jr.created_at
       FROM gym_join_requests jr
       WHERE jr.business_id = ? ${status !== 'all' ? 'AND jr.status = ?' : ''}
       ORDER BY jr.created_at DESC
@@ -6899,18 +6899,18 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
           const staffId = uuidv4();
           await db.query(
             `INSERT INTO staff (id, business_id, full_name, portal_email, phone, global_user_id, role, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'trainer', 1, NOW())`,
-            [staffId, req.admin.businessId, jr.full_name, jr.email || '', jr.phone || '', jr.global_user_id],
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
+            [staffId, req.admin.businessId, jr.full_name, jr.email || '', jr.phone || '', jr.global_user_id, jr.specialty || 'trainer'],
           );
         }
       } else {
         // Create a user record in this gym for the global user
         const userId = uuidv4();
         await db.query(`
-          INSERT INTO users (id, business_id, global_user_id, full_name, email, mobile, role, status, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, 'customer', 'active', NOW())
-          ON DUPLICATE KEY UPDATE global_user_id = VALUES(global_user_id), status = 'active'
-        `, [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email, jr.phone || '']);
+          INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, date_of_birth, role, account_status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'customer', 'active')
+          ON DUPLICATE KEY UPDATE global_user_id = VALUES(global_user_id), account_status = 'active'
+        `, [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email || '', jr.phone || '', jr.date_of_birth || null]);
       }
     }
 

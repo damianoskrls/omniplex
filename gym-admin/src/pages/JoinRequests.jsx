@@ -108,9 +108,11 @@ export default function JoinRequests() {
                     )}
                   </div>
                   <div className="text-muted" style={{ fontSize: '0.82rem', marginTop: 4 }}>
-                    {r.email && <span>{r.email}</span>}
-                    {r.email && r.phone && <span> · </span>}
                     {r.phone && <span>{r.phone}</span>}
+                    {r.phone && r.email && <span> · </span>}
+                    {r.email && <span>{r.email}</span>}
+                    {r.date_of_birth && <span> · Γέννηση: {new Date(r.date_of_birth).toLocaleDateString('el-GR')}</span>}
+                    {r.specialty && <span> · Ειδικότητα: <strong>{r.specialty}</strong></span>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                     <Clock size={12} color="#94a3b8" />

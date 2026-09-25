@@ -497,6 +497,20 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gym_join_requests.role skipped:', err.message);
   }
 
+  // ── gym_join_requests.date_of_birth + specialty ─────────────
+  try {
+    await db.query(`ALTER TABLE gym_join_requests ADD COLUMN date_of_birth DATE NULL`);
+    console.log('✓ Schema: gym_join_requests.date_of_birth added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gym_join_requests.date_of_birth skipped:', err.message);
+  }
+  try {
+    await db.query(`ALTER TABLE gym_join_requests ADD COLUMN specialty VARCHAR(200) NULL`);
+    console.log('✓ Schema: gym_join_requests.specialty added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gym_join_requests.specialty skipped:', err.message);
+  }
+
   // ── staff.phone ──────────────────────────────────────────────
   try {
     await db.query('ALTER TABLE staff ADD COLUMN phone VARCHAR(50) NULL');

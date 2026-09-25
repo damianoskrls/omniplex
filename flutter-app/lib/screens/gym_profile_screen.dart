@@ -22,6 +22,7 @@ class GymProfileScreen extends StatefulWidget {
     this.gymData,
     this.globalAuth,
     this.onLoggedIn,
+    this.onEnterGym,
   });
 
   final String gymName;
@@ -29,6 +30,7 @@ class GymProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? gymData;
   final GlobalAuthService? globalAuth;
   final VoidCallback? onLoggedIn;
+  final void Function(TenantConfig)? onEnterGym;
 
   @override
   State<GymProfileScreen> createState() => _GymProfileScreenState();
@@ -120,15 +122,176 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     }
     final bizId = _gym?['business_id'] as String?;
     if (bizId == null) return;
+    final role = await _showRolePicker();
+    if (role == null || !mounted) return;
+    final formData = await _showJoinForm(role);
+    if (formData == null || !mounted) return;
+    await _submitJoinRequest(bizId, role, formData);
+  }
+
+  Future<String?> _showRolePicker() {
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        decoration: BoxDecoration(
+          color: const Color(0xFF16171B),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFF2A2B30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 36, height: 4,
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text('Πώς θα συνδεθείς;',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text('Επέλεξε τον ρόλο σου σε αυτό το γυμναστήριο',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF9A9CA3))),
+            ),
+            const SizedBox(height: 20),
+            _RoleOption(
+              icon: Icons.fitness_center_rounded,
+              color: const Color(0xFFC6FF3D),
+              title: 'Μέλος',
+              subtitle: 'Θέλω να κάνω κρατήσεις ως πελάτης',
+              onTap: () => Navigator.pop(sheetCtx, 'member'),
+            ),
+            const SizedBox(height: 10),
+            _RoleOption(
+              icon: Icons.sports_rounded,
+              color: const Color(0xFF3EE6FF),
+              title: 'Trainer / Προσωπικό',
+              subtitle: 'Εργάζομαι σε αυτό το γυμναστήριο',
+              onTap: () => Navigator.pop(sheetCtx, 'staff'),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<Map<String, String?>?> _showJoinForm(String role) {
+    final user = widget.globalAuth?.user;
+    final nameCtrl   = TextEditingController(text: user?.fullName ?? '');
+    final phoneCtrl  = TextEditingController();
+    final emailCtrl  = TextEditingController(text: (user?.email.isNotEmpty == true) ? user!.email : '');
+    final extraCtrl  = TextEditingController(); // date_of_birth (member) or specialty (trainer)
+    final isStaff    = role == 'staff';
+    final accent     = isStaff ? _kCyan : _kLime;
+
+    return showModalBottomSheet<Map<String, String?>>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+          decoration: BoxDecoration(
+            color: const Color(0xFF16171B),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFF2A2B30)),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 36, height: 4,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Row(children: [
+                  Icon(isStaff ? Icons.sports_rounded : Icons.fitness_center_rounded, color: accent, size: 20),
+                  const SizedBox(width: 8),
+                  Text(isStaff ? 'Στοιχεία Trainer' : 'Στοιχεία Μέλους',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
+                ]),
+                const SizedBox(height: 4),
+                Text(isStaff
+                  ? 'Συμπλήρωσε τα στοιχεία σου ως προσωπικό'
+                  : 'Συμπλήρωσε τα στοιχεία εγγραφής σου',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF9A9CA3))),
+                const SizedBox(height: 20),
+                _JoinField(label: 'Ονοματεπώνυμο *', controller: nameCtrl, hint: 'π.χ. Γιώργος Παπαδόπουλος'),
+                const SizedBox(height: 12),
+                _JoinField(label: 'Κινητό τηλέφωνο *', controller: phoneCtrl, hint: 'π.χ. 6971234567',
+                  keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                _JoinField(label: 'Email', controller: emailCtrl, hint: 'π.χ. giorgos@email.com',
+                  keyboardType: TextInputType.emailAddress),
+                const SizedBox(height: 12),
+                if (!isStaff)
+                  _JoinField(label: 'Ημερομηνία γέννησης', controller: extraCtrl, hint: 'ΗΗ/ΜΜ/ΕΕΕΕ',
+                    keyboardType: TextInputType.datetime)
+                else
+                  _JoinField(label: 'Ειδικότητα', controller: extraCtrl,
+                    hint: 'π.χ. Personal Trainer, Yoga, Pilates'),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () {
+                    final name  = nameCtrl.text.trim();
+                    final phone = phoneCtrl.text.trim();
+                    if (name.isEmpty || phone.isEmpty) {
+                      ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                        const SnackBar(content: Text('Ονοματεπώνυμο και τηλέφωνο είναι υποχρεωτικά'),
+                          backgroundColor: Colors.red));
+                      return;
+                    }
+                    Navigator.pop(sheetCtx, {
+                      'full_name': name,
+                      'phone':     phone,
+                      'email':     emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(),
+                      if (!isStaff) 'date_of_birth': extraCtrl.text.trim().isEmpty ? null : extraCtrl.text.trim(),
+                      if (isStaff)  'specialty':     extraCtrl.text.trim().isEmpty ? null : extraCtrl.text.trim(),
+                    });
+                  },
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(14)),
+                    alignment: Alignment.center,
+                    child: Text('Υποβολή Αιτήματος',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                        color: isStaff ? _kBg : _kBg)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitJoinRequest(String bizId, String role, Map<String, String?> formData) async {
     setState(() => _joiningGym = true);
     try {
+      final payload = <String, dynamic>{
+        'business_id': bizId,
+        'role': role,
+        ...formData.map((k, v) => MapEntry(k, v)),
+      };
+      payload.removeWhere((_, v) => v == null);
       final res = await http.post(
         Uri.parse('$_apiBase/global/join-requests'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.globalAuth!.token}',
         },
-        body: jsonEncode({'business_id': bizId}),
+        body: jsonEncode(payload),
       );
       if (!mounted) return;
       final body = jsonDecode(res.body) as Map<String, dynamic>;
@@ -136,10 +299,13 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         final status = body['status'] as String?;
         setState(() => _joinStatus = status == 'linked' ? 'linked' : 'pending');
         final msg = status == 'linked'
-          ? 'Συνδέθηκες αυτόματα!'
-          : 'Το αίτημά σου στάλθηκε. Ο διαχειριστής θα σε ειδοποιήσει.';
+          ? (role == 'staff' ? 'Συνδέθηκες ως Trainer!' : 'Συνδέθηκες αυτόματα!')
+          : (role == 'staff'
+              ? 'Το αίτημα trainer στάλθηκε. Ο admin θα σε ειδοποιήσει.'
+              : 'Το αίτημά σου στάλθηκε. Ο διαχειριστής θα σε ειδοποιήσει.');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: _kCard));
+          SnackBar(content: Text(msg), backgroundColor: const Color(0xFF16171B)));
+        if (status == 'linked') await widget.globalAuth!.refreshGyms();
       } else {
         final err = body['message'] ?? body['error'] ?? 'Σφάλμα';
         ScaffoldMessenger.of(context).showSnackBar(
@@ -206,8 +372,12 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
       );
       if (!mounted) return;
-      widget.onLoggedIn?.call();
-      if (mounted) Navigator.of(context).pop();
+      if (widget.onEnterGym != null) {
+        widget.onEnterGym!(config);
+      } else {
+        widget.onLoggedIn?.call();
+        if (mounted) Navigator.of(context).pop();
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1022,5 +1192,112 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       case 'drop_in':   return 'Drop-in';
       default:          return billing;
     }
+  }
+}
+
+class _JoinField extends StatelessWidget {
+  const _JoinField({
+    required this.label,
+    required this.controller,
+    this.hint,
+    this.keyboardType,
+  });
+  final String label;
+  final TextEditingController controller;
+  final String? hint;
+  final TextInputType? keyboardType;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+          color: Color(0xFF9A9CA3), letterSpacing: 0.3)),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          style: const TextStyle(fontSize: 14, color: Colors.white),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Color(0xFF4A4B52), fontSize: 14),
+            filled: true,
+            fillColor: const Color(0xFF0F1013),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF2A2B30)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF2A2B30)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFC6FF3D), width: 1.5),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RoleOption extends StatelessWidget {
+  const _RoleOption({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                    const SizedBox(height: 3),
+                    Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF9A9CA3))),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: color, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -430,17 +430,18 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
 // Creates a join request or auto-links if matching phone/email exists
 // ============================================================
 router.post('/join-requests', requireGlobal, async (req, res) => {
-  const { business_id, role = 'member' } = req.body;
+  const { business_id, role = 'member', full_name: formName, phone: formPhone, email: formEmail, date_of_birth, specialty } = req.body;
   if (!business_id) return res.status(400).json({ error: 'business_id required' });
 
-  const { globalUserId, email, fullName } = req.globalUser;
+  const { globalUserId, email: tokenEmail, fullName } = req.globalUser;
 
   try {
-    // Get user details
+    // Get user details (form data takes priority over stored data)
     const [guRows] = await db.query('SELECT phone, full_name FROM global_users WHERE id = ?', [globalUserId]);
     if (!guRows.length) return res.status(404).json({ error: 'Global user not found' });
-    const phone = guRows[0].phone;
-    const name  = guRows[0].full_name || fullName;
+    const phone = formPhone?.trim() || guRows[0].phone;
+    const name  = formName?.trim() || guRows[0].full_name || fullName;
+    const email = formEmail?.trim() || tokenEmail;
 
     // Check business exists
     const [bizRows] = await db.query('SELECT id, name FROM businesses WHERE id = ? AND is_active = 1', [business_id]);
@@ -491,8 +492,8 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
         return res.json({ status: 'pending', role: 'staff', message: 'Το αίτημά σου εστάλη ξανά' });
       }
       await db.query(
-        `INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, phone, role) VALUES (?, ?, ?, ?, ?, ?, 'staff')`,
-        [reqId, globalUserId, business_id, name, email || '', phone || null],
+        `INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, phone, role, specialty) VALUES (?, ?, ?, ?, ?, ?, 'staff', ?)`,
+        [reqId, globalUserId, business_id, name, email || '', phone || null, specialty || null],
       );
       try {
         const { createAdminNotification } = require('../lib/notifications');
@@ -553,8 +554,8 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
     // Create member join request
     const reqId = uuidv4();
     await db.query(
-      `INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, phone, role) VALUES (?, ?, ?, ?, ?, ?, 'member')`,
-      [reqId, globalUserId, business_id, name, email || '', phone || null],
+      `INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, phone, role, date_of_birth) VALUES (?, ?, ?, ?, ?, ?, 'member', ?)`,
+      [reqId, globalUserId, business_id, name, email || '', phone || null, date_of_birth || null],
     );
 
     // Notify admin
