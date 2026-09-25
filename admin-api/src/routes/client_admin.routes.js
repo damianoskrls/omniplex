@@ -6902,8 +6902,8 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
         } else {
           const staffId = uuidv4();
           await db.query(
-            `INSERT INTO staff (id, business_id, full_name, portal_email, phone, global_user_id, role, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
+            `INSERT INTO staff (id, business_id, full_name, portal_email, phone, global_user_id, role, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
             [staffId, req.admin.businessId, jr.full_name, jr.email || '', jr.phone || '', jr.global_user_id, jr.specialty || 'trainer'],
           );
           recordId = staffId;
