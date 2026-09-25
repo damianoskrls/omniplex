@@ -179,7 +179,8 @@ router.post('/gym-token', requireGlobal, async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT u.id, u.business_id, u.email, u.full_name, u.account_status AS status, u.phone
+      `SELECT u.id, u.business_id, u.email, u.full_name,
+              COALESCE(u.account_status, u.status, 'active') AS status, u.phone
        FROM users u
        WHERE u.global_user_id = ? AND u.business_id = ? AND u.deleted_at IS NULL`,
       [req.globalUser.globalUserId, business_id],
@@ -187,7 +188,12 @@ router.post('/gym-token', requireGlobal, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Δεν είσαι μέλος αυτού του γυμναστηρίου' });
 
     const u = rows[0];
-    if (u.status === 'pending') return res.status(403).json({ error: 'Ο λογαριασμός σου εκκρεμεί έγκριση' });
+    if (u.status !== 'active') {
+      const msg = u.status === 'pending'
+        ? 'Ο λογαριασμός σου εκκρεμεί έγκριση'
+        : 'Ο λογαριασμός δεν είναι ενεργός';
+      return res.status(403).json({ error: msg, account_status: u.status });
+    }
 
     const token = jwt.sign(
       { userId: u.id, businessId: u.business_id, email: u.email, fullName: u.full_name, role: 'customer', globalUserId: req.globalUser.globalUserId },
