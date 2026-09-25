@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import '../services/global_auth_service.dart';
+import '../config/tenant_config.dart';
 import 'global_register_screen.dart';
 import 'phone_otp_login_screen.dart';
 import 'gym_profile_screen.dart';
@@ -23,10 +24,12 @@ class DiscoveryLandingScreen extends StatefulWidget {
     super.key,
     required this.globalAuth,
     required this.onLoggedIn,
+    this.onEnterGym,
   });
 
   final GlobalAuthService globalAuth;
   final VoidCallback onLoggedIn;
+  final void Function(TenantConfig)? onEnterGym;
 
   @override
   State<DiscoveryLandingScreen> createState() => _DiscoveryLandingScreenState();
@@ -137,15 +140,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     _debounce?.cancel();
     if (v.trim().isEmpty && _activeCategory.isEmpty) {
       if (_searched) setState(() { _results = []; _searched = false; });
-      return;
     }
-    // Need at least 3 chars to trigger results; below that show suggestion panel
-    if (v.trim().length < 3 && _activeCategory.isEmpty) {
-      if (_searched) setState(() { _results = []; _searched = false; });
-      return;
-    }
-    if (!_searched) setState(() { _searched = true; _results = []; });
-    _debounce = Timer(const Duration(milliseconds: 350), _search);
+    // No auto-search — user submits explicitly (onSubmitted or taps suggestion)
   }
 
   Future<void> _search() async {
@@ -189,6 +185,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         slug: gym['slug'] as String,
         globalAuth: widget.globalAuth,
         onLoggedIn: widget.onLoggedIn,
+        onEnterGym: widget.onEnterGym,
       ),
     ));
   }
@@ -347,12 +344,15 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
               color: Colors.white, letterSpacing: -0.45)),
         ]),
         GestureDetector(
-          onTap: _goLogin,
+          onTap: widget.globalAuth.isLoggedIn ? widget.onLoggedIn : _goLogin,
           child: Container(
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             alignment: Alignment.center,
-            child: Text('Σύνδεση',
+            child: Text(
+              widget.globalAuth.isLoggedIn
+                ? (widget.globalAuth.user?.fullName.split(' ').first ?? 'Προφίλ')
+                : 'Σύνδεση',
               style: GoogleFonts.manrope(
                 fontSize: 14, fontWeight: FontWeight.w700,
                 color: _kLime, letterSpacing: 0.35)),
@@ -640,7 +640,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     final border = active ? _kLime : (cyanBorder ? _kCyan : _kBorder);
     final fg     = active ? _kBg : Colors.white;
     return GestureDetector(
-      onTap: filterType != null ? () => _showFilterSheet(filterType) : null,
+      onTap: filterType != null ? () => _showFilterSheet() : null,
       child: Container(
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -983,7 +983,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             Expanded(
               child: GestureDetector(
                 onTap: () {
-                  setState(() => _searchFocused = true);
+                  setState(() { _searched = false; _searchFocused = true; });
                   _searchFocus.requestFocus();
                 },
                 child: Text(query.isNotEmpty ? query : 'Αναζήτηση...',
@@ -992,6 +992,20 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                     color: query.isNotEmpty ? Colors.white : _kGray)),
               ),
             ),
+            if (query.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  _searchCtrl.clear();
+                  setState(() { _results = []; _searched = false; });
+                  _searchFocus.requestFocus();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: SvgPicture.asset('assets/icons/discovery_x.svg',
+                    width: 14, height: 14,
+                    colorFilter: const ColorFilter.mode(_kGray, BlendMode.srcIn)),
+                ),
+              ),
             GestureDetector(
               onTap: _showFilterSheet,
               child: Container(

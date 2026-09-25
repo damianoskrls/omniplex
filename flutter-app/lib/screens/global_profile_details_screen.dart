@@ -52,6 +52,9 @@ class _GlobalProfileDetailsScreenState
         fullName: _nameCtrl.text.trim(),
         email:    _emailCtrl.text.trim(),
       );
+      await widget.globalAuth.setPreferredRole(
+        widget.role == GlobalRole.trainer ? 'staff' : 'member',
+      );
       if (mounted) widget.onDone();
     } catch (e) {
       setState(() { _error = e.toString(); _saving = false; });

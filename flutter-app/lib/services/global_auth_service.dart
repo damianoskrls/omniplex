@@ -3,9 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
-const _kGlobalToken  = 'global_auth_token';
-const _kGlobalUser   = 'global_user_json';
-const _kGlobalGyms   = 'global_gyms_json';
+const _kGlobalToken      = 'global_auth_token';
+const _kGlobalUser       = 'global_user_json';
+const _kGlobalGyms       = 'global_gyms_json';
+const _kPreferredRole    = 'global_preferred_role';
 
 class GlobalGym {
   final String userId;
@@ -17,6 +18,8 @@ class GlobalGym {
   final String primaryColor;
   final String? logoUrl;
   final String userStatus;
+  final String userType; // 'member' | 'staff'
+  final String? staffId;
 
   const GlobalGym({
     required this.userId,
@@ -28,10 +31,14 @@ class GlobalGym {
     required this.primaryColor,
     this.logoUrl,
     required this.userStatus,
+    this.userType = 'member',
+    this.staffId,
   });
 
+  bool get isStaff => userType == 'staff';
+
   factory GlobalGym.fromJson(Map<String, dynamic> j) => GlobalGym(
-    userId:       j['user_id'] as String,
+    userId:       j['user_id'] as String? ?? '',
     businessId:   j['business_id'] as String,
     businessName: j['business_name'] as String,
     appName:      j['app_name'] as String? ?? j['business_name'] as String,
@@ -40,6 +47,8 @@ class GlobalGym {
     primaryColor: j['primary_color'] as String? ?? '#B8F55E',
     logoUrl:      j['logo_url'] as String?,
     userStatus:   j['user_status'] as String? ?? 'active',
+    userType:     j['user_type'] as String? ?? 'member',
+    staffId:      j['staff_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -52,6 +61,8 @@ class GlobalGym {
     'primary_color': primaryColor,
     'logo_url':      logoUrl,
     'user_status':   userStatus,
+    'user_type':     userType,
+    'staff_id':      staffId,
   };
 }
 
@@ -63,9 +74,9 @@ class GlobalUser {
   const GlobalUser({required this.id, required this.email, required this.fullName});
 
   factory GlobalUser.fromJson(Map<String, dynamic> j) => GlobalUser(
-    id:       j['id'] as String,
-    email:    j['email'] as String,
-    fullName: j['full_name'] as String,
+    id:       j['id'] as String? ?? '',
+    email:    j['email'] as String? ?? '',
+    fullName: j['full_name'] as String? ?? '',
   );
   Map<String, dynamic> toJson() => {'id': id, 'email': email, 'full_name': fullName};
 }
@@ -77,10 +88,12 @@ class GlobalAuthService extends ChangeNotifier {
   String? _token;
   GlobalUser? _user;
   List<GlobalGym> _gyms = [];
+  String? _preferredRole; // 'member' | 'staff'
 
-  String?      get token  => _token;
-  GlobalUser?  get user   => _user;
-  List<GlobalGym> get gyms => _gyms;
+  String?         get token         => _token;
+  GlobalUser?     get user          => _user;
+  List<GlobalGym> get gyms          => _gyms;
+  String?         get preferredRole => _preferredRole;
   bool get isLoggedIn => _token != null && _user != null;
 
   Future<void> init() async {
@@ -88,6 +101,7 @@ class GlobalAuthService extends ChangeNotifier {
       _token = await _storage.read(key: _kGlobalToken);
       final uJson = await _storage.read(key: _kGlobalUser);
       final gJson = await _storage.read(key: _kGlobalGyms);
+      _preferredRole = await _storage.read(key: _kPreferredRole);
       if (_token != null && uJson != null) {
         _user  = GlobalUser.fromJson(jsonDecode(uJson) as Map<String, dynamic>);
         if (gJson != null) {
@@ -100,13 +114,19 @@ class GlobalAuthService extends ChangeNotifier {
     }
   }
 
+  Future<void> setPreferredRole(String role) async {
+    _preferredRole = role;
+    await _storage.write(key: _kPreferredRole, value: role);
+    notifyListeners();
+  }
+
   /// Send OTP to phone number
   Future<void> sendOtp(String phone) async {
     final res = await http.post(
       Uri.parse('$_apiBase/global/auth/send-otp'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone}),
-    );
+    ).timeout(const Duration(seconds: 15));
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 200) throw body['error'] ?? 'Αποτυχία αποστολής SMS';
   }
@@ -117,7 +137,7 @@ class GlobalAuthService extends ChangeNotifier {
       Uri.parse('$_apiBase/global/auth/verify-otp'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone, 'code': code, if (fullName != null) 'full_name': fullName}),
-    );
+    ).timeout(const Duration(seconds: 15));
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 200) throw body['error'] ?? 'Λάθος κωδικός';
     await _persist(body);
@@ -204,6 +224,33 @@ class GlobalAuthService extends ChangeNotifier {
     await refreshGyms();
   }
 
+  /// Get a per-gym trainer JWT for a staff-linked global user
+  Future<String> getTrainerToken(String businessId) async {
+    if (_token == null) throw 'Not logged in';
+    final res = await http.post(
+      Uri.parse('$_apiBase/global/trainer-token'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_token'},
+      body: jsonEncode({'business_id': businessId}),
+    );
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) throw body['error'] ?? 'Failed to get trainer token';
+    return body['token'] as String;
+  }
+
+  /// Remove a gym from the user's Omniplex list (unlinks global_user_id on gym's user row)
+  Future<void> removeGym(String businessId) async {
+    if (_token == null) throw 'Not logged in';
+    final res = await http.delete(
+      Uri.parse('$_apiBase/global/gyms/$businessId'),
+      headers: {'Authorization': 'Bearer $_token'},
+    );
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      throw body['error'] ?? 'Failed to remove gym';
+    }
+    await refreshGyms();
+  }
+
   /// Called after a successful package purchase that auto-creates a global account
   Future<void> persistFromPurchase(Map<String, dynamic> body) => _persist(body);
 
@@ -281,10 +328,11 @@ class GlobalAuthService extends ChangeNotifier {
   }
 
   Future<void> clear() async {
-    _token = null; _user = null; _gyms = [];
+    _token = null; _user = null; _gyms = []; _preferredRole = null;
     await _storage.delete(key: _kGlobalToken);
     await _storage.delete(key: _kGlobalUser);
     await _storage.delete(key: _kGlobalGyms);
+    await _storage.delete(key: _kPreferredRole);
     notifyListeners();
   }
 }
