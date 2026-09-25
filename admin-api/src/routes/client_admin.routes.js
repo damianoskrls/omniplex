@@ -6857,7 +6857,7 @@ router.get('/join-requests', requireClientAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT jr.id, jr.global_user_id, jr.full_name, jr.email, jr.phone,
-             jr.status, jr.admin_note, jr.created_at
+             jr.status, jr.role, jr.admin_note, jr.created_at
       FROM gym_join_requests jr
       WHERE jr.business_id = ? ${status !== 'all' ? 'AND jr.status = ?' : ''}
       ORDER BY jr.created_at DESC
@@ -6884,13 +6884,34 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
     );
 
     if (status === 'approved') {
-      // Create a user record in this gym for the global user
-      const userId = uuidv4();
-      await db.query(`
-        INSERT INTO users (id, business_id, global_user_id, full_name, email, mobile, role, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'customer', 'active', NOW())
-        ON DUPLICATE KEY UPDATE global_user_id = VALUES(global_user_id), status = 'active'
-      `, [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email, jr.phone || '']);
+      if (jr.role === 'staff') {
+        // Link global_user_id to staff record (match by phone or create new)
+        const [[existingStaff]] = await db.query(
+          `SELECT id FROM staff WHERE business_id = ? AND (phone = ? OR global_user_id = ?) AND is_active = 1 LIMIT 1`,
+          [req.admin.businessId, jr.phone || '', jr.global_user_id],
+        );
+        if (existingStaff) {
+          await db.query(
+            `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?) WHERE id = ?`,
+            [jr.global_user_id, jr.phone || '', existingStaff.id],
+          );
+        } else {
+          const staffId = uuidv4();
+          await db.query(
+            `INSERT INTO staff (id, business_id, full_name, portal_email, phone, global_user_id, role, is_active, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'trainer', 1, NOW())`,
+            [staffId, req.admin.businessId, jr.full_name, jr.email || '', jr.phone || '', jr.global_user_id],
+          );
+        }
+      } else {
+        // Create a user record in this gym for the global user
+        const userId = uuidv4();
+        await db.query(`
+          INSERT INTO users (id, business_id, global_user_id, full_name, email, mobile, role, status, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, 'customer', 'active', NOW())
+          ON DUPLICATE KEY UPDATE global_user_id = VALUES(global_user_id), status = 'active'
+        `, [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email, jr.phone || '']);
+      }
     }
 
     return res.json({ ok: true });
