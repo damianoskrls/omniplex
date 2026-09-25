@@ -489,6 +489,31 @@ async function bootstrapSchema() {
     console.warn('gym_join_requests collation convert skipped:', err.message);
   }
 
+  // ── gym_join_requests.role ──────────────────────────────────
+  try {
+    await db.query(`ALTER TABLE gym_join_requests ADD COLUMN role ENUM('member','staff') NOT NULL DEFAULT 'member'`);
+    console.log('✓ Schema: gym_join_requests.role added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gym_join_requests.role skipped:', err.message);
+  }
+
+  // ── staff.phone ──────────────────────────────────────────────
+  try {
+    await db.query('ALTER TABLE staff ADD COLUMN phone VARCHAR(50) NULL');
+    console.log('✓ Schema: staff.phone added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('staff.phone skipped:', err.message);
+  }
+
+  // ── staff.global_user_id ─────────────────────────────────────
+  try {
+    await db.query('ALTER TABLE staff ADD COLUMN global_user_id VARCHAR(36) NULL');
+    await db.query('CREATE INDEX idx_staff_global_user ON staff (global_user_id)');
+    console.log('✓ Schema: staff.global_user_id added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_DUP_KEYNAME') console.warn('staff.global_user_id skipped:', err.message);
+  }
+
   // ── businesses.gym_capacity ─────────────────────────────────
   try {
     await db.query('ALTER TABLE businesses ADD COLUMN gym_capacity INT NULL');

@@ -36,17 +36,37 @@ function makeGlobalToken(user) {
 
 // ── Helpers ──────────────────────────────────────────────────
 async function getGymsForGlobalUser(globalUserId) {
-  const [rows] = await db.query(`
+  const [memberRows] = await db.query(`
     SELECT u.id AS user_id, u.business_id, u.full_name, u.account_status AS status,
            b.slug, b.name, b.business_type,
-           c.app_name, c.primary_color, c.logo_url
+           c.app_name, c.primary_color, c.logo_url,
+           'member' AS user_type, NULL AS staff_id
     FROM users u
     JOIN businesses b ON b.id = u.business_id
     LEFT JOIN business_configs c ON c.business_id = b.id
     WHERE u.global_user_id = ? AND b.is_active = 1 AND u.deleted_at IS NULL
-    ORDER BY b.name ASC
   `, [globalUserId]);
-  return rows.map(r => ({
+
+  const [staffRows] = await db.query(`
+    SELECT s.id AS user_id, s.business_id, s.full_name, 'active' AS status,
+           b.slug, b.name, b.business_type,
+           c.app_name, c.primary_color, c.logo_url,
+           'staff' AS user_type, s.id AS staff_id
+    FROM staff s
+    JOIN businesses b ON b.id = s.business_id AND b.is_active = 1
+    LEFT JOIN business_configs c ON c.business_id = s.business_id
+    WHERE s.global_user_id = ? AND s.is_active = 1
+  `, [globalUserId]);
+
+  const seen = new Set();
+  const all = [...memberRows, ...staffRows].filter(r => {
+    const key = `${r.business_id}:${r.user_type}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => a.name.localeCompare(b.name));
+
+  return all.map(r => ({
     user_id:       r.user_id,
     business_id:   r.business_id,
     business_name: r.name,
@@ -56,6 +76,8 @@ async function getGymsForGlobalUser(globalUserId) {
     primary_color: r.primary_color || '#B8F55E',
     logo_url:      r.logo_url || null,
     user_status:   r.status,
+    user_type:     r.user_type,
+    staff_id:      r.staff_id || null,
   }));
 }
 
@@ -408,7 +430,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
 // Creates a join request or auto-links if matching phone/email exists
 // ============================================================
 router.post('/join-requests', requireGlobal, async (req, res) => {
-  const { business_id } = req.body;
+  const { business_id, role = 'member' } = req.body;
   if (!business_id) return res.status(400).json({ error: 'business_id required' });
 
   const { globalUserId, email, fullName } = req.globalUser;
@@ -430,6 +452,60 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
       [globalUserId, business_id],
     );
     if (linked.length) return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη μέλος αυτού του γυμναστηρίου' });
+
+    // ── Staff / Trainer join request ─────────────────────────
+    if (role === 'staff') {
+      // Check if already linked as staff
+      const [linkedStaff] = await db.query(
+        'SELECT id FROM staff WHERE global_user_id = ? AND business_id = ? AND is_active = 1',
+        [globalUserId, business_id],
+      );
+      if (linkedStaff.length) return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη συνδεδεμένος ως trainer σε αυτό το γυμναστήριο' });
+
+      // Try auto-link: find staff record with matching phone
+      let staffMatch = null;
+      if (phone) {
+        const normalizedPhone = phone.replace(/[\s\-().]/g, '');
+        const [r] = await db.query(
+          `SELECT id, global_user_id FROM staff
+           WHERE business_id = ? AND ${phoneDigitsEq('phone')} AND is_active = 1 AND global_user_id IS NULL`,
+          [business_id, normalizedPhone.replace(/\D/g, '')],
+        );
+        if (r.length) staffMatch = r[0];
+      }
+
+      if (staffMatch) {
+        await db.query('UPDATE staff SET global_user_id = ? WHERE id = ?', [globalUserId, staffMatch.id]);
+        return res.json({ status: 'linked', role: 'staff', message: 'Συνδέθηκες ως Trainer!' });
+      }
+
+      // No match → pending trainer request
+      const reqId = uuidv4();
+      const [existingStaffReq] = await db.query(
+        `SELECT id, status FROM gym_join_requests WHERE global_user_id = ? AND business_id = ? AND role = 'staff'`,
+        [globalUserId, business_id],
+      );
+      if (existingStaffReq.length) {
+        if (existingStaffReq[0].status === 'pending') return res.json({ status: 'pending', role: 'staff', message: 'Το αίτημα trainer εκκρεμεί' });
+        await db.query(`UPDATE gym_join_requests SET status = 'pending' WHERE id = ?`, [existingStaffReq[0].id]);
+        return res.json({ status: 'pending', role: 'staff', message: 'Το αίτημά σου εστάλη ξανά' });
+      }
+      await db.query(
+        `INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, phone, role) VALUES (?, ?, ?, ?, ?, ?, 'staff')`,
+        [reqId, globalUserId, business_id, name, email || '', phone || null],
+      );
+      try {
+        const { createAdminNotification } = require('../lib/notifications');
+        await createAdminNotification(db, {
+          businessId: business_id,
+          type:  'join_request',
+          title: 'Αίτημα Trainer',
+          body:  `${name} ζητά να συνδεθεί ως trainer στο γυμναστήριο.`,
+          payload: { join_request_id: reqId, global_user_id: globalUserId, full_name: name, email: email || '', phone: phone || '', role: 'staff' },
+        });
+      } catch (_) {}
+      return res.json({ status: 'pending', role: 'staff', message: 'Το αίτημα trainer στάλθηκε. Ο admin θα σε ειδοποιήσει.' });
+    }
 
     // Try auto-link: find user in this gym with same email or phone
     let matchQuery = null;
@@ -474,10 +550,10 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
       return res.json({ status: 'pending', message: 'Το αίτημά σου εστάλη ξανά' });
     }
 
-    // Create join request
+    // Create member join request
     const reqId = uuidv4();
     await db.query(
-      'INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, phone) VALUES (?, ?, ?, ?, ?, ?)',
+      `INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, phone, role) VALUES (?, ?, ?, ?, ?, ?, 'member')`,
       [reqId, globalUserId, business_id, name, email || '', phone || null],
     );
 
@@ -489,7 +565,7 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
         type:  'join_request',
         title: 'Αίτημα εγγραφής',
         body:  `${name} ζητά να γίνει μέλος του γυμναστηρίου.`,
-        payload: { join_request_id: reqId, global_user_id: globalUserId, full_name: name, email: email || '', phone: phone || '' },
+        payload: { join_request_id: reqId, global_user_id: globalUserId, full_name: name, email: email || '', phone: phone || '', role: 'member' },
       });
     } catch (_) {}
 
@@ -542,6 +618,30 @@ router.delete('/join-requests/:id', requireGlobal, async (req, res) => {
 // DELETE /api/global/gyms/:businessId  (auth)
 // Remove a gym from the user's Omniplex list (unlinks global_user_id)
 // ============================================================
+// ── GET /api/global/trainer-token  — per-gym trainer JWT for global users linked as staff
+router.post('/trainer-token', requireGlobal, async (req, res) => {
+  const { business_id } = req.body;
+  if (!business_id) return res.status(400).json({ error: 'business_id required' });
+  try {
+    const [rows] = await db.query(
+      `SELECT s.id, s.full_name, s.role FROM staff s
+       WHERE s.global_user_id = ? AND s.business_id = ? AND s.is_active = 1`,
+      [req.globalUser.globalUserId, business_id],
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Staff record not found' });
+    const s = rows[0];
+    const token = jwt.sign(
+      { businessId: business_id, email: req.globalUser.email || '', role: 'trainer',
+        name: s.full_name, staffId: s.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+    );
+    return res.json({ token });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.delete('/gyms/:businessId', requireGlobal, async (req, res) => {
   try {
     const { businessId } = req.params;
