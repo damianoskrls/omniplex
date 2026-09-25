@@ -8,13 +8,12 @@ const STATUS_MESSAGES = {
 
 async function getCustomerStatus(userId) {
   const [[row]] = await db.query(
-    'SELECT account_status, status, deleted_at FROM users WHERE id = ?',
+    'SELECT account_status, deleted_at FROM users WHERE id = ?',
     [userId]
   );
   if (!row) return null;
   if (row.deleted_at) return 'deleted';
-  // account_status is the canonical column; fall back to legacy status column
-  return row.account_status || row.status || 'active';
+  return row.account_status || 'active';
 }
 
 async function requireActiveCustomer(req, res, next) {

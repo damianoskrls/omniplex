@@ -180,7 +180,7 @@ router.post('/gym-token', requireGlobal, async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT u.id, u.business_id, u.email, u.full_name,
-              COALESCE(u.account_status, u.status, 'active') AS status, u.phone
+              COALESCE(u.account_status, 'active') AS status, u.phone
        FROM users u
        WHERE u.global_user_id = ? AND u.business_id = ? AND u.deleted_at IS NULL`,
       [req.globalUser.globalUserId, business_id],
