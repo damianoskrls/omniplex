@@ -511,6 +511,30 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gym_join_requests.specialty skipped:', err.message);
   }
 
+  // ── staff_availability_requests ──────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS staff_availability_requests (
+        id             VARCHAR(36)  NOT NULL PRIMARY KEY,
+        staff_id       VARCHAR(36)  NOT NULL,
+        business_id    VARCHAR(36)  NOT NULL,
+        service_id     VARCHAR(36)  NOT NULL,
+        proposed_slots TEXT         NOT NULL,
+        status         ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+        submitted_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        reviewed_at    DATETIME     NULL,
+        reviewed_by    VARCHAR(36)  NULL,
+        review_note    TEXT         NULL,
+        INDEX idx_sar_staff (staff_id),
+        INDEX idx_sar_business (business_id),
+        INDEX idx_sar_status (status)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: staff_availability_requests table ready');
+  } catch (err) {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('staff_availability_requests skipped:', err.message);
+  }
+
   // ── staff.phone ──────────────────────────────────────────────
   try {
     await db.query('ALTER TABLE staff ADD COLUMN phone VARCHAR(50) NULL');

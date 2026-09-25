@@ -6909,19 +6909,30 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
           recordId = staffId;
         }
       } else {
-        // Create a user record in this gym for the global user
-        const userId = uuidv4();
-        await db.query(`
-          INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, date_of_birth, role, account_status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'customer', 'active')
-          ON DUPLICATE KEY UPDATE global_user_id = VALUES(global_user_id), account_status = 'active'
-        `, [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email || '', jr.phone || '', jr.date_of_birth || null]);
-        // Get the actual user ID (may differ if ON DUPLICATE KEY triggered)
-        const [[createdUser]] = await db.query(
-          'SELECT id FROM users WHERE global_user_id = ? AND business_id = ? LIMIT 1',
-          [jr.global_user_id, req.admin.businessId],
+        // Find existing user record in this gym (by global_user_id, phone, or email)
+        const [[existingUser]] = await db.query(
+          `SELECT id FROM users WHERE business_id = ? AND (
+            global_user_id = ?
+            OR (phone != '' AND phone = ?)
+            OR (email != '' AND email = ?)
+          ) LIMIT 1`,
+          [req.admin.businessId, jr.global_user_id, jr.phone || null, jr.email || null],
         );
-        recordId = createdUser?.id || userId;
+        if (existingUser) {
+          await db.query(
+            `UPDATE users SET global_user_id = ?, account_status = 'active' WHERE id = ?`,
+            [jr.global_user_id, existingUser.id],
+          );
+          recordId = existingUser.id;
+        } else {
+          const userId = uuidv4();
+          await db.query(
+            `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, date_of_birth, role, account_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'customer', 'active')`,
+            [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email || '', jr.phone || '', jr.date_of_birth || null],
+          );
+          recordId = userId;
+        }
       }
     }
 

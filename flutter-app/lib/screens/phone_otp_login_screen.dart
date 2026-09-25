@@ -47,6 +47,22 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
   String get _otp   => _otpCtrls.map((c) => c.text).join();
 
   @override
+  void initState() {
+    super.initState();
+    // Select all text when a box gains focus so typing replaces existing digit
+    for (var i = 0; i < 6; i++) {
+      _otpFocus[i].addListener(() {
+        if (_otpFocus[i].hasFocus && _otpCtrls[i].text.isNotEmpty) {
+          Future.microtask(() {
+            _otpCtrls[i].selection = TextSelection(
+              baseOffset: 0, extentOffset: _otpCtrls[i].text.length);
+          });
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     _phoneCtrl.dispose();
@@ -96,7 +112,9 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
       await _registerFcmToken();
       if (!mounted) return;
       if (result['is_new'] == true) {
-        _goRolePicker();
+        _goRolePicker(skipDetails: false);
+      } else if (widget.globalAuth.preferredRole == null) {
+        _goRolePicker(skipDetails: true);
       } else {
         widget.onLoggedIn();
       }
@@ -117,11 +135,32 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     } catch (_) {}
   }
 
-  void _onOtpDigit(int index, String val) {
-    if (val.isNotEmpty && index < 5) {
-      _otpFocus[index + 1].requestFocus();
+  void _onOtpChanged(int index, String v) {
+    final digits = v.replaceAll(RegExp(r'\D'), '');
+
+    if (digits.isEmpty) {
+      // Deleted — clear box and go back
+      _otpCtrls[index].clear();
+      if (index > 0) {
+        _otpFocus[index - 1].requestFocus();
+      }
+      return;
     }
-    // Auto-verify when all 6 filled
+
+    if (digits.length == 1) {
+      // Single digit typed or replaced
+      _otpCtrls[index].text = digits;
+      _otpCtrls[index].selection = const TextSelection.collapsed(offset: 1);
+      if (index < 5) _otpFocus[index + 1].requestFocus();
+    } else {
+      // Paste: distribute digits from this box onwards
+      for (var j = 0; j < digits.length && (index + j) < 6; j++) {
+        _otpCtrls[index + j].text = digits[j];
+      }
+      final next = (index + digits.length).clamp(0, 5);
+      _otpFocus[next].requestFocus();
+    }
+
     final full = _otpCtrls.map((c) => c.text).join();
     if (full.length == 6) _verifyOtp();
   }
@@ -135,7 +174,9 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
       await _registerFcmToken();
       if (!mounted) return;
       if (result['is_new'] == true) {
-        _goRolePicker();
+        _goRolePicker(skipDetails: false);
+      } else if (widget.globalAuth.preferredRole == null) {
+        _goRolePicker(skipDetails: true);
       } else {
         widget.onLoggedIn();
       }
@@ -144,20 +185,14 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     }
   }
 
-  void _goRolePicker() {
+  void _goRolePicker({bool skipDetails = false}) {
     Navigator.pushReplacement(context, MaterialPageRoute(
       builder: (_) => GlobalRolePickerScreen(
         globalAuth: widget.globalAuth,
+        skipDetails: skipDetails,
         onDone: (_) => widget.onLoggedIn(),
       ),
     ));
-  }
-
-  void _onOtpBackspace(int index) {
-    if (_otpCtrls[index].text.isEmpty && index > 0) {
-      _otpFocus[index - 1].requestFocus();
-      _otpCtrls[index - 1].clear();
-    }
   }
 
   @override
@@ -305,8 +340,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
               child: _OtpBox(
                 controller: _otpCtrls[i],
                 focusNode: _otpFocus[i],
-                onChanged: (v) => _onOtpDigit(i, v),
-                onBackspace: () => _onOtpBackspace(i),
+                onChanged: (v) => _onOtpChanged(i, v),
               ),
             )),
           ),
@@ -405,55 +439,47 @@ class _OtpBox extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.onChanged,
-    required this.onBackspace,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final ValueChanged<String> onChanged;
-  final VoidCallback onBackspace;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 46,
       height: 56,
-      child: Focus(
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent &&
-              event.logicalKey == LogicalKeyboardKey.backspace &&
-              controller.text.isEmpty) {
-            onBackspace();
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
-        child: TextField(
-          controller: controller,
-          focusNode: focusNode,
-          textAlign: TextAlign.center,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)],
-          style: GoogleFonts.manrope(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFF16171B),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF2A2B30)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF2A2B30)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _kLime, width: 1.5),
-            ),
-            contentPadding: EdgeInsets.zero,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: GoogleFonts.manrope(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: const Color(0xFF16171B),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF2A2B30)),
           ),
-          onChanged: onChanged,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF2A2B30)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _kLime, width: 1.5),
+          ),
+          contentPadding: EdgeInsets.zero,
         ),
+        onTap: () {
+          // Select all so typing replaces existing digit
+          controller.selection = TextSelection(
+            baseOffset: 0, extentOffset: controller.text.length);
+        },
+        onChanged: onChanged,
       ),
     );
   }

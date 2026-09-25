@@ -16,11 +16,14 @@ class GlobalRolePickerScreen extends StatefulWidget {
     super.key,
     required this.globalAuth,
     required this.onDone,
+    this.skipDetails = false,
   });
 
   final GlobalAuthService globalAuth;
   /// Called after profile details are saved; passes the chosen role
   final void Function(GlobalRole role) onDone;
+  /// When true, skip the profile details step (for returning users)
+  final bool skipDetails;
 
   @override
   State<GlobalRolePickerScreen> createState() => _GlobalRolePickerScreenState();
@@ -29,16 +32,23 @@ class GlobalRolePickerScreen extends StatefulWidget {
 class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
   GlobalRole? _selected;
 
-  void _next() {
+  Future<void> _next() async {
     final role = _selected;
     if (role == null) return;
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => GlobalProfileDetailsScreen(
-        globalAuth: widget.globalAuth,
-        role: role,
-        onDone: () => widget.onDone(role),
-      ),
-    ));
+    if (widget.skipDetails) {
+      await widget.globalAuth.setPreferredRole(
+        role == GlobalRole.trainer ? 'staff' : 'member',
+      );
+      if (mounted) widget.onDone(role);
+    } else {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (_) => GlobalProfileDetailsScreen(
+          globalAuth: widget.globalAuth,
+          role: role,
+          onDone: () => widget.onDone(role),
+        ),
+      ));
+    }
   }
 
   @override
@@ -71,7 +81,7 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
 
               const SizedBox(height: 32),
 
-              Text('Βήμα 1 από 2',
+              Text(widget.skipDetails ? 'ΕΠΙΛΟΓΗ ΡΟΛΟΥ' : 'Βήμα 1 από 2',
                 style: GoogleFonts.manrope(
                   fontSize: 11, fontWeight: FontWeight.w600,
                   color: _kGray, letterSpacing: 1.5)),
