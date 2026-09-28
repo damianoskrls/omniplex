@@ -105,30 +105,34 @@ export default function Rooms() {
             <h1 className="page-title">Αίθουσες γυμναστηρίου</h1>
             <p className="text-muted">Ορίστε αίθουσες ανά τοποθεσία με φωτογραφία και πληροφορίες για τους πελάτες.</p>
           </div>
-          {locations.length > 1 ? (
-            <select
-              className="form-select"
-              style={{ minWidth: 180, flexShrink: 0 }}
-              value={activeLocationId}
-              onChange={(e) => setActiveLocationId(e.target.value)}
-            >
-              {locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
-            </select>
-          ) : activeLocation ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#f1f5f9', borderRadius: 8, fontSize: 13, color: '#475569', flexShrink: 0 }}>
-              <MapPin size={13} style={{ color: '#7C5CFC' }} />
-              {activeLocation.name}
-            </div>
-          ) : null}
         </div>
       </div>
 
-      {/* Location context banner */}
-      {activeLocation && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#f8f5ff', border: '1px solid #e9d5ff', borderRadius: 10, marginBottom: 20, fontSize: 13 }}>
-          <MapPin size={14} style={{ color: '#7C5CFC', flexShrink: 0 }} />
-          <span style={{ color: '#6D28D9', fontWeight: 600 }}>{activeLocation.name}</span>
-          <span style={{ color: '#7c3aed' }}>— οι αλλαγές παρακάτω αφορούν αυτή την τοποθεσία</span>
+      {/* Location tabs */}
+      {locations.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0', paddingBottom: 0 }}>
+          {locations.map(loc => {
+            const isActive = String(loc.id) === String(activeLocationId);
+            return (
+              <button
+                key={loc.id}
+                onClick={() => setActiveLocationId(loc.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px',
+                  border: 'none', background: 'none', cursor: 'pointer',
+                  fontSize: 14, fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#7C5CFC' : '#64748b',
+                  borderBottom: isActive ? '2px solid #7C5CFC' : '2px solid transparent',
+                  marginBottom: -2, borderRadius: 0,
+                  transition: 'color 0.15s',
+                }}
+              >
+                <MapPin size={13} style={{ color: isActive ? '#7C5CFC' : '#94a3b8' }} />
+                {loc.name}
+              </button>
+            );
+          })}
         </div>
       )}
 
