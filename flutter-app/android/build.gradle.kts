@@ -12,6 +12,8 @@ subprojects {
                 enabled = false
             }
         }
+        // Force all plugin subprojects to compile against SDK 36
+        extensions.findByType<com.android.build.gradle.BaseExtension>()?.compileSdkVersion(36)
     }
 }
 
