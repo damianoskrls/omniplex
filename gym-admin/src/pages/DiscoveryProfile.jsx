@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Globe, MapPin, Eye, EyeOff, Save } from 'lucide-react';
+import { Globe, MapPin, Eye, EyeOff, Save, Zap } from 'lucide-react';
 import api from '../api/client';
 
 export default function DiscoveryProfile() {
   const [form, setForm] = useState({
     city: '', country: 'GR', latitude: '', longitude: '',
-    description: '', is_discoverable: false,
+    description: '', is_discoverable: false, accepts_drop_in: false,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
@@ -17,12 +17,13 @@ export default function DiscoveryProfile() {
       .then(r => {
         const d = r.data;
         setForm({
-          city:            d.city || '',
-          country:         d.country || 'GR',
-          latitude:        d.latitude != null ? String(d.latitude) : '',
-          longitude:       d.longitude != null ? String(d.longitude) : '',
-          description:     d.description || '',
-          is_discoverable: !!d.is_discoverable,
+          city:             d.city || '',
+          country:          d.country || 'GR',
+          latitude:         d.latitude != null ? String(d.latitude) : '',
+          longitude:        d.longitude != null ? String(d.longitude) : '',
+          description:      d.description || '',
+          is_discoverable:  !!d.is_discoverable,
+          accepts_drop_in:  !!d.accepts_drop_in,
         });
         setLoading(false);
       })
@@ -40,6 +41,7 @@ export default function DiscoveryProfile() {
         longitude:       form.longitude ? parseFloat(form.longitude) : null,
         description:     form.description || null,
         is_discoverable: form.is_discoverable ? 1 : 0,
+        accepts_drop_in: form.accepts_drop_in ? 1 : 0,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -92,6 +94,36 @@ export default function DiscoveryProfile() {
         >
           <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
             form.is_discoverable ? 'translate-x-6' : 'translate-x-1'
+          }`} />
+        </button>
+      </div>
+
+      {/* Drop-in toggle */}
+      <div className={`rounded-2xl border-2 p-5 flex items-center justify-between transition-colors ${
+        form.accepts_drop_in
+          ? 'border-green-400 bg-green-50 dark:bg-green-900/20'
+          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+      }`}>
+        <div className="flex items-center gap-3">
+          <Zap className={form.accepts_drop_in ? 'text-green-600' : 'text-gray-400'} size={22} />
+          <div>
+            <p className="font-semibold text-gray-900 dark:text-white">Drop-in Είσοδος</p>
+            <p className="text-sm text-gray-500">
+              {form.accepts_drop_in
+                ? 'Οι χρήστες βλέπουν το κουμπί "Κράτηση Drop-in" στην εφαρμογή'
+                : 'Ενεργοποιήστε για να επιτρέψετε μεμονωμένες εισόδους'}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setForm(f => ({ ...f, accepts_drop_in: !f.accepts_drop_in }))}
+          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+            form.accepts_drop_in ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+          }`}
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+            form.accepts_drop_in ? 'translate-x-6' : 'translate-x-1'
           }`} />
         </button>
       </div>

@@ -594,6 +594,54 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('global_otps skipped:', err.message);
   }
 
+  // ── businesses.accepts_drop_in ───────────────────────────────
+  try {
+    await db.query('ALTER TABLE businesses ADD COLUMN accepts_drop_in TINYINT(1) NOT NULL DEFAULT 0');
+    console.log('✓ Schema: businesses.accepts_drop_in added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('businesses.accepts_drop_in skipped:', err.message);
+  }
+
+  // ── class_schedules ──────────────────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS class_schedules (
+        id            VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id   VARCHAR(36)  NOT NULL,
+        day_of_week   TINYINT      NOT NULL COMMENT '1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat 7=Sun',
+        start_time    VARCHAR(5)   NOT NULL COMMENT 'HH:MM',
+        class_name    VARCHAR(100) NOT NULL,
+        trainer_name  VARCHAR(100) NULL,
+        color         VARCHAR(20)  NOT NULL DEFAULT '#C6FF3D',
+        equipment     VARCHAR(200) NULL,
+        max_capacity  INT          NULL,
+        is_active     TINYINT(1)   NOT NULL DEFAULT 1,
+        created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_cs_biz_day (business_id, day_of_week)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: class_schedules table ready');
+  } catch (err) {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('class_schedules skipped:', err.message);
+  }
+
+  // ── gym_photos ───────────────────────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS gym_photos (
+        id            VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id   VARCHAR(36)  NOT NULL,
+        url           TEXT         NOT NULL,
+        display_order INT          NOT NULL DEFAULT 0,
+        created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_gp_biz (business_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: gym_photos table ready');
+  } catch (err) {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('gym_photos skipped:', err.message);
+  }
+
   // ── global_device_tokens table ───────────────────────────────
   try {
     await db.query(`

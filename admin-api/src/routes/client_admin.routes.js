@@ -6794,7 +6794,7 @@ router.get('/my-programs', async (req, res) => {
 router.get('/discovery-profile', requireClientAdmin, async (req, res) => {
   try {
     const [[biz]] = await db.query(
-      'SELECT city, country, latitude, longitude, description, is_discoverable FROM businesses WHERE id = ?',
+      'SELECT city, country, latitude, longitude, description, is_discoverable, accepts_drop_in FROM businesses WHERE id = ?',
       [req.admin.businessId],
     );
     return res.json(biz || {});
@@ -6804,7 +6804,7 @@ router.get('/discovery-profile', requireClientAdmin, async (req, res) => {
 });
 
 router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
-  const { city, country, latitude, longitude, description, is_discoverable } = req.body;
+  const { city, country, latitude, longitude, description, is_discoverable, accepts_drop_in } = req.body;
   try {
     await db.query(
       `UPDATE businesses SET
@@ -6813,11 +6813,135 @@ router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
          latitude = COALESCE(?, latitude),
          longitude = COALESCE(?, longitude),
          description = COALESCE(?, description),
-         is_discoverable = COALESCE(?, is_discoverable)
+         is_discoverable = COALESCE(?, is_discoverable),
+         accepts_drop_in = COALESCE(?, accepts_drop_in)
        WHERE id = ?`,
       [city ?? null, country ?? null, latitude ?? null, longitude ?? null,
-       description ?? null, is_discoverable ?? null, req.admin.businessId],
+       description ?? null, is_discoverable ?? null, accepts_drop_in ?? null, req.admin.businessId],
     );
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// Class Schedules CRUD
+// GET    /api/client-admin/class-schedules
+// POST   /api/client-admin/class-schedules
+// PUT    /api/client-admin/class-schedules/:id
+// DELETE /api/client-admin/class-schedules/:id
+// ============================================================
+router.get('/class-schedules', requireClientAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, is_active
+       FROM class_schedules WHERE business_id = ? ORDER BY day_of_week, start_time`,
+      [req.admin.businessId],
+    );
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/class-schedules', requireClientAdmin, async (req, res) => {
+  const { day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity } = req.body;
+  if (!day_of_week || !start_time || !class_name) return res.status(400).json({ error: 'day_of_week, start_time, class_name required' });
+  try {
+    const id = uuidv4();
+    await db.query(
+      `INSERT INTO class_schedules (id, business_id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, req.admin.businessId, day_of_week, start_time, class_name,
+       trainer_name || null, color || '#C6FF3D', equipment || null, max_capacity || null],
+    );
+    return res.status(201).json({ id });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/class-schedules/:id', requireClientAdmin, async (req, res) => {
+  const { day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, is_active } = req.body;
+  try {
+    await db.query(
+      `UPDATE class_schedules SET
+         day_of_week = COALESCE(?, day_of_week),
+         start_time  = COALESCE(?, start_time),
+         class_name  = COALESCE(?, class_name),
+         trainer_name = ?,
+         color        = COALESCE(?, color),
+         equipment    = ?,
+         max_capacity = ?,
+         is_active    = COALESCE(?, is_active)
+       WHERE id = ? AND business_id = ?`,
+      [day_of_week ?? null, start_time ?? null, class_name ?? null,
+       trainer_name ?? null, color ?? null, equipment ?? null, max_capacity ?? null,
+       is_active ?? null, req.params.id, req.admin.businessId],
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/class-schedules/:id', requireClientAdmin, async (req, res) => {
+  try {
+    await db.query('DELETE FROM class_schedules WHERE id = ? AND business_id = ?', [req.params.id, req.admin.businessId]);
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
+// Gym Photos
+// GET    /api/client-admin/gym-photos
+// POST   /api/client-admin/gym-photos/upload
+// DELETE /api/client-admin/gym-photos/:id
+// ============================================================
+router.get('/gym-photos', requireClientAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT id, url, display_order FROM gym_photos WHERE business_id = ? ORDER BY display_order, created_at',
+      [req.admin.businessId],
+    );
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+const gymPhotoUpload = r2Multer({
+  keyFn: (req) => `uploads/${req.admin.businessId}/gym-photos/${uuidv4()}.jpg`,
+  allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+  maxSizeMb: 10,
+});
+
+router.post('/gym-photos/upload', requireClientAdmin, (req, res, next) => {
+  gymPhotoUpload.single('photo')(req, res, next);
+}, async (req, res) => {
+  if (!req.file?.location) return res.status(400).json({ error: 'Upload failed' });
+  try {
+    const id = uuidv4();
+    const [[{ maxOrder }]] = await db.query(
+      'SELECT COALESCE(MAX(display_order),0) AS maxOrder FROM gym_photos WHERE business_id = ?',
+      [req.admin.businessId],
+    );
+    await db.query(
+      'INSERT INTO gym_photos (id, business_id, url, display_order) VALUES (?, ?, ?, ?)',
+      [id, req.admin.businessId, req.file.location, maxOrder + 1],
+    );
+    return res.json({ id, url: req.file.location });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/gym-photos/:id', requireClientAdmin, async (req, res) => {
+  try {
+    await db.query('DELETE FROM gym_photos WHERE id = ? AND business_id = ?', [req.params.id, req.admin.businessId]);
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });

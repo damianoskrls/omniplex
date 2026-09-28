@@ -739,12 +739,39 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   // ── Overview Tab ──
 
   Widget _buildOverviewTab() {
-    final desc = _gym?['description'] as String?;
+    final desc     = _gym?['description'] as String?;
     final services = (_gym?['services'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final photos   = (_gym?['photos'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // Photo carousel
+        if (photos.isNotEmpty) ...[
+          SizedBox(
+            height: 190,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: photos.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) => ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  photos[i]['url'] as String,
+                  width: photos.length == 1 ? double.infinity : 260,
+                  height: 190,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 260, height: 190, color: _kCard,
+                    child: const Icon(Icons.broken_image_outlined, color: _kGray)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
+        ],
+
         if (desc != null && desc.isNotEmpty) ...[
           _sectionTitle('Σχετικά'),
           const SizedBox(height: 8),
@@ -845,17 +872,148 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
   // ── Schedule Tab ──
 
+  int _scheduleDay = 0; // 0 = today's day index
+
   Widget _buildScheduleTab() {
-    return Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
+    final schedule = (_gym?['schedule'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final today = DateTime.now().weekday; // 1=Mon .. 7=Sun
+    final dayLabels = ['', 'Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ', 'Κυρ'];
+
+    // initialise to today on first build
+    if (_scheduleDay == 0) _scheduleDay = today;
+
+    final filtered = schedule.where((e) => (e['day_of_week'] as int?) == _scheduleDay).toList();
+
+    if (schedule.isEmpty) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         const Icon(Icons.calendar_month_outlined, color: _kGray, size: 48),
         const SizedBox(height: 12),
-        Text('Πρόγραμμα', style: GoogleFonts.manrope(
-          fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-        const SizedBox(height: 6),
-        Text('Σύντομα διαθέσιμο', style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+        Text('Δεν υπάρχει πρόγραμμα', style: GoogleFonts.manrope(
+          fontSize: 14, color: _kGray)),
+      ]));
+    }
+
+    // Which days actually have entries
+    final activeDays = schedule.map((e) => e['day_of_week'] as int).toSet();
+
+    return Column(
+      children: [
+        // Day selector
+        Container(
+          height: 48,
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: _kCard,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Row(
+            children: List.generate(7, (i) {
+              final day = i + 1;
+              final isSelected = _scheduleDay == day;
+              final hasEntries = activeDays.contains(day);
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _scheduleDay = day),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isSelected ? _kLime : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    alignment: Alignment.center,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Text(dayLabels[day],
+                          style: GoogleFonts.manrope(
+                            fontSize: 11, fontWeight: FontWeight.w700,
+                            color: isSelected ? _kBg : (hasEntries ? Colors.white : _kGray))),
+                        if (hasEntries && !isSelected)
+                          Positioned(
+                            bottom: -4, left: 0, right: 0,
+                            child: Center(child: Container(
+                              width: 4, height: 4,
+                              decoration: const BoxDecoration(color: _kLime, shape: BoxShape.circle),
+                            )),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: filtered.isEmpty
+            ? Center(child: Text('Δεν υπάρχουν μαθήματα',
+                style: GoogleFonts.manrope(fontSize: 13, color: _kGray)))
+            : ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (_, i) => _buildClassCard(filtered[i]),
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildClassCard(Map<String, dynamic> entry) {
+    final color = _parseClassColor(entry['color'] as String?);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Row(children: [
+        Container(
+          width: 4, height: 48,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 52,
+          child: Text(entry['start_time'] as String? ?? '',
+            style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(entry['class_name'] as String? ?? '',
+              style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+            if ((entry['trainer_name'] as String?) != null)
+              Text(entry['trainer_name'] as String,
+                style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+            if ((entry['equipment'] as String?) != null)
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9999),
+                ),
+                child: Text(entry['equipment'] as String,
+                  style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+              ),
+          ]),
+        ),
+        if ((entry['max_capacity'] as int?) != null)
+          Text('${entry['max_capacity']} άτ.',
+            style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
       ]),
     );
+  }
+
+  Color _parseClassColor(String? hex) {
+    if (hex == null) return _kLime;
+    try {
+      return Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
+    } catch (_) { return _kLime; }
   }
 
   // ── Packages Tab ──
@@ -1037,10 +1195,12 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           ? _pendingJoinBanner()
           : Column(mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
-                Expanded(
-                  child: _outlineButton('Κλείσε Drop-in', () => _tabCtrl.animateTo(2)),
-                ),
-                const SizedBox(width: 12),
+                if (_gym?['accepts_drop_in'] == true) ...[
+                  Expanded(
+                    child: _outlineButton('Κλείσε Drop-in', () => _tabCtrl.animateTo(2)),
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(
                   child: _limeButton('Δες Πακέτα', () => _tabCtrl.animateTo(2)),
                 ),
