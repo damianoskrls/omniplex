@@ -208,7 +208,7 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
     final title = widget.serviceTitle;
     if (title != null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFF0D0D14),
         appBar: AppBar(
           backgroundColor: AppColors.surface,
           foregroundColor: Colors.white,
