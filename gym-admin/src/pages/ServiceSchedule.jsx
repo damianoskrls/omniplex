@@ -304,14 +304,6 @@ export default function ServiceSchedule() {
           <p className="text-muted" style={{ marginTop: 4, fontSize: '0.88rem' }}>
             Εδώ ορίζεις ώρες, αίθουσες, γυμναστές και <strong>πόσα άτομα χωράει κάθε slot</strong> (π.χ. Cross Training max 15).
           </p>
-          {locations.length > 1 && (
-            <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span className="text-muted" style={{ fontSize: '0.85rem' }}>Τοποθεσία:</span>
-              <select className="form-select" style={{ width: 220 }} value={activeLocationId} onChange={(e) => setActiveLocationId(e.target.value)}>
-                {locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
-              </select>
-            </div>
-          )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
@@ -376,21 +368,66 @@ export default function ServiceSchedule() {
         </div>
       )}
 
-      {locations.length > 1 && (
-        <div className="card" style={{ marginBottom: 16, padding: 16 }}>
-          <LocationCheckboxes
-            value={serviceLocationIds}
-            onChange={async (ids) => {
-              setServiceLocationIds(ids);
+      {/* Location tabs — one per gym; active = slot filter; toggle = service availability */}
+      {locations.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderBottom: '2px solid #e2e8f0', paddingBottom: 0, flexWrap: 'wrap' }}>
+            {locations.map(loc => {
+              const isActive = String(loc.id) === String(activeLocationId);
+              const isEnabled = serviceLocationIds.includes(String(loc.id)) || serviceLocationIds.includes(loc.id);
+              return (
+                <button
+                  key={loc.id}
+                  onClick={() => setActiveLocationId(loc.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '8px 16px', whiteSpace: 'nowrap',
+                    border: 'none', background: 'none', cursor: 'pointer',
+                    fontSize: 14, fontWeight: isActive ? 700 : 500,
+                    color: isActive ? '#7C5CFC' : '#64748b',
+                    borderBottom: isActive ? '2px solid #7C5CFC' : '2px solid transparent',
+                    marginBottom: -2, borderRadius: 0,
+                  }}
+                >
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                    background: isEnabled ? '#22c55e' : '#cbd5e1',
+                  }} />
+                  {loc.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active location: availability toggle */}
+          {activeLocationId && (() => {
+            const isEnabled = serviceLocationIds.includes(String(activeLocationId)) || serviceLocationIds.includes(activeLocationId);
+            const toggleAvailability = async () => {
+              const strId = String(activeLocationId);
+              const current = serviceLocationIds.map(String);
+              const next = isEnabled ? current.filter(x => x !== strId) : [...current, strId];
+              setServiceLocationIds(next);
               try {
-                await api.put(`/client-admin/services/${id}/locations`, { location_ids: ids });
-                toast.success('Τοποθεσίες υπηρεσίας αποθηκεύτηκαν');
-              } catch {
-                toast.error('Σφάλμα');
-              }
-            }}
-            label="Διαθέσιμη σε γυμναστήρια"
-          />
+                await api.put(`/client-admin/services/${id}/locations`, { location_ids: next });
+              } catch { toast.error('Σφάλμα'); }
+            };
+            const locName = locations.find(l => String(l.id) === String(activeLocationId))?.name || '';
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: isEnabled ? '#f0fdf4' : '#f8fafc', borderRadius: '0 0 10px 10px', border: '1px solid', borderTop: 'none', borderColor: isEnabled ? '#bbf7d0' : '#e2e8f0' }}>
+                <div style={{ fontSize: 13, color: isEnabled ? '#15803d' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: isEnabled ? '#22c55e' : '#cbd5e1', display: 'inline-block' }} />
+                  {isEnabled ? `Η υπηρεσία προσφέρεται στο ${locName}` : `Η υπηρεσία ΔΕΝ προσφέρεται στο ${locName}`}
+                </div>
+                <button
+                  onClick={toggleAvailability}
+                  className="btn btn-sm"
+                  style={{ fontSize: 12, background: isEnabled ? '#fee2e2' : '#dcfce7', color: isEnabled ? '#dc2626' : '#16a34a', border: 'none' }}
+                >
+                  {isEnabled ? 'Απενεργοποίηση' : '+ Ενεργοποίηση'}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
 
