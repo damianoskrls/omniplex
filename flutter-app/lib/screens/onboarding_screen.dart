@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -144,28 +145,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
             itemBuilder: (ctx, i) => _buildSlide(ctx, _slides[i]),
           ),
 
-          // Skip button
-          if (_page < _slides.length - 1)
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 80, right: 24),
-                  child: GestureDetector(
-                    onTap: _finish,
-                    child: Text(
-                      'SKIP',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w400,
-                        color: _gray,
-                        letterSpacing: 2.2,
+          // Top bar: logo left + skip right
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  SvgPicture.asset('assets/omniplex_logo.svg', height: 26),
+                  if (_page < _slides.length - 1)
+                    GestureDetector(
+                      onTap: _finish,
+                      child: Text(
+                        'SKIP',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: _gray,
+                          letterSpacing: 2.2,
+                        ),
                       ),
-                    ),
-                  ),
-                ),
+                    )
+                  else
+                    const SizedBox(),
+                ],
               ),
             ),
+          ),
 
           // Bottom controls
           SafeArea(
@@ -246,7 +252,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 112, 24, 32),
+              padding: const EdgeInsets.fromLTRB(24, 80, 24, 32),
               child: AnimatedBuilder(
                 animation: Listenable.merge([_spinCtrl, _pulseCtrl]),
                 builder: (ctx, _) => slide.buildVisual(ctx, _spinCtrl, _pulseCtrl.value),
@@ -357,11 +363,8 @@ class _Slide1Visual extends StatelessWidget {
           right: 4, bottom: -16,
           child: _GymCard(name: _gyms[3].name, sub: _gyms[3].loc, imgUrl: _gyms[3].img),
         ),
-        // Crosshair center
-        SizedBox(
-          width: 80, height: 80,
-          child: CustomPaint(painter: _CrosshairPainter(glowOpacity: glowOpacity)),
-        ),
+        // OmniPlex logo center
+        SvgPicture.asset('assets/omniplex_logo.svg', height: 40),
       ],
     );
   }

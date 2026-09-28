@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
@@ -80,24 +81,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Crosshair / target icon with glow
+                // OmniPlex logo
                 FadeTransition(
                   opacity: _logoFade,
-                  child: AnimatedBuilder(
-                    animation: _pulse,
-                    builder: (_, __) => _CrosshairIcon(pulseValue: _pulse.value),
-                  ),
+                  child: SvgPicture.asset('assets/omniplex_logo.svg', height: 72),
                 ),
 
-                const SizedBox(height: 24),
-
-                // OMNIPLEX wordmark
-                FadeTransition(
-                  opacity: _logoFade,
-                  child: _OmniplexWordmark(),
-                ),
-
-                const SizedBox(height: 16),
+                const SizedBox(height: 32),
 
                 // Horizontal divider
                 FadeTransition(
@@ -117,22 +107,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   child: AnimatedBuilder(
                     animation: _spin,
                     builder: (_, __) => _SpinningArc(progress: _spin.value),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // OMNIPLEX label
-                FadeTransition(
-                  opacity: _textFade,
-                  child: Text(
-                    'OMNIPLEX',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF9A9CA3),
-                      letterSpacing: 3.85,
-                    ),
                   ),
                 ),
 
