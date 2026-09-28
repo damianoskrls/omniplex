@@ -5,8 +5,92 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, Dumbbell,
-  Search, Video, Play, UploadCloud, Check, Sparkles, User,
+  Search, Video, Play, UploadCloud, Check, Sparkles, User, Link2, Unlink,
 } from 'lucide-react';
+
+/* ─── Custom Service Selector ───────────────────────────────────────────────── */
+function ServiceSelect({ value, onChange, services }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = services.find(s => s.id === value);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+          background: selected ? 'rgba(59,130,246,0.08)' : '#f8fafc',
+          border: selected ? '1.5px solid rgba(59,130,246,0.3)' : '1.5px solid #e2e8f0',
+          transition: 'border-color 0.15s',
+        }}
+      >
+        {selected
+          ? <Link2 size={13} style={{ color: '#3b82f6', flexShrink: 0 }} />
+          : <Unlink size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
+        }
+        <span style={{
+          flex: 1, fontSize: '0.8rem', fontWeight: selected ? 600 : 400,
+          color: selected ? '#1e40af' : '#64748b',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {selected ? selected.name : 'Χωρίς σύνδεση με υπηρεσία'}
+        </span>
+        <ChevronDown size={13} style={{ color: '#94a3b8', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', left: 0, right: 0, top: 'calc(100% + 4px)', zIndex: 30,
+          background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden',
+        }}>
+          <div
+            onMouseDown={() => { onChange(''); setOpen(false); }}
+            style={{
+              padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8,
+              cursor: 'pointer', fontSize: '0.82rem', color: !value ? '#1e293b' : '#64748b',
+              background: !value ? '#f0f9ff' : 'transparent',
+              borderBottom: '1px solid #f1f5f9',
+            }}
+            onMouseEnter={e => { if (value) e.currentTarget.style.background = '#f8fafc'; }}
+            onMouseLeave={e => { if (value) e.currentTarget.style.background = 'transparent'; }}
+          >
+            <Unlink size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
+            <span>Χωρίς σύνδεση με υπηρεσία</span>
+            {!value && <Check size={12} style={{ marginLeft: 'auto', color: '#3b82f6' }} />}
+          </div>
+          {services.map(s => (
+            <div
+              key={s.id}
+              onMouseDown={() => { onChange(s.id); setOpen(false); }}
+              style={{
+                padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8,
+                cursor: 'pointer', fontSize: '0.82rem', color: value === s.id ? '#1e40af' : '#1e293b',
+                background: value === s.id ? '#eff6ff' : 'transparent',
+                fontWeight: value === s.id ? 600 : 400,
+              }}
+              onMouseEnter={e => { if (value !== s.id) e.currentTarget.style.background = '#f8fafc'; }}
+              onMouseLeave={e => { if (value !== s.id) e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Link2 size={13} style={{ color: value === s.id ? '#3b82f6' : '#94a3b8', flexShrink: 0 }} />
+              <span style={{ flex: 1, lineHeight: 1.4 }}>{s.name}</span>
+              {value === s.id && <Check size={12} style={{ marginLeft: 'auto', color: '#3b82f6', flexShrink: 0 }} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const isVideoUrl = (url) => url && /\.(mp4|mov|webm|avi)$/i.test(url);
 
@@ -727,19 +811,23 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
       {/* Left panel — exercise list */}
       <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column' }}>
         {/* Header fields */}
-        <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid #f1f5f9' }}>
-          <input className="form-input" value={name} onChange={e => setName(e.target.value)}
-            placeholder="Τίτλος προγράμματος *" required style={{ fontWeight: 700, marginBottom: 8 }} />
-          <input className="form-input" value={description} onChange={e => setDescription(e.target.value)}
-            placeholder="Περιγραφή (προαιρετικά)" style={{ fontSize: '0.82rem', marginBottom: 8 }} />
+        <div style={{ padding: '16px 14px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div>
+            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Τίτλος</label>
+            <input className="form-input" value={name} onChange={e => setName(e.target.value)}
+              placeholder="π.χ. Gym Machine Workout" required
+              style={{ fontWeight: 700, fontSize: '0.9rem' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Περιγραφή</label>
+            <input className="form-input" value={description} onChange={e => setDescription(e.target.value)}
+              placeholder="Προαιρετικά..." style={{ fontSize: '0.82rem' }} />
+          </div>
           {services.length > 0 && (
-            <select className="form-input" value={serviceId} onChange={e => setServiceId(e.target.value)}
-              style={{ fontSize: '0.82rem' }}>
-              <option value="">— Χωρίς σύνδεση με υπηρεσία —</option>
-              {services.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            <div>
+              <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Σύνδεση υπηρεσίας</label>
+              <ServiceSelect value={serviceId} onChange={setServiceId} services={services} />
+            </div>
           )}
         </div>
 
