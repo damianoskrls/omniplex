@@ -4,6 +4,7 @@ import {
   CalendarDays, Package, Upload, Trash2, Star, Plus, Pencil, X, Check,
 } from 'lucide-react';
 import api from '../api/client';
+import Layout from '../components/Layout';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -294,6 +295,7 @@ function PhotosSection() {
 const EMPTY_TRAINER = { name: '', specialty: '', photo_url: '' };
 
 function TrainersSection() {
+  const [staffTrainers, setStaffTrainers] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modal, setModal]       = useState(null);
@@ -305,8 +307,14 @@ function TrainersSection() {
 
   async function load() {
     setLoading(true);
-    try { const r = await api.get('/client-admin/gym-trainers'); setTrainers(r.data); }
-    finally { setLoading(false); }
+    try {
+      const [staffRes, trainersRes] = await Promise.all([
+        api.get('/client-admin/staff'),
+        api.get('/client-admin/gym-trainers'),
+      ]);
+      setStaffTrainers(staffRes.data);
+      setTrainers(trainersRes.data);
+    } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
 
@@ -353,37 +361,67 @@ function TrainersSection() {
       </div>
 
       {loading ? <div className="text-center py-12 text-gray-400">Φόρτωση…</div>
-        : trainers.length === 0 ? (
+        : (staffTrainers.length === 0 && trainers.length === 0) ? (
           <div className="text-center py-12 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
             <UserCircle size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-gray-400 mb-3">Δεν υπάρχουν trainers</p>
             <button onClick={openAdd} className="text-indigo-600 font-semibold text-sm hover:underline">+ Προσθήκη trainer</button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {trainers.map(t => (
-              <div key={t.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex flex-col items-center gap-3 relative group">
-                {t.photo_url ? (
-                  <img src={t.photo_url} alt={t.name} className="w-16 h-16 rounded-full object-cover" />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                    <UserCircle size={32} className="text-indigo-400" />
-                  </div>
-                )}
-                <div className="text-center">
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{t.name}</p>
-                  {t.specialty && <p className="text-xs text-gray-500 mt-0.5">{t.specialty}</p>}
-                </div>
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEdit(t)} className="p-1.5 text-gray-400 hover:text-indigo-600 bg-white dark:bg-gray-700 rounded-lg shadow">
-                    <Pencil size={12} />
-                  </button>
-                  <button onClick={() => handleDelete(t.id)} className="p-1.5 text-gray-400 hover:text-red-500 bg-white dark:bg-gray-700 rounded-lg shadow">
-                    <Trash2 size={12} />
-                  </button>
+          <div className="space-y-6">
+            {staffTrainers.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Προσωπικό</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {staffTrainers.map(s => (
+                    <div key={s.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex flex-col items-center gap-3">
+                      {s.avatar_url ? (
+                        <img src={s.avatar_url} alt={s.full_name} className="w-16 h-16 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl"
+                          style={{ backgroundColor: s.color_hex || '#6366F1' }}>
+                          {s.full_name?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <div className="text-center">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{s.full_name}</p>
+                        {s.role && <p className="text-xs text-gray-500 mt-0.5">{s.role}</p>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+            {trainers.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Επιπλέον Trainers</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {trainers.map(t => (
+                    <div key={t.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex flex-col items-center gap-3 relative group">
+                      {t.photo_url ? (
+                        <img src={t.photo_url} alt={t.name} className="w-16 h-16 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                          <UserCircle size={32} className="text-indigo-400" />
+                        </div>
+                      )}
+                      <div className="text-center">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{t.name}</p>
+                        {t.specialty && <p className="text-xs text-gray-500 mt-0.5">{t.specialty}</p>}
+                      </div>
+                      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openEdit(t)} className="p-1.5 text-gray-400 hover:text-indigo-600 bg-white dark:bg-gray-700 rounded-lg shadow">
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => handleDelete(t.id)} className="p-1.5 text-gray-400 hover:text-red-500 bg-white dark:bg-gray-700 rounded-lg shadow">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -665,36 +703,38 @@ export default function DiscoveryProfile() {
   const [tab, setTab] = useState('info');
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Globe className="text-indigo-500" size={24} />
+    <Layout>
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div className="flex items-center gap-3">
+          <Globe className="text-indigo-500" size={24} />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Προβολή στην Αγορά</h1>
+            <p className="text-sm text-gray-500">Διαχείριση όλων των πληροφοριών που βλέπουν οι χρήστες στο app</p>
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 overflow-x-auto">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                tab === t.id ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}>
+              <t.icon size={15} />
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Προβολή στην Αγορά</h1>
-          <p className="text-sm text-gray-500">Διαχείριση όλων των πληροφοριών που βλέπουν οι χρήστες στο app</p>
+          {tab === 'info'     && <InfoSection />}
+          {tab === 'photos'   && <PhotosSection />}
+          {tab === 'trainers' && <TrainersSection />}
+          {tab === 'schedule' && <ScheduleSection />}
+          {tab === 'packages' && <PackagesSection />}
         </div>
       </div>
-
-      {/* Tab bar */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 overflow-x-auto">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-              tab === t.id ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}>
-            <t.icon size={15} />
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div>
-        {tab === 'info'     && <InfoSection />}
-        {tab === 'photos'   && <PhotosSection />}
-        {tab === 'trainers' && <TrainersSection />}
-        {tab === 'schedule' && <ScheduleSection />}
-        {tab === 'packages' && <PackagesSection />}
-      </div>
-    </div>
+    </Layout>
   );
 }
