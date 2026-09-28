@@ -484,7 +484,7 @@ function TrainersSection() {
 
 // ── Schedule Tab ──────────────────────────────────────────────────────────────
 
-const EMPTY_CLASS = { day_of_week: 1, start_time: '09:00', class_name: '', trainer_name: '', color: '#C52473', equipment: '', max_capacity: '' };
+const EMPTY_CLASS = { day_of_week: 1, start_time: '09:00', class_name: '', trainer_name: '', color: '#C52473', equipment: '', max_capacity: '', accepts_drop_in: false, drop_in_cutoff_hours: '2' };
 
 function ScheduleSection() {
   const [entries, setEntries]   = useState([]);
@@ -506,7 +506,8 @@ function ScheduleSection() {
   function openEdit(e) {
     setForm({ day_of_week: e.day_of_week, start_time: e.start_time, class_name: e.class_name,
       trainer_name: e.trainer_name || '', color: e.color || '#C52473',
-      equipment: e.equipment || '', max_capacity: e.max_capacity != null ? String(e.max_capacity) : '' });
+      equipment: e.equipment || '', max_capacity: e.max_capacity != null ? String(e.max_capacity) : '',
+      accepts_drop_in: !!e.accepts_drop_in, drop_in_cutoff_hours: String(e.drop_in_cutoff_hours ?? 2) });
     setModal(e); setError(null);
   }
 
@@ -514,7 +515,7 @@ function ScheduleSection() {
     if (!form.class_name.trim()) { setError('Συμπλήρωσε το όνομα'); return; }
     setSaving(true); setError(null);
     try {
-      const payload = { ...form, max_capacity: form.max_capacity ? parseInt(form.max_capacity) : null, trainer_name: form.trainer_name || null, equipment: form.equipment || null };
+      const payload = { ...form, max_capacity: form.max_capacity ? parseInt(form.max_capacity) : null, trainer_name: form.trainer_name || null, equipment: form.equipment || null, drop_in_cutoff_hours: parseInt(form.drop_in_cutoff_hours) || 2 };
       if (modal === 'add') await api.post('/client-admin/class-schedules', payload);
       else await api.put(`/client-admin/class-schedules/${modal.id}`, payload);
       await load(); setModal(null);
@@ -568,7 +569,14 @@ function ScheduleSection() {
                   <span className="text-base font-bold text-gray-900 dark:text-white">{e.start_time}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-white">{e.class_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900 dark:text-white">{e.class_name}</p>
+                    {e.accepts_drop_in && (
+                      <span className="text-xs font-medium px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                        Drop-in {e.drop_in_cutoff_hours > 0 ? `(-${e.drop_in_cutoff_hours}h)` : ''}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500 truncate">
                     {[e.trainer_name, e.equipment, e.max_capacity ? `${e.max_capacity} άτομα` : null].filter(Boolean).join(' · ')}
                   </p>
@@ -636,6 +644,29 @@ function ScheduleSection() {
                     style={{ backgroundColor: c, borderColor: form.color === c ? '#6366f1' : 'transparent', transform: form.color === c ? 'scale(1.2)' : undefined }} />
                 ))}
               </div>
+            </div>
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Drop-in</p>
+                  <p className="text-xs text-gray-500">Αποδοχή κρατήσεων drop-in για αυτό το μάθημα</p>
+                </div>
+                <button type="button" onClick={() => setForm(f => ({ ...f, accepts_drop_in: !f.accepts_drop_in }))}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${form.accepts_drop_in ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.accepts_drop_in ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+              {form.accepts_drop_in && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Κλείνει κράτηση έως (ώρες πριν)</label>
+                  <div className="flex items-center gap-2">
+                    <input type="number" min="0" max="72" value={form.drop_in_cutoff_hours}
+                      onChange={e => setForm(f => ({ ...f, drop_in_cutoff_hours: e.target.value }))}
+                      className="w-24 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                    <span className="text-sm text-gray-500">ώρες πριν την έναρξη</span>
+                  </div>
+                </div>
+              )}
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
             <div className="flex gap-3 pt-1">

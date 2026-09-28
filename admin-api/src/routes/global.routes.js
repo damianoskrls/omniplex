@@ -407,7 +407,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       [biz.id],
     );
     const [schedule] = await db.query(
-      `SELECT id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity
+      `SELECT id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, accepts_drop_in, drop_in_cutoff_hours
        FROM class_schedules WHERE business_id = ? AND is_active = 1 ORDER BY day_of_week, start_time`,
       [biz.id],
     );

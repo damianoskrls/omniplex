@@ -6837,7 +6837,7 @@ router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
 router.get('/class-schedules', requireClientAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, is_active
+      `SELECT id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, accepts_drop_in, drop_in_cutoff_hours, is_active
        FROM class_schedules WHERE business_id = ? ORDER BY day_of_week, start_time`,
       [req.admin.businessId],
     );
@@ -6848,15 +6848,16 @@ router.get('/class-schedules', requireClientAdmin, async (req, res) => {
 });
 
 router.post('/class-schedules', requireClientAdmin, async (req, res) => {
-  const { day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity } = req.body;
+  const { day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, accepts_drop_in, drop_in_cutoff_hours } = req.body;
   if (!day_of_week || !start_time || !class_name) return res.status(400).json({ error: 'day_of_week, start_time, class_name required' });
   try {
     const id = uuidv4();
     await db.query(
-      `INSERT INTO class_schedules (id, business_id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO class_schedules (id, business_id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, accepts_drop_in, drop_in_cutoff_hours)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, req.admin.businessId, day_of_week, start_time, class_name,
-       trainer_name || null, color || '#C6FF3D', equipment || null, max_capacity || null],
+       trainer_name || null, color || '#C6FF3D', equipment || null, max_capacity || null,
+       accepts_drop_in ? 1 : 0, drop_in_cutoff_hours != null ? Number(drop_in_cutoff_hours) : 2],
     );
     return res.status(201).json({ id });
   } catch (err) {
@@ -6865,21 +6866,25 @@ router.post('/class-schedules', requireClientAdmin, async (req, res) => {
 });
 
 router.put('/class-schedules/:id', requireClientAdmin, async (req, res) => {
-  const { day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, is_active } = req.body;
+  const { day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, accepts_drop_in, drop_in_cutoff_hours, is_active } = req.body;
   try {
     await db.query(
       `UPDATE class_schedules SET
-         day_of_week = COALESCE(?, day_of_week),
-         start_time  = COALESCE(?, start_time),
-         class_name  = COALESCE(?, class_name),
-         trainer_name = ?,
-         color        = COALESCE(?, color),
-         equipment    = ?,
-         max_capacity = ?,
-         is_active    = COALESCE(?, is_active)
+         day_of_week          = COALESCE(?, day_of_week),
+         start_time           = COALESCE(?, start_time),
+         class_name           = COALESCE(?, class_name),
+         trainer_name         = ?,
+         color                = COALESCE(?, color),
+         equipment            = ?,
+         max_capacity         = ?,
+         accepts_drop_in      = ?,
+         drop_in_cutoff_hours = COALESCE(?, drop_in_cutoff_hours),
+         is_active            = COALESCE(?, is_active)
        WHERE id = ? AND business_id = ?`,
       [day_of_week ?? null, start_time ?? null, class_name ?? null,
        trainer_name ?? null, color ?? null, equipment ?? null, max_capacity ?? null,
+       accepts_drop_in ? 1 : 0,
+       drop_in_cutoff_hours != null ? Number(drop_in_cutoff_hours) : null,
        is_active ?? null, req.params.id, req.admin.businessId],
     );
     return res.json({ ok: true });

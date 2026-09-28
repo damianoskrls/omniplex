@@ -616,12 +616,16 @@ async function bootstrapSchema() {
         trainer_name  VARCHAR(100) NULL,
         color         VARCHAR(20)  NOT NULL DEFAULT '#C6FF3D',
         equipment     VARCHAR(200) NULL,
-        max_capacity  INT          NULL,
-        is_active     TINYINT(1)   NOT NULL DEFAULT 1,
-        created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        max_capacity          INT          NULL,
+        accepts_drop_in       TINYINT(1)   NOT NULL DEFAULT 0,
+        drop_in_cutoff_hours  INT          NOT NULL DEFAULT 2,
+        is_active             TINYINT(1)   NOT NULL DEFAULT 1,
+        created_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_cs_biz_day (business_id, day_of_week)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    await db.query(`ALTER TABLE class_schedules ADD COLUMN accepts_drop_in TINYINT(1) NOT NULL DEFAULT 0`).catch(() => {});
+    await db.query(`ALTER TABLE class_schedules ADD COLUMN drop_in_cutoff_hours INT NOT NULL DEFAULT 2`).catch(() => {});
     console.log('✓ Schema: class_schedules table ready');
   } catch (err) {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('class_schedules skipped:', err.message);
