@@ -15,6 +15,7 @@ import '../widgets/ui_kit.dart';
 import 'booking_flow_screen.dart';
 import 'nutrition_consultation_booking_screen.dart';
 import 'dropin_screen.dart';
+import 'workout_programs_screen.dart';
 
 class ServicesScreen extends StatefulWidget {
   const ServicesScreen({super.key});
@@ -27,6 +28,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
   List<BookService> _services = [];
   List<Map<String, dynamic>> _openAccessServices = [];
   Map<String, dynamic>? _occupancy;
+  // serviceId → true if user has programs linked to it
+  Map<String, bool> _serviceHasPrograms = {};
   bool _loading = true;
   String? _error;
   bool _nutritionConsultCanBook = false;
@@ -111,10 +114,24 @@ class _ServicesScreenState extends State<ServicesScreen> {
         openAccess = (jsonDecode(oaRes.body) as List).cast<Map<String, dynamic>>();
       } catch (_) {}
 
+      // Load programs to know which services have linked programs
+      Map<String, bool> serviceHasPrograms = {};
+      try {
+        final userId = context.read<AuthService>().user?.id;
+        if (userId != null) {
+          final programs = await api.fetchMyPrograms(userId);
+          for (final p in programs) {
+            final sid = p['service_id'] as String?;
+            if (sid != null) serviceHasPrograms[sid] = true;
+          }
+        }
+      } catch (_) {}
+
       setState(() {
         _services = services;
         _openAccessServices = openAccess;
         _occupancy = occupancy;
+        _serviceHasPrograms = serviceHasPrograms;
         _nutritionConsultCanBook = consultCanBook;
         _nutritionConsultService = consultService;
         _nutritionCredits = credits;
@@ -295,15 +312,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
               padding: EdgeInsets.only(bottom: index < _services.length - 1 ? 14 : 0),
               child: GradientCard(
                 colors: service.canBook ? colors : [AppColors.surfaceLight, AppColors.surface],
-                onTap: service.canBook
-                    ? () async {
-                        final booked = await Navigator.push<bool>(
-                          context,
-                          MaterialPageRoute(builder: (_) => BookingFlowScreen(service: service)),
-                        );
-                        if (booked == true) _load();
-                      }
-                    : null,
+                onTap: null,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -391,19 +400,77 @@ class _ServicesScreenState extends State<ServicesScreen> {
                         ],
                       ),
                     ],
-                    if (service.canBook) ...[
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Text(
-                            AppStrings.of(context).servicesBook,
-                            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.lime),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.arrow_forward, size: 16, color: AppColors.lime.withValues(alpha: 0.9)),
-                        ],
-                      ),
-                    ],
+                    Builder(builder: (ctx) {
+                      final hasPrograms = _serviceHasPrograms[service.id] == true;
+                      if (!service.canBook && !hasPrograms) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Row(
+                          children: [
+                            if (service.canBook)
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    final booked = await Navigator.push<bool>(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => BookingFlowScreen(service: service)),
+                                    );
+                                    if (booked == true) _load();
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 11),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.lime,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      AppStrings.of(context).servicesBook,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (service.canBook && hasPrograms) const SizedBox(width: 8),
+                            if (hasPrograms)
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => WorkoutProgramsScreen(
+                                        serviceId: service.id,
+                                        serviceTitle: service.name,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 11),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Text(
+                                      'Προγράμματα',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),

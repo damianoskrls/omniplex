@@ -656,9 +656,10 @@ function ExerciseForm({ initial, onSave, onClose }) {
 }
 
 /* ─── Program Builder — modern split layout ────────────────────────────────── */
-function ProgramBuilder({ program, exercises, onSave, onClose }) {
+function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) {
   const [name, setName] = useState(program?.name || '');
   const [description, setDescription] = useState(program?.description || '');
+  const [serviceId, setServiceId] = useState(program?.service_id || '');
   const [items, setItems] = useState(program?.exercises?.map(e => ({
     exercise_id: e.exercise_id, sets: e.exercise_sets || '', reps: e.exercise_reps || '',
     duration_secs: e.duration_secs || '', rest_secs: e.rest_secs || '', notes: e.notes || '',
@@ -696,7 +697,7 @@ function ProgramBuilder({ program, exercises, onSave, onClose }) {
     setSaving(true);
     try {
       const payload = {
-        name, description,
+        name, description, service_id: serviceId || null,
         exercises: items.map(it => ({
           exercise_id: it.exercise_id,
           sets: it.sets ? Number(it.sets) : null,
@@ -730,7 +731,16 @@ function ProgramBuilder({ program, exercises, onSave, onClose }) {
           <input className="form-input" value={name} onChange={e => setName(e.target.value)}
             placeholder="Τίτλος προγράμματος *" required style={{ fontWeight: 700, marginBottom: 8 }} />
           <input className="form-input" value={description} onChange={e => setDescription(e.target.value)}
-            placeholder="Περιγραφή (προαιρετικά)" style={{ fontSize: '0.82rem' }} />
+            placeholder="Περιγραφή (προαιρετικά)" style={{ fontSize: '0.82rem', marginBottom: 8 }} />
+          {services.length > 0 && (
+            <select className="form-input" value={serviceId} onChange={e => setServiceId(e.target.value)}
+              style={{ fontSize: '0.82rem' }}>
+              <option value="">— Χωρίς σύνδεση με υπηρεσία —</option>
+              {services.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Search */}
@@ -884,6 +894,7 @@ function ProgramBuilder({ program, exercises, onSave, onClose }) {
 export default function Programs() {
   const [programs, setPrograms] = useState([]);
   const [exercises, setExercises] = useState([]);
+  const [services, setServices] = useState([]);
   const [tab, setTab] = useState('programs');
   const [modal, setModal] = useState(null);
   const [expandedProgram, setExpandedProgram] = useState(null);
@@ -897,12 +908,14 @@ export default function Programs() {
   const load = async () => {
     setLoading(true);
     try {
-      const [pr, ex] = await Promise.all([
+      const [pr, ex, sv] = await Promise.all([
         api.get('/client-admin/programs'),
         api.get('/client-admin/exercises'),
+        api.get('/client-admin/services').catch(() => ({ data: [] })),
       ]);
       setPrograms(pr.data);
       setExercises(ex.data);
+      setServices(sv.data || []);
     } catch { toast.error('Σφάλμα φόρτωσης'); }
     finally { setLoading(false); }
   };
@@ -1028,6 +1041,14 @@ export default function Programs() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700 }}>{prog.name}</div>
                     {prog.description && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>{prog.description}</div>}
+                    {prog.service_id && (() => {
+                      const svc = services.find(s => s.id === prog.service_id);
+                      return svc ? (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, padding: '2px 8px', background: '#eff6ff', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, color: '#3b82f6' }}>
+                          <span>📌</span> {svc.name}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <button className="btn btn-secondary btn-sm" onClick={e => { e.stopPropagation(); openProgramEdit(prog); }}>
@@ -1113,7 +1134,7 @@ export default function Programs() {
             {modal.type === 'exercise' ? (
               <ExerciseForm initial={modal.data} onSave={() => { setModal(null); load(); }} onClose={() => setModal(null)} />
             ) : (
-              <ProgramBuilder program={modal.data} exercises={exercises} onSave={() => { setModal(null); load(); }} onClose={() => setModal(null)} />
+              <ProgramBuilder program={modal.data} exercises={exercises} services={services} onSave={() => { setModal(null); load(); }} onClose={() => setModal(null)} />
             )}
           </div>
         </div>

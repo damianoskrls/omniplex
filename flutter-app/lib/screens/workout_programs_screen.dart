@@ -165,7 +165,9 @@ class _MediaFullState extends State<_MediaFull> {
 }
 
 class WorkoutProgramsScreen extends StatefulWidget {
-  const WorkoutProgramsScreen({super.key});
+  const WorkoutProgramsScreen({super.key, this.serviceId, this.serviceTitle});
+  final String? serviceId;
+  final String? serviceTitle;
 
   @override
   State<WorkoutProgramsScreen> createState() => _WorkoutProgramsScreenState();
@@ -191,7 +193,10 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
       return;
     }
     try {
-      final data = await auth.api.fetchMyPrograms(userId);
+      final all = await auth.api.fetchMyPrograms(userId);
+      final data = widget.serviceId != null
+          ? all.where((p) => p['service_id'] == widget.serviceId).toList()
+          : all;
       if (mounted) setState(() { _programs = data; _loading = false; });
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
@@ -200,6 +205,28 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final title = widget.serviceTitle;
+    if (title != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.surface,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: Text(title,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(height: 1, color: AppColors.border),
+          ),
+        ),
+        body: _buildBody(context),
+      );
+    }
+    return _buildBody(context);
+  }
+
+  Widget _buildBody(BuildContext context) {
     return RefreshIndicator(
       color: AppColors.lime,
       backgroundColor: AppColors.surface,

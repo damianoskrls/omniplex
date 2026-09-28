@@ -6825,12 +6825,12 @@ router.get('/programs/:id', requireClientAdmin, async (req, res) => {
 });
 
 router.post('/programs', requireClientAdmin, async (req, res) => {
-  const { name, description, exercises = [] } = req.body;
+  const { name, description, service_id, exercises = [] } = req.body;
   if (!name) return res.status(400).json({ error: 'Το όνομα είναι υποχρεωτικό' });
   const id = uuidv4();
   await db.query(
-    'INSERT INTO workout_programs (id,business_id,name,description) VALUES (?,?,?,?)',
-    [id, req.admin.businessId, name, description||null]
+    'INSERT INTO workout_programs (id,business_id,service_id,name,description) VALUES (?,?,?,?,?)',
+    [id, req.admin.businessId, service_id||null, name, description||null]
   );
   for (let i = 0; i < exercises.length; i++) {
     const ex = exercises[i];
@@ -6843,12 +6843,13 @@ router.post('/programs', requireClientAdmin, async (req, res) => {
 });
 
 router.patch('/programs/:id', requireClientAdmin, async (req, res) => {
-  const { name, description, is_active, exercises } = req.body;
+  const { name, description, is_active, service_id, exercises } = req.body;
   const fields = [];
   const vals = [];
   if (name !== undefined) { fields.push('name=?'); vals.push(name); }
   if (description !== undefined) { fields.push('description=?'); vals.push(description||null); }
   if (is_active !== undefined) { fields.push('is_active=?'); vals.push(is_active ? 1 : 0); }
+  if (service_id !== undefined) { fields.push('service_id=?'); vals.push(service_id||null); }
   if (fields.length) {
     vals.push(req.params.id, req.admin.businessId);
     await db.query(`UPDATE workout_programs SET ${fields.join(',')} WHERE id=? AND business_id=?`, vals);
@@ -7005,7 +7006,8 @@ router.get('/my-programs', async (req, res) => {
   if (!bizId || !userId) return res.status(400).json({ error: 'Missing headers' });
   const [assignments] = await db.query(
     `SELECT cp.id as assignment_id, cp.assigned_at, cp.notes as assignment_notes,
-            wp.id as program_id, wp.name as program_name, wp.description as program_description
+            wp.id as program_id, wp.name as program_name, wp.description as program_description,
+            wp.service_id
      FROM client_programs cp
      JOIN workout_programs wp ON wp.id=cp.program_id AND wp.is_active=1
      WHERE cp.user_id=? AND cp.business_id=? AND cp.is_active=1

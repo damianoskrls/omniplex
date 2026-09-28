@@ -18,7 +18,6 @@ import 'qr_checkin_screen.dart';
 import 'my_qr_screen.dart';
 import 'dropin_screen.dart';
 import 'nutrition_screen.dart';
-import 'workout_programs_screen.dart';
 import 'marketplace_screen.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
@@ -107,12 +106,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         icon: Icons.people_outline,
         label: AppStrings.of(context).community,
         screen: const CommunityScreen(),
-      ),
-      _TabItem(
-        key: 'programs',
-        icon: Icons.sports_gymnastics,
-        label: AppStrings.of(context).programs,
-        screen: const WorkoutProgramsScreen(),
       ),
       // Secondary — appear in overflow when nav is full
       if (config.featureMemberships)
