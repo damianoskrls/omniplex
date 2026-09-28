@@ -108,6 +108,52 @@ export default function Services() {
   const [locationIds, setLocationIds] = useState([]);
   const [saving, setSaving] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiPreview, setAiPreview] = useState(null);
+  const [aiImporting, setAiImporting] = useState(false);
+  const aiInputRef = useRef();
+
+  const WEEKDAY_NAMES = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
+
+  const handleAiFile = async (file) => {
+    if (!file) return;
+    setAiLoading(true);
+    setAiPreview(null);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const r = await api.post('/client-admin/class-schedules/parse-image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setAiPreview(r.data.entries || []);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα ανάλυσης εικόνας');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const importAiEntries = async () => {
+    if (!aiPreview?.length) return;
+    setAiImporting(true);
+    let ok = 0;
+    for (const entry of aiPreview) {
+      try {
+        await api.post('/client-admin/class-schedules', {
+          day_of_week: entry.day_of_week,
+          start_time: entry.start_time,
+          class_name: entry.class_name,
+          trainer_name: entry.trainer_name || null,
+          color: entry.color || '#C52473',
+          max_capacity: entry.max_capacity || null,
+        });
+        ok++;
+      } catch {}
+    }
+    toast.success(`Εισήχθησαν ${ok} μαθήματα στο πρόγραμμα`);
+    setAiPreview(null);
+    setAiImporting(false);
+  };
 
   const load = async () => {
     const [svc, pl, rm, ic] = await Promise.all([
@@ -248,8 +294,60 @@ export default function Services() {
     <Layout title="Υπηρεσίες">
       <div className="page-header">
         <h1 className="page-title">Υπηρεσίες ({services.length})</h1>
-        <button className="btn btn-primary" onClick={openCreate}><Plus size={16} /> Νέα υπηρεσία</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => aiInputRef.current?.click()}
+            disabled={aiLoading}
+            title="Εισαγωγή εβδομαδιαίου προγράμματος από εικόνα με AI"
+          >
+            <Sparkles size={15} style={{ color: '#a855f7' }} />
+            {aiLoading ? 'Ανάλυση…' : 'AI Εισαγωγή Προγράμματος'}
+          </button>
+          <input ref={aiInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleAiFile(e.target.files[0])} />
+          <button className="btn btn-primary" onClick={openCreate}><Plus size={16} /> Νέα υπηρεσία</button>
+        </div>
       </div>
+
+      {aiPreview && (
+        <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid #a855f7' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={16} style={{ color: '#a855f7' }} />
+                AI βρήκε {aiPreview.length} μαθήματα — έλεγξε και εισήγαγε
+              </div>
+              <div className="text-muted" style={{ fontSize: '0.82rem', marginTop: 2 }}>
+                Θα εισαχθούν ως εβδομαδιαίο πρόγραμμα στο Discovery Profile.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => setAiPreview(null)}>
+                <X size={13} /> Ακύρωση
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={importAiEntries} disabled={aiImporting}>
+                <Check size={13} /> {aiImporting ? 'Εισαγωγή…' : 'Εισαγωγή όλων'}
+              </button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {aiPreview.map((e, i) => (
+              <div key={i} style={{
+                padding: '5px 10px', borderRadius: 8,
+                background: e.color ? `${e.color}18` : '#f5f3ff',
+                border: `1px solid ${e.color ? `${e.color}55` : '#e9d5ff'}`,
+                fontSize: '0.82rem', color: '#374151',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <span style={{ fontWeight: 700, color: e.color || '#a855f7' }}>{WEEKDAY_NAMES[(e.day_of_week || 1) - 1]}</span>
+                <span style={{ color: '#64748b' }}>{e.start_time}</span>
+                <span>{e.class_name}</span>
+                {e.trainer_name && <span style={{ color: '#94a3b8' }}>· {e.trainer_name}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <table>
