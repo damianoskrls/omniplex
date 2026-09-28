@@ -402,8 +402,21 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       'SELECT id, url, is_cover FROM gym_photos WHERE business_id = ? ORDER BY is_cover DESC, display_order, created_at',
       [biz.id],
     );
-    const [trainers] = await db.query(
+    const [gymTrainers] = await db.query(
       'SELECT id, name, specialty, photo_url FROM gym_trainers WHERE business_id = ? ORDER BY display_order, created_at',
+      [biz.id],
+    );
+    const [staffTrainers] = await db.query(
+      `SELECT id, full_name AS name, COALESCE(discovery_specialty, role) AS specialty, avatar_url AS photo_url
+       FROM staff WHERE business_id = ? AND show_in_discovery = 1 ORDER BY full_name`,
+      [biz.id],
+    );
+    const trainers = [...staffTrainers, ...gymTrainers];
+    const [plans] = await db.query(
+      `SELECT id, COALESCE(discovery_name, name) AS name, price_cents, sale_price_cents, image_url, sessions, duration_mins, billing_period
+       FROM business_plans
+       WHERE business_id = ? AND is_active = 1 AND show_in_discovery = 1 AND plan_type = 'service'
+       ORDER BY sort_order, price_cents`,
       [biz.id],
     );
     const [schedule] = await db.query(
@@ -432,6 +445,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       trainers,
       schedule,
       services,
+      plans,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });

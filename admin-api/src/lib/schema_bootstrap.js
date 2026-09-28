@@ -631,6 +631,16 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('class_schedules skipped:', err.message);
   }
 
+  // ── staff: discovery fields ──────────────────────────────────
+  await db.query(`ALTER TABLE staff ADD COLUMN show_in_discovery TINYINT(1) NOT NULL DEFAULT 1`).catch(() => {});
+  await db.query(`ALTER TABLE staff ADD COLUMN discovery_specialty VARCHAR(200) NULL`).catch(() => {});
+
+  // ── business_plans: discovery fields ────────────────────────
+  await db.query(`ALTER TABLE business_plans ADD COLUMN show_in_discovery TINYINT(1) NOT NULL DEFAULT 1`).catch(() => {});
+  await db.query(`ALTER TABLE business_plans ADD COLUMN sale_price_cents INT NULL`).catch(() => {});
+  await db.query(`ALTER TABLE business_plans ADD COLUMN discovery_name VARCHAR(200) NULL`).catch(() => {});
+  await db.query(`ALTER TABLE business_plans ADD COLUMN image_url TEXT NULL`).catch(() => {});
+
   // ── gym_photos ───────────────────────────────────────────────
   try {
     await db.query(`

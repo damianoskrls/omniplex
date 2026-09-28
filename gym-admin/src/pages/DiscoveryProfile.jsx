@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Globe, MapPin, Eye, EyeOff, Save, Zap, Image, UserCircle,
   CalendarDays, Package, Upload, Trash2, Star, Plus, Pencil, X, Check,
+  Sparkles, Tag, Euro,
 } from 'lucide-react';
 import api from '../api/client';
 import Layout from '../components/Layout';
@@ -292,6 +293,82 @@ function PhotosSection() {
 
 // ── Trainers Tab ──────────────────────────────────────────────────────────────
 
+function StaffTrainerCard({ staff, onUpdated }) {
+  const [modal, setModal]   = useState(false);
+  const [specialty, setSpecialty] = useState(staff.discovery_specialty || '');
+  const [saving, setSaving] = useState(false);
+
+  async function toggleVisibility() {
+    await api.patch(`/client-admin/staff/${staff.id}/discovery`, { show_in_discovery: !staff.show_in_discovery });
+    onUpdated();
+  }
+
+  async function saveSpecialty() {
+    setSaving(true);
+    try {
+      await api.patch(`/client-admin/staff/${staff.id}/discovery`, { discovery_specialty: specialty });
+      await onUpdated();
+      setModal(false);
+    } finally { setSaving(false); }
+  }
+
+  const hidden = !staff.show_in_discovery;
+
+  return (
+    <>
+      <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex flex-col items-center gap-3 relative ${hidden ? 'opacity-50' : ''}`}>
+        {staff.avatar_url ? (
+          <img src={staff.avatar_url} alt={staff.full_name} className="w-16 h-16 rounded-full object-cover" />
+        ) : (
+          <div className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl"
+            style={{ backgroundColor: staff.color_hex || '#6366F1' }}>
+            {staff.full_name?.[0]?.toUpperCase()}
+          </div>
+        )}
+        <div className="text-center">
+          <p className="font-semibold text-gray-900 dark:text-white text-sm">{staff.full_name}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{staff.discovery_specialty || staff.role}</p>
+        </div>
+        <div className="absolute top-2 right-2 flex gap-1">
+          <button onClick={() => { setSpecialty(staff.discovery_specialty || ''); setModal(true); }}
+            className="p-1.5 text-gray-400 hover:text-indigo-600 bg-white dark:bg-gray-700 rounded-lg shadow">
+            <Pencil size={12} />
+          </button>
+          <button onClick={toggleVisibility}
+            className={`p-1.5 bg-white dark:bg-gray-700 rounded-lg shadow ${hidden ? 'text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>
+            {hidden ? <EyeOff size={12} /> : <Eye size={12} />}
+          </button>
+        </div>
+      </div>
+
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">{staff.full_name}</h2>
+              <button onClick={() => setModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Ειδικότητα (για το app)</label>
+              <input value={specialty} onChange={e => setSpecialty(e.target.value)}
+                placeholder={staff.role || 'π.χ. CrossFit, Pilates'}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <p className="text-xs text-gray-400 mt-1">Αν αφεθεί κενό, εμφανίζεται ο ρόλος: <em>{staff.role}</em></p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setModal(false)} className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300">Άκυρο</button>
+              <button onClick={saveSpecialty} disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm disabled:opacity-50">
+                <Check size={14} /> {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 const EMPTY_TRAINER = { name: '', specialty: '', photo_url: '' };
 
 function TrainersSection() {
@@ -374,20 +451,7 @@ function TrainersSection() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Προσωπικό</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {staffTrainers.map(s => (
-                    <div key={s.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex flex-col items-center gap-3">
-                      {s.avatar_url ? (
-                        <img src={s.avatar_url} alt={s.full_name} className="w-16 h-16 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl"
-                          style={{ backgroundColor: s.color_hex || '#6366F1' }}>
-                          {s.full_name?.[0]?.toUpperCase()}
-                        </div>
-                      )}
-                      <div className="text-center">
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{s.full_name}</p>
-                        {s.role && <p className="text-xs text-gray-500 mt-0.5">{s.role}</p>}
-                      </div>
-                    </div>
+                    <StaffTrainerCard key={s.id} staff={s} onUpdated={load} />
                   ))}
                 </div>
               </div>
@@ -494,6 +558,10 @@ function ScheduleSection() {
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState(null);
   const [activeDay, setActiveDay] = useState(new Date().getDay() || 7);
+  const [aiParsing, setAiParsing] = useState(false);
+  const [aiPreview, setAiPreview] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const aiRef = useRef();
 
   async function load() {
     setLoading(true);
@@ -529,10 +597,80 @@ function ScheduleSection() {
     setEntries(es => es.filter(e => e.id !== id));
   }
 
+  async function handleAiImage(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAiParsing(true); setAiPreview(null);
+    try {
+      const fd = new FormData(); fd.append('image', file);
+      const r = await api.post('/client-admin/class-schedules/parse-image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setAiPreview(r.data.entries || []);
+    } catch (err) { alert('Αποτυχία AI ανάλυσης: ' + (err.response?.data?.error || err.message)); }
+    finally { setAiParsing(false); if (aiRef.current) aiRef.current.value = ''; }
+  }
+
+  async function importAiEntries() {
+    if (!aiPreview?.length) return;
+    setImporting(true);
+    try {
+      for (const entry of aiPreview) {
+        await api.post('/client-admin/class-schedules', {
+          day_of_week: entry.day_of_week, start_time: entry.start_time,
+          class_name: entry.class_name, trainer_name: entry.trainer_name || null,
+          color: entry.color || '#C52473', equipment: entry.equipment || null,
+          max_capacity: entry.max_capacity || null,
+          accepts_drop_in: false, drop_in_cutoff_hours: 2,
+        });
+      }
+      await load(); setAiPreview(null);
+    } catch (err) { alert(err.response?.data?.error || err.message); }
+    finally { setImporting(false); }
+  }
+
   const dayEntries = entries.filter(e => e.day_of_week === activeDay);
 
   return (
     <div className="space-y-4">
+      {/* AI import banner */}
+      <div className="flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl">
+        <Sparkles size={18} className="text-indigo-500 shrink-0" />
+        <p className="text-sm text-indigo-700 dark:text-indigo-300 flex-1">Ανέβασε φωτογραφία του προγράμματος και το AI θα το δημιουργήσει αυτόματα.</p>
+        <button onClick={() => aiRef.current?.click()}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg whitespace-nowrap">
+          {aiParsing ? 'Ανάλυση…' : <><Upload size={13} /> Εισαγωγή JPG</>}
+        </button>
+        <input ref={aiRef} type="file" accept="image/*" className="hidden" onChange={handleAiImage} />
+      </div>
+
+      {/* AI preview */}
+      {aiPreview && (
+        <div className="border border-indigo-300 dark:border-indigo-700 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-between">
+            <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+              <Sparkles size={14} className="inline mr-1" />
+              {aiPreview.length} μαθήματα αναγνωρίστηκαν — επιβεβαίωσε για εισαγωγή
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setAiPreview(null)} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded">Ακύρωση</button>
+              <button onClick={importAiEntries} disabled={importing}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg disabled:opacity-50">
+                <Check size={12} /> {importing ? 'Εισαγωγή…' : 'Εισαγωγή όλων'}
+              </button>
+            </div>
+          </div>
+          <div className="max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+            {aiPreview.map((e, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2 text-sm">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: e.color || '#C52473' }} />
+                <span className="text-gray-500 w-20 shrink-0">{DAYS[e.day_of_week]} {e.start_time}</span>
+                <span className="font-medium text-gray-900 dark:text-white">{e.class_name}</span>
+                {e.equipment && <span className="text-xs text-gray-400">· {e.equipment}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 flex-1 mr-4">
           {DAYS.slice(1).map((d, i) => {
@@ -688,16 +826,62 @@ function ScheduleSection() {
 function PackagesSection() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modal, setModal]   = useState(null); // plan being edited
+  const [form, setForm]     = useState({});
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const imgRef = useRef();
 
-  useEffect(() => {
-    api.get('/client-admin/plans').then(r => { setPlans(r.data || []); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
+  async function load() {
+    setLoading(true);
+    try { const r = await api.get('/client-admin/plans'); setPlans(r.data || []); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  function openEdit(p) {
+    setForm({
+      discovery_name:   p.discovery_name || '',
+      sale_price:       p.sale_price_cents ? String(p.sale_price_cents / 100) : '',
+      image_url:        p.image_url || '',
+    });
+    setModal(p);
+  }
+
+  async function toggleVisibility(p) {
+    await api.patch(`/client-admin/plans/${p.id}/discovery`, { show_in_discovery: !p.show_in_discovery });
+    load();
+  }
+
+  async function handleImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !modal) return;
+    setUploading(true);
+    try {
+      const fd = new FormData(); fd.append('image', file);
+      const r = await api.post(`/client-admin/plans/${modal.id}/upload-image`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setForm(f => ({ ...f, image_url: r.data.url }));
+    } catch (err) { alert(err.response?.data?.error || err.message); }
+    finally { setUploading(false); if (imgRef.current) imgRef.current.value = ''; }
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const sale = form.sale_price ? Math.round(parseFloat(form.sale_price) * 100) : null;
+      await api.patch(`/client-admin/plans/${modal.id}/discovery`, {
+        discovery_name: form.discovery_name || null,
+        sale_price_cents: sale,
+      });
+      await load(); setModal(null);
+    } finally { setSaving(false); }
+  }
 
   if (loading) return <div className="text-center py-12 text-gray-400">Φόρτωση…</div>;
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">Τα παρακάτω πακέτα εμφανίζονται στους χρήστες. Για να τα επεξεργαστείτε πηγαίνετε στην ενότητα <strong>Πακέτα</strong>.</p>
+      <p className="text-xs text-gray-400">Εμφανίζεται/κρύβεται κάθε πακέτο · Πρόσθεσε τιμή sale · Ανέβασε εικόνα. Για να αλλάξεις την κανονική τιμή πήγαινε στα <strong>Πακέτα</strong>.</p>
       {plans.length === 0 ? (
         <div className="text-center py-12 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           <Package size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
@@ -705,23 +889,107 @@ function PackagesSection() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {plans.map(p => (
-            <div key={p.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-white truncate">{p.name}</p>
-                  {p.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{p.description}</p>}
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {p.duration_days && <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{p.duration_days} μέρες</span>}
-                    {p.sessions && <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{p.sessions} συνεδρίες</span>}
+          {plans.map(p => {
+            const hidden = !p.show_in_discovery;
+            const displayName = p.discovery_name || p.name;
+            return (
+              <div key={p.id} className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden ${hidden ? 'opacity-50' : ''}`}>
+                {p.image_url && <img src={p.image_url} alt={displayName} className="w-full h-28 object-cover" />}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">{displayName}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {p.sale_price_cents ? (
+                          <>
+                            <span className="text-base font-bold text-rose-500">{(p.sale_price_cents / 100).toFixed(0)}€</span>
+                            <span className="text-sm text-gray-400 line-through">{((p.price_cents || 0) / 100).toFixed(0)}€</span>
+                            <span className="text-xs bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded-md font-medium">Sale</span>
+                          </>
+                        ) : (
+                          <span className="text-base font-bold text-indigo-600 dark:text-indigo-400">{((p.price_cents || 0) / 100).toFixed(0)}€</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => openEdit(p)} className="p-1.5 text-gray-400 hover:text-indigo-600 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => toggleVisibility(p)} className={`p-1.5 bg-gray-50 dark:bg-gray-700 rounded-lg ${hidden ? 'text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}>
+                        {hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{((p.price_cents || 0) / 100).toFixed(0)}€</span>
-                </div>
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Επεξεργασία Πακέτου</h2>
+              <button onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
-          ))}
+
+            {/* Image */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-2">Εικόνα</label>
+              {form.image_url ? (
+                <div className="relative">
+                  <img src={form.image_url} alt="" className="w-full h-32 object-cover rounded-xl" />
+                  <button onClick={() => imgRef.current?.click()}
+                    className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg flex items-center gap-1">
+                    <Upload size={11} /> Αλλαγή
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => imgRef.current?.click()}
+                  className="w-full h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors">
+                  <Upload size={18} />
+                  <span className="text-xs">{uploading ? 'Μεταφόρτωση…' : 'Ανέβασε εικόνα'}</span>
+                </button>
+              )}
+              <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            </div>
+
+            {/* Name override */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Εμφανιζόμενο Όνομα</label>
+              <input value={form.discovery_name} onChange={e => setForm(f => ({ ...f, discovery_name: e.target.value }))}
+                placeholder={modal.name}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <p className="text-xs text-gray-400 mt-0.5">Αν κενό, εμφανίζεται: <em>{modal.name}</em></p>
+            </div>
+
+            {/* Sale price */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1"><Tag size={11} /> Τιμή Sale (€)</label>
+              <div className="flex items-center gap-2">
+                <input type="number" min="0" step="0.5" value={form.sale_price}
+                  onChange={e => setForm(f => ({ ...f, sale_price: e.target.value }))}
+                  placeholder={`Κανονική: ${((modal.price_cents || 0) / 100).toFixed(0)}€`}
+                  className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                {form.sale_price && <button onClick={() => setForm(f => ({ ...f, sale_price: '' }))} className="text-xs text-gray-400 hover:text-red-500">✕ Αφαίρεση</button>}
+              </div>
+              {form.sale_price && parseFloat(form.sale_price) > 0 && (
+                <p className="text-xs text-rose-500 mt-0.5">
+                  {((modal.price_cents || 0) / 100).toFixed(0)}€ → <strong>{parseFloat(form.sale_price).toFixed(0)}€</strong>
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setModal(null)} className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300">Άκυρο</button>
+              <button onClick={handleSave} disabled={saving}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm disabled:opacity-50">
+                <Check size={14} /> {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

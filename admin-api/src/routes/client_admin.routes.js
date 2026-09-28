@@ -3828,6 +3828,46 @@ router.delete('/plans/:id', requireClientAdmin, async (req, res) => {
   return res.json({ ok: true });
 });
 
+// PATCH /plans/:id/discovery — toggle visibility, set sale price, name override
+router.patch('/plans/:id/discovery', requireClientAdmin, async (req, res) => {
+  const { show_in_discovery, sale_price_cents, discovery_name } = req.body;
+  try {
+    await db.query(
+      `UPDATE business_plans SET
+         show_in_discovery = COALESCE(?, show_in_discovery),
+         sale_price_cents  = ?,
+         discovery_name    = ?
+       WHERE id = ? AND business_id = ?`,
+      [show_in_discovery != null ? (show_in_discovery ? 1 : 0) : null,
+       sale_price_cents != null ? Number(sale_price_cents) : null,
+       discovery_name || null,
+       req.params.id, req.admin.businessId],
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /plans/:id/upload-image — upload cover image for a plan
+const planImageUpload = r2Multer({
+  keyFn: (req) => `uploads/${req.admin.businessId}/plan-images/${uuidv4()}.jpg`,
+  allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+  maxSizeMb: 5,
+});
+router.post('/plans/:id/upload-image', requireClientAdmin, (req, res, next) => {
+  planImageUpload.single('image')(req, res, next);
+}, async (req, res) => {
+  if (!req.file?.publicUrl) return res.status(400).json({ error: 'Upload failed' });
+  try {
+    await db.query('UPDATE business_plans SET image_url = ? WHERE id = ? AND business_id = ?',
+      [req.file.publicUrl, req.params.id, req.admin.businessId]);
+    return res.json({ url: req.file.publicUrl });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // GET package options: one row per service+linked gym plan (όχι χειροκίνητα / διατροφή)
 router.get('/package-options', requireClientAdmin, async (req, res) => {
   try {
@@ -4412,6 +4452,23 @@ router.delete('/staff/:id', requireClientAdmin, async (req, res) => {
     return res.status(500).json({ error: err.message });
   } finally {
     conn.release();
+  }
+});
+
+// PATCH /staff/:id/discovery — toggle visibility & set public specialty
+router.patch('/staff/:id/discovery', requireClientAdmin, async (req, res) => {
+  const { show_in_discovery, discovery_specialty } = req.body;
+  try {
+    const parts = [];
+    const vals = [];
+    if (show_in_discovery != null) { parts.push('show_in_discovery = ?'); vals.push(show_in_discovery ? 1 : 0); }
+    if (discovery_specialty !== undefined) { parts.push('discovery_specialty = ?'); vals.push(discovery_specialty || null); }
+    if (!parts.length) return res.json({ ok: true });
+    vals.push(req.params.id, req.admin.businessId);
+    await db.query(`UPDATE staff SET ${parts.join(', ')} WHERE id = ? AND business_id = ?`, vals);
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -6842,6 +6899,47 @@ router.get('/class-schedules', requireClientAdmin, async (req, res) => {
       [req.admin.businessId],
     );
     return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /class-schedules/parse-image — AI extracts schedule from uploaded JPG/PNG
+const multerMemory = require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+router.post('/class-schedules/parse-image', requireClientAdmin, multerMemory.single('image'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const b64 = req.file.buffer.toString('base64');
+    const mediaType = req.file.mimetype || 'image/jpeg';
+
+    const message = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+          { type: 'text', text: `Extract the gym class schedule from this image. Return ONLY a JSON array with no explanation. Each entry must have:
+- day_of_week: number 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday, 7=Sunday
+- start_time: string "HH:MM" (24h format)
+- class_name: string (the class/activity name, in the original language)
+- trainer_name: null or string if visible
+- color: pick the most fitting hex from ["#C52473","#B48CFF","#3EE6FF","#FF6FD8","#FFB23E","#FF5252","#69FF47","#40C4FF","#FF6E40","#EEFF41"] based on the color used in the image for that class type
+- equipment: null or string (any equipment shown, e.g. "TRX", "FitBall")
+- max_capacity: null
+
+Return ONLY the JSON array, e.g.: [{"day_of_week":1,"start_time":"09:00","class_name":"CrossFit","trainer_name":null,"color":"#C52473","equipment":null,"max_capacity":null}]` },
+        ],
+      }],
+    });
+
+    const raw = message.content[0].text.trim();
+    const jsonMatch = raw.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return res.status(422).json({ error: 'Could not parse schedule from image' });
+    const entries = JSON.parse(jsonMatch[0]);
+    return res.json({ entries });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
