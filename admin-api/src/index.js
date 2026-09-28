@@ -77,15 +77,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// Temp: outbound IP check
-app.get('/api/ip', (req, res) => {
-  require('https').get('https://api.ipify.org?format=json', r => {
-    let d = '';
-    r.on('data', c => d += c);
-    r.on('end', () => res.json(JSON.parse(d)));
-  }).on('error', e => res.status(500).json({ error: e.message }));
-});
-
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.path}` });
