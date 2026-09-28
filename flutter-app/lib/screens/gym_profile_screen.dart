@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../config/tenant_config.dart';
+import 'phone_otp_login_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -122,12 +123,31 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     }
     final bizId = _gym?['business_id'] as String?;
     if (bizId == null) return;
-    // Always ask - user might want member or trainer for this specific gym
     final role = await _showRolePicker();
     if (role == null || !mounted) return;
-    final formData = await _showJoinForm(role);
-    if (formData == null || !mounted) return;
-    await _submitJoinRequest(bizId, role, formData);
+
+    if (role == 'both') {
+      // Collect combined form then submit 2 requests
+      final formData = await _showJoinForm('both');
+      if (formData == null || !mounted) return;
+      await _submitJoinRequest(bizId, 'member', {
+        'full_name': formData['full_name'],
+        'phone':     formData['phone'],
+        'email':     formData['email'],
+        if (formData['date_of_birth'] != null) 'date_of_birth': formData['date_of_birth'],
+      });
+      if (!mounted) return;
+      await _submitJoinRequest(bizId, 'staff', {
+        'full_name': formData['full_name'],
+        'phone':     formData['phone'],
+        'email':     formData['email'],
+        if (formData['specialty'] != null) 'specialty': formData['specialty'],
+      });
+    } else {
+      final formData = await _showJoinForm(role);
+      if (formData == null || !mounted) return;
+      await _submitJoinRequest(bizId, role, formData);
+    }
   }
 
   Future<String?> _showRolePicker() {
@@ -176,6 +196,14 @@ class _GymProfileScreenState extends State<GymProfileScreen>
               subtitle: 'Εργάζομαι σε αυτό το γυμναστήριο',
               onTap: () => Navigator.pop(sheetCtx, 'staff'),
             ),
+            const SizedBox(height: 10),
+            _RoleOption(
+              icon: Icons.diversity_3_rounded,
+              color: const Color(0xFFA78BFA),
+              title: 'Και τα 2',
+              subtitle: 'Ασκούμενος και trainer σε αυτό το γυμναστήριο',
+              onTap: () => Navigator.pop(sheetCtx, 'both'),
+            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -185,12 +213,14 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
   Future<Map<String, String?>?> _showJoinForm(String role) {
     final user = widget.globalAuth?.user;
-    final nameCtrl   = TextEditingController(text: user?.fullName ?? '');
-    final phoneCtrl  = TextEditingController();
-    final emailCtrl  = TextEditingController(text: (user?.email.isNotEmpty == true) ? user!.email : '');
-    final extraCtrl  = TextEditingController(); // date_of_birth (member) or specialty (trainer)
-    final isStaff    = role == 'staff';
-    final accent     = isStaff ? _kCyan : _kLime;
+    final nameCtrl       = TextEditingController(text: user?.fullName ?? '');
+    final phoneCtrl      = TextEditingController();
+    final emailCtrl      = TextEditingController(text: (user?.email.isNotEmpty == true) ? user!.email : '');
+    final dobCtrl        = TextEditingController(); // date_of_birth (member / both)
+    final specialtyCtrl  = TextEditingController(); // specialty (staff / both)
+    final isBoth         = role == 'both';
+    final isStaff        = role == 'staff';
+    final accent         = isStaff ? _kCyan : isBoth ? const Color(0xFFA78BFA) : _kLime;
 
     return showModalBottomSheet<Map<String, String?>>(
       context: context,
@@ -215,15 +245,18 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                   decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
                 const SizedBox(height: 16),
                 Row(children: [
-                  Icon(isStaff ? Icons.sports_rounded : Icons.fitness_center_rounded, color: accent, size: 20),
+                  Icon(isBoth ? Icons.diversity_3_rounded : isStaff ? Icons.sports_rounded : Icons.fitness_center_rounded,
+                    color: accent, size: 20),
                   const SizedBox(width: 8),
-                  Text(isStaff ? 'Στοιχεία Trainer' : 'Στοιχεία Μέλους',
+                  Text(isBoth ? 'Στοιχεία Εγγραφής' : isStaff ? 'Στοιχεία Trainer' : 'Στοιχεία Μέλους',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
                 ]),
                 const SizedBox(height: 4),
-                Text(isStaff
-                  ? 'Συμπλήρωσε τα στοιχεία σου ως προσωπικό'
-                  : 'Συμπλήρωσε τα στοιχεία εγγραφής σου',
+                Text(isBoth
+                  ? 'Θα εγγραφείς και ως μέλος και ως trainer'
+                  : isStaff
+                    ? 'Συμπλήρωσε τα στοιχεία σου ως προσωπικό'
+                    : 'Συμπλήρωσε τα στοιχεία εγγραφής σου',
                   style: const TextStyle(fontSize: 12, color: Color(0xFF9A9CA3))),
                 const SizedBox(height: 20),
                 _JoinField(label: 'Ονοματεπώνυμο *', controller: nameCtrl, hint: 'π.χ. Γιώργος Παπαδόπουλος'),
@@ -231,16 +264,20 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                 _JoinField(label: 'Κινητό τηλέφωνο *', controller: phoneCtrl, hint: 'π.χ. 6971234567',
                   keyboardType: TextInputType.phone),
                 const SizedBox(height: 12),
-                _JoinField(label: 'Email', controller: emailCtrl, hint: 'π.χ. giorgos@email.com',
+                _JoinField(label: 'Email (προαιρετικά)', controller: emailCtrl, hint: 'π.χ. giorgos@email.com',
                   keyboardType: TextInputType.emailAddress),
                 const SizedBox(height: 12),
-                if (!isStaff)
-                  _JoinField(label: 'Ημερομηνία γέννησης', controller: extraCtrl, hint: 'ΗΗ/ΜΜ/ΕΕΕΕ',
-                    keyboardType: TextInputType.datetime)
-                else
-                  _JoinField(label: 'Ειδικότητα', controller: extraCtrl,
+                if (!isStaff) ...[
+                  _JoinField(label: 'Ημερομηνία γέννησης (προαιρετικά)', controller: dobCtrl,
+                    hint: 'ΗΗ/ΜΜ/ΕΕΕΕ', keyboardType: TextInputType.datetime),
+                  const SizedBox(height: 12),
+                ],
+                if (isStaff || isBoth) ...[
+                  _JoinField(label: 'Ειδικότητα (προαιρετικά)', controller: specialtyCtrl,
                     hint: 'π.χ. Personal Trainer, Yoga, Pilates'),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                ],
+                const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () {
                     final name  = nameCtrl.text.trim();
@@ -255,8 +292,8 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                       'full_name': name,
                       'phone':     phone,
                       'email':     emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(),
-                      if (!isStaff) 'date_of_birth': extraCtrl.text.trim().isEmpty ? null : extraCtrl.text.trim(),
-                      if (isStaff)  'specialty':     extraCtrl.text.trim().isEmpty ? null : extraCtrl.text.trim(),
+                      'date_of_birth': dobCtrl.text.trim().isEmpty ? null : dobCtrl.text.trim(),
+                      'specialty':     specialtyCtrl.text.trim().isEmpty ? null : specialtyCtrl.text.trim(),
                     });
                   },
                   child: Container(
@@ -499,12 +536,15 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   }
 
   void _showLoginPrompt() {
+    final navigator = Navigator.of(context);
+    final myRoute   = ModalRoute.of(context);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: _kCard,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => Padding(
+      builder: (sheetCtx) => Padding(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(width: 40, height: 4, decoration: BoxDecoration(
@@ -513,12 +553,22 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           Text('Απαιτείται σύνδεση',
             style: GoogleFonts.manrope(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 8),
-          Text('Συνδέσου για να αγοράσεις πακέτο.',
+          Text('Συνδέσου ή δημιούργησε λογαριασμό για να στείλεις αίτημα εγγραφής.',
             style: GoogleFonts.manrope(fontSize: 14, color: _kGray), textAlign: TextAlign.center),
           const SizedBox(height: 24),
           _limeButton('Σύνδεση / Εγγραφή', () {
-            Navigator.pop(context);
-            widget.onLoggedIn?.call();
+            Navigator.pop(sheetCtx); // close bottom sheet
+            navigator.push(MaterialPageRoute(
+              builder: (_) => PhoneOtpLoginScreen(
+                globalAuth: widget.globalAuth!,
+                onLoggedIn: () {
+                  // Pop OTP/profile/role screens back to this gym profile
+                  navigator.popUntil((route) => route == myRoute);
+                  // Re-trigger join now that user is logged in
+                  if (mounted) Future.microtask(_requestJoin);
+                },
+              ),
+            ));
           }),
         ]),
       ),

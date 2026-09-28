@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
 import 'global_role_picker_screen.dart';
+import 'global_profile_details_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -112,9 +113,9 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
       await _registerFcmToken();
       if (!mounted) return;
       if (result['is_new'] == true) {
-        _goRolePicker(skipDetails: false);
+        _goProfileDetails();
       } else if (widget.globalAuth.preferredRole == null) {
-        _goRolePicker(skipDetails: true);
+        _goRolePicker();
       } else {
         widget.onLoggedIn();
       }
@@ -139,21 +140,16 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     final digits = v.replaceAll(RegExp(r'\D'), '');
 
     if (digits.isEmpty) {
-      // Deleted — clear box and go back
       _otpCtrls[index].clear();
-      if (index > 0) {
-        _otpFocus[index - 1].requestFocus();
-      }
+      if (index > 0) _otpFocus[index - 1].requestFocus();
       return;
     }
 
     if (digits.length == 1) {
-      // Single digit typed or replaced
       _otpCtrls[index].text = digits;
       _otpCtrls[index].selection = const TextSelection.collapsed(offset: 1);
       if (index < 5) _otpFocus[index + 1].requestFocus();
     } else {
-      // Paste: distribute digits from this box onwards
       for (var j = 0; j < digits.length && (index + j) < 6; j++) {
         _otpCtrls[index + j].text = digits[j];
       }
@@ -174,9 +170,9 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
       await _registerFcmToken();
       if (!mounted) return;
       if (result['is_new'] == true) {
-        _goRolePicker(skipDetails: false);
+        _goProfileDetails();
       } else if (widget.globalAuth.preferredRole == null) {
-        _goRolePicker(skipDetails: true);
+        _goRolePicker();
       } else {
         widget.onLoggedIn();
       }
@@ -185,11 +181,22 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     }
   }
 
-  void _goRolePicker({bool skipDetails = false}) {
+  /// New user: name + email first, then optional role picker
+  void _goProfileDetails() {
+    Navigator.pushReplacement(context, MaterialPageRoute(
+      builder: (_) => GlobalProfileDetailsScreen(
+        globalAuth: widget.globalAuth,
+        onDone: widget.onLoggedIn,
+      ),
+    ));
+  }
+
+  /// Returning user without preferred role: optional role picker
+  void _goRolePicker() {
     Navigator.pushReplacement(context, MaterialPageRoute(
       builder: (_) => GlobalRolePickerScreen(
         globalAuth: widget.globalAuth,
-        skipDetails: skipDetails,
+        isOptional: true,
         onDone: (_) => widget.onLoggedIn(),
       ),
     ));

@@ -1,29 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
-import 'global_profile_details_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
 const _kBorder = Color(0xFF2A2B30);
 const _kGray   = Color(0xFF9A9CA3);
-const _kLime   = Color(0xFFC52473);
+const _kLime   = Color(0xFFC6FF3D);
 
-enum GlobalRole { client, trainer }
+enum GlobalRole { client, trainer, both }
 
 class GlobalRolePickerScreen extends StatefulWidget {
   const GlobalRolePickerScreen({
     super.key,
     required this.globalAuth,
     required this.onDone,
-    this.skipDetails = false,
+    /// When true, a "Παράλειψη" button is shown and no selection is required
+    this.isOptional = false,
   });
 
   final GlobalAuthService globalAuth;
-  /// Called after profile details are saved; passes the chosen role
-  final void Function(GlobalRole role) onDone;
-  /// When true, skip the profile details step (for returning users)
-  final bool skipDetails;
+  /// Called with the chosen role (or null when skipped)
+  final void Function(GlobalRole? role) onDone;
+  final bool isOptional;
 
   @override
   State<GlobalRolePickerScreen> createState() => _GlobalRolePickerScreenState();
@@ -35,20 +34,15 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
   Future<void> _next() async {
     final role = _selected;
     if (role == null) return;
-    if (widget.skipDetails) {
-      await widget.globalAuth.setPreferredRole(
-        role == GlobalRole.trainer ? 'staff' : 'member',
-      );
-      if (mounted) widget.onDone(role);
-    } else {
-      Navigator.push(context, MaterialPageRoute(
-        builder: (_) => GlobalProfileDetailsScreen(
-          globalAuth: widget.globalAuth,
-          role: role,
-          onDone: () => widget.onDone(role),
-        ),
-      ));
-    }
+    final roleStr = role == GlobalRole.trainer ? 'staff'
+                  : role == GlobalRole.both    ? 'both'
+                  : 'member';
+    await widget.globalAuth.setPreferredRole(roleStr);
+    if (mounted) widget.onDone(role);
+  }
+
+  Future<void> _skip() async {
+    if (mounted) widget.onDone(null);
   }
 
   @override
@@ -74,14 +68,13 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                     border: Border.all(color: _kBorder),
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(Icons.arrow_back_rounded,
-                    color: Colors.white, size: 18),
+                  child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
                 ),
               ),
 
               const SizedBox(height: 32),
 
-              Text(widget.skipDetails ? 'ΕΠΙΛΟΓΗ ΡΟΛΟΥ' : 'Βήμα 1 από 2',
+              Text(widget.isOptional ? 'Βήμα 2 από 2' : 'ΕΠΙΛΟΓΗ ΡΟΛΟΥ',
                 style: GoogleFonts.manrope(
                   fontSize: 11, fontWeight: FontWeight.w600,
                   color: _kGray, letterSpacing: 1.5)),
@@ -91,13 +84,12 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                   fontSize: 30, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: -0.75, height: 1.15)),
               const SizedBox(height: 8),
-              Text('Επέλεξε τον ρόλο σου για να σε κατευθύνουμε\nσωστά.',
-                style: GoogleFonts.manrope(
-                  fontSize: 14, color: _kGray, height: 1.55)),
+              Text('Επέλεξε τον ρόλο σου για να σε κατευθύνουμε σωστά.',
+                style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.55)),
 
               const SizedBox(height: 36),
 
-              // Card: Ασκούμενος
+              // Ασκούμενος
               _RoleCard(
                 icon: Icons.fitness_center_rounded,
                 iconColor: _kLime,
@@ -109,7 +101,7 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
 
               const SizedBox(height: 14),
 
-              // Card: Γυμναστής
+              // Γυμναστής
               _RoleCard(
                 icon: Icons.sports_rounded,
                 iconColor: const Color(0xFF3EE6FF),
@@ -117,6 +109,18 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                 subtitle: 'Εργάζομαι σε γυμναστήριο ή είμαι personal\ntrainer και θέλω να συνδεθώ με το χώρο μου.',
                 selected: _selected == GlobalRole.trainer,
                 onTap: () => setState(() => _selected = GlobalRole.trainer),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Και τα 2
+              _RoleCard(
+                icon: Icons.diversity_3_rounded,
+                iconColor: const Color(0xFFA78BFA),
+                title: 'Ασκούμενος & Trainer',
+                subtitle: 'Κάνω προπόνηση αλλά και δουλεύω ή προπονώ\nσε γυμναστήριο.',
+                selected: _selected == GlobalRole.both,
+                onTap: () => setState(() => _selected = GlobalRole.both),
               ),
 
               const Spacer(),
@@ -130,9 +134,7 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                   decoration: BoxDecoration(
                     color: _selected != null ? _kLime : _kCard,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _selected != null ? _kLime : _kBorder,
-                    ),
+                    border: Border.all(color: _selected != null ? _kLime : _kBorder),
                     boxShadow: _selected != null ? [
                       BoxShadow(
                         color: _kLime.withValues(alpha: 0.28),
@@ -146,6 +148,22 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                       color: _selected != null ? _kBg : _kGray)),
                 ),
               ),
+
+              if (widget.isOptional) ...[
+                const SizedBox(height: 16),
+                Center(
+                  child: GestureDetector(
+                    onTap: _skip,
+                    child: Text('Παράλειψη',
+                      style: GoogleFonts.manrope(
+                        fontSize: 13, fontWeight: FontWeight.w600,
+                        color: _kGray,
+                        decoration: TextDecoration.underline,
+                        decorationColor: _kGray,
+                      )),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -179,9 +197,7 @@ class _RoleCard extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: selected
-            ? iconColor.withValues(alpha: 0.07)
-            : _kCard,
+          color: selected ? iconColor.withValues(alpha: 0.07) : _kCard,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: selected ? iconColor : _kBorder,
@@ -206,12 +222,10 @@ class _RoleCard extends StatelessWidget {
                 children: [
                   Text(title,
                     style: GoogleFonts.manrope(
-                      fontSize: 15, fontWeight: FontWeight.w700,
-                      color: Colors.white)),
+                      fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(height: 4),
                   Text(subtitle,
-                    style: GoogleFonts.manrope(
-                      fontSize: 12, color: _kGray, height: 1.5)),
+                    style: GoogleFonts.manrope(fontSize: 12, color: _kGray, height: 1.5)),
                 ],
               ),
             ),
@@ -226,8 +240,7 @@ class _RoleCard extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: selected
-                ? const Icon(Icons.check_rounded,
-                    color: Color(0xFF0A0A0A), size: 13)
+                ? const Icon(Icons.check_rounded, color: Color(0xFF0A0A0A), size: 13)
                 : null,
             ),
           ],
