@@ -4396,6 +4396,34 @@ router.delete('/services/:serviceId/slot-schedules/:scheduleId', requireClientAd
   return res.json({ ok: true });
 });
 
+// Clone all slots from one location to another
+router.post('/services/:id/slot-schedules/clone', requireClientAdmin, async (req, res) => {
+  const { from_location_id, to_location_id } = req.body;
+  if (!from_location_id || !to_location_id) return res.status(400).json({ error: 'from_location_id and to_location_id required' });
+  const [sourceSlots] = await db.query(
+    'SELECT * FROM service_slot_schedules WHERE service_id=? AND business_id=? AND location_id=? AND is_active=1',
+    [req.params.id, req.admin.businessId, from_location_id]
+  );
+  if (!sourceSlots.length) return res.status(404).json({ error: 'Δεν υπάρχουν slots στην πηγή' });
+  let cloned = 0;
+  for (const s of sourceSlots) {
+    try {
+      await db.query(
+        `INSERT INTO service_slot_schedules
+          (id, service_id, business_id, location_id, weekday, start_time, label, room_name, room_id, subtitle, icon_key, max_capacity, preparation_tips, post_workout_tips, staff_id)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [uuidv4(), s.service_id, s.business_id, to_location_id, s.weekday, s.start_time,
+         s.label, s.room_name, null, s.subtitle, s.icon_key, s.max_capacity,
+         s.preparation_tips, s.post_workout_tips, null]
+      );
+      cloned++;
+    } catch (err) {
+      if (err.code !== 'ER_DUP_ENTRY') throw err;
+    }
+  }
+  res.json({ cloned });
+});
+
 router.delete('/services/:id', requireClientAdmin, async (req, res) => {
   await db.query('DELETE FROM services WHERE id=? AND business_id=?', [req.params.id, req.admin.businessId]);
   return res.json({ ok: true });

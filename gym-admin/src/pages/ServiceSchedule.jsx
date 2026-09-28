@@ -65,6 +65,8 @@ export default function ServiceSchedule() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiImporting, setAiImporting] = useState(false);
   const aiInputRef = useRef();
+  const [cloneFromId, setCloneFromId] = useState('');
+  const [cloning, setCloning] = useState(false);
 
   const load = async (locId = activeLocationId) => {
     const locRes = await api.get('/client-admin/locations');
@@ -399,7 +401,7 @@ export default function ServiceSchedule() {
             })}
           </div>
 
-          {/* Active location: availability toggle */}
+          {/* Active location: availability toggle + clone */}
           {activeLocationId && (() => {
             const isEnabled = serviceLocationIds.includes(String(activeLocationId)) || serviceLocationIds.includes(activeLocationId);
             const toggleAvailability = async () => {
@@ -412,19 +414,57 @@ export default function ServiceSchedule() {
               } catch { toast.error('Σφάλμα'); }
             };
             const locName = locations.find(l => String(l.id) === String(activeLocationId))?.name || '';
+            const otherLocs = locations.filter(l => String(l.id) !== String(activeLocationId));
+            const doClone = async () => {
+              if (!cloneFromId) return toast.error('Επίλεξε πηγή');
+              setCloning(true);
+              try {
+                const r = await api.post(`/client-admin/services/${id}/slot-schedules/clone`, {
+                  from_location_id: cloneFromId,
+                  to_location_id: activeLocationId,
+                });
+                toast.success(`${r.data.cloned} slots αντιγράφηκαν`);
+                setCloneFromId('');
+                load(activeLocationId);
+              } catch (err) {
+                toast.error(err.response?.data?.error || 'Σφάλμα');
+              } finally { setCloning(false); }
+            };
             return (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: isEnabled ? '#f0fdf4' : '#f8fafc', borderRadius: '0 0 10px 10px', border: '1px solid', borderTop: 'none', borderColor: isEnabled ? '#bbf7d0' : '#e2e8f0' }}>
-                <div style={{ fontSize: 13, color: isEnabled ? '#15803d' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: isEnabled ? '#22c55e' : '#cbd5e1', display: 'inline-block' }} />
-                  {isEnabled ? `Η υπηρεσία προσφέρεται στο ${locName}` : `Η υπηρεσία ΔΕΝ προσφέρεται στο ${locName}`}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, padding: '10px 14px', background: isEnabled ? '#f0fdf4' : '#f8fafc', borderRadius: '0 0 10px 10px', border: '1px solid', borderTop: 'none', borderColor: isEnabled ? '#bbf7d0' : '#e2e8f0' }}>
+                {/* Availability */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontSize: 13, color: isEnabled ? '#15803d' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: isEnabled ? '#22c55e' : '#cbd5e1', display: 'inline-block' }} />
+                    {isEnabled ? `Ενεργή στο ${locName}` : `Ανενεργή στο ${locName}`}
+                  </div>
+                  <button onClick={toggleAvailability} className="btn btn-sm" style={{ fontSize: 12, background: isEnabled ? '#fee2e2' : '#dcfce7', color: isEnabled ? '#dc2626' : '#16a34a', border: 'none' }}>
+                    {isEnabled ? 'Απενεργοποίηση' : '+ Ενεργοποίηση'}
+                  </button>
                 </div>
-                <button
-                  onClick={toggleAvailability}
-                  className="btn btn-sm"
-                  style={{ fontSize: 12, background: isEnabled ? '#fee2e2' : '#dcfce7', color: isEnabled ? '#dc2626' : '#16a34a', border: 'none' }}
-                >
-                  {isEnabled ? 'Απενεργοποίηση' : '+ Ενεργοποίηση'}
-                </button>
+                {/* Clone from another location */}
+                {otherLocs.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12, color: '#64748b' }}>Αντιγραφή slots από:</span>
+                    <select
+                      className="form-select"
+                      style={{ fontSize: 12, padding: '4px 8px', height: 30 }}
+                      value={cloneFromId}
+                      onChange={e => setCloneFromId(e.target.value)}
+                    >
+                      <option value="">— επίλεξε gym —</option>
+                      {otherLocs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                    <button
+                      className="btn btn-sm"
+                      style={{ fontSize: 12, background: '#7C5CFC', color: '#fff', border: 'none' }}
+                      disabled={!cloneFromId || cloning}
+                      onClick={doClone}
+                    >
+                      {cloning ? '…' : 'Αντιγραφή'}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })()}
