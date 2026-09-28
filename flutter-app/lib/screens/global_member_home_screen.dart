@@ -267,13 +267,16 @@ class _HomeTab extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(_dateStr,
-                              style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
-                            Text('$_greeting, $firstName 👋',
-                              style: GoogleFonts.manrope(
-                                fontSize: 24, fontWeight: FontWeight.w700,
-                                color: Colors.white, letterSpacing: -0.6)),
+                          Row(children: [
+                            SvgPicture.asset(
+                              'assets/icons/discovery_logo_bolt.svg',
+                              width: 32, height: 32,
+                            ),
+                            const SizedBox(width: 8),
+                            Text('OmniPlex',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 20, fontWeight: FontWeight.w700,
+                                color: Colors.white, letterSpacing: -0.5)),
                           ]),
                           Row(children: [
                             const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
