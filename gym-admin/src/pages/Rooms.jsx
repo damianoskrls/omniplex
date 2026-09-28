@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, Edit2, Check, X, GripVertical, ImagePlus } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, GripVertical, ImagePlus, MapPin } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
 
 export default function Rooms() {
@@ -95,19 +95,42 @@ export default function Rooms() {
     load();
   };
 
+  const activeLocation = locations.find(l => String(l.id) === String(activeLocationId));
+
   return (
     <Layout title="Αίθουσες">
       <div className="page-header">
-        <h1 className="page-title">Αίθουσες γυμναστηρίου</h1>
-        <p className="text-muted">Ορίστε αίθουσες ανά τοποθεσία με φωτογραφία και πληροφορίες για τους πελάτες.</p>
-        {locations.length > 1 && (
-          <div style={{ marginTop: 12 }}>
-            <select className="form-select" style={{ width: 240 }} value={activeLocationId} onChange={(e) => setActiveLocationId(e.target.value)}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <h1 className="page-title">Αίθουσες γυμναστηρίου</h1>
+            <p className="text-muted">Ορίστε αίθουσες ανά τοποθεσία με φωτογραφία και πληροφορίες για τους πελάτες.</p>
+          </div>
+          {locations.length > 1 ? (
+            <select
+              className="form-select"
+              style={{ minWidth: 180, flexShrink: 0 }}
+              value={activeLocationId}
+              onChange={(e) => setActiveLocationId(e.target.value)}
+            >
               {locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
             </select>
-          </div>
-        )}
+          ) : activeLocation ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#f1f5f9', borderRadius: 8, fontSize: 13, color: '#475569', flexShrink: 0 }}>
+              <MapPin size={13} style={{ color: '#7C5CFC' }} />
+              {activeLocation.name}
+            </div>
+          ) : null}
+        </div>
       </div>
+
+      {/* Location context banner */}
+      {activeLocation && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#f8f5ff', border: '1px solid #e9d5ff', borderRadius: 10, marginBottom: 20, fontSize: 13 }}>
+          <MapPin size={14} style={{ color: '#7C5CFC', flexShrink: 0 }} />
+          <span style={{ color: '#6D28D9', fontWeight: 600 }}>{activeLocation.name}</span>
+          <span style={{ color: '#7c3aed' }}>— οι αλλαγές παρακάτω αφορούν αυτή την τοποθεσία</span>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
         <div className="card">
@@ -140,8 +163,13 @@ export default function Rooms() {
         </div>
 
         <div className="card">
-          <div className="modal-title" style={{ marginBottom: 16 }}>
-            Αίθουσες ({rooms.length})
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div className="modal-title">Αίθουσες ({rooms.length})</div>
+            {activeLocation && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#7C5CFC', fontWeight: 500 }}>
+                <MapPin size={11} /> {activeLocation.name}
+              </div>
+            )}
           </div>
           {rooms.length === 0 ? (
             <div className="text-muted">Δεν έχεις ορίσει αίθουσες ακόμα.</div>
