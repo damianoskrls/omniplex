@@ -50,4 +50,6 @@ flutter:
   assets:
     - assets/tenant_config.json
     - assets/logo.png
+    - assets/omniplex_logo.png
+    - assets/omniplex_logo.svg
     - assets/icons/

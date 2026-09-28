@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
 import 'login_screen.dart';
@@ -119,18 +120,7 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
       children: [
         Row(
           children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: kLime,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.fitness_center, color: kBg, size: 18),
-            ),
-            const SizedBox(width: 8),
-            Text('OmniPlex', style: GoogleFonts.spaceGrotesk(
-              fontSize: 18, fontWeight: FontWeight.w700,
-              color: Colors.white, letterSpacing: -0.45)),
+            SvgPicture.asset('assets/omniplex_logo.svg', height: 30),
           ],
         ),
         GestureDetector(

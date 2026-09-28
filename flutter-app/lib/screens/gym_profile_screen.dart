@@ -122,9 +122,8 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     }
     final bizId = _gym?['business_id'] as String?;
     if (bizId == null) return;
-    // Use stored preferred role if set; otherwise show picker
-    final storedRole = widget.globalAuth!.preferredRole;
-    final role = storedRole ?? await _showRolePicker();
+    // Always ask - user might want member or trainer for this specific gym
+    final role = await _showRolePicker();
     if (role == null || !mounted) return;
     final formData = await _showJoinForm(role);
     if (formData == null || !mounted) return;

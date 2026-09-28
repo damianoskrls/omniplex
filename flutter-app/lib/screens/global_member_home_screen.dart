@@ -1,8 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../config/tenant_config.dart';
@@ -267,17 +271,7 @@ class _HomeTab extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(children: [
-                            SvgPicture.asset(
-                              'assets/icons/discovery_logo_bolt.svg',
-                              width: 32, height: 32,
-                            ),
-                            const SizedBox(width: 8),
-                            Text('OmniPlex',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 20, fontWeight: FontWeight.w700,
-                                color: Colors.white, letterSpacing: -0.5)),
-                          ]),
+                          SvgPicture.asset('assets/omniplex_logo.svg', height: 32),
                           Row(children: [
                             const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
                             const SizedBox(width: 14),
@@ -334,7 +328,27 @@ class _HomeTab extends StatelessWidget {
                             iconColor: _kLime,
                             iconBg: const Color(0xFF1A2A0A),
                             label: 'Κράτηση\nΜαθήματος',
-                            onTap: () => onTabChange(2),
+                            onTap: () {
+                              final gyms = globalAuth.gyms;
+                              if (gyms.isEmpty) {
+                                onTabChange(1);
+                              } else if (gyms.length == 1) {
+                                onEnterGym(gyms.first);
+                              } else {
+                                showModalBottomSheet<void>(
+                                  context: context,
+                                  backgroundColor: _kCard,
+                                  shape: const RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                  ),
+                                  builder: (_) => _GymPickerSheet(
+                                    gyms: gyms,
+                                    onSelect: onEnterGym,
+                                    parseColor: parseColor,
+                                  ),
+                                );
+                              }
+                            },
                           ),
                           _QuickAction(
                             icon: Icons.explore_outlined,
@@ -989,12 +1003,27 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                       itemCount: bookings.length,
-                      itemBuilder: (_, i) => _ScheduleBookingCard(booking: bookings[i]),
+                      itemBuilder: (_, i) => _ScheduleBookingCard(
+                        booking: bookings[i],
+                        onTap: () => _showBookingDetail(context, bookings[i]),
+                      ),
                     ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showBookingDetail(BuildContext context, Map<String, dynamic> booking) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _kCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _BookingDetailSheet(booking: booking),
     );
   }
 }
@@ -1020,8 +1049,9 @@ class _NavBtn extends StatelessWidget {
 }
 
 class _ScheduleBookingCard extends StatelessWidget {
-  const _ScheduleBookingCard({required this.booking});
+  const _ScheduleBookingCard({required this.booking, this.onTap});
   final Map<String, dynamic> booking;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1032,7 +1062,9 @@ class _ScheduleBookingCard extends StatelessWidget {
     final status  = booking['status'] as String? ?? 'confirmed';
     final isCancel = status == 'cancelled';
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: _kCard,
@@ -1071,15 +1103,242 @@ class _ScheduleBookingCard extends StatelessWidget {
         ])),
         if (isCancel)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
             decoration: BoxDecoration(
               color: _kBorder, borderRadius: BorderRadius.circular(8)),
             child: Text('Ακυρώθηκε',
               style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w600, color: _kGray)),
-          ),
+          )
+        else if (onTap != null)
+          const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
       ]),
+    ),
     );
   }
+}
+
+class _BookingDetailSheet extends StatelessWidget {
+  const _BookingDetailSheet({required this.booking});
+  final Map<String, dynamic> booking;
+
+  String _fmt(String? date, String? time) {
+    if (date == null) return '';
+    final parts = date.split('-');
+    if (parts.length < 3) return date;
+    const months = ['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+    final m = int.tryParse(parts[1]) ?? 1;
+    final t = (time ?? '').length >= 5 ? time!.substring(0, 5) : (time ?? '');
+    return '${parts[2]} ${months[m - 1]} ${parts[0]}${t.isNotEmpty ? ', $t' : ''}';
+  }
+
+  Future<void> _syncGoogle(Map<String, dynamic> b) async {
+    final date = (b['booking_date'] as String? ?? '').replaceAll('-', '');
+    final time = ((b['booking_time'] as String? ?? '00:00:00')).replaceAll(':', '').substring(0, 6);
+    final mins = (b['duration_mins'] as int?) ?? 60;
+    final endDt = DateTime.tryParse(
+      '${b['booking_date']}T${b['booking_time'] ?? '00:00:00'}');
+    String endTime = time;
+    if (endDt != null) {
+      final e = endDt.add(Duration(minutes: mins));
+      endTime = '${e.hour.toString().padLeft(2,'0')}${e.minute.toString().padLeft(2,'0')}00';
+    }
+    final title = Uri.encodeComponent(
+      '${b['service_name'] ?? ''} - ${b['app_name'] ?? b['business_name'] ?? ''}');
+    final details = Uri.encodeComponent(b['staff_name'] != null ? 'Εκπαιδευτής: ${b['staff_name']}' : '');
+    final start = '${date}T$time';
+    final end = '${date}T$endTime';
+    final url = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=$title&dates=$start/$end&details=$details';
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _syncIcs(Map<String, dynamic> b) async {
+    final date = (b['booking_date'] as String? ?? '').replaceAll('-', '');
+    final time = ((b['booking_time'] as String? ?? '00:00:00')).replaceAll(':', '').substring(0, 6);
+    final mins = (b['duration_mins'] as int?) ?? 60;
+    final endDt = DateTime.tryParse(
+      '${b['booking_date']}T${b['booking_time'] ?? '00:00:00'}');
+    String endDate = date;
+    String endTime = time;
+    if (endDt != null) {
+      final e = endDt.add(Duration(minutes: mins));
+      endDate = '${e.year}${e.month.toString().padLeft(2,'0')}${e.day.toString().padLeft(2,'0')}';
+      endTime = '${e.hour.toString().padLeft(2,'0')}${e.minute.toString().padLeft(2,'0')}00';
+    }
+    final summary = '${b['service_name'] ?? ''} - ${b['app_name'] ?? b['business_name'] ?? ''}';
+    final desc = b['staff_name'] != null ? 'Εκπαιδευτής: ${b['staff_name']}' : '';
+    final ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//OmniPlex//EN\nBEGIN:VEVENT\n'
+        'DTSTART:${date}T${time}00\nDTEND:${endDate}T${endTime}00\n'
+        'SUMMARY:$summary\nDESCRIPTION:$desc\nEND:VEVENT\nEND:VCALENDAR';
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/booking.ics');
+    await file.writeAsString(ics);
+    await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'text/calendar')],
+      text: summary,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final service = booking['service_name'] as String? ?? '';
+    final gym = booking['app_name'] as String? ?? booking['business_name'] as String? ?? '';
+    final staff = booking['staff_name'] as String?;
+    final date = booking['booking_date'] as String?;
+    final time = (booking['booking_time'] as String? ?? '').length >= 5
+        ? (booking['booking_time'] as String).substring(0, 5)
+        : '';
+    final duration = booking['duration_mins'] as int?;
+    final status = booking['status'] as String? ?? 'confirmed';
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20,
+          MediaQuery.of(context).viewInsets.bottom + 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(width: 36, height: 4,
+              decoration: BoxDecoration(color: _kBorder, borderRadius: BorderRadius.circular(2))),
+          ),
+          const SizedBox(height: 20),
+          Text(service,
+            style: GoogleFonts.manrope(
+              fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+          const SizedBox(height: 6),
+          Text(gym,
+            style: GoogleFonts.manrope(fontSize: 14, color: _kLime, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 20),
+          _DetailRow(Icons.calendar_today_outlined, _fmt(date, time)),
+          if (duration != null) _DetailRow(Icons.timer_outlined, '$duration λεπτά'),
+          if (staff != null) _DetailRow(Icons.person_outline_rounded, staff),
+          _DetailRow(
+            status == 'confirmed' ? Icons.check_circle_outline : Icons.schedule_outlined,
+            status == 'confirmed' ? 'Επιβεβαιωμένη' : 'Σε αναμονή',
+          ),
+          const SizedBox(height: 24),
+          Text('Sync με ημερολόγιο',
+            style: GoogleFonts.manrope(
+              fontSize: 13, fontWeight: FontWeight.w700, color: _kGray)),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(
+              child: _CalBtn(
+                icon: Icons.calendar_month,
+                label: 'Google Calendar',
+                onTap: () => _syncGoogle(booking),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _CalBtn(
+                icon: Icons.apple,
+                label: 'iPhone Calendar',
+                onTap: () => _syncIcs(booking),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow(this.icon, this.text);
+  final IconData icon;
+  final String text;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(children: [
+      Icon(icon, size: 16, color: _kGray),
+      const SizedBox(width: 10),
+      Text(text, style: GoogleFonts.manrope(fontSize: 14, color: Colors.white)),
+    ]),
+  );
+}
+
+class _CalBtn extends StatelessWidget {
+  const _CalBtn({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: _kBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon, size: 16, color: Colors.white),
+        const SizedBox(width: 6),
+        Text(label, style: GoogleFonts.manrope(
+          fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+      ]),
+    ),
+  );
+}
+
+class _GymPickerSheet extends StatelessWidget {
+  const _GymPickerSheet({required this.gyms, required this.onSelect, required this.parseColor});
+  final List<GlobalGym> gyms;
+  final Future<void> Function(GlobalGym) onSelect;
+  final Color Function(String?) parseColor;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(child: Container(width: 36, height: 4,
+          decoration: BoxDecoration(color: _kBorder, borderRadius: BorderRadius.circular(2)))),
+        const SizedBox(height: 16),
+        Text('Σε ποιο γυμναστήριο;',
+          style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+        const SizedBox(height: 14),
+        ...gyms.map((gym) => GestureDetector(
+          onTap: () {
+            Navigator.pop(context);
+            onSelect(gym);
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _kBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _kBorder),
+            ),
+            child: Row(children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: parseColor(gym.primaryColor).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(child: Text(
+                  gym.appName.isNotEmpty ? gym.appName[0].toUpperCase() : 'G',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
+                    color: parseColor(gym.primaryColor)))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text(gym.appName,
+                style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white))),
+              const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
+            ]),
+          ),
+        )),
+      ],
+    ),
+  );
 }
 
 class _NoBookingsDay extends StatelessWidget {

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
@@ -175,8 +176,7 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                 ),
               ),
               const Spacer(),
-              Text('OmniPlex', style: GoogleFonts.manrope(
-                fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              SvgPicture.asset('assets/omniplex_logo.svg', height: 24),
               const Spacer(),
               const SizedBox(width: 40),
             ]),

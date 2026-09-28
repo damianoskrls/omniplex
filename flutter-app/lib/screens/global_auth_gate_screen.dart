@@ -73,25 +73,7 @@ class GlobalAuthGateScreen extends StatelessWidget {
                   const SizedBox(height: 28),
 
                   // Logo row
-                  Row(children: [
-                    Container(
-                      width: 38, height: 38,
-                      decoration: BoxDecoration(
-                        color: _kLime,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: SvgPicture.asset(
-                        'assets/icons/discovery_logo_bolt.svg',
-                        width: 14, height: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Text('OmniPlex',
-                      style: GoogleFonts.manrope(
-                        fontSize: 18, fontWeight: FontWeight.w700,
-                        color: Colors.white, letterSpacing: -0.4)),
-                  ]),
+                  SvgPicture.asset('assets/omniplex_logo.svg', height: 40),
 
                   const Spacer(flex: 3),
 
