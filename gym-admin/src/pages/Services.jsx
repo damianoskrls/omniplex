@@ -122,10 +122,10 @@ export default function Services() {
     try {
       const fd = new FormData();
       fd.append('image', file);
-      const r = await api.post('/client-admin/class-schedules/parse-image', fd, {
+      const r = await api.post('/client-admin/services/parse-schedule-image', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setAiPreview(r.data.entries || []);
+      setAiPreview(r.data.services || []);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα ανάλυσης εικόνας');
     } finally {
@@ -136,23 +136,39 @@ export default function Services() {
   const importAiEntries = async () => {
     if (!aiPreview?.length) return;
     setAiImporting(true);
-    let ok = 0;
-    for (const entry of aiPreview) {
+    let createdServices = 0;
+    let createdSlots = 0;
+    for (const svc of aiPreview) {
       try {
-        await api.post('/client-admin/class-schedules', {
-          day_of_week: entry.day_of_week,
-          start_time: entry.start_time,
-          class_name: entry.class_name,
-          trainer_name: entry.trainer_name || null,
-          color: entry.color || '#C52473',
-          max_capacity: entry.max_capacity || null,
+        const r = await api.post('/client-admin/services', {
+          name: svc.name,
+          category: svc.category || 'Classes',
+          duration_mins: svc.duration_mins || 60,
+          hide_staff_selection: true,
+          slot_label_mode: 'class',
+          requires_attendance_confirmation: true,
+          requires_qr_scan: true,
+          is_open_access: false,
         });
-        ok++;
+        createdServices++;
+        const serviceId = r.data.id;
+        for (const slot of (svc.slots || [])) {
+          try {
+            await api.post(`/client-admin/services/${serviceId}/slot-schedules`, {
+              weekday: slot.weekday,
+              start_time: slot.start_time,
+              label: svc.name,
+              max_capacity: slot.max_capacity || null,
+            });
+            createdSlots++;
+          } catch {}
+        }
       } catch {}
     }
-    toast.success(`Εισήχθησαν ${ok} μαθήματα στο πρόγραμμα`);
+    toast.success(`Δημιουργήθηκαν ${createdServices} υπηρεσίες με ${createdSlots} slots`);
     setAiPreview(null);
     setAiImporting(false);
+    load();
   };
 
   const load = async () => {
@@ -311,14 +327,14 @@ export default function Services() {
 
       {aiPreview && (
         <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid #a855f7' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Sparkles size={16} style={{ color: '#a855f7' }} />
-                AI βρήκε {aiPreview.length} μαθήματα — έλεγξε και εισήγαγε
+                AI βρήκε {aiPreview.length} υπηρεσίες — έλεγξε και δημιούργησε
               </div>
               <div className="text-muted" style={{ fontSize: '0.82rem', marginTop: 2 }}>
-                Θα εισαχθούν ως εβδομαδιαίο πρόγραμμα στο Discovery Profile.
+                Θα δημιουργηθούν ως υπηρεσίες με τα αντίστοιχα ωράρια τους.
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -326,23 +342,26 @@ export default function Services() {
                 <X size={13} /> Ακύρωση
               </button>
               <button className="btn btn-primary btn-sm" onClick={importAiEntries} disabled={aiImporting}>
-                <Check size={13} /> {aiImporting ? 'Εισαγωγή…' : 'Εισαγωγή όλων'}
+                <Check size={13} /> {aiImporting ? 'Δημιουργία…' : `Δημιουργία ${aiPreview.length} υπηρεσιών`}
               </button>
             </div>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {aiPreview.map((e, i) => (
-              <div key={i} style={{
-                padding: '5px 10px', borderRadius: 8,
-                background: e.color ? `${e.color}18` : '#f5f3ff',
-                border: `1px solid ${e.color ? `${e.color}55` : '#e9d5ff'}`,
-                fontSize: '0.82rem', color: '#374151',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <span style={{ fontWeight: 700, color: e.color || '#a855f7' }}>{WEEKDAY_NAMES[(e.day_of_week || 1) - 1]}</span>
-                <span style={{ color: '#64748b' }}>{e.start_time}</span>
-                <span>{e.class_name}</span>
-                {e.trainer_name && <span style={{ color: '#94a3b8' }}>· {e.trainer_name}</span>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {aiPreview.map((svc, i) => (
+              <div key={i} style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: '#6d28d9', fontSize: '0.95rem' }}>{svc.name}</span>
+                  {svc.category && <span style={{ fontSize: '0.78rem', color: '#94a3b8', background: '#f3e8ff', padding: '1px 8px', borderRadius: 10 }}>{svc.category}</span>}
+                  {svc.duration_mins && <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{svc.duration_mins} λεπτά</span>}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {(svc.slots || []).map((slot, j) => (
+                    <span key={j} style={{ fontSize: '0.78rem', padding: '2px 8px', borderRadius: 6, background: '#ede9fe', color: '#5b21b6' }}>
+                      {WEEKDAY_NAMES[slot.weekday]} {slot.start_time}
+                      {slot.max_capacity ? ` · max ${slot.max_capacity}` : ''}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

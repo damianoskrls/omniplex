@@ -4094,6 +4094,47 @@ router.get('/services', requireClientAdmin, async (req, res) => {
   return res.json(rows);
 });
 
+// POST /services/parse-schedule-image — AI groups schedule image into services + slots
+router.post('/services/parse-schedule-image', requireClientAdmin, multerMemory.single('image'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const b64 = req.file.buffer.toString('base64');
+    const mediaType = req.file.mimetype || 'image/jpeg';
+
+    const message = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+          { type: 'text', text: `Look at this gym weekly schedule image. Extract each unique class/activity as a separate service and list all its time slots.
+
+Return ONLY a JSON array. Each item is one service with its weekly slots:
+- name: string (the class name in the original language, e.g. "CrossFit", "Pilates", "Yoga")
+- category: string (e.g. "Classes", "Training", "Wellness" — infer from context)
+- duration_mins: number (duration in minutes if visible, else 60)
+- slots: array of { weekday: 0-6 (0=Monday), start_time: "HH:MM", max_capacity: number|null }
+
+Group ALL occurrences of the same class into one service entry with multiple slots.
+Return ONLY the JSON array, no explanation.
+Example: [{"name":"CrossFit","category":"Classes","duration_mins":60,"slots":[{"weekday":0,"start_time":"09:00","max_capacity":15},{"weekday":2,"start_time":"09:00","max_capacity":15}]}]` },
+        ],
+      }],
+    });
+
+    const raw = message.content[0].text.trim();
+    const jsonMatch = raw.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return res.status(422).json({ error: 'Could not parse schedule from image' });
+    const services = JSON.parse(jsonMatch[0]);
+    return res.json({ services });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/services', requireClientAdmin, async (req, res) => {
   const {
     name, description, duration_mins, price_cents, category,
