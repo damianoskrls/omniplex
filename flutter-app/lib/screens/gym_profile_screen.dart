@@ -782,18 +782,107 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         if (services.isNotEmpty) ...[
           _sectionTitle('Υπηρεσίες'),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: services.map((s) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: _kCard,
-                borderRadius: BorderRadius.circular(9999),
-                border: Border.all(color: _kBorder),
-              ),
-              child: Text(s['name'] as String? ?? '',
-                style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-            )).toList(),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: services.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (_, i) {
+              final s = services[i];
+              final imageUrl = s['image_url'] as String?;
+              final description = s['description'] as String?;
+              return GestureDetector(
+                onTap: (description != null && description.isNotEmpty)
+                    ? () => showModalBottomSheet(
+                          context: context,
+                          backgroundColor: _kCard,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (_) => Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Center(
+                                  child: Container(
+                                    width: 36, height: 4,
+                                    decoration: BoxDecoration(
+                                      color: _kBorder,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(s['name'] as String? ?? '',
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
+                                const SizedBox(height: 10),
+                                Text(description,
+                                  style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.6)),
+                              ],
+                            ),
+                          ),
+                        )
+                    : null,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _kCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _kBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      if (imageUrl != null && imageUrl.isNotEmpty)
+                        ClipRRect(
+                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(13)),
+                          child: Image.network(
+                            imageUrl,
+                            width: 68, height: 68,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 68, height: 68, color: _kBorder,
+                              child: const Icon(Icons.fitness_center, color: Colors.white38, size: 24)),
+                          ),
+                        )
+                      else
+                        Container(
+                          width: 68, height: 68,
+                          decoration: BoxDecoration(
+                            color: _kBorder,
+                            borderRadius: const BorderRadius.horizontal(left: Radius.circular(13)),
+                          ),
+                          child: const Icon(Icons.fitness_center, color: Colors.white38, size: 24),
+                        ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s['name'] as String? ?? '',
+                              style: GoogleFonts.manrope(
+                                fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                            if (description != null && description.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.manrope(fontSize: 12, color: _kGray, height: 1.4)),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (description != null && description.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Icon(Icons.chevron_right, color: _kGray, size: 18),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 28),
         ],

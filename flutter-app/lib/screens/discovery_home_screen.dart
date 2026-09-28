@@ -12,7 +12,7 @@ class DiscoveryHomeScreen extends StatefulWidget {
 
 class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
   int _selectedFilter = 0;
-  final _filters = ['CrossFit', 'Yoga', 'Pilates', 'Strength'];
+  final _filters = ['Όλα', 'CrossFit', 'Yoga', 'Pilates', 'Strength'];
 
   final _gyms = [
     _GymData(
@@ -94,7 +94,13 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
                   const SizedBox(height: 36),
                   _buildSectionHeader(),
                   const SizedBox(height: 16),
-                  ..._gyms.map((g) => Padding(
+                  ...(_selectedFilter == 0
+                      ? _gyms
+                      : _gyms.where((g) => g.categories
+                          .toLowerCase()
+                          .contains(_filters[_selectedFilter].toLowerCase()))
+                          .toList()
+                  ).map((g) => Padding(
                     padding: const EdgeInsets.only(bottom: 20),
                     child: _GymCard(data: g),
                   )),

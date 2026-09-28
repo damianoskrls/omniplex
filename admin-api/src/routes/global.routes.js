@@ -394,7 +394,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
 
     const biz = rows[0];
     const [services] = await db.query(
-      `SELECT id, name, duration_mins, category, description, drop_in_price_cents
+      `SELECT id, name, duration_mins, category, description, image_url, drop_in_price_cents
        FROM services WHERE business_id = ? AND is_active = 1 ORDER BY name ASC`,
       [biz.id],
     );
@@ -425,6 +425,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       [biz.id],
     );
 
+    const coverPhoto = photos.find(p => p.is_cover) || photos[0] || null;
     return res.json({
       business_id:       biz.id,
       slug:              biz.slug,
@@ -438,6 +439,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       primary_color:     biz.primary_color || '#B8F55E',
       secondary_color:   biz.secondary_color || null,
       logo_url:          biz.logo_url || null,
+      cover_url:         coverPhoto?.url || null,
       online_payments:   !!biz.feature_online_payments,
       accepts_drop_in:       !!biz.accepts_drop_in,
       drop_in_price_cents:   biz.drop_in_price_cents || 0,
@@ -1190,13 +1192,19 @@ router.post('/auth/send-otp', async (req, res) => {
       [id, digits, code],
     );
 
-    await sendBrevoSms(phone, `Ο κωδικός επαλήθευσής σου για το OmniPlex είναι ${code}. Ισχύει για 10 λεπτά.`);
+    let smsSent = false;
+    try {
+      await sendBrevoSms(phone, `Ο κωδικός επαλήθευσής σου για το OmniPlex είναι ${code}. Ισχύει για 10 λεπτά.`);
+      smsSent = true;
+    } catch (smsErr) {
+      console.error('send-otp SMS error (non-fatal):', smsErr.message);
+    }
 
-    return res.json({ ok: true });
+    return res.json({ ok: true, sms_sent: smsSent });
   } catch (err) {
     console.error('send-otp error:', err.message);
     return res.status(500).json({
-      error: 'Αποτυχία αποστολής SMS. Δοκίμασε ξανά.',
+      error: 'Αποτυχία. Δοκίμασε ξανά.',
       debug: err.message,
     });
   }
