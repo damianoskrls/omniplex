@@ -14,7 +14,9 @@ export default function Rooms() {
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState(null);
+  const [showAllTabs, setShowAllTabs] = useState(false);
   const fileRefs = useRef({});
+  const TAB_LIMIT = 5;
 
   const load = async () => {
     const locRes = await api.get('/client-admin/locations');
@@ -110,8 +112,8 @@ export default function Rooms() {
 
       {/* Location tabs */}
       {locations.length > 0 && (
-        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0', paddingBottom: 0 }}>
-          {locations.map(loc => {
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0', paddingBottom: 0, flexWrap: 'nowrap', overflowX: 'visible' }}>
+          {(showAllTabs ? locations : locations.slice(0, TAB_LIMIT)).map(loc => {
             const isActive = String(loc.id) === String(activeLocationId);
             return (
               <button
@@ -119,7 +121,7 @@ export default function Rooms() {
                 onClick={() => setActiveLocationId(loc.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '8px 16px',
+                  padding: '8px 16px', whiteSpace: 'nowrap',
                   border: 'none', background: 'none', cursor: 'pointer',
                   fontSize: 14, fontWeight: isActive ? 700 : 500,
                   color: isActive ? '#7C5CFC' : '#64748b',
@@ -133,6 +135,36 @@ export default function Rooms() {
               </button>
             );
           })}
+          {locations.length > TAB_LIMIT && !showAllTabs && (
+            <button
+              onClick={() => setShowAllTabs(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '6px 12px', marginBottom: -2,
+                border: '1px solid #e2e8f0', borderRadius: 20,
+                background: '#f8fafc', cursor: 'pointer',
+                fontSize: 13, fontWeight: 600, color: '#475569',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              +{locations.length - TAB_LIMIT} ακόμα
+            </button>
+          )}
+          {showAllTabs && locations.length > TAB_LIMIT && (
+            <button
+              onClick={() => setShowAllTabs(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '6px 12px', marginBottom: -2,
+                border: '1px solid #e2e8f0', borderRadius: 20,
+                background: '#f8fafc', cursor: 'pointer',
+                fontSize: 13, fontWeight: 600, color: '#475569',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Λιγότερα ↑
+            </button>
+          )}
         </div>
       )}
 
