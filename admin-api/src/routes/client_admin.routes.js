@@ -6934,7 +6934,7 @@ const gymPhotoUpload = r2Multer({
 router.post('/gym-photos/upload', requireClientAdmin, (req, res, next) => {
   gymPhotoUpload.single('photo')(req, res, next);
 }, async (req, res) => {
-  if (!req.file?.location) return res.status(400).json({ error: 'Upload failed' });
+  if (!req.file?.publicUrl) return res.status(400).json({ error: 'Upload failed' });
   try {
     const id = uuidv4();
     const [[{ maxOrder }]] = await db.query(
@@ -6943,9 +6943,9 @@ router.post('/gym-photos/upload', requireClientAdmin, (req, res, next) => {
     );
     await db.query(
       'INSERT INTO gym_photos (id, business_id, url, display_order) VALUES (?, ?, ?, ?)',
-      [id, req.admin.businessId, req.file.location, maxOrder + 1],
+      [id, req.admin.businessId, req.file.publicUrl, maxOrder + 1],
     );
-    return res.json({ id, url: req.file.location });
+    return res.json({ id, url: req.file.publicUrl });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -7031,8 +7031,8 @@ const trainerPhotoUpload = r2Multer({
 router.post('/gym-trainers/upload-photo', requireClientAdmin, (req, res, next) => {
   trainerPhotoUpload.single('photo')(req, res, next);
 }, async (req, res) => {
-  if (!req.file?.location) return res.status(400).json({ error: 'Upload failed' });
-  return res.json({ url: req.file.location });
+  if (!req.file?.publicUrl) return res.status(400).json({ error: 'Upload failed' });
+  return res.json({ url: req.file.publicUrl });
 });
 
 // ============================================================
