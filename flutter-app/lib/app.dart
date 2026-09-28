@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/tenant_config.dart';
 import 'models/booking.dart';
-import 'screens/omni_member_shell_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/discovery_landing_screen.dart';
 import 'screens/global_auth_gate_screen.dart';
 import 'screens/global_member_home_screen.dart';
@@ -20,16 +19,19 @@ import 'screens/staff_home_screen.dart';
 import 'screens/admin_shell_screen.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
-import 'widgets/splash_screen.dart';
+import 'widgets/splash_screen.dart' show SplashScreen, GymSplashScreen;
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 class BookUpApp extends StatefulWidget {
-  const BookUpApp({super.key, required this.config, required this.auth, this.globalAuth});
+  const BookUpApp({super.key, required this.config, required this.auth, this.globalAuth, this.onEnterGym, this.onSwitchGym, this.onRemoveGym});
 
   final TenantConfig config;
   final AuthService auth;
   final GlobalAuthService? globalAuth;
+  final void Function(TenantConfig)? onEnterGym;
+  final VoidCallback? onSwitchGym;
+  final Future<void> Function()? onRemoveGym;
 
   @override
   State<BookUpApp> createState() => _BookUpAppState();
@@ -126,10 +128,10 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
       } catch (_) {}
     } else if (action == 'notif') {
       nav.popUntil((route) => route.isFirst);
-      OmniMemberShellScreen.openNotifications();
+      HomeScreen.openNotifications();
     } else if (action == 'messages') {
       nav.popUntil((route) => route.isFirst);
-      OmniMemberShellScreen.openMessages(threadId: parts.length > 1 && parts[1] != 'open' ? parts[1] : null);
+      HomeScreen.openMessages(threadId: parts.length > 1 && parts[1] != 'open' ? parts[1] : null);
     } else if (action == 'community') {
       nav.popUntil((route) => route.isFirst);
     } else if (action == 'order') {
@@ -137,7 +139,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
       nav.push(MaterialPageRoute(builder: (_) => const MyOrdersScreen()));
     } else if (action == 'prep' || action == 'open') {
       nav.popUntil((route) => route.isFirst);
-      OmniMemberShellScreen.selectTab(1);
+      HomeScreen.selectTab(1);
     }
   }
 
@@ -195,11 +197,14 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                   }
                   if (auth.isLoggedIn) {
                     if (_gymSplashActive) {
-                      return const SplashScreen();
+                      return const GymSplashScreen();
                     }
                     if (auth.user!.isAdmin) return const AdminShellScreen();
                     if (auth.user!.isStaff) return const StaffHomeScreen();
-                    return const OmniMemberShellScreen();
+                    return HomeScreen(
+                      onSwitchGym: widget.onSwitchGym,
+                      onRemoveGym: widget.onRemoveGym,
+                    );
                   }
                   // Not logged in to tenant — check global auth
                   final gAuth = widget.globalAuth ?? GlobalAuthService();
@@ -207,14 +212,8 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                     return GlobalMemberHomeScreen(
                       globalAuth: gAuth,
                       onEnterGym: (config) {
-                        // Reload app with the selected gym's TenantConfig
-                        // by triggering auth reload via the main.dart flow.
-                        // For now, push the PIN login screen to complete gym auth.
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => LoginScreen(
-                            globalAuth: widget.globalAuth,
-                          )),
-                        );
+                        // Re-bootstrap with the newly selected gym config
+                        widget.onEnterGym?.call(config);
                       },
                       onLogout: () {
                         gAuth.clear();

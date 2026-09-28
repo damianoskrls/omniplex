@@ -26,9 +26,11 @@ import '../widgets/qr_checkin_sheet.dart';
 import 'ai_agent_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.initialTab = 0});
+  const HomeScreen({super.key, this.initialTab = 0, this.onSwitchGym, this.onRemoveGym});
 
   final int initialTab;
+  final VoidCallback? onSwitchGym;
+  final Future<void> Function()? onRemoveGym;
 
   static void selectTab(int index) => _HomeScreenState.selectTab(index);
 
@@ -82,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return index;
   }
 
-  static const _maxNavItems = 4;
+  static const _maxNavItems = 5;
 
   List<_TabItem> get _tabItems {
     final config = context.read<TenantConfig>();
@@ -281,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       MaterialPageRoute(
         builder: (_) => Scaffold(
           appBar: AppBar(title: Text(AppStrings.of(context).profile)),
-          body: const ProfileScreen(),
+          body: ProfileScreen(onRemoveGym: widget.onRemoveGym),
         ),
       ),
     );
@@ -320,6 +322,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               onCheckinTap: _openCheckin,
               onMessagesTap: _showMessages,
               onNotificationsTap: _showNotifications,
+              onSwitchGym: widget.onSwitchGym,
               notificationCount: _unreadCount,
               messageCount: _messageUnreadCount,
             ),

@@ -14,6 +14,7 @@ class GreetingHeader extends StatelessWidget {
     this.onMessagesTap,
     this.onCheckinTap,
     this.onLogoTap,
+    this.onSwitchGym,
     this.notificationCount = 0,
     this.messageCount = 0,
   });
@@ -27,6 +28,7 @@ class GreetingHeader extends StatelessWidget {
   final VoidCallback? onMessagesTap;
   final VoidCallback? onCheckinTap;
   final VoidCallback? onLogoTap;
+  final VoidCallback? onSwitchGym;
   final int notificationCount;
   final int messageCount;
 
@@ -41,6 +43,32 @@ class GreetingHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Omniplex back chip (only when coming from Omniplex)
+          if (onSwitchGym != null)
+            GestureDetector(
+              onTap: onSwitchGym,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.apps_rounded, color: AppColors.lime, size: 13),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Omniplex',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.lime,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Icon(Icons.chevron_right_rounded, color: AppColors.lime, size: 14),
+                  ],
+                ),
+              ),
+            ),
           // Row 1: gym logo (left) + action icons + avatar (right)
           Row(
             children: [

@@ -66,6 +66,8 @@ class AuthService extends ChangeNotifier {
     final biometricEnabled = await bio.isBiometricEnabled(_bizId);
     final token            = await bio.readToken(_bizId);
 
+    debugPrint('[AuthInit] bizId=$_bizId token=${token != null ? 'found(${token.length}chars)' : 'NULL'}');
+
     if (token != null) {
       api.token = token;
       if (biometricEnabled) {
@@ -73,7 +75,9 @@ class AuthService extends ChangeNotifier {
       } else {
         try {
           _user = await _fetchMe(token);
+          debugPrint('[AuthInit] fetchMe succeeded, user=${_user?.id}');
         } on ApiException catch (e) {
+          debugPrint('[AuthInit] ApiException status=${e.statusCode} msg=${e.message}');
           if (e.statusCode == 401 || e.statusCode == 403) {
             await bio.clearToken(_bizId);
             api.token = null;
@@ -81,7 +85,8 @@ class AuthService extends ChangeNotifier {
             _reconnecting = true;
             _scheduleReconnect();
           }
-        } catch (_) {
+        } catch (e) {
+          debugPrint('[AuthInit] unexpected error: $e');
           _reconnecting = true;
           _scheduleReconnect();
         }

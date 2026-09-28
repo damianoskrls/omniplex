@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../config/tenant_config.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -495,6 +497,121 @@ class _ArcPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ArcPainter old) => old.progress != progress;
+}
+
+// ── Gym splash (shown when entering a specific gym) ───────────────────────────
+class GymSplashScreen extends StatefulWidget {
+  const GymSplashScreen({super.key, this.config});
+
+  /// If provided, used directly; otherwise reads TenantConfig from Provider.
+  final TenantConfig? config;
+
+  @override
+  State<GymSplashScreen> createState() => _GymSplashScreenState();
+}
+
+class _GymSplashScreenState extends State<GymSplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _fade  = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _scale = Tween<double>(begin: 0.88, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final config = widget.config ?? context.read<TenantConfig>();
+    Color primary;
+    try {
+      primary = Color(int.parse(config.primaryColor.replaceFirst('#', '0xFF')));
+    } catch (_) {
+      primary = const Color(0xFFC6FF3D);
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
+      body: FadeTransition(
+        opacity: _fade,
+        child: ScaleTransition(
+          scale: _scale,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 108, height: 108,
+                  decoration: BoxDecoration(
+                    color: primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: primary.withValues(alpha: 0.25), width: 1.5),
+                  ),
+                  child: config.logoUrl != null && config.logoUrl!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(28),
+                        child: Image.network(
+                          config.logoUrl!,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => _GymInitial(name: config.appName, color: primary),
+                        ),
+                      )
+                    : _GymInitial(name: config.appName, color: primary),
+                ),
+                const SizedBox(height: 28),
+                Text(
+                  config.appName,
+                  style: GoogleFonts.manrope(
+                    fontSize: 28, fontWeight: FontWeight.w700,
+                    color: Colors.white, letterSpacing: -0.5),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Καλωσήρθες',
+                  style: GoogleFonts.manrope(fontSize: 14, color: const Color(0xFF9A9CA3)),
+                ),
+                const SizedBox(height: 36),
+                SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GymInitial extends StatelessWidget {
+  const _GymInitial({required this.name, required this.color});
+  final String name;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Text(
+      name.isNotEmpty ? name[0].toUpperCase() : '?',
+      style: TextStyle(color: color, fontSize: 44, fontWeight: FontWeight.w700),
+    ),
+  );
 }
 
 // ── Tagline ───────────────────────────────────────────────────────────────────

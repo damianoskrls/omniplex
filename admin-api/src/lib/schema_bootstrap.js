@@ -631,6 +631,10 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('class_schedules skipped:', err.message);
   }
 
+  // ── services: per-service drop-in config ─────────────────────
+  await db.query(`ALTER TABLE services ADD COLUMN accepts_drop_in TINYINT(1) NOT NULL DEFAULT 0`).catch(() => {});
+  await db.query(`ALTER TABLE services ADD COLUMN drop_in_cutoff_hours INT NOT NULL DEFAULT 2`).catch(() => {});
+
   // ── staff: discovery fields ──────────────────────────────────
   await db.query(`ALTER TABLE staff ADD COLUMN show_in_discovery TINYINT(1) NOT NULL DEFAULT 1`).catch(() => {});
   await db.query(`ALTER TABLE staff ADD COLUMN discovery_specialty VARCHAR(200) NULL`).catch(() => {});

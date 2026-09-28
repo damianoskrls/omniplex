@@ -15,6 +15,7 @@ const TABS = [
   { id: 'trainers', label: 'Trainers',     icon: UserCircle },
   { id: 'schedule', label: 'Πρόγραμμα',   icon: CalendarDays },
   { id: 'packages', label: 'Πακέτα',      icon: Package },
+  { id: 'dropin',   label: 'Drop-in',      icon: Zap },
 ];
 
 const DAYS = ['', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
@@ -996,6 +997,134 @@ function PackagesSection() {
   );
 }
 
+// ── Drop-in Tab ───────────────────────────────────────────────────────────────
+
+function DropinSection() {
+  const [services, setServices] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState({});
+
+  async function load() {
+    const r = await api.get('/client-admin/services');
+    setServices(r.data.filter(s => s.is_active));
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function updateService(id, patch) {
+    setSaving(s => ({ ...s, [id]: true }));
+    await api.patch(`/client-admin/services/${id}/dropin`, patch);
+    setSaving(s => ({ ...s, [id]: false }));
+    await load();
+  }
+
+  if (loading) return <div className="text-gray-500 py-8 text-center">Φόρτωση…</div>;
+  if (!services.length) return (
+    <div className="text-gray-400 py-8 text-center">Δεν βρέθηκαν ενεργές υπηρεσίες.</div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">
+        Ρύθμιση drop-in ανά υπηρεσία — τιμή εισόδου και πόσες ώρες πριν κλείνει η εγγραφή.
+      </p>
+
+      {services.map(svc => (
+        <ServiceDropinCard
+          key={svc.id}
+          svc={svc}
+          saving={!!saving[svc.id]}
+          onUpdate={patch => updateService(svc.id, patch)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ServiceDropinCard({ svc, saving, onUpdate }) {
+  const [accepts, setAccepts]   = useState(!!svc.accepts_drop_in);
+  const [price, setPrice]       = useState(svc.drop_in_price_cents ? String(svc.drop_in_price_cents / 100) : '');
+  const [cutoff, setCutoff]     = useState(svc.drop_in_cutoff_hours != null ? String(svc.drop_in_cutoff_hours) : '2');
+  const [dirty, setDirty]       = useState(false);
+
+  function mark(fn) { fn(); setDirty(true); }
+
+  async function handleSave() {
+    await onUpdate({
+      accepts_drop_in: accepts,
+      drop_in_price_cents: price !== '' ? Math.round(parseFloat(price) * 100) : null,
+      drop_in_cutoff_hours: parseInt(cutoff, 10) || 2,
+    });
+    setDirty(false);
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+      <div className="flex items-start gap-4">
+        {svc.image_url ? (
+          <img src={svc.image_url} alt={svc.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+        ) : (
+          <div className="w-12 h-12 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+            <Zap size={20} className="text-indigo-400" />
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h3 className="font-semibold text-gray-900 dark:text-white truncate">{svc.name}</h3>
+            {/* accepts drop-in toggle */}
+            <button
+              onClick={() => mark(() => setAccepts(v => !v))}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${accepts ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${accepts ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+
+          <div className={`grid grid-cols-2 gap-3 transition-opacity ${accepts ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Τιμή drop-in (€)</label>
+              <div className="relative">
+                <Euro size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="number" min="0" step="0.01"
+                  value={price}
+                  onChange={e => mark(() => setPrice(e.target.value))}
+                  placeholder="π.χ. 10"
+                  className="w-full pl-7 pr-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Κλείσιμο (ώρες πριν)</label>
+              <input
+                type="number" min="0" step="1"
+                value={cutoff}
+                onChange={e => mark(() => setCutoff(e.target.value))}
+                placeholder="π.χ. 2"
+                className="w-full px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {dirty && (
+        <div className="mt-3 flex justify-end">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg font-medium disabled:opacity-50"
+          >
+            <Check size={14} /> {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function DiscoveryProfile() {
@@ -1032,6 +1161,7 @@ export default function DiscoveryProfile() {
           {tab === 'trainers' && <TrainersSection />}
           {tab === 'schedule' && <ScheduleSection />}
           {tab === 'packages' && <PackagesSection />}
+          {tab === 'dropin'   && <DropinSection />}
         </div>
       </div>
     </Layout>

@@ -1,10 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import TimeInput from '../components/ui/TimeInput';
-import { ArrowLeft, Plus, Trash2, X, Edit2, Check, ChevronDown, ChevronUp, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, X, Edit2, Check, ChevronDown, ChevronUp, Save, Sparkles, Upload } from 'lucide-react';
 import LocationCheckboxes from '../components/LocationCheckboxes';
 
 const WEEKDAYS = [
@@ -61,6 +61,10 @@ export default function ServiceSchedule() {
   const [locations, setLocations] = useState([]);
   const [activeLocationId, setActiveLocationId] = useState('');
   const [serviceLocationIds, setServiceLocationIds] = useState([]);
+  const [aiPreview, setAiPreview] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiImporting, setAiImporting] = useState(false);
+  const aiInputRef = useRef();
 
   const load = async (locId = activeLocationId) => {
     const locRes = await api.get('/client-admin/locations');
@@ -247,6 +251,47 @@ export default function ServiceSchedule() {
   const toggleSelect = slotId => setSelectedSlotIds(p => p.includes(slotId) ? p.filter(x => x !== slotId) : [...p, slotId]);
   const toggleSelectAll = () => setSelectedSlotIds(p => p.length === displayedSlots.length ? [] : displayedSlots.map(s => s.id));
 
+  const WEEKDAY_NAMES = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
+
+  const handleAiFile = async (file) => {
+    if (!file) return;
+    setAiLoading(true);
+    setAiPreview(null);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const r = await api.post(`/client-admin/services/${id}/slot-schedules/parse-image`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setAiPreview(r.data.entries || []);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα ανάλυσης εικόνας');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const importAiEntries = async () => {
+    if (!aiPreview?.length) return;
+    setAiImporting(true);
+    let ok = 0;
+    for (const entry of aiPreview) {
+      try {
+        await api.post(`/client-admin/services/${id}/slot-schedules`, {
+          weekday: entry.weekday,
+          start_time: entry.start_time,
+          label: entry.label || null,
+          max_capacity: entry.max_capacity || null,
+        });
+        ok++;
+      } catch {}
+    }
+    toast.success(`Εισήχθησαν ${ok} slots`);
+    setAiPreview(null);
+    setAiImporting(false);
+    load();
+  };
+
   return (
     <Layout title={`${service?.name || 'Υπηρεσία'} — Πρόγραμμα`}>
       {/* Header */}
@@ -268,11 +313,68 @@ export default function ServiceSchedule() {
             </div>
           )}
         </div>
-        <button className="btn btn-primary" onClick={() => { setShowForm(v => !v); setForm(EMPTY_FORM); }}>
-          <Plus size={15} /> Προσθήκη slots
-          {showForm ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => aiInputRef.current?.click()}
+            disabled={aiLoading}
+            title="Εισαγωγή προγράμματος μέσω AI από εικόνα"
+          >
+            <Sparkles size={15} style={{ color: '#a855f7' }} />
+            {aiLoading ? 'Ανάλυση…' : 'AI Εισαγωγή'}
+          </button>
+          <input
+            ref={aiInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={e => handleAiFile(e.target.files[0])}
+          />
+          <button className="btn btn-primary" onClick={() => { setShowForm(v => !v); setForm(EMPTY_FORM); }}>
+            <Plus size={15} /> Προσθήκη slots
+            {showForm ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
       </div>
+
+      {/* ── AI preview panel ── */}
+      {aiPreview && (
+        <div className="card" style={{ marginBottom: 16, borderLeft: '4px solid #a855f7' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={16} style={{ color: '#a855f7' }} />
+                AI βρήκε {aiPreview.length} slots — έλεγξε και εισήγαγε
+              </div>
+              <div className="text-muted" style={{ fontSize: '0.82rem', marginTop: 2 }}>
+                Τα παρακάτω slots θα δημιουργηθούν αν πατήσεις «Εισαγωγή».
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => setAiPreview(null)}>
+                <X size={13} /> Ακύρωση
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={importAiEntries} disabled={aiImporting}>
+                <Check size={13} /> {aiImporting ? 'Εισαγωγή…' : 'Εισαγωγή'}
+              </button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {aiPreview.map((e, i) => (
+              <div key={i} style={{
+                padding: '5px 10px', borderRadius: 8, background: '#f5f3ff',
+                border: '1px solid #e9d5ff', fontSize: '0.82rem', color: '#6d28d9',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <strong>{WEEKDAY_NAMES[e.weekday] ?? e.weekday}</strong>
+                <span>{e.start_time}</span>
+                {e.label && <span style={{ color: '#374151' }}>{e.label}</span>}
+                {e.max_capacity && <span style={{ color: '#94a3b8' }}>· max {e.max_capacity}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {locations.length > 1 && (
         <div className="card" style={{ marginBottom: 16, padding: 16 }}>

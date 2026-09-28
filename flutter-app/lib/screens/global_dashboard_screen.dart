@@ -58,10 +58,13 @@ class _GlobalDashboardScreenState extends State<GlobalDashboardScreen> {
   }
 
   Future<void> _enterGym(GlobalGym gym) async {
+    debugPrint('[EnterGym] businessId=${gym.businessId} slug=${gym.slug}');
     setState(() => _enteringGym = true);
     try {
       final gymToken = await widget.globalAuth.getGymToken(gym.businessId);
-      // Pre-store the per-gym JWT so AuthService.init() picks it up
+      debugPrint('[EnterGym] Got gymToken, saving...');
+      // Disable biometrics first (setBiometricEnabled clears old token), then save fresh token
+      await BiometricAuthService.instance.setBiometricEnabled(gym.businessId, false);
       await BiometricAuthService.instance.saveToken(gym.businessId, gymToken);
       final config = await TenantConfig.loadFromApi(
         slug:       gym.slug,
@@ -71,8 +74,20 @@ class _GlobalDashboardScreenState extends State<GlobalDashboardScreen> {
       widget.onEnterGym(config);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red.shade700),
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: const Color(0xFF16171B),
+          title: const Text('Σφάλμα', style: TextStyle(color: Colors.white)),
+          content: Text(msg, style: const TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK', style: TextStyle(color: Color(0xFFC6FF3D))),
+            ),
+          ],
+        ),
       );
     } finally {
       if (mounted) setState(() => _enteringGym = false);

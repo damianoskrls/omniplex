@@ -110,8 +110,8 @@ class GlobalAuthGateScreen extends StatelessWidget {
 
                   // ── Primary CTA ──────────────────────────────────────
                   _PrimaryButton(
-                    label: 'Σύνδεση',
-                    subtitle: 'Έχω ήδη λογαριασμό',
+                    label: 'Είσοδος / Εγγραφή',
+                    subtitle: 'Με τον αριθμό του κινητού σου',
                     icon: Icons.phone_android_rounded,
                     onTap: () => _goLogin(context),
                   ),

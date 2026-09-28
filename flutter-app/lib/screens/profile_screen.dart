@@ -16,7 +16,9 @@ import 'payments_screen.dart';
 import 'workout_metrics_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.onRemoveGym});
+
+  final Future<void> Function()? onRemoveGym;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -237,19 +239,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        SurfaceCard(
-          padding: EdgeInsets.zero,
-          child: _MenuTile(
-            icon: Icons.logout,
-            title: AppStrings.of(context).profileLogout,
-            iconColor: AppColors.orange,
-            titleColor: AppColors.orange,
-            onTap: () async {
-              await auth.logout();
-              appNavigatorKey.currentState?.popUntil((route) => route.isFirst);
-            },
+        if (widget.onRemoveGym != null)
+          // Came from Omniplex — show "Remove gym" instead of logout
+          SurfaceCard(
+            padding: EdgeInsets.zero,
+            child: _MenuTile(
+              icon: Icons.remove_circle_outline_rounded,
+              title: 'Αφαίρεση γυμναστηρίου',
+              iconColor: AppColors.orange,
+              titleColor: AppColors.orange,
+              onTap: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    backgroundColor: const Color(0xFF16171B),
+                    title: const Text('Αφαίρεση γυμναστηρίου',
+                        style: TextStyle(color: Colors.white)),
+                    content: const Text(
+                      'Θα αφαιρεθεί το γυμναστήριο από τη λίστα σου στο Omniplex. Μπορείς να το ξαναπροσθέσεις οποτεδήποτε.',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Άκυρο',
+                            style: TextStyle(color: Colors.white54)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text('Αφαίρεση',
+                            style: TextStyle(color: AppColors.orange)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
+                await auth.logout();
+                await widget.onRemoveGym!();
+              },
+            ),
+          )
+        else
+          SurfaceCard(
+            padding: EdgeInsets.zero,
+            child: _MenuTile(
+              icon: Icons.logout,
+              title: AppStrings.of(context).profileLogout,
+              iconColor: AppColors.orange,
+              titleColor: AppColors.orange,
+              onTap: () async {
+                await auth.logout();
+                appNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+              },
+            ),
           ),
-        ),
       ],
     );
   }

@@ -4150,6 +4150,21 @@ router.patch('/services/:id', requireClientAdmin, async (req, res) => {
   return res.json({ ok: true });
 });
 
+router.patch('/services/:id/dropin', requireClientAdmin, async (req, res) => {
+  const { accepts_drop_in, drop_in_price_cents, drop_in_cutoff_hours } = req.body;
+  const fields = [];
+  const vals   = [];
+  if (accepts_drop_in !== undefined) { fields.push('accepts_drop_in = ?'); vals.push(accepts_drop_in ? 1 : 0); }
+  if (drop_in_price_cents !== undefined) { fields.push('drop_in_price_cents = ?'); vals.push(drop_in_price_cents === null ? null : Number(drop_in_price_cents)); }
+  if (drop_in_cutoff_hours !== undefined) { fields.push('drop_in_cutoff_hours = ?'); vals.push(Number(drop_in_cutoff_hours)); }
+  if (!fields.length) return res.json({ ok: true });
+  await db.query(
+    `UPDATE services SET ${fields.join(', ')} WHERE id = ? AND business_id = ?`,
+    [...vals, req.params.id, req.admin.businessId]
+  );
+  return res.json({ ok: true });
+});
+
 router.post('/services/:id/image', requireClientAdmin, (req, res, next) => {
   servicePhotoUpload.single('image')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
@@ -6904,8 +6919,45 @@ router.get('/class-schedules', requireClientAdmin, async (req, res) => {
   }
 });
 
-// POST /class-schedules/parse-image — AI extracts schedule from uploaded JPG/PNG
+// POST /services/:id/slot-schedules/parse-image — AI extracts slot schedule from uploaded image
 const multerMemory = require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+router.post('/services/:id/slot-schedules/parse-image', requireClientAdmin, multerMemory.single('image'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const b64 = req.file.buffer.toString('base64');
+    const mediaType = req.file.mimetype || 'image/jpeg';
+
+    const message = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+          { type: 'text', text: `Extract the gym class/slot schedule from this image. Return ONLY a JSON array with no explanation. Each entry must have:
+- weekday: number 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday, 5=Saturday, 6=Sunday
+- start_time: string "HH:MM" (24-hour format)
+- label: string (class or activity name, in the original language)
+- max_capacity: number or null if not visible
+
+Return ONLY the JSON array. Example: [{"weekday":0,"start_time":"09:00","label":"CrossFit","max_capacity":15}]` },
+        ],
+      }],
+    });
+
+    const raw = message.content[0].text.trim();
+    const jsonMatch = raw.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return res.status(422).json({ error: 'Could not parse schedule from image' });
+    const entries = JSON.parse(jsonMatch[0]);
+    return res.json({ entries });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /class-schedules/parse-image — AI extracts schedule from uploaded JPG/PNG
 router.post('/class-schedules/parse-image', requireClientAdmin, multerMemory.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
   try {

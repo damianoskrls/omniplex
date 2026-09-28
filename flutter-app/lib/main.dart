@@ -13,13 +13,14 @@ import 'screens/business_selector_screen.dart';
 import 'screens/discovery_landing_screen.dart';
 import 'screens/global_auth_gate_screen.dart';
 import 'screens/global_dashboard_screen.dart';
+import 'screens/global_member_home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
 import 'services/global_auth_service.dart';
 import 'services/language_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_service.dart';
-import 'widgets/splash_screen.dart';
+import 'widgets/splash_screen.dart' show SplashScreen, GymSplashScreen;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -225,6 +226,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
   }
 
   void _onTenantConfigLoaded(TenantConfig config) {
+    debugPrint('[TenantLoaded] slug=${config.slug} bizId=${config.businessId}');
     setState(() {
       _needsTenantSelection = false;
       _config = config;
@@ -236,6 +238,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
 
   Future<void> _bootstrapWithConfig(TenantConfig config) async {
     final splashStarted = DateTime.now();
+    debugPrint('[Bootstrap] Starting for slug=${config.slug} bizId=${config.businessId}');
     try {
       if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
         final reachErr = await TenantConfig.verifyApiReachable(config.apiBaseUrl);
@@ -243,6 +246,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
       }
       final auth = AuthService(config);
       await Future.wait([auth.init(), _waitRemainingSplash(splashStarted)]);
+      debugPrint('[Bootstrap] auth.isLoggedIn=${auth.isLoggedIn}');
       if (!mounted) return;
       final seenOnboarding = await hasSeenOnboarding();
       if (!mounted) return;
@@ -253,6 +257,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
       }
       unawaited(_initBackgroundServices());
     } catch (e) {
+      debugPrint('[Bootstrap] ERROR: $e');
       if (!mounted) return;
       setState(() { _error = e.toString(); _config = null; });
     }
@@ -285,7 +290,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
     if (_showGlobalDashboard) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: GlobalDashboardScreen(
+        home: GlobalMemberHomeScreen(
           globalAuth: _globalAuth,
           onEnterGym: (config) {
             setState(() => _showGlobalDashboard = false);
@@ -303,7 +308,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
       if (_globalAuth.isLoggedIn && _globalAuth.gyms.isNotEmpty) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          home: GlobalDashboardScreen(
+          home: GlobalMemberHomeScreen(
             globalAuth: _globalAuth,
             onEnterGym: (config) {
               setState(() { _needsTenantSelection = false; _showGlobalDashboard = false; });
@@ -323,6 +328,10 @@ class _AppBootstrapState extends State<AppBootstrap> {
           home: DiscoveryLandingScreen(
             globalAuth: _globalAuth,
             onLoggedIn: () => setState(() { _showExplore = false; }),
+            onEnterGym: (config) {
+              setState(() { _showExplore = false; _needsTenantSelection = false; });
+              _onTenantConfigLoaded(config);
+            },
           ),
         );
       }
@@ -372,13 +381,21 @@ class _AppBootstrapState extends State<AppBootstrap> {
           config: _config!,
           auth: _auth!,
           globalAuth: _globalAuth,
+          onEnterGym: _onTenantConfigLoaded,
+          onSwitchGym: _globalAuth.isLoggedIn ? _resetToSelector : null,
+          onRemoveGym: _globalAuth.isLoggedIn
+              ? () async {
+                  await _globalAuth.removeGym(_config!.businessId);
+                  _resetToSelector();
+                }
+              : null,
         ),
       );
     }
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: SplashScreen(key: ValueKey(_config?.businessId ?? 'splash')),
+      home: SplashScreen(key: const ValueKey('splash')),
     );
   }
 }

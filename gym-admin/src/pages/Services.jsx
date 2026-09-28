@@ -4,7 +4,7 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import LocationCheckboxes from '../components/LocationCheckboxes';
-import { Plus, Trash2, Pencil, CalendarClock, Upload, X, Check } from 'lucide-react';
+import { Plus, Trash2, Pencil, CalendarClock, Upload, X, Check, Sparkles } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
 
 const EMPTY = { name: '', description: '', category: '', duration_mins: 60, hide_staff_selection: false, slot_label_mode: 'time_only', drop_in_price_cents: '', requires_attendance_confirmation: true, requires_qr_scan: true, is_open_access: false };
@@ -290,6 +290,9 @@ export default function Services() {
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     <Link to={`/services/${s.id}/schedule`} className="btn btn-secondary btn-sm" title="Πρόγραμμα ωρών & χωρητικότητα">
                       <CalendarClock size={14} /> Πρόγραμμα
+                    </Link>
+                    <Link to={`/services/${s.id}/schedule`} className="btn btn-secondary btn-sm" title="AI Εισαγωγή προγράμματος από εικόνα" style={{ color: '#a855f7', borderColor: '#e9d5ff', background: '#faf5ff' }}>
+                      <Sparkles size={14} /> AI
                     </Link>
                     <button className="btn btn-secondary btn-sm" onClick={() => openEdit(s)}><Pencil size={14} /></button>
                     <button className="btn btn-danger btn-sm" onClick={() => remove(s.id)}><Trash2 size={14} /></button>

@@ -62,20 +62,43 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   }
 
   Future<void> _enterGym(GlobalGym gym) async {
+    debugPrint('[MemberHome._enterGym] businessId=${gym.businessId} slug=${gym.slug} type=${gym.userType}');
     setState(() => _enteringGym = true);
     try {
-      final gymToken = await widget.globalAuth.getGymToken(gym.businessId);
+      final gymToken = gym.isStaff
+          ? await widget.globalAuth.getTrainerToken(gym.businessId)
+          : await widget.globalAuth.getGymToken(gym.businessId);
+      debugPrint('[MemberHome._enterGym] Got gymToken, saving...');
+      // Disable biometrics first (setBiometricEnabled clears old token), then save fresh token
+      await BiometricAuthService.instance.setBiometricEnabled(gym.businessId, false);
       await BiometricAuthService.instance.saveToken(gym.businessId, gymToken);
+      debugPrint('[MemberHome._enterGym] Token saved, loading TenantConfig...');
       final config = await TenantConfig.loadFromApi(
         slug:       gym.slug,
         apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
       );
+      debugPrint('[MemberHome._enterGym] Config loaded: slug=${config.slug} bizId=${config.businessId}');
       if (!mounted) return;
+      debugPrint('[MemberHome._enterGym] Calling onEnterGym...');
       widget.onEnterGym(config);
     } catch (e) {
+      debugPrint('[MemberHome._enterGym] ERROR: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red.shade700));
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: _kCard,
+          title: const Text('Σφάλμα', style: TextStyle(color: Colors.white)),
+          content: Text(msg, style: const TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK', style: TextStyle(color: _kLime)),
+            ),
+          ],
+        ),
+      );
     } finally {
       if (mounted) setState(() => _enteringGym = false);
     }
@@ -109,6 +132,8 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             globalAuth: widget.globalAuth,
             gyms: widget.globalAuth.gyms,
             onEnterGym: _enterGym,
+            dashboard: _dashboard,
+            loading: _loading,
           ),
           _MyGymsTab(
             globalAuth: widget.globalAuth,
@@ -763,61 +788,317 @@ class _DiscoverTab extends StatelessWidget {
 // SCHEDULE TAB
 // ─────────────────────────────────────────
 
-class _ScheduleTab extends StatelessWidget {
+class _ScheduleTab extends StatefulWidget {
   const _ScheduleTab({
     required this.globalAuth,
     required this.gyms,
     required this.onEnterGym,
+    required this.dashboard,
+    required this.loading,
   });
 
   final GlobalAuthService globalAuth;
   final List<GlobalGym> gyms;
   final Future<void> Function(GlobalGym) onEnterGym;
+  final Map<String, dynamic>? dashboard;
+  final bool loading;
+
+  @override
+  State<_ScheduleTab> createState() => _ScheduleTabState();
+}
+
+class _ScheduleTabState extends State<_ScheduleTab> {
+  DateTime _selected = DateTime.now();
+  int _weekOffset = 0;
+
+  List<Map<String, dynamic>> get _all =>
+      (widget.dashboard?['upcoming_bookings'] as List?)
+          ?.cast<Map<String, dynamic>>() ?? [];
+
+  Set<String> get _bookedDates =>
+      _all.map((b) => (b['booking_date'] as String? ?? '')).toSet();
+
+  List<Map<String, dynamic>> get _forDay {
+    final ds = '${_selected.year.toString().padLeft(4, '0')}-'
+        '${_selected.month.toString().padLeft(2, '0')}-'
+        '${_selected.day.toString().padLeft(2, '0')}';
+    final list = _all.where((b) => b['booking_date'] == ds).toList();
+    list.sort((a, b) =>
+        (a['booking_time'] as String? ?? '').compareTo(b['booking_time'] as String? ?? ''));
+    return list;
+  }
+
+  List<DateTime> get _weekDays {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    return List.generate(7, (i) => monday.add(Duration(days: i + _weekOffset * 7)));
+  }
+
+  String _dayLabel(DateTime d) {
+    const n = ['Δευ','Τρί','Τετ','Πέμ','Παρ','Σάβ','Κυρ'];
+    return n[d.weekday - 1];
+  }
+
+  String _dateKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
+
+  String _titleForDate(DateTime d) {
+    final now = DateTime.now();
+    if (d.day == now.day && d.month == now.month && d.year == now.year) return 'Σήμερα';
+    final tom = now.add(const Duration(days: 1));
+    if (d.day == tom.day && d.month == tom.month && d.year == tom.year) return 'Αύριο';
+    const days = ['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή'];
+    const months = ['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+    return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final days = _weekDays;
+    final bookings = _forDay;
+
     return Scaffold(
       backgroundColor: _kBg,
       body: SafeArea(
-        child: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.calendar_month_outlined, color: _kGray, size: 56),
-            const SizedBox(height: 16),
-            Text('Πρόγραμμα Μαθημάτων',
-              style: GoogleFonts.manrope(
-                fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-            const SizedBox(height: 8),
-            Text('Άνοιξε ένα γυμναστήριο για να δεις το πρόγραμμα.',
-              style: GoogleFonts.manrope(fontSize: 13, color: _kGray),
-              textAlign: TextAlign.center),
-            if (gyms.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              ...gyms.take(3).map((g) => GestureDetector(
-                onTap: () => onEnterGym(g),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: _kCard,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: _kBorder),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.fitness_center_rounded, color: _kGray, size: 18),
-                    const SizedBox(width: 10),
-                    Text(g.appName, style: GoogleFonts.manrope(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                    const Spacer(),
-                    const Icon(Icons.arrow_forward_ios_rounded, color: _kGray, size: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 16, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Πρόγραμμα',
+                    style: GoogleFonts.manrope(
+                      fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                  Row(children: [
+                    _NavBtn(
+                      icon: Icons.chevron_left_rounded,
+                      onTap: () => setState(() => _weekOffset--),
+                    ),
+                    const SizedBox(width: 8),
+                    _NavBtn(
+                      icon: Icons.chevron_right_rounded,
+                      onTap: () => setState(() => _weekOffset++),
+                    ),
                   ]),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Week strip
+            SizedBox(
+              height: 76,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                itemCount: days.length,
+                itemBuilder: (_, i) {
+                  final day = days[i];
+                  final isSelected = _dateKey(day) == _dateKey(_selected);
+                  final isToday = _dateKey(day) == _dateKey(DateTime.now());
+                  final hasBooking = _bookedDates.contains(_dateKey(day));
+
+                  return GestureDetector(
+                    onTap: () => setState(() => _selected = day),
+                    child: Container(
+                      width: 44,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? _kLime
+                            : isToday
+                                ? _kCard
+                                : Colors.transparent,
+                        borderRadius: BorderRadius.circular(14),
+                        border: isToday && !isSelected
+                            ? Border.all(color: _kLime.withValues(alpha: 0.35))
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_dayLabel(day),
+                            style: GoogleFonts.manrope(
+                              fontSize: 10, fontWeight: FontWeight.w600,
+                              color: isSelected ? _kBg : _kGray)),
+                          const SizedBox(height: 4),
+                          Text('${day.day}',
+                            style: GoogleFonts.manrope(
+                              fontSize: 18, fontWeight: FontWeight.w700,
+                              color: isSelected ? _kBg : Colors.white)),
+                          const SizedBox(height: 3),
+                          Container(
+                            width: 5, height: 5,
+                            decoration: BoxDecoration(
+                              color: hasBooking
+                                  ? (isSelected
+                                      ? _kBg.withValues(alpha: 0.5)
+                                      : _kLime)
+                                  : Colors.transparent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            Container(height: 1, color: _kBorder, margin: const EdgeInsets.only(top: 12)),
+
+            // Date label + count
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+              child: Row(children: [
+                Text(_titleForDate(_selected),
+                  style: GoogleFonts.manrope(
+                    fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: bookings.isNotEmpty
+                        ? _kLime.withValues(alpha: 0.12)
+                        : _kCard,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    bookings.isEmpty ? 'Χωρίς κρατήσεις' : '${bookings.length} κρατήσεις',
+                    style: GoogleFonts.manrope(
+                      fontSize: 11, fontWeight: FontWeight.w600,
+                      color: bookings.isNotEmpty ? _kLime : _kGray),
+                  ),
                 ),
-              )),
-            ],
-          ]),
+              ]),
+            ),
+
+            // Content
+            Expanded(
+              child: widget.loading
+                ? const Center(child: CircularProgressIndicator(color: _kLime))
+                : bookings.isEmpty
+                  ? _NoBookingsDay()
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      itemCount: bookings.length,
+                      itemBuilder: (_, i) => _ScheduleBookingCard(booking: bookings[i]),
+                    ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _NavBtn extends StatelessWidget {
+  const _NavBtn({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 34, height: 34,
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Icon(icon, color: Colors.white, size: 18),
+    ),
+  );
+}
+
+class _ScheduleBookingCard extends StatelessWidget {
+  const _ScheduleBookingCard({required this.booking});
+  final Map<String, dynamic> booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final time    = (booking['booking_time'] as String? ?? '').substring(0, 5);
+    final service = booking['service_name'] as String? ?? '';
+    final gym     = booking['app_name'] as String? ?? booking['business_name'] as String? ?? '';
+    final staff   = booking['staff_name'] as String?;
+    final status  = booking['status'] as String? ?? 'confirmed';
+    final isCancel = status == 'cancelled';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isCancel ? _kBorder : _kLime.withValues(alpha: 0.18)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(children: [
+        // Time column
+        SizedBox(
+          width: 52,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(time,
+              style: GoogleFonts.manrope(
+                fontSize: 20, fontWeight: FontWeight.w700,
+                color: isCancel ? _kGray : _kLime)),
+          ]),
+        ),
+        Container(width: 1, height: 42, color: _kBorder, margin: const EdgeInsets.symmetric(horizontal: 14)),
+        // Details
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(service,
+            style: GoogleFonts.manrope(
+              fontSize: 14, fontWeight: FontWeight.w700,
+              color: isCancel ? _kGray : Colors.white)),
+          const SizedBox(height: 3),
+          Row(children: [
+            const Icon(Icons.fitness_center_rounded, size: 11, color: _kGray),
+            const SizedBox(width: 4),
+            Text(gym, style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
+            if (staff != null) ...[
+              Text(' · ', style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
+              Text(staff, style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
+            ],
+          ]),
+        ])),
+        if (isCancel)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _kBorder, borderRadius: BorderRadius.circular(8)),
+            child: Text('Ακυρώθηκε',
+              style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w600, color: _kGray)),
+          ),
+      ]),
+    );
+  }
+}
+
+class _NoBookingsDay extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+        width: 64, height: 64,
+        decoration: BoxDecoration(
+          color: _kCard, shape: BoxShape.circle,
+          border: Border.all(color: _kBorder)),
+        child: const Icon(Icons.calendar_today_outlined, color: _kGray, size: 26),
+      ),
+      const SizedBox(height: 16),
+      Text('Καμία κράτηση',
+        style: GoogleFonts.manrope(
+          fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+      const SizedBox(height: 6),
+      Text('Δεν έχεις κρατήσεις αυτή την ημέρα.',
+        style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+    ]),
+  );
 }
 
 // ─────────────────────────────────────────
@@ -1075,6 +1356,7 @@ class _MyGymCard extends StatelessWidget {
   final VoidCallback onOpen;
 
   String get _statusLabel {
+    if (gym.isStaff) return 'Trainer';
     switch (gym.userStatus) {
       case 'active': return 'Ενεργή Συνδρομή';
       case 'pending': return 'Σε Αναμονή';
@@ -1084,6 +1366,7 @@ class _MyGymCard extends StatelessWidget {
   }
 
   Color get _statusColor {
+    if (gym.isStaff) return const Color(0xFF3EE6FF);
     switch (gym.userStatus) {
       case 'active': return _kLime;
       case 'pending': return const Color(0xFFF59E0B);
@@ -1093,7 +1376,7 @@ class _MyGymCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPending = gym.userStatus == 'pending';
+    final isPending = !gym.isStaff && gym.userStatus == 'pending';
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -1137,9 +1420,11 @@ class _MyGymCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(9999),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  if (!isPending)
+                  if (gym.isStaff)
+                    Icon(Icons.sports_rounded, size: 11, color: _statusColor),
+                  if (!gym.isStaff && !isPending)
                     const Icon(Icons.check_rounded, size: 11, color: _kLime),
-                  if (isPending)
+                  if (!gym.isStaff && isPending)
                     const Icon(Icons.hourglass_empty_rounded, size: 11, color: Color(0xFFF59E0B)),
                   const SizedBox(width: 3),
                   Text(_statusLabel, style: GoogleFonts.manrope(
