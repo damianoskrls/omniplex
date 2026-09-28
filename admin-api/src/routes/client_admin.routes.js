@@ -6794,7 +6794,7 @@ router.get('/my-programs', async (req, res) => {
 router.get('/discovery-profile', requireClientAdmin, async (req, res) => {
   try {
     const [[biz]] = await db.query(
-      'SELECT city, country, latitude, longitude, description, is_discoverable, accepts_drop_in FROM businesses WHERE id = ?',
+      'SELECT city, country, latitude, longitude, description, is_discoverable, accepts_drop_in, drop_in_price_cents FROM businesses WHERE id = ?',
       [req.admin.businessId],
     );
     return res.json(biz || {});
@@ -6804,7 +6804,7 @@ router.get('/discovery-profile', requireClientAdmin, async (req, res) => {
 });
 
 router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
-  const { city, country, latitude, longitude, description, is_discoverable, accepts_drop_in } = req.body;
+  const { city, country, latitude, longitude, description, is_discoverable, accepts_drop_in, drop_in_price_cents } = req.body;
   try {
     await db.query(
       `UPDATE businesses SET
@@ -6814,10 +6814,12 @@ router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
          longitude = COALESCE(?, longitude),
          description = COALESCE(?, description),
          is_discoverable = COALESCE(?, is_discoverable),
-         accepts_drop_in = COALESCE(?, accepts_drop_in)
+         accepts_drop_in = COALESCE(?, accepts_drop_in),
+         drop_in_price_cents = COALESCE(?, drop_in_price_cents)
        WHERE id = ?`,
       [city ?? null, country ?? null, latitude ?? null, longitude ?? null,
-       description ?? null, is_discoverable ?? null, accepts_drop_in ?? null, req.admin.businessId],
+       description ?? null, is_discoverable ?? null, accepts_drop_in ?? null,
+       drop_in_price_cents ?? null, req.admin.businessId],
     );
     return res.json({ ok: true });
   } catch (err) {
@@ -6904,10 +6906,20 @@ router.delete('/class-schedules/:id', requireClientAdmin, async (req, res) => {
 router.get('/gym-photos', requireClientAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
-      'SELECT id, url, display_order FROM gym_photos WHERE business_id = ? ORDER BY display_order, created_at',
+      'SELECT id, url, display_order, is_cover FROM gym_photos WHERE business_id = ? ORDER BY is_cover DESC, display_order, created_at',
       [req.admin.businessId],
     );
     return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/gym-photos/:id/set-cover', requireClientAdmin, async (req, res) => {
+  try {
+    await db.query('UPDATE gym_photos SET is_cover = 0 WHERE business_id = ?', [req.admin.businessId]);
+    await db.query('UPDATE gym_photos SET is_cover = 1 WHERE id = ? AND business_id = ?', [req.params.id, req.admin.businessId]);
+    return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -6946,6 +6958,81 @@ router.delete('/gym-photos/:id', requireClientAdmin, async (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
+});
+
+// ============================================================
+// Gym Trainers CRUD
+// GET    /api/client-admin/gym-trainers
+// POST   /api/client-admin/gym-trainers
+// PUT    /api/client-admin/gym-trainers/:id
+// DELETE /api/client-admin/gym-trainers/:id
+// POST   /api/client-admin/gym-trainers/upload-photo
+// ============================================================
+router.get('/gym-trainers', requireClientAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT id, name, specialty, photo_url, display_order FROM gym_trainers WHERE business_id = ? ORDER BY display_order, created_at',
+      [req.admin.businessId],
+    );
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/gym-trainers', requireClientAdmin, async (req, res) => {
+  const { name, specialty, photo_url } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Απαιτείται όνομα' });
+  try {
+    const id = uuidv4();
+    const [[{ maxOrder }]] = await db.query(
+      'SELECT COALESCE(MAX(display_order),0) AS maxOrder FROM gym_trainers WHERE business_id = ?',
+      [req.admin.businessId],
+    );
+    await db.query(
+      'INSERT INTO gym_trainers (id, business_id, name, specialty, photo_url, display_order) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, req.admin.businessId, name.trim(), specialty || null, photo_url || null, maxOrder + 1],
+    );
+    return res.status(201).json({ id });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/gym-trainers/:id', requireClientAdmin, async (req, res) => {
+  const { name, specialty, photo_url } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Απαιτείται όνομα' });
+  try {
+    await db.query(
+      'UPDATE gym_trainers SET name = ?, specialty = ?, photo_url = ? WHERE id = ? AND business_id = ?',
+      [name.trim(), specialty || null, photo_url || null, req.params.id, req.admin.businessId],
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/gym-trainers/:id', requireClientAdmin, async (req, res) => {
+  try {
+    await db.query('DELETE FROM gym_trainers WHERE id = ? AND business_id = ?', [req.params.id, req.admin.businessId]);
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+const trainerPhotoUpload = r2Multer({
+  keyFn: (req) => `uploads/${req.admin.businessId}/trainer-photos/${uuidv4()}.jpg`,
+  allowedMimes: ['image/jpeg', 'image/png', 'image/webp'],
+  maxSizeMb: 5,
+});
+
+router.post('/gym-trainers/upload-photo', requireClientAdmin, (req, res, next) => {
+  trainerPhotoUpload.single('photo')(req, res, next);
+}, async (req, res) => {
+  if (!req.file?.location) return res.status(400).json({ error: 'Upload failed' });
+  return res.json({ url: req.file.location });
 });
 
 // ============================================================

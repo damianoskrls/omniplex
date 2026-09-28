@@ -635,14 +635,40 @@ async function bootstrapSchema() {
         business_id   VARCHAR(36)  NOT NULL,
         url           TEXT         NOT NULL,
         display_order INT          NOT NULL DEFAULT 0,
+        is_cover      TINYINT(1)   NOT NULL DEFAULT 0,
         created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_gp_biz (business_id)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    await db.query(`ALTER TABLE gym_photos ADD COLUMN is_cover TINYINT(1) NOT NULL DEFAULT 0`).catch(() => {});
     console.log('✓ Schema: gym_photos table ready');
   } catch (err) {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('gym_photos skipped:', err.message);
   }
+
+  // ── gym_trainers ─────────────────────────────────────────────
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS gym_trainers (
+        id            VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id   VARCHAR(36)  NOT NULL,
+        name          VARCHAR(100) NOT NULL,
+        specialty     VARCHAR(200) NULL,
+        photo_url     TEXT         NULL,
+        display_order INT          NOT NULL DEFAULT 0,
+        created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_gtr_biz (business_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: gym_trainers table ready');
+  } catch (err) {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('gym_trainers skipped:', err.message);
+  }
+
+  // ── businesses: drop_in_price_cents ──────────────────────────
+  try {
+    await db.query(`ALTER TABLE businesses ADD COLUMN drop_in_price_cents INT NOT NULL DEFAULT 0`);
+  } catch (err) { /* column already exists */ }
 
   // ── global_device_tokens table ───────────────────────────────
   try {

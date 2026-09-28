@@ -92,8 +92,6 @@ function buildNavGroups({ features, featureNutrition }) {
       links: [
         { to: '/settings', icon: Settings, label: 'Γενικές Ρυθμίσεις' },
         { to: '/discovery-profile', icon: Globe, label: 'Προβολή στην Αγορά' },
-        { to: '/class-schedule', icon: CalendarDays, label: 'Εβδομαδιαίο Πρόγραμμα' },
-        { to: '/gym-photos', icon: Image, label: 'Φωτογραφίες Γυμναστηρίου' },
         { to: '/join-requests', icon: UserPlus, label: 'Αιτήματα Εγγραφής' },
         { to: '/online-payments', icon: CreditCard, label: 'Online Πληρωμές' },
         { to: '/gdpr', icon: ShieldCheck, label: 'GDPR — Συναίνεση' },

@@ -384,7 +384,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT b.id, b.slug, b.name, b.business_type, b.city, b.description, b.latitude, b.longitude,
-             b.accepts_drop_in,
+             b.accepts_drop_in, b.drop_in_price_cents,
              c.app_name, c.primary_color, c.secondary_color, c.logo_url, c.feature_online_payments
       FROM businesses b
       LEFT JOIN business_configs c ON c.business_id = b.id
@@ -399,7 +399,11 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       [biz.id],
     );
     const [photos] = await db.query(
-      'SELECT id, url FROM gym_photos WHERE business_id = ? ORDER BY display_order, created_at',
+      'SELECT id, url, is_cover FROM gym_photos WHERE business_id = ? ORDER BY is_cover DESC, display_order, created_at',
+      [biz.id],
+    );
+    const [trainers] = await db.query(
+      'SELECT id, name, specialty, photo_url FROM gym_trainers WHERE business_id = ? ORDER BY display_order, created_at',
       [biz.id],
     );
     const [schedule] = await db.query(
@@ -422,8 +426,10 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       secondary_color:   biz.secondary_color || null,
       logo_url:          biz.logo_url || null,
       online_payments:   !!biz.feature_online_payments,
-      accepts_drop_in:   !!biz.accepts_drop_in,
+      accepts_drop_in:       !!biz.accepts_drop_in,
+      drop_in_price_cents:   biz.drop_in_price_cents || 0,
       photos,
+      trainers,
       schedule,
       services,
     });
