@@ -6873,6 +6873,103 @@ router.delete('/clients/:userId/programs/:cpId', requireClientAdmin, async (req,
   res.json({ ok: true });
 });
 
+// AI program generation
+router.post('/programs/ai-generate', requireClientAdmin, async (req, res) => {
+  try {
+    const { user_id, goals, level, equipment, sessions_per_week, duration_mins, notes } = req.body;
+    if (!user_id) return res.status(400).json({ error: 'user_id required' });
+
+    // Fetch exercise library for this business
+    const [exercises] = await db.query(
+      'SELECT id, name, muscle_group, description FROM exercises WHERE business_id=? AND is_active=1 ORDER BY name',
+      [req.admin.businessId]
+    );
+
+    const exerciseList = exercises.map(e =>
+      `- ID: ${e.id} | Όνομα: ${e.name} | Μυϊκή ομάδα: ${e.muscle_group || 'Γενικό'}${e.description ? ' | ' + e.description : ''}`
+    ).join('\n');
+
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const prompt = `Είσαι personal trainer. Δημιούργησε ένα πρόγραμμα γυμναστικής χρησιμοποιώντας ΜΟΝΟ τις ασκήσεις από τη βιβλιοθήκη παρακάτω.
+
+ΣΤΟΙΧΕΙΑ ΜΕΛΟΥΣ:
+- Στόχοι: ${goals || 'Γενική φυσική κατάσταση'}
+- Επίπεδο: ${level || 'Μέτριο'}
+- Εξοπλισμός: ${equipment || 'Γυμναστήριο'}
+- Συνεδρίες/εβδομάδα: ${sessions_per_week || 3}
+- Διάρκεια συνεδρίας: ${duration_mins || 60} λεπτά
+${notes ? '- Σημειώσεις: ' + notes : ''}
+
+ΔΙΑΘΕΣΙΜΕΣ ΑΣΚΗΣΕΙΣ:
+${exerciseList || '(Δεν υπάρχουν ασκήσεις στη βιβλιοθήκη — δημιούργησε γενικό πρόγραμμα χωρίς exercise_id)'}
+
+Απάντησε ΜΟΝΟ με valid JSON (χωρίς markdown, χωρίς εξήγηση):
+{
+  "program_name": "...",
+  "program_description": "...",
+  "exercises": [
+    {
+      "exercise_id": "<id από τη λίστα ή null αν δεν υπάρχει>",
+      "exercise_name": "<όνομα>",
+      "sets": <αριθμός ή null>,
+      "reps": "<π.χ. 10-12 ή null>",
+      "duration_secs": <δευτερόλεπτα ή null>,
+      "rest_secs": <δευτερόλεπτα ή null>,
+      "notes": "<προαιρετικά>"
+    }
+  ]
+}
+
+Συμπερίληψε 6-12 ασκήσεις ανάλογα με τη διάρκεια. Προτίμησε ασκήσεις από τη βιβλιοθήκη (με exercise_id). Χρησιμοποίησε exercise_id null μόνο αν δεν βρίσκεις κατάλληλη άσκηση.`;
+
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    let generated;
+    try {
+      generated = JSON.parse(response.content[0].text.replace(/```json\n?|\n?```/g, '').trim());
+    } catch {
+      return res.status(500).json({ error: 'Σφάλμα ανάλυσης AI απόκρισης' });
+    }
+
+    // Create program
+    const programId = uuidv4();
+    await db.query(
+      'INSERT INTO workout_programs (id,business_id,name,description) VALUES (?,?,?,?)',
+      [programId, req.admin.businessId, generated.program_name, generated.program_description || null]
+    );
+
+    // Insert exercises (only those with valid exercise_id)
+    let sortOrder = 0;
+    for (const ex of (generated.exercises || [])) {
+      if (!ex.exercise_id) continue;
+      const found = exercises.find(e => e.id === ex.exercise_id);
+      if (!found) continue;
+      await db.query(
+        'INSERT INTO program_exercises (id,program_id,exercise_id,exercise_sets,exercise_reps,duration_secs,rest_secs,notes,sort_order) VALUES (?,?,?,?,?,?,?,?,?)',
+        [uuidv4(), programId, ex.exercise_id, ex.sets || null, ex.reps || null, ex.duration_secs || null, ex.rest_secs || null, ex.notes || null, sortOrder++]
+      );
+    }
+
+    // Assign to client
+    const assignId = uuidv4();
+    await db.query(
+      'INSERT INTO client_programs (id,user_id,business_id,program_id,assigned_at,notes) VALUES (?,?,?,?,?,?)',
+      [assignId, user_id, req.admin.businessId, programId, new Date().toISOString().slice(0, 10), null]
+    );
+
+    res.status(201).json({ program_id: programId, assignment_id: assignId, program_name: generated.program_name, exercise_count: sortOrder });
+  } catch (err) {
+    console.error('AI program generation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Mobile API: client sees their own programs (used by app)
 router.get('/my-programs', async (req, res) => {
   const bizId = req.headers['x-business-id'];

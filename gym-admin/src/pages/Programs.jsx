@@ -5,7 +5,7 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, Dumbbell,
-  Search, Video, Play, UploadCloud, Check,
+  Search, Video, Play, UploadCloud, Check, Sparkles, User,
 } from 'lucide-react';
 
 const isVideoUrl = (url) => url && /\.(mp4|mov|webm|avi)$/i.test(url);
@@ -888,6 +888,11 @@ export default function Programs() {
   const [modal, setModal] = useState(null);
   const [expandedProgram, setExpandedProgram] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [aiModal, setAiModal] = useState(false);
+  const [aiClients, setAiClients] = useState([]);
+  const [aiForm, setAiForm] = useState({ user_id: '', goals: '', level: 'Μέτριο', equipment: 'Γυμναστήριο', sessions_per_week: '3', duration_mins: '60', notes: '' });
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -903,6 +908,42 @@ export default function Programs() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const openAiModal = async () => {
+    setAiModal(true);
+    setAiResult(null);
+    setAiForm({ user_id: '', goals: '', level: 'Μέτριο', equipment: 'Γυμναστήριο', sessions_per_week: '3', duration_mins: '60', notes: '' });
+    if (!aiClients.length) {
+      try {
+        const r = await api.get('/client-admin/clients');
+        setAiClients(r.data || []);
+      } catch {}
+    }
+  };
+
+  const runAiGenerate = async () => {
+    if (!aiForm.user_id) return toast.error('Επίλεξε πελάτη');
+    setAiLoading(true);
+    setAiResult(null);
+    try {
+      const r = await api.post('/client-admin/programs/ai-generate', {
+        user_id: aiForm.user_id,
+        goals: aiForm.goals,
+        level: aiForm.level,
+        equipment: aiForm.equipment,
+        sessions_per_week: Number(aiForm.sessions_per_week),
+        duration_mins: Number(aiForm.duration_mins),
+        notes: aiForm.notes,
+      });
+      setAiResult(r.data);
+      toast.success(`✓ Πρόγραμμα "${r.data.program_name}" δημιουργήθηκε`);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα AI');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const deleteProgram = async (id) => {
     if (!confirm('Διαγραφή προγράμματος;')) return;
@@ -931,9 +972,20 @@ export default function Programs() {
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Προγράμματα Άσκησης</h1>
             <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: 2 }}>Δημιούργησε προγράμματα για τους πελάτες σου</div>
           </div>
-          <button className="btn btn-primary" onClick={() => setModal({ type: tab === 'exercises' ? 'exercise' : 'program', data: null })}>
-            <Plus size={16} /> {tab === 'exercises' ? 'Νέα άσκηση' : 'Νέο πρόγραμμα'}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {tab === 'programs' && (
+              <button
+                className="btn"
+                style={{ background: '#7C5CFC', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={openAiModal}
+              >
+                <Sparkles size={15} /> AI Δημιουργία
+              </button>
+            )}
+            <button className="btn btn-primary" onClick={() => setModal({ type: tab === 'exercises' ? 'exercise' : 'program', data: null })}>
+              <Plus size={16} /> {tab === 'exercises' ? 'Νέα άσκηση' : 'Νέο πρόγραμμα'}
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -1063,6 +1115,118 @@ export default function Programs() {
             ) : (
               <ProgramBuilder program={modal.data} exercises={exercises} onSave={() => { setModal(null); load(); }} onClose={() => setModal(null)} />
             )}
+          </div>
+        </div>
+      )}
+      {/* AI Modal */}
+      {aiModal && (
+        <div className="modal-overlay" onClick={() => { if (!aiLoading) setAiModal(false); }}>
+          <div className="modal" style={{ maxWidth: 560, width: '95vw', padding: 0, overflow: 'hidden', borderRadius: 16 }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f1f5f9', background: 'linear-gradient(135deg,#7C5CFC,#5B4FCF)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fff' }}>
+                <Sparkles size={18} />
+                <span style={{ fontWeight: 800, fontSize: '1rem' }}>AI Δημιουργία Προγράμματος</span>
+              </div>
+              <button type="button" style={{ background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, color: '#fff' }} onClick={() => setAiModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: 24, overflowY: 'auto', maxHeight: '70vh' }}>
+              {aiResult ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#F0FDF4', border: '1px solid #bbf7d0', borderRadius: 12, marginBottom: 20 }}>
+                    <Check size={20} style={{ color: '#16A34A' }} />
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#15803d' }}>{aiResult.program_name}</div>
+                      <div style={{ fontSize: 13, color: '#4ade80' }}>{aiResult.exercise_count} ασκήσεις — ανατέθηκε στον πελάτη</div>
+                    </div>
+                  </div>
+                  <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setAiModal(false)}>Κλείσιμο</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* Member */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={13} /> Πελάτης *</label>
+                    <select className="form-select" value={aiForm.user_id} onChange={e => setAiForm(f => ({ ...f, user_id: e.target.value }))}>
+                      <option value="">— Επίλεξε πελάτη —</option>
+                      {aiClients.map(c => <option key={c.id} value={c.id}>{c.full_name || c.email}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Goals */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Στόχοι</label>
+                    <select className="form-select" value={aiForm.goals} onChange={e => setAiForm(f => ({ ...f, goals: e.target.value }))}>
+                      <option value="">Γενική φυσική κατάσταση</option>
+                      <option value="Απώλεια βάρους">Απώλεια βάρους</option>
+                      <option value="Μυϊκή ανάπτυξη (hypertrophy)">Μυϊκή ανάπτυξη</option>
+                      <option value="Δύναμη (strength)">Δύναμη</option>
+                      <option value="Αντοχή & Cardio">Αντοχή & Cardio</option>
+                      <option value="Αποκατάσταση & Κινητικότητα">Αποκατάσταση & Κινητικότητα</option>
+                    </select>
+                  </div>
+
+                  {/* Level */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Επίπεδο</label>
+                    <select className="form-select" value={aiForm.level} onChange={e => setAiForm(f => ({ ...f, level: e.target.value }))}>
+                      <option>Αρχάριο</option>
+                      <option>Μέτριο</option>
+                      <option>Προχωρημένο</option>
+                    </select>
+                  </div>
+
+                  {/* Equipment */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Εξοπλισμός</label>
+                    <select className="form-select" value={aiForm.equipment} onChange={e => setAiForm(f => ({ ...f, equipment: e.target.value }))}>
+                      <option>Γυμναστήριο</option>
+                      <option>Σπίτι (χωρίς εξοπλισμό)</option>
+                      <option>Σπίτι (με αλτήρες)</option>
+                      <option>Μηχανήματα μόνο</option>
+                    </select>
+                  </div>
+
+                  {/* Sessions & Duration */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Συνεδρίες/εβδομάδα</label>
+                      <select className="form-select" value={aiForm.sessions_per_week} onChange={e => setAiForm(f => ({ ...f, sessions_per_week: e.target.value }))}>
+                        {[2,3,4,5,6].map(n => <option key={n} value={n}>{n}x</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Διάρκεια (λεπτά)</label>
+                      <select className="form-select" value={aiForm.duration_mins} onChange={e => setAiForm(f => ({ ...f, duration_mins: e.target.value }))}>
+                        {[30,45,60,75,90].map(n => <option key={n} value={n}>{n}'</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Notes / Injuries */}
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Σημειώσεις / Τραυματισμοί (προαιρετικό)</label>
+                    <textarea className="form-input" rows={2} placeholder="π.χ. πόνος στη μέση, αποφυγή βαρέων squats..." value={aiForm.notes} onChange={e => setAiForm(f => ({ ...f, notes: e.target.value }))} />
+                  </div>
+
+                  <button
+                    className="btn"
+                    style={{ width: '100%', background: '#7C5CFC', color: '#fff', border: 'none', padding: '12px', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                    disabled={aiLoading}
+                    onClick={runAiGenerate}
+                  >
+                    {aiLoading ? (
+                      <><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} /> Δημιουργία…</>
+                    ) : (
+                      <><Sparkles size={16} /> Δημιούργησε πρόγραμμα με AI</>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
