@@ -4095,7 +4095,8 @@ router.get('/services', requireClientAdmin, async (req, res) => {
 });
 
 // POST /services/parse-schedule-image — AI groups schedule image into services + slots
-router.post('/services/parse-schedule-image', requireClientAdmin, multerMemory.single('image'), async (req, res) => {
+const _multerMem = require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+router.post('/services/parse-schedule-image', requireClientAdmin, _multerMem.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
   try {
     const Anthropic = require('@anthropic-ai/sdk');
