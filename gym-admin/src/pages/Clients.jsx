@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { Plus, Eye, Check, Ban, RotateCcw, Trash2, Search, UserCheck, AlertTriangle } from 'lucide-react';
+import { Plus, Eye, Check, Ban, RotateCcw, Trash2, Search, UserCheck, AlertTriangle, Clock, UserPlus } from 'lucide-react';
 
 const FITNESS_GOALS = [
   { id: '', label: '— Δεν έχει οριστεί —' },
@@ -42,6 +42,7 @@ const EMPTY = {
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
   const [modal, setModal] = useState(false);
@@ -65,12 +66,16 @@ export default function Clients() {
   const load = async () => {
     const params = inTrash ? { view: 'trash' } : (statusFilter ? { status: statusFilter } : {});
     try {
-      const [clientsRes, dashRes] = await Promise.all([
+      const [clientsRes, dashRes, jrRes] = await Promise.all([
         api.get('/client-admin/clients', { params }),
         inTrash ? Promise.resolve({ data: {} }) : api.get('/client-admin/dashboard'),
+        inTrash ? Promise.resolve({ data: [] }) : api.get('/client-admin/join-requests', { params: { status: 'pending' } }),
       ]);
       setClients(clientsRes.data);
-      if (!inTrash) setPendingTotal(dashRes.data.pending_clients || 0);
+      if (!inTrash) {
+        setPendingTotal(dashRes.data.pending_clients || 0);
+        setJoinRequests((jrRes.data || []).filter(r => r.role !== 'staff'));
+      }
     } catch {
       /* ignore */
     }
@@ -148,6 +153,21 @@ export default function Clients() {
       await api.post(`/client-admin/clients/${userId}/reject`);
       toast.success(`Η αίτηση του ${name} απορρίφθηκε`);
       load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα');
+    }
+  };
+
+  const decideJoinRequest = async (id, status, name) => {
+    if (status === 'rejected' && !window.confirm(`Απόρριψη αίτησης του ${name};`)) return;
+    try {
+      const { data } = await api.patch(`/client-admin/join-requests/${id}`, { status });
+      toast.success(status === 'approved' ? `✓ ${name} εγκρίθηκε` : `Απορρίφθηκε`);
+      if (status === 'approved' && data.record_id) {
+        navigate(`/clients/${data.record_id}`);
+      } else {
+        load();
+      }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
     }
@@ -310,11 +330,14 @@ export default function Clients() {
         </div>
       )}
 
-      {statusFilter === 'pending' && clients.length > 0 && (
-        <div className="card" style={{ marginBottom: 16, background: 'var(--warning-dim)', borderColor: 'rgba(255,178,36,0.25)' }}>
-          <strong>Εκκρεμείς εγγραφές από την εφαρμογή</strong>
-          <div className="text-muted" style={{ marginTop: 4 }}>
-            Οι πελάτες δεν μπορούν να συνδεθούν μέχρι να πατήσεις «Έγκριση».
+      {!inTrash && joinRequests.length > 0 && (statusFilter === '' || statusFilter === 'pending') && (
+        <div className="card" style={{ marginBottom: 16, background: 'rgba(255,178,36,0.06)', borderColor: 'rgba(255,178,36,0.25)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+            <UserPlus size={16} style={{ color: '#f59e0b' }} />
+            {joinRequests.length} νέα αιτήματα εγγραφής μέσω OmniPlex
+          </div>
+          <div className="text-muted" style={{ marginTop: 4, fontSize: '0.85rem' }}>
+            Εμφανίζονται παρακάτω με πορτοκαλί ένδειξη. Έγκριση ή απόρριψη αμέσως.
           </div>
         </div>
       )}
@@ -335,6 +358,35 @@ export default function Clients() {
               </tr>
             </thead>
             <tbody>
+              {!inTrash && (statusFilter === '' || statusFilter === 'pending') && joinRequests.map(r => (
+                <tr key={`jr-${r.id}`} style={{ borderLeft: '3px solid #f59e0b', background: 'rgba(255,178,36,0.04)' }}>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{r.full_name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+                      <Clock size={11} color="#f59e0b" />
+                      <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600 }}>Υπό έγκριση</span>
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: 4 }}>OmniPlex</span>
+                    </div>
+                  </td>
+                  <td>{r.email || '—'}</td>
+                  <td>{r.phone || '—'}</td>
+                  <td>
+                    <span className="badge badge-yellow">Αναμονή</span>
+                  </td>
+                  <td>{r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString('el-GR') : '—'}</td>
+                  <td>—</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn btn-primary btn-sm" onClick={() => decideJoinRequest(r.id, 'approved', r.full_name)}>
+                        <Check size={13} /> Έγκριση
+                      </button>
+                      <button className="btn btn-danger btn-sm" onClick={() => decideJoinRequest(r.id, 'rejected', r.full_name)}>
+                        <Ban size={13} /> Απόρριψη
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
               {clients.map(c => {
                 const st = c.account_status || 'active';
                 const deletedAt = c.deleted_at
@@ -441,7 +493,9 @@ export default function Clients() {
                   </tr>
                 );
               })}
-              {!clients.length && <tr><td colSpan={inTrash ? 7 : 7} className="loading">{inTrash ? 'Ο κάδος είναι άδειος' : 'Δεν υπάρχουν πελάτες'}</td></tr>}
+              {!clients.length && (!joinRequests.length || inTrash || (statusFilter !== '' && statusFilter !== 'pending')) && (
+                <tr><td colSpan={7} className="loading">{inTrash ? 'Ο κάδος είναι άδειος' : 'Δεν υπάρχουν πελάτες'}</td></tr>
+              )}
             </tbody>
           </table>
         </div>

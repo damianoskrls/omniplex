@@ -4,18 +4,43 @@ import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import StaffDeleteModal from '../components/StaffDeleteModal';
-import { Plus, Settings, Trash2 } from 'lucide-react';
+import { Plus, Settings, Trash2, UserCheck, UserX, Clock } from 'lucide-react';
 
 const EMPTY = { full_name: '', role: 'Trainer', bio: '', color_hex: '#607D8B' };
 
 export default function Staff() {
   const [staff, setStaff] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
   const [modal, setModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const navigate = useNavigate();
 
-  const load = () => api.get('/client-admin/staff').then(r => setStaff(r.data)).catch(() => {});
+  const load = async () => {
+    try {
+      const [staffRes, jrRes] = await Promise.all([
+        api.get('/client-admin/staff'),
+        api.get('/client-admin/join-requests', { params: { status: 'pending' } }),
+      ]);
+      setStaff(staffRes.data || []);
+      setJoinRequests((jrRes.data || []).filter(r => r.role === 'staff'));
+    } catch { /* ignore */ }
+  };
+
+  const decideJoinRequest = async (id, status, name) => {
+    if (status === 'rejected' && !window.confirm(`Απόρριψη αίτησης του ${name};`)) return;
+    try {
+      const { data } = await api.patch(`/client-admin/join-requests/${id}`, { status });
+      toast.success(status === 'approved' ? `✓ ${name} προστέθηκε ως trainer` : 'Απορρίφθηκε');
+      if (status === 'approved' && data.record_id) {
+        navigate(`/staff/${data.record_id}`);
+      } else {
+        load();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα');
+    }
+  };
   useEffect(() => { load(); }, []);
 
   const handleCreate = async (e) => {
@@ -37,6 +62,37 @@ export default function Staff() {
         <h1 className="page-title">Προσωπικό ({staff.length})</h1>
         <button className="btn btn-primary" onClick={() => setModal(true)}><Plus size={16} /> Νέο μέλος</button>
       </div>
+
+      {joinRequests.length > 0 && (
+        <div className="card" style={{ marginBottom: 20, background: 'rgba(62,230,255,0.04)', borderColor: 'rgba(62,230,255,0.2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 12 }}>
+            <Clock size={15} style={{ color: '#3EE6FF' }} />
+            {joinRequests.length} αιτήματα trainer υπό έγκριση
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {joinRequests.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderRadius: 10, background: 'rgba(62,230,255,0.06)', border: '1px solid rgba(62,230,255,0.15)' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{r.full_name}</div>
+                  <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: 2 }}>
+                    {r.phone && <span>{r.phone}</span>}
+                    {r.specialty && <span> · {r.specialty}</span>}
+                    {r.email && <span> · {r.email}</span>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => decideJoinRequest(r.id, 'approved', r.full_name)}>
+                    <UserCheck size={13} /> Έγκριση
+                  </button>
+                  <button className="btn btn-secondary btn-sm" style={{ color: '#ef4444' }} onClick={() => decideJoinRequest(r.id, 'rejected', r.full_name)}>
+                    <UserX size={13} /> Απόρριψη
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
         {staff.map(s => (
