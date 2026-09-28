@@ -375,8 +375,10 @@ async function bootstrapSchema() {
         INDEX idx_dib_biz_date (business_id, booking_date),
         INDEX idx_dib_user (user_id),
         UNIQUE idx_dib_qr (qr_token)
-      )
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    // Fix collation on existing deployments that inherited utf8mb4_0900_ai_ci
+    await db.query(`ALTER TABLE dropin_bookings CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     console.log('✓ Schema: dropin_bookings table ready');
   } catch (err) {
     console.warn('dropin_bookings table skipped:', err.message);
