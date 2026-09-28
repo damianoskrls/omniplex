@@ -9,7 +9,7 @@ const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
 const _kBorder = Color(0xFF2A2B30);
 const _kGray   = Color(0xFF9A9CA3);
-const _kLime   = Color(0xFFC6FF3D);
+const _kLime   = Color(0xFFC52473);
 
 class GlobalRegisterScreen extends StatefulWidget {
   const GlobalRegisterScreen({

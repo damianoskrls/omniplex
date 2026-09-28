@@ -28,7 +28,7 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
     _ClassData(time: '18:30', period: 'PM', name: 'Strength Training',
       coach: 'Coach Maria', duration: '50 min',
       spots: 'Almost full · 2 spots left', spotsColor: 0xFFFFB23E,
-      dotColor: 0xFFC6FF3D, barColor: 0xFFC6FF3D),
+      dotColor: 0xFFC52473, barColor: 0xFFC52473),
     _ClassData(time: '19:30', period: 'PM', name: 'Pilates Reformer',
       coach: 'Coach Sofia', duration: '45 min',
       spots: '6 spots available', spotsColor: 0xFF3EE6FF,
@@ -42,7 +42,7 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
   final _categories = [
     ('CrossFit', 0xFFB48CFF),
     ('Yoga', 0xFF3EE6FF),
-    ('Strength', 0xFFC6FF3D),
+    ('Strength', 0xFFC52473),
     ('Pilates', 0xFFFF6FD8),
   ];
 

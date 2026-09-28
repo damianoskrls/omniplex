@@ -15,8 +15,8 @@ class AppColors {
   static const teal   = Color(0xFF4FD1C5);
   static const pink   = Color(0xFFFF6B9D);
 
-  // Default primary — static const; tenant color is propagated via AppTheme and AppColorsTheme
-  static const Color lime = Color(0xFFB8F55E);
+  // Default primary — OmniPlex brand pink; tenant color is propagated via AppTheme and AppColorsTheme
+  static const Color lime = Color(0xFFC52473);
   static void setTenantPrimary(Color color) { /* no-op: use context.tenantPrimary for dynamic color */ }
 
   static const cardGradients = [
@@ -35,7 +35,7 @@ class AppColors {
     final h = hex.trim().replaceFirst('#', '');
     if (h.length == 6) return Color(int.parse('FF$h', radix: 16));
     if (h.length == 8) return Color(int.parse(h, radix: 16));
-    return lime;
+    return lime; // fallback to OmniPlex brand pink
   }
 }
 

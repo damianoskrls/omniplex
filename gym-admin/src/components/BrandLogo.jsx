@@ -26,7 +26,7 @@ function OmniplexMark({ size = 'sidebar' }) {
             lineHeight: 1,
           }}>
             <span style={{ color: '#fff' }}>Omni</span>
-            <span style={{ color: '#B8F55E' }}>Plex</span>
+            <span style={{ color: '#C52473' }}>Plex</span>
           </div>
           <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, letterSpacing: 2, marginTop: 3, textTransform: 'uppercase' }}>
             flow for all
@@ -35,7 +35,7 @@ function OmniplexMark({ size = 'sidebar' }) {
       )}
       {!isLogin && (
         <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: '-0.01em', color: '#fff' }}>
-          Omni<span style={{ color: '#B8F55E' }}>Plex</span>
+          Omni<span style={{ color: '#C52473' }}>Plex</span>
         </span>
       )}
     </div>

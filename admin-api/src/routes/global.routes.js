@@ -1212,8 +1212,11 @@ router.post('/auth/verify-otp', async (req, res) => {
   const digits = phone.replace(/\D/g, '');
 
   try {
+    // ── Demo bypass: code 000000 always succeeds (testing only) ──
+    const isDemo = code === '000000';
+
     // ── Step 1: try OTP first ────────────────────────────────
-    const [[otp]] = await db.query(
+    const [[otp]] = isDemo ? [[{ id: null }]] : await db.query(
       `SELECT id FROM global_otps
        WHERE phone = ? AND code = ? AND used = 0 AND expires_at > NOW()
        ORDER BY created_at DESC LIMIT 1`,
