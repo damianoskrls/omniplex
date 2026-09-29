@@ -17,11 +17,27 @@ Future<void> markOnboardingDone() async {
 
 // ── Color constants ──────────────────────────────────────────────────────────
 const _bg     = Color(0xFF0A0A0A);
-const _lime   = Color(0xFFC6FF3D);
+const _lime   = Color(0xFFC6FF3D); // kept for legacy; use _kBrandGrad where possible
 const _gray   = Color(0xFF9A9CA3);
 const _border = Color(0xFF2A2B30);
 const _card   = Color(0xFF16171B);
 const _dim    = Color(0xFF3A3C42);
+const _accent = Color(0xFF7B3EAD); // brand gradient mid-point
+
+const _kBrandGrad = LinearGradient(
+  begin: Alignment(0.0, -1.0),
+  end: Alignment(0.0, 1.0),
+  transform: GradientRotation(3.396), // ~194.63 deg
+  colors: [
+    Color(0xFF4452D8),
+    Color(0xFF4B50D3),
+    Color(0xFF5D49C5),
+    Color(0xFF7B3EAD),
+    Color(0xFFA4308D),
+    Color(0xFFC52473),
+  ],
+  stops: [0.1611, 0.2462, 0.3655, 0.5051, 0.6588, 0.7651],
+);
 
 // ── Slide data ───────────────────────────────────────────────────────────────
 class _Slide {
@@ -155,7 +171,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SvgPicture.asset('assets/omniplex_logo.svg', height: 26),
+                    SvgPicture.asset('assets/icons/omniplex_icon.svg', width: 28, height: 28),
                     if (_page < _slides.length - 1)
                       GestureDetector(
                         onTap: _finish,
@@ -198,9 +214,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                           height: 6,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(9999),
-                            color: active ? _lime : _dim,
+                            color: active ? _accent : _dim,
                             boxShadow: active ? [
-                              BoxShadow(color: _lime.withValues(alpha: 0.7), blurRadius: 8),
+                              BoxShadow(color: _accent.withValues(alpha: 0.7), blurRadius: 8),
                             ] : null,
                           ),
                         );
@@ -214,10 +230,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                       child: Container(
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          gradient: _kBrandGrad,
                           borderRadius: BorderRadius.circular(9999),
                           boxShadow: [
-                            BoxShadow(color: Colors.white.withValues(alpha: 0.15), blurRadius: 16),
+                            BoxShadow(
+                              color: const Color(0xFF7B3EAD).withValues(alpha: 0.45),
+                              blurRadius: 20,
+                              offset: const Offset(0, 6),
+                            ),
                           ],
                         ),
                         child: Row(
@@ -228,12 +248,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: _bg,
+                                color: Colors.white,
                                 letterSpacing: 0.4,
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward, color: _bg, size: 18),
+                            const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
                           ],
                         ),
                       ),
@@ -323,10 +343,10 @@ class _Slide1Visual extends StatelessWidget {
   final double pulse;
 
   static const _gyms = [
-    (name: 'Fitness Club', loc: 'Athens',     img: 'https://www.figma.com/api/mcp/asset/91b13e12-4532-48bb-b294-c27e389f0e48.png'),
-    (name: 'Urban',        loc: 'Fitness',    img: 'https://www.figma.com/api/mcp/asset/e0ed5651-266f-4b29-a1d4-cc64eebe7e1f.png'),
-    (name: 'Iron Works',   loc: 'Gym',        img: 'https://www.figma.com/api/mcp/asset/f200db39-ecc6-4c23-8529-fd8bf59c6b6b.png'),
-    (name: 'Apex',         loc: 'Studio',     img: 'https://www.figma.com/api/mcp/asset/58c6ec8c-b7fa-4ffe-b9be-44d973db21b9.png'),
+    (name: 'Fitness Club', loc: 'Athens',  img: '', colors: [Color(0xFF2A1A6E), Color(0xFF4452D8)]),
+    (name: 'Urban',        loc: 'Fitness', img: '', colors: [Color(0xFF1A1060), Color(0xFF5D49C5)]),
+    (name: 'Iron Works',   loc: 'Gym',     img: '', colors: [Color(0xFF3D1060), Color(0xFF7B3EAD)]),
+    (name: 'Apex',         loc: 'Studio',  img: '', colors: [Color(0xFF4A0A40), Color(0xFFC52473)]),
   ];
 
   @override
@@ -341,8 +361,8 @@ class _Slide1Visual extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(colors: [
-              _lime.withValues(alpha: 0.22),
-              _lime.withValues(alpha: 0.06),
+              _accent.withValues(alpha: 0.30),
+              _accent.withValues(alpha: 0.08),
               Colors.transparent,
             ], stops: const [0.0, 0.45, 0.72]),
           ),
@@ -350,22 +370,22 @@ class _Slide1Visual extends StatelessWidget {
         // Top-left card (higher)
         Positioned(
           left: 0, top: 0,
-          child: _GymCard(name: _gyms[0].name, sub: _gyms[0].loc, imgUrl: _gyms[0].img),
+          child: _GymCard(name: _gyms[0].name, sub: _gyms[0].loc, colors: _gyms[0].colors),
         ),
         // Top-right card (slightly higher)
         Positioned(
           right: 0, top: -8,
-          child: _GymCard(name: _gyms[1].name, sub: _gyms[1].loc, imgUrl: _gyms[1].img),
+          child: _GymCard(name: _gyms[1].name, sub: _gyms[1].loc, colors: _gyms[1].colors),
         ),
         // Bottom-left card
         Positioned(
           left: 4, bottom: -8,
-          child: _GymCard(name: _gyms[2].name, sub: _gyms[2].loc, imgUrl: _gyms[2].img),
+          child: _GymCard(name: _gyms[2].name, sub: _gyms[2].loc, colors: _gyms[2].colors),
         ),
         // Bottom-right card
         Positioned(
           right: 4, bottom: -16,
-          child: _GymCard(name: _gyms[3].name, sub: _gyms[3].loc, imgUrl: _gyms[3].img),
+          child: _GymCard(name: _gyms[3].name, sub: _gyms[3].loc, colors: _gyms[3].colors),
         ),
       ],
     );
@@ -373,10 +393,10 @@ class _Slide1Visual extends StatelessWidget {
 }
 
 class _GymCard extends StatelessWidget {
-  const _GymCard({required this.name, required this.sub, required this.imgUrl});
+  const _GymCard({required this.name, required this.sub, required this.colors});
   final String name;
   final String sub;
-  final String imgUrl;
+  final List<Color> colors;
 
   @override
   Widget build(BuildContext context) {
@@ -386,20 +406,26 @@ class _GymCard extends StatelessWidget {
         color: _card,
         border: Border.all(color: _border),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 15, offset: Offset(0, 10)),
+        boxShadow: [
+          BoxShadow(color: colors[1].withValues(alpha: 0.25), blurRadius: 20, offset: const Offset(0, 8)),
         ],
       ),
       clipBehavior: Clip.hardEdge,
       child: Column(
         children: [
           Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(imgUrl, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1E1F24))),
-              ],
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: colors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Center(
+                child: Icon(Icons.fitness_center_rounded,
+                  color: Colors.white.withValues(alpha: 0.25), size: 40),
+              ),
             ),
           ),
           Padding(
@@ -410,7 +436,7 @@ class _GymCard extends StatelessWidget {
                 Text(name, style: GoogleFonts.spaceGrotesk(
                   fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
                 Text(sub, style: GoogleFonts.spaceGrotesk(
-                  fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                  fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white70)),
               ],
             ),
           ),
@@ -425,10 +451,10 @@ class _Slide2Visual extends StatelessWidget {
   const _Slide2Visual();
 
   static const _activities = [
-    (name: 'CrossFit',  count: '42 classes nearby', img: 'https://www.figma.com/api/mcp/asset/be845761-3716-45d0-ba05-0ac2277b78ec.png', color: Color(0xFFB48CFF)),
-    (name: 'Yoga',      count: '28 classes nearby', img: 'https://www.figma.com/api/mcp/asset/eb5ebc40-66eb-4b33-8375-d8a02ae8239c.png', color: Color(0xFF3EE6FF)),
-    (name: 'Pilates',   count: '19 classes nearby', img: 'https://www.figma.com/api/mcp/asset/22fc810f-1907-4c2b-a81d-c59133e40dec.png', color: _lime),
-    (name: 'Strength',  count: '35 classes nearby', img: 'https://www.figma.com/api/mcp/asset/cddcdd25-3f31-49bc-b7f0-3e0b336bcee2.png', color: _lime),
+    (name: 'CrossFit',  count: '42 classes nearby', img: '', color: Color(0xFF4452D8)),
+    (name: 'Yoga',      count: '28 classes nearby', img: '', color: Color(0xFF5D49C5)),
+    (name: 'Pilates',   count: '19 classes nearby', img: '', color: Color(0xFF7B3EAD)),
+    (name: 'Strength',  count: '35 classes nearby', img: '', color: Color(0xFFC52473)),
   ];
 
   @override
@@ -513,19 +539,20 @@ class _ActivityCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.network(item.img, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1E1F24))),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
                       colors: [
-                        const Color(0xFF0A0A0A).withValues(alpha: 0.85),
-                        const Color(0xFF0A0A0A).withValues(alpha: 0.1),
+                        item.color.withValues(alpha: 0.8),
+                        item.color.withValues(alpha: 0.3),
                       ],
-                      stops: const [0.0, 0.6],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                  ),
+                  child: Center(
+                    child: Icon(Icons.fitness_center_rounded,
+                      color: Colors.white.withValues(alpha: 0.2), size: 40),
                   ),
                 ),
                 Positioned(
@@ -533,7 +560,7 @@ class _ActivityCard extends StatelessWidget {
                   child: Container(
                     width: 28, height: 28,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0A0A0A).withValues(alpha: 0.8),
+                      color: const Color(0xFF0A0A0A).withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                       border: Border.all(color: item.color),
                       boxShadow: [BoxShadow(color: item.color.withValues(alpha: 0.5), blurRadius: 10)],
