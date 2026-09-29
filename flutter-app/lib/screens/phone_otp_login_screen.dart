@@ -112,13 +112,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
       final result = await widget.globalAuth.verifyOtp(_phone, _otp);
       await _registerFcmToken();
       if (!mounted) return;
-      if (result['is_new'] == true) {
-        _goProfileDetails();
-      } else if (widget.globalAuth.preferredRole == null) {
-        _goRolePicker();
-      } else {
-        widget.onLoggedIn();
-      }
+      _routeAfterLogin(result);
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
       for (final c in _otpCtrls) c.clear();
@@ -169,19 +163,25 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
       final result = await widget.globalAuth.verifyOtp(_phone, pwd);
       await _registerFcmToken();
       if (!mounted) return;
-      if (result['is_new'] == true) {
-        _goProfileDetails();
-      } else if (widget.globalAuth.preferredRole == null) {
-        _goRolePicker();
-      } else {
-        widget.onLoggedIn();
-      }
+      _routeAfterLogin(result);
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
     }
   }
 
-  /// New user: name + email first, then optional role picker
+  void _routeAfterLogin(Map<String, dynamic> result) {
+    final isNew = result['is_new'] == true;
+    final hasName = (widget.globalAuth.user?.fullName ?? '').trim().isNotEmpty;
+    if (isNew || !hasName) {
+      _goProfileDetails();
+    } else if (widget.globalAuth.preferredRole == null) {
+      _goRolePicker();
+    } else {
+      widget.onLoggedIn();
+    }
+  }
+
+  /// New user or incomplete profile: name + email first, then optional role picker
   void _goProfileDetails() {
     Navigator.pushReplacement(context, MaterialPageRoute(
       builder: (_) => GlobalProfileDetailsScreen(
