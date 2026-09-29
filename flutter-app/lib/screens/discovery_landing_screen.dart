@@ -52,13 +52,29 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   double? _userLat;
   double? _userLng;
 
-  // Active filters (null = not set)
-  double? _filterDistanceKm;
-  double? _filterMinRating;
-  int?    _filterMaxPrice;
+  // Quick filter chips (search mode)
+  final Set<String> _quickFilters = {};
 
-  // Static recent searches — would come from local storage in prod
+  // Advanced filters
+  Set<String> _filterProgramTypes = {};
+  double _filterMaxDistanceKm = 50.0;
+  Set<String> _filterAmenities = {};
+  bool _filterOpenNow = false;
+
+  // Static recent searches
   final _recentSearches = ['CrossFit Athens', 'Yoga near me', '24h fitness clubs'];
+
+  static const _kProgramTypes = [
+    'CrossFit', 'Yoga', 'Pilates', 'Functional', 'HIIT', 'Boxing',
+    'Κολύμβηση', 'Personal Training', 'Δύναμη', 'Cardio',
+  ];
+  static const _kAmenityIcons = {
+    'Parking': '🅿', 'Showers': '🚿', 'Locker rooms': '🔒',
+    'Pool': '🏊', 'Cafe': '☕', 'Towel service': '👕',
+  };
+  static const _kQuickChips = [
+    'CrossFit', 'Yoga', 'Pilates', 'Functional', 'HIIT', 'Boxing', 'Κοντά μου',
+  ];
 
   // (label, apiKey, iconAsset, activeBorderColor)
   static const _categories = [
@@ -153,19 +169,28 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
 
   Future<void> _search() async {
     final q = _searchCtrl.text.trim();
-    if (q.isEmpty && _activeCategory.isEmpty) return;
+    final allPrograms = {
+      ...(_activeCategory.isNotEmpty ? {_activeCategory} : <String>{}),
+      ..._filterProgramTypes,
+      ..._quickFilters.where((c) => c != 'Κοντά μου'),
+    };
+    if (q.isEmpty && allPrograms.isEmpty && !_hasActiveFilters &&
+        !_quickFilters.contains('Κοντά μου')) return;
     setState(() { _searching = true; _searched = true; });
     try {
       final params = <String, String>{};
       if (q.isNotEmpty) params['q'] = q;
-      if (_activeCategory.isNotEmpty) params['service'] = _activeCategory;
+      if (allPrograms.isNotEmpty) params['service'] = allPrograms.join(',');
       if (_userLat != null && _userLng != null) {
         params['lat'] = _userLat!.toString();
         params['lng'] = _userLng!.toString();
       }
-      if (_filterDistanceKm != null) params['max_distance'] = _filterDistanceKm!.toString();
-      if (_filterMinRating != null && _filterMinRating! > 0) params['min_rating'] = _filterMinRating!.toString();
-      if (_filterMaxPrice != null) params['max_price'] = _filterMaxPrice!.toString();
+      if (_filterMaxDistanceKm < 50) {
+        params['max_distance'] = _filterMaxDistanceKm.toStringAsFixed(0);
+      }
+      if (_quickFilters.contains('Κοντά μου')) params['max_distance'] = '5';
+      if (_filterOpenNow) params['open_now'] = 'true';
+      if (_filterAmenities.isNotEmpty) params['amenities'] = _filterAmenities.join(',');
       final uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: params);
       final res = await http.get(uri);
       if (res.statusCode == 200 && mounted) {
@@ -216,7 +241,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   }
 
   bool get _hasActiveFilters =>
-    _filterDistanceKm != null || _filterMinRating != null || _filterMaxPrice != null;
+    _filterProgramTypes.isNotEmpty || _filterMaxDistanceKm < 50 ||
+    _filterAmenities.isNotEmpty || _filterOpenNow;
 
   void _exitSearch() {
     _searchFocus.unfocus();
@@ -226,6 +252,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       _searchFocused  = false;
       _results        = [];
       _activeCategory = '';
+      _quickFilters.clear();
     });
   }
 
@@ -258,9 +285,9 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             ),
           ),
           SafeArea(
-            child: _searched ? _buildResultsContent() :
-                   _searchFocused ? _buildSearchFocusedContent() :
-                   _buildHomeContent(),
+            child: (_searchFocused || _searched)
+              ? _buildSearchModeContent()
+              : _buildHomeContent(),
           ),
         ],
       ),
@@ -459,37 +486,41 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         color: Colors.white, letterSpacing: -0.45));
   }
 
-  // ─────────── SEARCH FOCUSED STATE (11:463) ───────────
+  // ─────────── SEARCH MODE (unified: focused + results) ───────────
 
-  Widget _buildSearchFocusedContent() {
-    return CustomScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      slivers: [
-        SliverPadding(
+  Widget _buildSearchModeContent() {
+    final hasInput = _searchCtrl.text.trim().isNotEmpty || _quickFilters.isNotEmpty || _hasActiveFilters;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Top bar
+        Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSearchFocusedTopBar(),
-                if (_hasActiveFilters) ...[
-                  const SizedBox(height: 12),
-                  _buildActiveFiltersRow(),
-                ],
-                const SizedBox(height: 28),
-                _buildRecentSearches(),
-                const SizedBox(height: 24),
-                _buildPopularSearches(),
-                const SizedBox(height: 40),
-              ],
-            ),
+          child: _buildSearchModeTopBar(),
+        ),
+        // Quick filter chips
+        const SizedBox(height: 12),
+        _buildQuickFilterChips(),
+        // Active advanced filter chips
+        if (_hasActiveFilters) ...[
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _buildActiveFiltersRow(),
           ),
+        ],
+        const SizedBox(height: 4),
+        // Results or suggestions
+        Expanded(
+          child: hasInput
+            ? _buildSearchResultsBody()
+            : _buildSearchSuggestions(),
         ),
       ],
     );
   }
 
-  Widget _buildSearchFocusedTopBar() {
+  Widget _buildSearchModeTopBar() {
     return Row(children: [
       GestureDetector(
         onTap: _exitSearch,
@@ -556,7 +587,6 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         ),
       ),
       const SizedBox(width: 10),
-      // Filter button — shows lime dot when filters are active
       GestureDetector(
         onTap: _showFilterSheet,
         child: Stack(
@@ -580,8 +610,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                 top: -3, right: -3,
                 child: Container(
                   width: 10, height: 10,
-                  decoration: const BoxDecoration(
-                    color: _kLime, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(color: _kLime, shape: BoxShape.circle),
                 ),
               ),
           ],
@@ -590,67 +619,233 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     ]);
   }
 
-  Widget _buildFilterChipsRow() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(children: [
-        // Filters (lime)
-        _filterChip(
-          icon: 'assets/icons/discovery_filter.svg',
-          label: 'Φίλτρα',
-          active: true,
-          filterType: 'all',
-        ),
-        const SizedBox(width: 8),
-        _filterChip(
-          label: 'Απόσταση',
-          chevron: true,
-          filterType: 'distance',
-        ),
-        const SizedBox(width: 8),
-        _filterChip(
-          label: 'Αξιολόγηση',
-          chevron: true,
-          filterType: 'rating',
-        ),
-        const SizedBox(width: 8),
-        _filterChip(
-          label: 'Τιμή',
-          cyanBorder: true,
-          chevron: true,
-          filterType: 'price',
-        ),
-      ]),
+  Widget _buildQuickFilterChips() {
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: _kQuickChips.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final chip = _kQuickChips[i];
+          final active = _quickFilters.contains(chip);
+          final isNearby = chip == 'Κοντά μου';
+          final color = isNearby ? _kCyan : _kLime;
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                if (active) _quickFilters.remove(chip);
+                else        _quickFilters.add(chip);
+              });
+              if (_quickFilters.isEmpty && _searchCtrl.text.trim().length < 2 && !_hasActiveFilters) {
+                setState(() { _results = []; _searched = false; });
+              } else {
+                _search();
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: active ? color.withValues(alpha: 0.12) : _kCard,
+                borderRadius: BorderRadius.circular(9999),
+                border: Border.all(color: active ? color : _kBorder),
+              ),
+              alignment: Alignment.center,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (isNearby) ...[
+                  Icon(Icons.near_me_rounded, size: 12,
+                    color: active ? _kCyan : _kGray),
+                  const SizedBox(width: 6),
+                ],
+                Text(chip,
+                  style: GoogleFonts.manrope(
+                    fontSize: 12, fontWeight: FontWeight.w600,
+                    color: active ? color : Colors.white)),
+              ]),
+            ),
+          );
+        },
+      ),
     );
   }
+
+  Widget _buildSearchResultsBody() {
+    if (_searching) {
+      return const Center(child: CircularProgressIndicator(color: _kLime));
+    }
+    if (_searched && _results.isEmpty) {
+      return _buildEmptyState();
+    }
+    final gyms = _results.isNotEmpty ? _results : _featured;
+    return CustomScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          sliver: SliverToBoxAdapter(
+            child: _buildResultsCountHeader(gyms.length),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildGymCard(gyms[i], showLogoBadge: false),
+              ),
+              childCount: gyms.length,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResultsCountHeader(int count) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          _searched ? '$count γυμναστήρια βρέθηκαν' : 'Κοντά σου',
+          style: GoogleFonts.manrope(
+            fontSize: 13, fontWeight: FontWeight.w600, color: _kGray)),
+        if (_hasActiveFilters || _quickFilters.isNotEmpty)
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _quickFilters.clear();
+                _filterProgramTypes = {};
+                _filterMaxDistanceKm = 50;
+                _filterAmenities = {};
+                _filterOpenNow = false;
+              });
+              if (_searchCtrl.text.trim().isNotEmpty) _search();
+              else setState(() { _results = []; _searched = false; });
+            },
+            child: Text('Καθαρισμός όλων',
+              style: GoogleFonts.manrope(fontSize: 12, color: _kLime,
+                decoration: TextDecoration.underline, decorationColor: _kLime)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                color: _kCard,
+                shape: BoxShape.circle,
+                border: Border.all(color: _kBorder),
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.search_off_rounded, size: 36, color: _kGray),
+            ),
+            const SizedBox(height: 20),
+            Text('Δεν βρέθηκαν γυμναστήρια',
+              style: GoogleFonts.manrope(
+                fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+            const SizedBox(height: 8),
+            Text('Δοκίμασε διαφορετικούς όρους ή αφαίρεσε κάποια φίλτρα.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.manrope(fontSize: 13, color: _kGray, height: 1.5)),
+            if (_hasActiveFilters) ...[
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _filterProgramTypes = {};
+                    _filterMaxDistanceKm = 50;
+                    _filterAmenities = {};
+                    _filterOpenNow = false;
+                  });
+                  _search();
+                },
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  decoration: BoxDecoration(
+                    color: _kCard,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _kBorder),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text('Αφαίρεση φίλτρων',
+                    style: GoogleFonts.manrope(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchSuggestions() {
+    return CustomScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildRecentSearches(),
+                const SizedBox(height: 24),
+                _buildPopularSearches(),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+
 
   void _showFilterSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: _kCard,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => _FilterSheet(
-        initialDistance: _filterDistanceKm,
-        initialMinRating: _filterMinRating,
-        initialMaxPrice: _filterMaxPrice,
-        onApply: (dist, rating, price) {
+      builder: (_) => _GymFilterSheet(
+        initialProgramTypes: _filterProgramTypes,
+        initialMaxDistance: _filterMaxDistanceKm,
+        initialAmenities: _filterAmenities,
+        initialOpenNow: _filterOpenNow,
+        currentResultCount: _results.length,
+        onApply: (programs, dist, amenities, openNow) {
           setState(() {
-            _filterDistanceKm = dist;
-            _filterMinRating  = rating;
-            _filterMaxPrice   = price;
+            _filterProgramTypes   = programs;
+            _filterMaxDistanceKm  = dist;
+            _filterAmenities      = amenities;
+            _filterOpenNow        = openNow;
           });
-          _search(); // always search after applying filters
+          _search();
         },
         onClearAll: () {
           setState(() {
-            _filterDistanceKm = null;
-            _filterMinRating  = null;
-            _filterMaxPrice   = null;
+            _filterProgramTypes  = {};
+            _filterMaxDistanceKm = 50.0;
+            _filterAmenities     = {};
+            _filterOpenNow       = false;
           });
-          if (_searchCtrl.text.trim().isNotEmpty || _activeCategory.isNotEmpty) {
+          if (_searchCtrl.text.trim().isNotEmpty || _quickFilters.isNotEmpty || _activeCategory.isNotEmpty) {
             _search();
-          } else if (_searched) {
+          } else {
             setState(() { _results = []; _searched = false; });
           }
         },
@@ -658,45 +853,6 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     );
   }
 
-  Widget _filterChip({
-    String? icon,
-    required String label,
-    bool active = false,
-    bool cyanBorder = false,
-    bool chevron = false,
-    String? filterType,
-  }) {
-    final bg     = active ? _kLime : _kCard;
-    final border = active ? _kLime : (cyanBorder ? _kCyan : _kBorder);
-    final fg     = active ? _kBg : Colors.white;
-    return GestureDetector(
-      onTap: filterType != null ? () => _showFilterSheet() : null,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(9999),
-          border: Border.all(color: border),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (icon != null) ...[
-            SvgPicture.asset(icon, width: 12, height: 12,
-              colorFilter: ColorFilter.mode(fg, BlendMode.srcIn)),
-            const SizedBox(width: 6),
-          ],
-          Text(label,
-            style: GoogleFonts.manrope(
-              fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
-          if (chevron) ...[
-            const SizedBox(width: 4),
-            Icon(Icons.keyboard_arrow_down_rounded,
-              size: 14, color: fg),
-          ],
-        ]),
-      ),
-    );
-  }
 
   Widget _buildRecentSearches() {
     return Column(
@@ -920,162 +1076,31 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     );
   }
 
-  // ─────────── RESULTS STATE (11:658) ───────────
-
-  Widget _buildResultsContent() {
-    final gyms = _results.isNotEmpty ? _results : _featured;
-    final showEmpty = !_searching && _results.isEmpty;
-
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildResultsTopBar(),
-                if (_hasActiveFilters) ...[
-                  const SizedBox(height: 12),
-                  _buildActiveFiltersRow(),
-                ],
-                const SizedBox(height: 12),
-                if (!_searching)
-                  _buildResultsHeader(gyms.length),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        ),
-
-        if (_searching)
-          const SliverFillRemaining(
-            child: Center(child: CircularProgressIndicator(color: _kLime)),
-          )
-        else if (showEmpty)
-          SliverFillRemaining(
-            child: Center(
-              child: Text('Δεν βρέθηκαν γυμναστήρια',
-                style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
-            ),
-          )
-        else
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (_, i) {
-                  if (i == gyms.length) return _buildLoadMoreButton();
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _buildGymCard(gyms[i], showLogoBadge: false),
-                  );
-                },
-                childCount: gyms.length + 1,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildResultsTopBar() {
-    final query = _searchCtrl.text.trim();
-    return Row(children: [
-      GestureDetector(
-        onTap: _exitSearch,
-        child: Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(
-            color: _kCard,
-            shape: BoxShape.circle,
-            border: Border.all(color: _kBorder),
-          ),
-          alignment: Alignment.center,
-          child: SvgPicture.asset('assets/icons/discovery_back.svg',
-            width: 16, height: 16),
-        ),
-      ),
-      const SizedBox(width: 12),
-      Expanded(
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: _kCard,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kBorder),
-          ),
-          child: Row(children: [
-            const SizedBox(width: 16),
-            SvgPicture.asset('assets/icons/discovery_search.svg',
-              width: 16, height: 16),
-            const SizedBox(width: 12),
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  setState(() { _searched = false; _searchFocused = true; });
-                  _searchFocus.requestFocus();
-                },
-                child: Text(query.isNotEmpty ? query : 'Αναζήτηση...',
-                  style: GoogleFonts.manrope(
-                    fontSize: 14,
-                    color: query.isNotEmpty ? Colors.white : _kGray)),
-              ),
-            ),
-            if (query.isNotEmpty)
-              GestureDetector(
-                onTap: () {
-                  _searchCtrl.clear();
-                  setState(() { _results = []; _searched = false; });
-                  _searchFocus.requestFocus();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: SvgPicture.asset('assets/icons/discovery_x.svg',
-                    width: 14, height: 14,
-                    colorFilter: const ColorFilter.mode(_kGray, BlendMode.srcIn)),
-                ),
-              ),
-            GestureDetector(
-              onTap: _showFilterSheet,
-              child: Container(
-                width: 40, height: 40,
-                margin: const EdgeInsets.only(right: 6),
-                decoration: BoxDecoration(
-                  color: _hasActiveFilters ? _kLime.withValues(alpha: 0.12) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: SvgPicture.asset('assets/icons/discovery_filter.svg',
-                  width: 14, height: 14,
-                  colorFilter: ColorFilter.mode(
-                    _hasActiveFilters ? _kLime : Colors.white, BlendMode.srcIn)),
-              ),
-            ),
-          ]),
-        ),
-      ),
-    ]);
-  }
-
   Widget _buildActiveFiltersRow() {
     final chips = <Widget>[];
-    if (_filterDistanceKm != null) {
+    for (final t in _filterProgramTypes) {
       chips.add(_activeFilterChip(
-        label: 'Απόσταση: ${_filterDistanceKm!.toInt()} km',
-        onRemove: () { setState(() => _filterDistanceKm = null); if (_searched) _search(); },
+        label: t,
+        onRemove: () { setState(() => _filterProgramTypes.remove(t)); _search(); },
       ));
     }
-    if (_filterMinRating != null && _filterMinRating! > 0) {
+    if (_filterMaxDistanceKm < 50) {
       chips.add(_activeFilterChip(
-        label: 'Αξιολόγηση: ${_filterMinRating!.toStringAsFixed(1)}+',
-        onRemove: () { setState(() => _filterMinRating = null); if (_searched) _search(); },
+        label: 'Έως ${_filterMaxDistanceKm.toInt()} km',
+        onRemove: () { setState(() => _filterMaxDistanceKm = 50); _search(); },
       ));
     }
-    if (_filterMaxPrice != null) {
+    for (final a in _filterAmenities) {
+      final icon = _kAmenityIcons[a] ?? '';
       chips.add(_activeFilterChip(
-        label: 'Τιμή: ≤€${_filterMaxPrice!}',
-        onRemove: () { setState(() => _filterMaxPrice = null); if (_searched) _search(); },
+        label: '$icon $a',
+        onRemove: () { setState(() => _filterAmenities.remove(a)); _search(); },
+      ));
+    }
+    if (_filterOpenNow) {
+      chips.add(_activeFilterChip(
+        label: '🟢 Ανοιχτό τώρα',
+        onRemove: () { setState(() => _filterOpenNow = false); _search(); },
       ));
     }
     if (chips.isEmpty) return const SizedBox.shrink();
@@ -1094,7 +1119,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     return GestureDetector(
       onTap: onRemove,
       child: Container(
-        height: 36,
+        height: 34,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: _kLime.withValues(alpha: 0.10),
@@ -1106,55 +1131,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             style: GoogleFonts.manrope(
               fontSize: 12, fontWeight: FontWeight.w600, color: _kLime)),
           const SizedBox(width: 6),
-          SvgPicture.asset('assets/icons/discovery_x.svg',
-            width: 10, height: 10,
-            colorFilter: const ColorFilter.mode(_kLime, BlendMode.srcIn)),
+          const Icon(Icons.close_rounded, size: 12, color: _kLime),
         ]),
-      ),
-    );
-  }
-
-  Widget _buildResultsHeader(int count) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text('$count gyms found',
-          style: GoogleFonts.manrope(
-            fontSize: 13, fontWeight: FontWeight.w600,
-            color: _kGray)),
-        Row(children: [
-          Text('Sort: ',
-            style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
-          Text('Nearest ',
-            style: GoogleFonts.manrope(
-              fontSize: 12, fontWeight: FontWeight.w700,
-              color: Colors.white)),
-          SvgPicture.asset('assets/icons/discovery_sort_chevron.svg',
-            width: 10, height: 10,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
-        ]),
-      ],
-    );
-  }
-
-  Widget _buildLoadMoreButton() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: _kCard,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kBorder),
-          ),
-          alignment: Alignment.center,
-          child: Text('Load more gyms',
-            style: GoogleFonts.manrope(
-              fontSize: 13, fontWeight: FontWeight.w700,
-              color: Colors.white, letterSpacing: 0.3)),
-        ),
       ),
     );
   }
@@ -1458,158 +1436,288 @@ class _CyanGradientPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────
-// Filter Bottom Sheet
+// Gym Filter Bottom Sheet
 // ─────────────────────────────────────────
 
-class _FilterSheet extends StatefulWidget {
-  const _FilterSheet({
+class _GymFilterSheet extends StatefulWidget {
+  const _GymFilterSheet({
+    required this.initialProgramTypes,
+    required this.initialMaxDistance,
+    required this.initialAmenities,
+    required this.initialOpenNow,
+    required this.currentResultCount,
     required this.onApply,
     required this.onClearAll,
-    this.initialDistance,
-    this.initialMinRating,
-    this.initialMaxPrice,
   });
 
-  final double? initialDistance;
-  final double? initialMinRating;
-  final int?    initialMaxPrice;
-  final void Function(double? dist, double? rating, int? price) onApply;
+  final Set<String> initialProgramTypes;
+  final double      initialMaxDistance;
+  final Set<String> initialAmenities;
+  final bool        initialOpenNow;
+  final int         currentResultCount;
+  final void Function(Set<String>, double, Set<String>, bool) onApply;
   final VoidCallback onClearAll;
 
   @override
-  State<_FilterSheet> createState() => _FilterSheetState();
+  State<_GymFilterSheet> createState() => _GymFilterSheetState();
 }
 
-class _FilterSheetState extends State<_FilterSheet> {
-  late double _distance;
-  late double _minRating;
-  late int    _maxPrice;
-  late bool   _distEnabled;
-  late bool   _ratingEnabled;
-  late bool   _priceEnabled;
+class _GymFilterSheetState extends State<_GymFilterSheet> {
+  late Set<String> _programTypes;
+  late double      _maxDistance;
+  late Set<String> _amenities;
+  late bool        _openNow;
+
+  static const _kProgramTypes = [
+    'CrossFit', 'Yoga', 'Pilates', 'Functional', 'HIIT', 'Boxing',
+    'Κολύμβηση', 'Personal Training', 'Δύναμη', 'Cardio',
+  ];
+  static const _kAmenityIcons = {
+    'Parking': '🅿', 'Showers': '🚿', 'Locker rooms': '🔒',
+    'Pool': '🏊', 'Cafe': '☕', 'Towel service': '👕',
+  };
 
   @override
   void initState() {
     super.initState();
-    _distEnabled   = widget.initialDistance != null;
-    _ratingEnabled = widget.initialMinRating != null && widget.initialMinRating! > 0;
-    _priceEnabled  = widget.initialMaxPrice != null;
-    _distance  = widget.initialDistance   ?? 10;
-    _minRating = widget.initialMinRating  ?? 0;
-    _maxPrice  = widget.initialMaxPrice   ?? 100;
+    _programTypes = Set.from(widget.initialProgramTypes);
+    _maxDistance  = widget.initialMaxDistance;
+    _amenities    = Set.from(widget.initialAmenities);
+    _openNow      = widget.initialOpenNow;
   }
+
+  void _clearAll() {
+    setState(() {
+      _programTypes.clear();
+      _maxDistance = 50;
+      _amenities.clear();
+      _openNow = false;
+    });
+  }
+
+  bool get _hasAny =>
+    _programTypes.isNotEmpty || _maxDistance < 50 ||
+    _amenities.isNotEmpty || _openNow;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(24, 20, 24,
-        MediaQuery.of(context).viewInsets.bottom + 24),
+    return Container(
+      decoration: const BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
+          // Drag handle
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
             child: Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFF2A2B30),
+                color: _kBorder,
                 borderRadius: BorderRadius.circular(2)),
             ),
           ),
-          const SizedBox(height: 20),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Φίλτρα', style: GoogleFonts.manrope(
-                fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onClearAll();
-                },
-                child: Text('Καθαρισμός',
-                  style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
-              ),
-            ],
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Φίλτρα',
+                  style: GoogleFonts.manrope(
+                    fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                if (_hasAny)
+                  GestureDetector(
+                    onTap: _clearAll,
+                    child: Text('Καθαρισμός όλων',
+                      style: GoogleFonts.manrope(
+                        fontSize: 13, fontWeight: FontWeight.w600, color: _kLime)),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
 
-          // Distance
-          Row(children: [
-            Checkbox(
-              value: _distEnabled,
-              activeColor: _kLime,
-              checkColor: _kBg,
-              side: const BorderSide(color: _kGray),
-              onChanged: (v) => setState(() => _distEnabled = v ?? false),
-            ),
-            Expanded(
-              child: _filterLabel('Απόσταση: ${_distance.toInt()} km'),
-            ),
-          ]),
-          if (_distEnabled)
-            _buildSlider(_distance, 1, 50, 49, _kLime,
-              (v) => setState(() => _distance = v)),
-          const SizedBox(height: 8),
+          // Scrollable content
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Είδος Προγράμματος ──
+                  _sectionLabel('Είδος Προγράμματος'),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: _kProgramTypes.map((t) {
+                      final sel = _programTypes.contains(t);
+                      return GestureDetector(
+                        onTap: () => setState(() =>
+                          sel ? _programTypes.remove(t) : _programTypes.add(t)),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          height: 36,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: sel ? _kLime.withValues(alpha: 0.12) : _kBg,
+                            borderRadius: BorderRadius.circular(9999),
+                            border: Border.all(
+                              color: sel ? _kLime : _kBorder,
+                              width: sel ? 1.5 : 1,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(t,
+                            style: GoogleFonts.manrope(
+                              fontSize: 13, fontWeight: FontWeight.w600,
+                              color: sel ? _kLime : _kGray)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
 
-          // Rating
-          Row(children: [
-            Checkbox(
-              value: _ratingEnabled,
-              activeColor: _kLime,
-              checkColor: _kBg,
-              side: const BorderSide(color: _kGray),
-              onChanged: (v) => setState(() => _ratingEnabled = v ?? false),
-            ),
-            Expanded(
-              child: _filterLabel(
-                'Ελάχιστη Αξιολόγηση: ${_minRating == 0 ? "Όλα" : "${_minRating.toStringAsFixed(1)}+"}'),
-            ),
-          ]),
-          if (_ratingEnabled)
-            _buildSlider(_minRating, 0, 5, 10, _kLime,
-              (v) => setState(() => _minRating = v)),
-          const SizedBox(height: 8),
+                  const SizedBox(height: 24),
 
-          // Price
-          Row(children: [
-            Checkbox(
-              value: _priceEnabled,
-              activeColor: _kLime,
-              checkColor: _kBg,
-              side: const BorderSide(color: _kGray),
-              onChanged: (v) => setState(() => _priceEnabled = v ?? false),
-            ),
-            Expanded(
-              child: _filterLabel('Μέγιστη Τιμή: €$_maxPrice'),
-            ),
-          ]),
-          if (_priceEnabled)
-            _buildSlider(_maxPrice.toDouble(), 10, 300, 29, _kCyan,
-              (v) => setState(() => _maxPrice = v.toInt())),
-          const SizedBox(height: 20),
+                  // ── Απόσταση ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _sectionLabel('Απόσταση'),
+                      Text(
+                        _maxDistance >= 50 ? 'Οποιαδήποτε' : 'Έως ${_maxDistance.toInt()} km',
+                        style: GoogleFonts.manrope(
+                          fontSize: 13, fontWeight: FontWeight.w600,
+                          color: _maxDistance < 50 ? _kLime : _kGray)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SliderTheme(
+                    data: SliderThemeData(
+                      activeTrackColor: _kLime,
+                      inactiveTrackColor: _kBorder,
+                      thumbColor: _kLime,
+                      overlayColor: _kLime.withValues(alpha: 0.15),
+                      trackHeight: 3,
+                    ),
+                    child: Slider(
+                      value: _maxDistance,
+                      min: 1, max: 50, divisions: 49,
+                      onChanged: (v) => setState(() => _maxDistance = v),
+                    ),
+                  ),
 
-          GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
-              widget.onApply(
-                _distEnabled   ? _distance  : null,
-                _ratingEnabled ? _minRating : null,
-                _priceEnabled  ? _maxPrice  : null,
-              );
-            },
-            child: Container(
-              height: 52,
-              decoration: BoxDecoration(
-                color: _kLime,
-                borderRadius: BorderRadius.circular(14),
+                  const SizedBox(height: 24),
+
+                  // ── Παροχές ──
+                  _sectionLabel('Παροχές'),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: _kAmenityIcons.entries.map((e) {
+                      final sel = _amenities.contains(e.key);
+                      return GestureDetector(
+                        onTap: () => setState(() =>
+                          sel ? _amenities.remove(e.key) : _amenities.add(e.key)),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          height: 36,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: sel ? _kLime.withValues(alpha: 0.12) : _kBg,
+                            borderRadius: BorderRadius.circular(9999),
+                            border: Border.all(
+                              color: sel ? _kLime : _kBorder,
+                              width: sel ? 1.5 : 1,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text('${e.value} ${e.key}',
+                            style: GoogleFonts.manrope(
+                              fontSize: 13, fontWeight: FontWeight.w600,
+                              color: sel ? _kLime : _kGray)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Ανοιχτό τώρα ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _sectionLabel('Ανοιχτό τώρα'),
+                      Switch(
+                        value: _openNow,
+                        activeColor: _kLime,
+                        activeTrackColor: _kLime.withValues(alpha: 0.25),
+                        inactiveTrackColor: _kBorder,
+                        inactiveThumbColor: _kGray,
+                        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+                        onChanged: (v) => setState(() => _openNow = v),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+                ],
               ),
-              alignment: Alignment.center,
-              child: Text('Εφαρμογή Φίλτρων',
-                style: GoogleFonts.manrope(
-                  fontSize: 15, fontWeight: FontWeight.w700,
-                  color: const Color(0xFF0A0A0A))),
+            ),
+          ),
+
+          // Sticky bottom
+          Padding(
+            padding: EdgeInsets.fromLTRB(24, 12, 24,
+              MediaQuery.of(context).viewInsets.bottom +
+              MediaQuery.of(context).padding.bottom + 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    widget.onApply(_programTypes, _maxDistance, _amenities, _openNow);
+                  },
+                  child: Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: _kLime,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _kLime.withValues(alpha: 0.28),
+                          blurRadius: 16, offset: const Offset(0, 6)),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      widget.currentResultCount > 0
+                        ? 'Δες ${widget.currentResultCount} γυμναστήρια'
+                        : 'Εφαρμογή Φίλτρων',
+                      style: GoogleFonts.manrope(
+                        fontSize: 15, fontWeight: FontWeight.w700,
+                        color: _kBg)),
+                  ),
+                ),
+                if (_hasAny) ...[
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onClearAll();
+                    },
+                    child: Text('Καθαρισμός φίλτρων',
+                      style: GoogleFonts.manrope(
+                        fontSize: 13, fontWeight: FontWeight.w600,
+                        color: _kGray,
+                        decoration: TextDecoration.underline,
+                        decorationColor: _kGray)),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -1617,18 +1725,8 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
   }
 
-  Widget _buildSlider(double value, double min, double max, int divisions, Color color, ValueChanged<double> onChanged) {
-    return SliderTheme(
-      data: SliderThemeData(
-        activeTrackColor: color,
-        inactiveTrackColor: const Color(0xFF2A2B30),
-        thumbColor: color,
-        overlayColor: color.withValues(alpha: 0.15),
-      ),
-      child: Slider(value: value, min: min, max: max, divisions: divisions, onChanged: onChanged),
-    );
-  }
-
-  Widget _filterLabel(String text) => Text(text,
-    style: GoogleFonts.manrope(fontSize: 13, color: const Color(0xFF9A9CA3)));
+  Widget _sectionLabel(String text) => Text(text,
+    style: GoogleFonts.manrope(
+      fontSize: 13, fontWeight: FontWeight.w700,
+      color: Colors.white, letterSpacing: 0.3));
 }
