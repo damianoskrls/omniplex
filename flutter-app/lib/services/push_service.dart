@@ -17,6 +17,7 @@ class PushService {
 
   bool _ready = false;
   PushTapHandler? onTap;
+  void Function(Map<String, dynamic> data)? onForegroundData;
   AuthService? _auth;
   String? _pendingTapPayload;
 
@@ -105,6 +106,7 @@ class PushService {
     final body = notification?.body ?? message.data['body'] as String? ?? '';
     final payload = payloadFromData(message.data);
     NotificationService.instance.showInstant(title: title, body: body, payload: payload);
+    onForegroundData?.call(Map<String, dynamic>.from(message.data));
   }
 
   void _onOpenedFromBackground(RemoteMessage message) {

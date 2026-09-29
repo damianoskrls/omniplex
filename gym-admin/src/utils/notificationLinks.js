@@ -40,7 +40,9 @@ export function getNotificationPath(notification) {
   if (type.includes('nutrition')) return '/nutrition/bookings';
   if (type === 'staff_reassignment_pending') return '/bookings?reassignment=pending';
 
-  if (type === 'join_request' || payload.join_request_id) return '/join-requests';
+  if (type === 'join_request' || payload.join_request_id) {
+    return payload.role === 'staff' ? '/staff' : '/clients';
+  }
 
   return null;
 }

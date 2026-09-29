@@ -7507,8 +7507,7 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
       }
     }
 
-    // Send push notification to the global user
-    if (status === 'approved' && jr.global_user_id) {
+    if (jr.global_user_id) {
       try {
         const [[biz]] = await db.query('SELECT name, app_name FROM businesses WHERE id = ?', [req.admin.businessId]);
         const gymName = biz?.app_name || biz?.name || 'το γυμναστήριο';
@@ -7517,12 +7516,19 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
         const tokens = await getGlobalUserFcmTokens(jr.global_user_id);
         if (tokens.length) {
           const isStaff = jr.role === 'staff';
+          const approved = status === 'approved';
           await sendFcm(tokens, {
-            title: isStaff ? 'Εγκρίθηκες ως Trainer!' : `Εγκρίθηκες στο ${gymName}!`,
-            body: isStaff
-              ? `Το αίτημά σου για trainer στο ${gymName} εγκρίθηκε. Άνοιξε το OmniPlex!`
-              : `Τo αίτημά σου εγκρίθηκε. Άνοιξε το OmniPlex για να δεις τα πακέτα σου.`,
-            data: { type: 'join_approved', gym_name: gymName, role: jr.role },
+            title: approved
+              ? (isStaff ? `Εγκρίθηκες ως trainer στο ${gymName}` : `Εγκρίθηκες στο ${gymName}`)
+              : (isStaff ? `Το αίτημα trainer απορρίφθηκε` : `Το αίτημα απορρίφθηκε`),
+            body: approved
+              ? `Άνοιξε το OmniPlex για να μπεις στο ${gymName}.`
+              : `Ο διαχειριστής του ${gymName} δεν ενέκρινε το αίτημά σου.`,
+            data: {
+              type: approved ? 'join_approved' : 'join_rejected',
+              gym_name: gymName,
+              role: jr.role || 'member',
+            },
           });
         }
       } catch (pushErr) {

@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
+import '../services/push_service.dart';
 import '../config/tenant_config.dart';
 import 'discovery_landing_screen.dart';
 import 'gym_profile_screen.dart';
@@ -53,6 +54,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   static const _apiBase = 'https://passionate-grace-production-98ad.up.railway.app/api';
 
   int _tab = 0;
+  int _gymListVersion = 0;
   Map<String, dynamic>? _dashboard;
   bool _loading = true;
   bool _enteringGym = false;
@@ -61,6 +63,25 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   void initState() {
     super.initState();
     _loadDashboard();
+    PushService.instance.onForegroundData = (data) {
+      final type = data['type']?.toString() ?? '';
+      if (type != 'join_approved' && type != 'join_rejected') return;
+      _loadDashboard();
+      if (mounted) setState(() => _gymListVersion++);
+    };
+  }
+
+  @override
+  void dispose() {
+    PushService.instance.onForegroundData = null;
+    super.dispose();
+  }
+
+  void _openTab(int t) {
+    setState(() {
+      _tab = t;
+      if (t == 3) _gymListVersion++;
+    });
   }
 
   Future<void> _loadDashboard() async {
@@ -141,7 +162,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             enteringGym: _enteringGym,
             onEnterGym: _enterGym,
             onRefresh: _loadDashboard,
-            onTabChange: (t) => setState(() => _tab = t),
+            onTabChange: _openTab,
             parseColor: _parseColor,
           ),
           _DiscoverTab(globalAuth: widget.globalAuth),
@@ -154,6 +175,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             onRefresh: _loadDashboard,
           ),
           _MyGymsTab(
+            listVersion: _gymListVersion,
             globalAuth: widget.globalAuth,
             enteringGym: _enteringGym,
             onEnterGym: _enterGym,
@@ -203,7 +225,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
               final active = _tab == i;
               return Expanded(
                 child: GestureDetector(
-                  onTap: () => setState(() => _tab = i),
+                  onTap: () => _openTab(i),
                   behavior: HitTestBehavior.opaque,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1484,6 +1506,7 @@ class _NoBookingsDay extends StatelessWidget {
 
 class _MyGymsTab extends StatefulWidget {
   const _MyGymsTab({
+    required this.listVersion,
     required this.globalAuth,
     required this.enteringGym,
     required this.onEnterGym,
@@ -1492,6 +1515,7 @@ class _MyGymsTab extends StatefulWidget {
     required this.parseColor,
   });
 
+  final int listVersion;
   final GlobalAuthService globalAuth;
   final bool enteringGym;
   final Future<void> Function(GlobalGym) onEnterGym;
@@ -1507,7 +1531,6 @@ class _MyGymsTabState extends State<_MyGymsTab> {
   static const _apiBase = 'https://passionate-grace-production-98ad.up.railway.app/api';
 
   List<Map<String, dynamic>> _pendingRequests = [];
-  bool _loadingRequests = true;
 
   @override
   void initState() {
@@ -1515,8 +1538,16 @@ class _MyGymsTabState extends State<_MyGymsTab> {
     _loadPendingRequests();
   }
 
+  @override
+  void didUpdateWidget(covariant _MyGymsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.listVersion != oldWidget.listVersion) {
+      widget.globalAuth.refreshGyms();
+      _loadPendingRequests();
+    }
+  }
+
   Future<void> _loadPendingRequests() async {
-    setState(() => _loadingRequests = true);
     try {
       final res = await http.get(
         Uri.parse('$_apiBase/global/join-requests'),
@@ -1527,7 +1558,6 @@ class _MyGymsTabState extends State<_MyGymsTab> {
         setState(() => _pendingRequests = all.where((r) => r['status'] == 'pending').toList());
       }
     } catch (_) {}
-    if (mounted) setState(() => _loadingRequests = false);
   }
 
   Future<void> _cancelRequest(String requestId) async {
@@ -1552,6 +1582,8 @@ class _MyGymsTabState extends State<_MyGymsTab> {
     final gyms = widget.globalAuth.gyms;
     final trainerGyms = gyms.where((g) => g.isStaff).toList();
     final memberGyms  = gyms.where((g) => !g.isStaff).toList();
+    final staffPending = _pendingRequests.where((r) => r['role'] == 'staff').toList();
+    final memberPending = _pendingRequests.where((r) => r['role'] != 'staff').toList();
     final totalCount  = gyms.length + _pendingRequests.length;
 
     Widget _sectionLabel(String label) => Padding(
@@ -1611,45 +1643,34 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Trainer gyms section
-                  if (trainerGyms.isNotEmpty) ...[
-                    _sectionLabel('Ως Trainer · ${trainerGyms.length}'),
+                  if (trainerGyms.isNotEmpty || staffPending.isNotEmpty) ...[
+                    _sectionLabel('Ως Trainer · ${trainerGyms.length + staffPending.length}'),
                     ...trainerGyms.map((gym) => _MyGymCard(
                       gym: gym,
                       accentColor: widget.parseColor(gym.primaryColor),
                       onOpen: () => widget.onEnterGym(gym),
                       onRemove: () => widget.onRemoveGym(gym),
                     )),
+                    ...staffPending.map((req) => _PendingRequestCard(
+                      request: req,
+                      onCancel: () => _cancelRequest(req['id'] as String),
+                    )),
                     const SizedBox(height: 8),
                   ],
 
-                  // Member gyms section
-                  if (memberGyms.isNotEmpty) ...[
-                    _sectionLabel('Ως Ασκούμενος · ${memberGyms.length}'),
+                  if (memberGyms.isNotEmpty || memberPending.isNotEmpty) ...[
+                    _sectionLabel('Ως Ασκούμενος · ${memberGyms.length + memberPending.length}'),
                     ...memberGyms.map((gym) => _MyGymCard(
                       gym: gym,
                       accentColor: widget.parseColor(gym.primaryColor),
                       onOpen: () => widget.onEnterGym(gym),
                       onRemove: () => widget.onRemoveGym(gym),
                     )),
-                    const SizedBox(height: 8),
-                  ],
-
-
-                  // Pending join requests
-                  if (!_loadingRequests && _pendingRequests.isNotEmpty) ...[
-                    if (gyms.isNotEmpty) const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text('Εκκρεμή αιτήματα',
-                        style: GoogleFonts.manrope(
-                          fontSize: 12, fontWeight: FontWeight.w700,
-                          color: _kGray, letterSpacing: 0.5)),
-                    ),
-                    ..._pendingRequests.map((req) => _PendingRequestCard(
+                    ...memberPending.map((req) => _PendingRequestCard(
                       request: req,
                       onCancel: () => _cancelRequest(req['id'] as String),
                     )),
+                    const SizedBox(height: 8),
                   ],
 
                   // Add gym dashed card
@@ -1723,11 +1744,14 @@ class _PendingRequestCard extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(request['business_name'] as String? ?? 'Γυμναστήριο',
+            Text(request['app_name'] as String? ?? request['business_name'] as String? ?? 'Γυμναστήριο',
               style: GoogleFonts.manrope(
                 fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
             const SizedBox(height: 2),
-            Text('Εκκρεμεί έγκριση από τον διαχειριστή',
+            Text(
+              request['role'] == 'staff'
+                  ? 'Ως trainer · εκκρεμεί έγκριση'
+                  : 'Ως ασκούμενος · εκκρεμεί έγκριση',
               style: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFFFFA500))),
           ]),
         ),

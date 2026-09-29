@@ -304,8 +304,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
     }
 
     if (_needsTenantSelection) {
-      // If user has gyms, show global dashboard; otherwise show discovery landing
-      if (_globalAuth.isLoggedIn && _globalAuth.gyms.isNotEmpty) {
+      if (_globalAuth.isLoggedIn) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           home: GlobalMemberHomeScreen(

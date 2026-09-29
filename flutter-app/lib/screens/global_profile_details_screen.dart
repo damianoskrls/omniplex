@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
-import 'global_role_picker_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -10,7 +9,7 @@ const _kGray   = Color(0xFF9A9CA3);
 const _kLime   = Color(0xFFC6FF3D);
 
 /// Shown to new users after OTP verification.
-/// Collects name (required) + email (optional), then shows optional role picker.
+/// Collects name (required) + email (optional). Role is chosen per gym later.
 class GlobalProfileDetailsScreen extends StatefulWidget {
   const GlobalProfileDetailsScreen({
     super.key,
@@ -52,14 +51,7 @@ class _GlobalProfileDetailsScreenState
         email: email.isNotEmpty ? email : null,
       );
       if (!mounted) return;
-      // Proceed to optional role picker
-      Navigator.pushReplacement(context, MaterialPageRoute(
-        builder: (_) => GlobalRolePickerScreen(
-          globalAuth: widget.globalAuth,
-          isOptional: true,
-          onDone: (_) => widget.onDone(),
-        ),
-      ));
+      widget.onDone();
     } catch (e) {
       setState(() { _error = e.toString(); _saving = false; });
     }

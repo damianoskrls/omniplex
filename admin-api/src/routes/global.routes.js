@@ -8,7 +8,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../db');
-const { phoneDigitsLike, phoneDigitsEq } = require('../lib/phone_sql');
+const { phoneDigitsLike } = require('../lib/phone_sql');
 
 const router = express.Router();
 
@@ -504,140 +504,100 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
 
   try {
     // Get user details (form data takes priority over stored data)
-    const [guRows] = await db.query('SELECT phone, full_name FROM global_users WHERE id = ?', [globalUserId]);
-    if (!guRows.length) return res.status(404).json({ error: 'Global user not found' });
-    const phone = formPhone?.trim() || guRows[0].phone;
-    const name  = formName?.trim() || guRows[0].full_name || fullName;
-    const email = formEmail?.trim() || tokenEmail;
+    if (role !== 'member' && role !== 'staff') {
+      return res.status(400).json({ error: 'role must be member or staff' });
+    }
+    const isStaff = role === 'staff';
 
-    // Check business exists
+    const [guRows] = await db.query('SELECT phone, full_name, email FROM global_users WHERE id = ?', [globalUserId]);
+    if (!guRows.length) return res.status(404).json({ error: 'Global user not found' });
+    const phone = guRows[0].phone || formPhone?.trim() || null;
+    const name  = (guRows[0].full_name || '').trim() || formName?.trim() || fullName || '';
+    const email = guRows[0].email || formEmail?.trim() || tokenEmail || '';
+
     const [bizRows] = await db.query('SELECT id, name FROM businesses WHERE id = ? AND is_active = 1', [business_id]);
     if (!bizRows.length) return res.status(404).json({ error: 'Gym not found' });
 
-    // Check if already linked
-    const [linked] = await db.query(
-      'SELECT id FROM users WHERE global_user_id = ? AND business_id = ? AND deleted_at IS NULL',
-      [globalUserId, business_id],
-    );
-    if (linked.length) return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη μέλος αυτού του γυμναστηρίου' });
-
-    // ── Staff / Trainer join request ─────────────────────────
-    if (role === 'staff') {
-      // Check if already linked as staff
+    if (isStaff) {
       const [linkedStaff] = await db.query(
         'SELECT id FROM staff WHERE global_user_id = ? AND business_id = ? AND is_active = 1',
         [globalUserId, business_id],
       );
-      if (linkedStaff.length) return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη συνδεδεμένος ως trainer σε αυτό το γυμναστήριο' });
-
-      // Try auto-link: find staff record with matching phone
-      let staffMatch = null;
-      if (phone) {
-        const normalizedPhone = phone.replace(/[\s\-().]/g, '');
-        const [r] = await db.query(
-          `SELECT id, global_user_id FROM staff
-           WHERE business_id = ? AND ${phoneDigitsEq('phone')} AND is_active = 1 AND global_user_id IS NULL`,
-          [business_id, normalizedPhone.replace(/\D/g, '')],
-        );
-        if (r.length) staffMatch = r[0];
+      if (linkedStaff.length) {
+        return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη συνδεδεμένος ως trainer σε αυτό το γυμναστήριο' });
       }
-
-      if (staffMatch) {
-        await db.query('UPDATE staff SET global_user_id = ? WHERE id = ?', [globalUserId, staffMatch.id]);
-        return res.json({ status: 'linked', role: 'staff', message: 'Συνδέθηκες ως Trainer!' });
-      }
-
-      // No match → pending trainer request
-      const reqId = uuidv4();
-      const [existingStaffReq] = await db.query(
-        `SELECT id, status FROM gym_join_requests WHERE global_user_id = ? AND business_id = ? AND role = 'staff'`,
+    } else {
+      const [linked] = await db.query(
+        'SELECT id FROM users WHERE global_user_id = ? AND business_id = ? AND deleted_at IS NULL',
         [globalUserId, business_id],
       );
-      if (existingStaffReq.length) {
-        if (existingStaffReq[0].status === 'pending') return res.json({ status: 'pending', role: 'staff', message: 'Το αίτημα trainer εκκρεμεί' });
-        await db.query(`UPDATE gym_join_requests SET status = 'pending' WHERE id = ?`, [existingStaffReq[0].id]);
-        return res.json({ status: 'pending', role: 'staff', message: 'Το αίτημά σου εστάλη ξανά' });
+      if (linked.length) {
+        return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη μέλος αυτού του γυμναστηρίου' });
       }
-      await db.query(
-        `INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, phone, role, specialty) VALUES (?, ?, ?, ?, ?, ?, 'staff', ?)`,
-        [reqId, globalUserId, business_id, name, email || '', phone || null, specialty || null],
-      );
+    }
+
+    const notifyAdmin = async (reqId) => {
       try {
         const { createAdminNotification } = require('../lib/notifications');
         await createAdminNotification(db, {
           businessId: business_id,
-          type:  'join_request',
-          title: 'Αίτημα Trainer',
-          body:  `${name} ζητά να συνδεθεί ως trainer στο γυμναστήριο.`,
-          payload: { join_request_id: reqId, global_user_id: globalUserId, full_name: name, email: email || '', phone: phone || '', role: 'staff' },
+          type: 'join_request',
+          title: isStaff ? 'Αίτημα Trainer' : 'Αίτημα εγγραφής',
+          body: isStaff
+            ? `${name} ζητά να συνδεθεί ως trainer.`
+            : `${name} ζητά να γίνει μέλος.`,
+          payload: {
+            join_request_id: reqId,
+            global_user_id: globalUserId,
+            full_name: name,
+            email: email || '',
+            phone: phone || '',
+            role: isStaff ? 'staff' : 'member',
+          },
         });
       } catch (_) {}
-      return res.json({ status: 'pending', role: 'staff', message: 'Το αίτημα trainer στάλθηκε. Ο admin θα σε ειδοποιήσει.' });
-    }
+    };
 
-    // Try auto-link: find user in this gym with same email or phone
-    let matchQuery = null;
-    if (email) {
-      const [r] = await db.query(
-        `SELECT id, global_user_id FROM users WHERE business_id = ? AND email = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci AND deleted_at IS NULL`,
-        [business_id, email.toLowerCase()],
-      );
-      if (r.length) matchQuery = r[0];
-    }
-    if (!matchQuery && phone) {
-      const normalizedPhone = phone.replace(/[\s\-().]/g, '');
-      const [r] = await db.query(
-        `SELECT id, global_user_id FROM users
-         WHERE business_id = ?
-           AND ${phoneDigitsEq('phone')}
-           AND deleted_at IS NULL`,
-        [business_id, normalizedPhone.replace(/\D/g, '')],
-      );
-      if (r.length) matchQuery = r[0];
-    }
-
-    if (matchQuery) {
-      if (matchQuery.global_user_id && matchQuery.global_user_id !== globalUserId) {
-        return res.status(409).json({ error: 'already_linked_other', message: 'Αυτός ο λογαριασμός είναι συνδεδεμένος με άλλο global account' });
-      }
-      // Auto-link!
-      await db.query('UPDATE users SET global_user_id = ? WHERE id = ?', [globalUserId, matchQuery.id]);
-      return res.json({ status: 'linked', message: 'Ο λογαριασμός συνδέθηκε αυτόματα' });
-    }
-
-    // No match — check for duplicate pending request
     const [existing] = await db.query(
-      'SELECT id, status FROM gym_join_requests WHERE global_user_id = ? AND business_id = ?',
-      [globalUserId, business_id],
+      `SELECT id, status FROM gym_join_requests
+       WHERE global_user_id = ? AND business_id = ? AND role = ?`,
+      [globalUserId, business_id, isStaff ? 'staff' : 'member'],
     );
     if (existing.length) {
-      if (existing[0].status === 'pending') return res.json({ status: 'pending', message: 'Το αίτημά σου εκκρεμεί' });
-      if (existing[0].status === 'approved') return res.json({ status: 'approved' });
-      // rejected — allow re-request
-      await db.query('UPDATE gym_join_requests SET status = ? WHERE id = ?', ['pending', existing[0].id]);
-      return res.json({ status: 'pending', message: 'Το αίτημά σου εστάλη ξανά' });
+      if (existing[0].status === 'pending') {
+        return res.json({
+          status: 'pending',
+          role: isStaff ? 'staff' : 'member',
+          message: 'Το αίτημά σου εκκρεμεί έγκριση',
+        });
+      }
+      await db.query(
+        `UPDATE gym_join_requests
+         SET status = 'pending', full_name = ?, email = ?, phone = ?, specialty = ?, date_of_birth = ?
+         WHERE id = ?`,
+        [name, email || '', phone || null, specialty || null, date_of_birth || null, existing[0].id],
+      );
+      await notifyAdmin(existing[0].id);
+      return res.json({
+        status: 'pending',
+        role: isStaff ? 'staff' : 'member',
+        message: 'Το αίτημά σου εστάλη. Ο διαχειριστής θα σε ειδοποιήσει.',
+      });
     }
 
-    // Create member join request
     const reqId = uuidv4();
     await db.query(
-      `INSERT INTO gym_join_requests (id, global_user_id, business_id, full_name, email, phone, role, date_of_birth) VALUES (?, ?, ?, ?, ?, ?, 'member', ?)`,
-      [reqId, globalUserId, business_id, name, email || '', phone || null, date_of_birth || null],
+      `INSERT INTO gym_join_requests
+        (id, global_user_id, business_id, full_name, email, phone, role, specialty, date_of_birth)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [reqId, globalUserId, business_id, name, email || '', phone || null, isStaff ? 'staff' : 'member', specialty || null, date_of_birth || null],
     );
-
-    // Notify admin
-    try {
-      const { createAdminNotification } = require('../lib/notifications');
-      await createAdminNotification(db, {
-        businessId: business_id,
-        type:  'join_request',
-        title: 'Αίτημα εγγραφής',
-        body:  `${name} ζητά να γίνει μέλος του γυμναστηρίου.`,
-        payload: { join_request_id: reqId, global_user_id: globalUserId, full_name: name, email: email || '', phone: phone || '', role: 'member' },
-      });
-    } catch (_) {}
-
-    return res.json({ status: 'pending', message: 'Το αίτημά σου στάλθηκε. Ο διαχειριστής θα σε ειδοποιήσει.' });
+    await notifyAdmin(reqId);
+    return res.json({
+      status: 'pending',
+      role: isStaff ? 'staff' : 'member',
+      message: 'Το αίτημά σου στάλθηκε. Ο διαχειριστής θα σε ειδοποιήσει.',
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
@@ -651,7 +611,7 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
 router.get('/join-requests', requireGlobal, async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT jr.id, jr.business_id, jr.status, jr.created_at, jr.admin_note,
+      SELECT jr.id, jr.business_id, jr.status, jr.role, jr.created_at, jr.admin_note,
              b.name AS business_name, bc.app_name, bc.logo_url, bc.primary_color
       FROM gym_join_requests jr
       JOIN businesses b ON b.id = (jr.business_id COLLATE utf8mb4_unicode_ci)
@@ -1398,7 +1358,7 @@ router.post('/auth/verify-otp', async (req, res) => {
 router.post('/fcm-token', requireGlobal, async (req, res) => {
   const { fcm_token, platform = 'unknown' } = req.body;
   if (!fcm_token) return res.status(400).json({ error: 'fcm_token required' });
-  const globalUserId = req.globalUser.id;
+  const globalUserId = req.globalUser.globalUserId;
   try {
     // Upsert: one row per (global_user_id, token)
     await db.query(
@@ -1423,7 +1383,7 @@ router.post('/fcm-token', requireGlobal, async (req, res) => {
 router.put('/profile', requireGlobal, async (req, res) => {
   const { full_name, email } = req.body;
   if (!full_name && !email) return res.status(400).json({ error: 'Απαιτείται τουλάχιστον ένα πεδίο' });
-  const globalUserId = req.globalUser.id;
+  const globalUserId = req.globalUser.globalUserId;
   try {
     const sets = [];
     const vals = [];
