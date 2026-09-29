@@ -18,7 +18,7 @@ function buildNavGroups({ features, featureNutrition }) {
   return [
     {
       key: 'clients',
-      label: '👥 Πελάτες & Κρατήσεις',
+      label: 'Πελάτες & Κρατήσεις',
       links: [
         { to: '/clients', icon: Users, label: 'Πελάτες' },
         { to: '/trials', icon: Target, label: 'Δοκιμαστικά' },
@@ -30,7 +30,7 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     ...(featureNutrition ? [{
       key: 'nutrition',
-      label: '🍏 Διατροφολόγια',
+      label: 'Διατροφολόγια',
       links: [
         { to: '/nutrition/clients', icon: Users, label: 'Πελάτες Διατροφής' },
         { to: '/nutrition/bookings', icon: Calendar, label: 'Κρατήσεις Διατροφής' },
@@ -40,7 +40,7 @@ function buildNavGroups({ features, featureNutrition }) {
     }] : []),
     {
       key: 'programs',
-      label: '🗓️ Πρόγραμμα & Υπηρεσίες',
+      label: 'Πρόγραμμα & Υπηρεσίες',
       links: [
         ...(features.programs ? [{ to: '/programs', icon: Dumbbell, label: 'Προγράμματα Άσκησης' }] : []),
         { to: '/services', icon: Scissors, label: 'Υπηρεσίες' },
@@ -52,7 +52,7 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     {
       key: 'communication',
-      label: '💬 Επικοινωνία & Marketing',
+      label: 'Επικοινωνία & Marketing',
       links: [
         { to: '/messages', icon: MessageSquare, label: 'Μηνύματα' },
         { to: '/notifications', icon: Bell, label: 'Ειδοποιήσεις' },
@@ -64,7 +64,7 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     {
       key: 'marketplace',
-      label: '🛒 Marketplace & E-shop',
+      label: 'Marketplace & E-shop',
       links: [
         { to: '/marketplace', end: true, icon: ShoppingBag, label: 'Προϊόντα & Κατηγορίες' },
         { to: '/marketplace/orders', icon: ClipboardList, label: 'Παραγγελίες' },
@@ -74,7 +74,7 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     {
       key: 'reports',
-      label: '📈 Αναφορές & Οικονομικά',
+      label: 'Αναφορές & Οικονομικά',
       links: [
         { to: '/reports', icon: BarChart2, label: 'Αναφορές' },
         { to: '/monthly-report', icon: TrendingUp, label: 'Αναφορά Αξίας' },
@@ -84,7 +84,7 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     {
       key: 'staff',
-      label: '👥 Διαχείριση Προσωπικού & Συνεργατών',
+      label: 'Διαχείριση Προσωπικού & Συνεργατών',
       links: [
         { to: '/staff', icon: UserCog, label: 'Προσωπικό' },
         ...(featureNutrition ? [{ to: '/nutrition/nutritionists', icon: UserCircle, label: 'Διατροφολόγοι' }] : []),
@@ -94,7 +94,7 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     {
       key: 'settings',
-      label: '⚙️ Ρυθμίσεις',
+      label: 'Ρυθμίσεις',
       links: [
         { to: '/settings', icon: Settings, label: 'Γενικές Ρυθμίσεις' },
         { to: '/discovery-profile', icon: Globe, label: 'Προβολή στην Αγορά' },
