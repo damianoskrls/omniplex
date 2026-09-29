@@ -118,7 +118,19 @@ export default function Locations() {
                     onBlur={() => updateField(loc.id, { address: loc.address })}
                     style={{ marginBottom: 6, fontSize: '0.85rem' }}
                   />
-                  <div className="text-muted" style={{ fontSize: '0.78rem' }}>{loc.city || '—'} · slug: {loc.slug}</div>
+                  <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 8 }}>{loc.city || '—'} · slug: {loc.slug}</div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!loc.accepts_drop_in}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        setLocations((prev) => prev.map((x) => x.id === loc.id ? { ...x, accepts_drop_in: on ? 1 : 0 } : x));
+                        updateField(loc.id, { accepts_drop_in: on ? 1 : 0 });
+                      }}
+                    />
+                    Δέχεται drop-in
+                  </label>
                 </div>
                 <button type="button" className="btn btn-danger btn-sm" onClick={() => remove(loc)}>
                   <Trash2 size={14} />

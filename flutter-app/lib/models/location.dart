@@ -5,6 +5,7 @@ class GymLocation {
     this.address,
     this.city,
     this.phone,
+    this.acceptsDropIn = false,
   });
 
   final String id;
@@ -12,6 +13,7 @@ class GymLocation {
   final String? address;
   final String? city;
   final String? phone;
+  final bool acceptsDropIn;
 
   String get displayLine {
     final parts = [address, city].where((p) => p != null && p.trim().isNotEmpty).cast<String>().toList();
@@ -24,5 +26,6 @@ class GymLocation {
         address: json['address'] as String?,
         city: json['city'] as String?,
         phone: json['phone'] as String?,
+        acceptsDropIn: json['accepts_drop_in'] == true || json['accepts_drop_in'] == 1,
       );
 }

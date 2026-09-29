@@ -435,6 +435,16 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       [biz.id],
     );
     const trainers = [...staffTrainers, ...gymTrainers];
+    let locations = [];
+    try {
+      const [locRows] = await db.query(
+        `SELECT id, name, city, address, accepts_drop_in
+         FROM locations WHERE business_id = ? AND is_active = 1
+         ORDER BY sort_order, name`,
+        [biz.id],
+      );
+      locations = locRows.map(l => ({ ...l, accepts_drop_in: !!l.accepts_drop_in }));
+    } catch (_) {}
     const [plans] = await db.query(
       `SELECT id, COALESCE(discovery_name, name) AS name, price_cents, sale_price_cents, image_url, sessions, duration_mins, billing_period
        FROM business_plans
@@ -480,6 +490,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       schedule,
       services,
       plans,
+      locations,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -497,7 +508,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
 // Creates a join request or auto-links if matching phone/email exists
 // ============================================================
 router.post('/join-requests', requireGlobal, async (req, res) => {
-  const { business_id, role = 'member', full_name: formName, phone: formPhone, email: formEmail, date_of_birth, specialty } = req.body;
+  const { business_id, role = 'member', location_id, full_name: formName, phone: formPhone, email: formEmail, date_of_birth, specialty } = req.body;
   if (!business_id) return res.status(400).json({ error: 'business_id required' });
 
   const { globalUserId, email: tokenEmail, fullName } = req.globalUser;
@@ -517,6 +528,24 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
 
     const [bizRows] = await db.query('SELECT id, name FROM businesses WHERE id = ? AND is_active = 1', [business_id]);
     if (!bizRows.length) return res.status(404).json({ error: 'Gym not found' });
+
+    let locationId = location_id || null;
+    if (locationId) {
+      const [[loc]] = await db.query(
+        'SELECT id FROM locations WHERE id = ? AND business_id = ? AND is_active = 1',
+        [locationId, business_id],
+      );
+      if (!loc) return res.status(400).json({ error: 'Το κατάστημα δεν βρέθηκε' });
+    } else {
+      const [locs] = await db.query(
+        'SELECT id FROM locations WHERE business_id = ? AND is_active = 1',
+        [business_id],
+      );
+      if (locs.length > 1) {
+        return res.status(400).json({ error: 'Επίλεξε κατάστημα', code: 'LOCATION_REQUIRED' });
+      }
+      locationId = locs[0]?.id || null;
+    }
 
     if (isStaff) {
       const [linkedStaff] = await db.query(
@@ -573,9 +602,9 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
       }
       await db.query(
         `UPDATE gym_join_requests
-         SET status = 'pending', full_name = ?, email = ?, phone = ?, specialty = ?, date_of_birth = ?
+         SET status = 'pending', full_name = ?, email = ?, phone = ?, specialty = ?, date_of_birth = ?, location_id = ?
          WHERE id = ?`,
-        [name, email || '', phone || null, specialty || null, date_of_birth || null, existing[0].id],
+        [name, email || '', phone || null, specialty || null, date_of_birth || null, locationId, existing[0].id],
       );
       await notifyAdmin(existing[0].id);
       return res.json({
@@ -588,9 +617,9 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
     const reqId = uuidv4();
     await db.query(
       `INSERT INTO gym_join_requests
-        (id, global_user_id, business_id, full_name, email, phone, role, specialty, date_of_birth)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [reqId, globalUserId, business_id, name, email || '', phone || null, isStaff ? 'staff' : 'member', specialty || null, date_of_birth || null],
+        (id, global_user_id, business_id, full_name, email, phone, role, specialty, date_of_birth, location_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [reqId, globalUserId, business_id, name, email || '', phone || null, isStaff ? 'staff' : 'member', specialty || null, date_of_birth || null, locationId],
     );
     await notifyAdmin(reqId);
     return res.json({
@@ -611,11 +640,13 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
 router.get('/join-requests', requireGlobal, async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT jr.id, jr.business_id, jr.status, jr.role, jr.created_at, jr.admin_note,
-             b.name AS business_name, bc.app_name, bc.logo_url, bc.primary_color
+      SELECT jr.id, jr.business_id, jr.status, jr.role, jr.location_id, jr.created_at, jr.admin_note,
+             b.name AS business_name, bc.app_name, bc.logo_url, bc.primary_color,
+             loc.name AS location_name
       FROM gym_join_requests jr
       JOIN businesses b ON b.id = (jr.business_id COLLATE utf8mb4_unicode_ci)
       LEFT JOIN business_configs bc ON bc.business_id = (jr.business_id COLLATE utf8mb4_unicode_ci)
+      LEFT JOIN locations loc ON loc.id = (jr.location_id COLLATE utf8mb4_unicode_ci)
       WHERE (jr.global_user_id COLLATE utf8mb4_unicode_ci) = ?
       ORDER BY jr.created_at DESC
     `, [req.globalUser.globalUserId]);

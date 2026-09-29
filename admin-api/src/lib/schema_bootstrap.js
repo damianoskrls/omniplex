@@ -505,6 +505,20 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gym_join_requests.role skipped:', err.message);
   }
 
+  try {
+    await db.query(`ALTER TABLE gym_join_requests ADD COLUMN location_id VARCHAR(36) NULL`);
+    console.log('✓ Schema: gym_join_requests.location_id added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gym_join_requests.location_id skipped:', err.message);
+  }
+
+  try {
+    await db.query(`ALTER TABLE locations ADD COLUMN accepts_drop_in TINYINT(1) NOT NULL DEFAULT 0`);
+    console.log('✓ Schema: locations.accepts_drop_in added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('locations.accepts_drop_in skipped:', err.message);
+  }
+
   // ── gym_join_requests.date_of_birth + specialty ─────────────
   try {
     await db.query(`ALTER TABLE gym_join_requests ADD COLUMN date_of_birth DATE NULL`);

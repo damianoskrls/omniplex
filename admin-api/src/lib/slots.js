@@ -173,7 +173,7 @@ async function computeAvailableSlots(dbConn, bizId, serviceId, date, excludeBook
       ${staffLocFilter}
   `, [serviceId, wd, ...availLocParams, serviceId, serviceId, wd, bizId, ...staffLocParams]);
 
-  const scheduleLocFilter = locationId ? 'AND sss.location_id = ?' : '';
+  const scheduleLocFilter = locationId ? 'AND (sss.location_id IS NULL OR sss.location_id = ?)' : '';
   const scheduleLocParams = locationId ? [locationId] : [];
 
   const [schedules] = await dbConn.query(`
@@ -410,10 +410,13 @@ function buildSlotsPayload(computed, options = {}) {
       const remaining = Math.max(0, capacity - bookedCount);
       const isFull = remaining <= 0;
       const hasStaff = staff.length > 0;
+      const openClass = !!sch && !hasStaff && !isFull;
 
       return {
         time,
-        available_count: hasStaff && !isFull ? Math.min(remaining, staff.length) : 0,
+        available_count: hasStaff && !isFull
+          ? Math.min(remaining, staff.length)
+          : (openClass ? remaining : 0),
         available_staff: isFull ? [] : staff,
         booked_count: bookedCount,
         capacity,
@@ -433,7 +436,7 @@ function buildSlotsPayload(computed, options = {}) {
         preparation_tips: tipInfo.preparation_tips,
       };
     })
-    .filter(s => s.available_staff.length > 0 || s.is_full || s.waitlist_available)
+    .filter(s => s.available_staff.length > 0 || s.is_full || s.waitlist_available || s.available_count > 0)
     .filter(s => !date || isSlotBookableForDate(date, s.time, minLeadMinutes));
 
   return {
@@ -487,11 +490,10 @@ async function assertSlotCapacity(dbConn, bizId, serviceId, date, time, startsAt
   if (!computed) throw new Error('Η υπηρεσία δεν βρέθηκε');
 
   const staff = computed.slotMap[time] || [];
-  if (!staff.length && !force) {
+  const sch = computed.scheduleByTime?.get(time);
+  if (!staff.length && !sch && !force) {
     throw new Error('Αυτή η ώρα δεν είναι πλέον διαθέσιμη');
   }
-
-  const sch = computed.scheduleByTime?.get(time);
   const maxCap = sch?.max_capacity ?? null;
   const capacity = effectiveCapacity(maxCap, staff.length || 1);
   const booked = await countBookingsAtSlot(

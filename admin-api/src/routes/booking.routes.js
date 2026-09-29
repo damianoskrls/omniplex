@@ -1803,7 +1803,7 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
     service_id, date, time,
     payment_method = 'venue', payment_intent_id,
     guest_name, guest_email, guest_phone,
-    staff_id,
+    staff_id, location_id,
   } = req.body;
 
   if (!service_id || !date || !time) {
@@ -1887,6 +1887,7 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
         const bookingResult = await createOneBooking(conn, {
           bizId, userId: req.user.userId, service_id,
           staff_id: staff_id || null, date, time,
+          location_id: location_id || null,
           use_credit: false, source: 'dropin',
         });
         bookingId = bookingResult.bookingId || bookingResult.id;

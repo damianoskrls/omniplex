@@ -150,7 +150,7 @@ async function createOneBooking(conn, {
   } else {
     finalLocationId = await resolveLocationId(conn, bizId, location_id, {
       userId,
-      requireExplicit: source === 'app',
+      requireExplicit: source === 'app' || source === 'dropin',
     });
     slotLocationId = finalLocationId;
     await assertServiceAtLocation(conn, service_id, finalLocationId, bizId);
@@ -178,14 +178,15 @@ async function createOneBooking(conn, {
     conn, bizId, service_id, date, time, startsAt, endsAt, null, force, slotLocationId, slotStaffId,
   );
 
-  let finalStaffId = staff_id;
+  let finalStaffId = staff_id || null;
   if (!finalStaffId) {
-    if (!service.hide_staff_selection) {
+    const pool = computed.slotMap[time] || [];
+    if (pool.length && !service.hide_staff_selection) {
       throw new Error('Απαιτείται επιλογή γυμναστή');
     }
     finalStaffId = await findStaffForSlot(
       conn, bizId, service_id, computed, time, startsAt, { excludedStaffIds: excluded_staff_ids },
-    );
+    ) || null;
   } else {
     const pool = computed.slotMap[time] || [];
     if (!pool.some(s => s.id === finalStaffId)) {
@@ -195,9 +196,11 @@ async function createOneBooking(conn, {
     }
   }
 
-  await assertStaffAvailable(conn, bizId, finalStaffId, service_id, startsAt, endsAt, null);
-  if (!isNutritionConsult) {
-    await assertStaffAtLocation(conn, finalStaffId, finalLocationId, bizId);
+  if (finalStaffId) {
+    await assertStaffAvailable(conn, bizId, finalStaffId, service_id, startsAt, endsAt, null);
+    if (!isNutritionConsult) {
+      await assertStaffAtLocation(conn, finalStaffId, finalLocationId, bizId);
+    }
   }
 
   const [[user]] = await conn.query(

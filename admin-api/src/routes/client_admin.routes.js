@@ -4939,7 +4939,7 @@ router.post('/locations', requireClientAdmin, async (req, res) => {
 });
 
 router.patch('/locations/:id', requireClientAdmin, async (req, res) => {
-  const { name, slug, address, city, phone, email, opening_hours, is_active, sort_order } = req.body;
+  const { name, slug, address, city, phone, email, opening_hours, is_active, sort_order, accepts_drop_in } = req.body;
   await db.query(
     `UPDATE locations SET
       name = COALESCE(?, name),
@@ -4950,12 +4950,14 @@ router.patch('/locations/:id', requireClientAdmin, async (req, res) => {
       email = COALESCE(?, email),
       opening_hours = COALESCE(?, opening_hours),
       is_active = COALESCE(?, is_active),
-      sort_order = COALESCE(?, sort_order)
+      sort_order = COALESCE(?, sort_order),
+      accepts_drop_in = COALESCE(?, accepts_drop_in)
      WHERE id = ? AND business_id = ?`,
     [
       name || null, slug || null, address ?? null, city ?? null, phone ?? null, email ?? null,
       opening_hours !== undefined ? JSON.stringify(opening_hours) : null,
       is_active ?? null, sort_order ?? null,
+      accepts_drop_in === undefined ? null : (accepts_drop_in ? 1 : 0),
       req.params.id, req.admin.businessId,
     ],
   );
@@ -7534,6 +7536,11 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
       } catch (pushErr) {
         console.error('[NOTIFY] join-request push failed:', pushErr.message);
       }
+    }
+
+    if (jr.location_id && recordId && status === 'approved') {
+      if (jr.role === 'staff') await replaceStaffLocations(db, recordId, [jr.location_id]);
+      else await replaceUserLocations(db, recordId, [jr.location_id]);
     }
 
     return res.json({ ok: true, record_id: recordId, record_role: recordRole });

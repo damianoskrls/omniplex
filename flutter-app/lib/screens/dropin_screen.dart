@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/booking.dart';
+import '../models/location.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
@@ -20,6 +21,8 @@ class _DropinScreenState extends State<DropinScreen> {
   String? _selectedServiceId;
   Map<String, dynamic>? _selectedService;
 
+  String? _locationId;
+  List<GymLocation> _dropInLocations = [];
   DateTime _selectedDate = DateTime.now();
   List<TimeSlot> _slots = [];
   bool _loadingSlots = false;
@@ -35,7 +38,11 @@ class _DropinScreenState extends State<DropinScreen> {
     setState(() => _loadingServices = true);
     try {
       final api = context.read<AuthService>().api;
+      final locs = await api.fetchLocations();
+      final dropIns = locs.locations.where((l) => l.acceptsDropIn).toList();
       final svcs = await api.fetchDropinServices();
+      _dropInLocations = dropIns.isNotEmpty ? dropIns : locs.locations;
+      _locationId = _dropInLocations.isNotEmpty ? _dropInLocations.first.id : null;
       setState(() {
         _services = svcs;
         if (svcs.isNotEmpty) {
@@ -57,7 +64,11 @@ class _DropinScreenState extends State<DropinScreen> {
     try {
       final api = context.read<AuthService>().api;
       final dateStr = '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2,'0')}-${_selectedDate.day.toString().padLeft(2,'0')}';
-      final result = await api.fetchSlots(serviceId: _selectedServiceId!, date: dateStr);
+      final result = await api.fetchSlots(
+        serviceId: _selectedServiceId!,
+        date: dateStr,
+        locationId: _locationId,
+      );
       setState(() {
         _slots = result.slots;
         _slotsMessage = result.message;
@@ -315,6 +326,7 @@ class _DropinScreenState extends State<DropinScreen> {
         slot: slot,
         service: _selectedService!,
         date: _selectedDate,
+        locationId: _locationId,
         onBooked: (booking) {
           Navigator.pop(context); // close sheet
           Navigator.push(
@@ -429,12 +441,14 @@ class _DropinBookSheet extends StatefulWidget {
     required this.slot,
     required this.service,
     required this.date,
+    this.locationId,
     required this.onBooked,
   });
 
   final TimeSlot slot;
   final Map<String, dynamic> service;
   final DateTime date;
+  final String? locationId;
   final void Function(Map<String, dynamic>) onBooked;
 
   @override
@@ -480,6 +494,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
         time: widget.slot.time,
         paymentMethod: _payMethod,
         staffId: staffId,
+        locationId: widget.locationId,
         guestName: _isLoggedIn ? null : _nameCtrl.text.trim(),
         guestEmail: _isLoggedIn ? null : (_emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim()),
         guestPhone: _isLoggedIn ? null : (_phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim()),

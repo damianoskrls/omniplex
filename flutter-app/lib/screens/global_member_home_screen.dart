@@ -1749,9 +1749,11 @@ class _PendingRequestCard extends StatelessWidget {
                 fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
             const SizedBox(height: 2),
             Text(
-              request['role'] == 'staff'
-                  ? 'Ως trainer · εκκρεμεί έγκριση'
-                  : 'Ως ασκούμενος · εκκρεμεί έγκριση',
+              [
+                request['role'] == 'staff' ? 'Ως trainer' : 'Ως ασκούμενος',
+                if ((request['location_name'] as String?)?.isNotEmpty == true) request['location_name'],
+                'εκκρεμεί έγκριση',
+              ].join(' · '),
               style: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFFFFA500))),
           ]),
         ),

@@ -40,6 +40,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
   List<Map<String, dynamic>> _nutritionists = [];
   bool _needsNutritionistChoice = false;
   bool _hasNutritionAccess = false;
+  bool _dropInAllowed = false;
 
   bool get _showNutritionCard =>
       _nutritionConsultService != null
@@ -75,6 +76,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
       final api = context.read<AuthService>().api;
       final config = context.read<TenantConfig>();
       final services = await api.fetchServices();
+      var dropInAllowed = false;
+      try {
+        final locs = await api.fetchLocations();
+        dropInAllowed = locs.locations.any((l) => l.acceptsDropIn);
+      } catch (_) {}
 
       // Load occupancy + open-access services in parallel
       final bizId = config.businessId;
@@ -140,6 +146,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
         _nutritionists = nutritionists;
         _needsNutritionistChoice = needsNutritionistChoice;
         _hasNutritionAccess = hasNutritionAccess;
+        _dropInAllowed = dropInAllowed;
       });
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -174,11 +181,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
       );
     }
 
-    if (_services.isEmpty && !_showNutritionCard) {
+    if (_services.isEmpty && !_showNutritionCard && !_dropInAllowed) {
       return EmptyState(
         icon: Icons.card_membership_outlined,
         title: AppStrings.of(context).servicesNoPackages,
-        subtitle: AppStrings.of(context).servicesNoPackagesSub,
+        subtitle: 'Πάρε ένα πακέτο από την καρτέλα Πακέτα, ή ζήτα drop-in αν το κατάστημά σου το δέχεται.',
       );
     }
 
@@ -207,7 +214,16 @@ class _ServicesScreenState extends State<ServicesScreen> {
             const SizedBox(height: 8),
           ],
 
-          // Drop-in banner
+          if (_services.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                AppStrings.of(context).servicesNoPackages,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+            ),
+
+          if (_dropInAllowed)
           GestureDetector(
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DropinScreen())),
             child: Container(

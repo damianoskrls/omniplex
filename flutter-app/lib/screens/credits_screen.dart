@@ -12,6 +12,7 @@ import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import '../widgets/payment_sheet.dart';
+import 'gym_profile_screen.dart';
 import 'nutrition_consultation_booking_screen.dart';
 
 class CreditsScreen extends StatefulWidget {
@@ -206,9 +207,19 @@ class _CreditsScreenState extends State<CreditsScreen> {
     }
 
     if (_credits.isEmpty) {
+      final config = context.read<TenantConfig>();
       return EmptyState(
         icon: Icons.card_membership_outlined,
         title: AppStrings.of(context).creditsNoPackages,
+        subtitle: 'Μπορείς να δεις τα πακέτα του γυμναστηρίου και να αγοράσεις.',
+        action: ElevatedButton(
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => GymProfileScreen(slug: config.slug, initialTab: 2),
+            ));
+          },
+          child: const Text('Δες πακέτα'),
+        ),
       );
     }
 

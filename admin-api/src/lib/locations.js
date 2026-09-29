@@ -5,13 +5,18 @@ async function isMultiLocationEnabled(dbConn, bizId) {
     'SELECT feature_multi_location FROM business_configs WHERE business_id = ?',
     [bizId],
   );
-  return !!cfg?.feature_multi_location;
+  if (cfg?.feature_multi_location) return true;
+  const [[{ cnt }]] = await dbConn.query(
+    'SELECT COUNT(*) AS cnt FROM locations WHERE business_id = ? AND is_active = 1',
+    [bizId],
+  );
+  return Number(cnt) > 1;
 }
 
 async function listLocations(dbConn, bizId, { activeOnly = true, userId = null } = {}) {
   let sql = `
     SELECT l.id, l.business_id, l.name, l.slug, l.address, l.city, l.phone, l.email,
-           l.opening_hours, l.is_active, l.sort_order
+           l.opening_hours, l.is_active, l.sort_order, l.accepts_drop_in
     FROM locations l
     WHERE l.business_id = ?
   `;

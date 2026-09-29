@@ -23,6 +23,7 @@ class GymProfileScreen extends StatefulWidget {
     this.globalAuth,
     this.onLoggedIn,
     this.onEnterGym,
+    this.initialTab = 0,
   });
 
   final String gymName;
@@ -31,6 +32,7 @@ class GymProfileScreen extends StatefulWidget {
   final GlobalAuthService? globalAuth;
   final VoidCallback? onLoggedIn;
   final void Function(TenantConfig)? onEnterGym;
+  final int initialTab;
 
   @override
   State<GymProfileScreen> createState() => _GymProfileScreenState();
@@ -67,7 +69,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl = TabController(length: 4, vsync: this, initialIndex: widget.initialTab.clamp(0, 3));
     if (widget.gymData != null) {
       _gym = widget.gymData;
       _loadingGym = false;
@@ -126,6 +128,19 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     final bizId = _gym?['business_id'] as String?;
     if (bizId == null) return;
 
+    final locations = ((_gym?['locations'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    String? locationId;
+    if (locations.length > 1) {
+      final picked = await _showLocationPicker(locations);
+      if (picked == null || !mounted) return;
+      locationId = picked;
+    } else if (locations.length == 1) {
+      locationId = locations.first['id'] as String?;
+    }
+
     final role = await _showRolePicker();
     if (role == null || !mounted) return;
 
@@ -134,7 +149,57 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       'full_name': user?.fullName,
       'phone': user?.phone,
       if ((user?.email ?? '').isNotEmpty) 'email': user!.email,
+      if (locationId != null) 'location_id': locationId,
     });
+  }
+
+  Future<String?> _showLocationPicker(List<Map<String, dynamic>> locations) {
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        decoration: BoxDecoration(
+          color: const Color(0xFF16171B),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFF2A2B30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 36, height: 4,
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text('Σε ποιο κατάστημα;',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+            ),
+            const SizedBox(height: 6),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text('Η έγκριση και οι κρατήσεις ισχύουν για το κατάστημα που θα διαλέξεις',
+                style: TextStyle(fontSize: 13, color: Color(0xFF9A9CA3))),
+            ),
+            const SizedBox(height: 16),
+            ...locations.map((loc) => _RoleOption(
+              icon: Icons.location_on_outlined,
+              color: const Color(0xFFC6FF3D),
+              title: loc['name'] as String? ?? 'Κατάστημα',
+              subtitle: [
+                loc['address'] as String?,
+                loc['city'] as String?,
+                (loc['accepts_drop_in'] == true || loc['accepts_drop_in'] == 1) ? 'Drop-in' : null,
+              ].whereType<String>().where((s) => s.trim().isNotEmpty).join(' · '),
+              onTap: () => Navigator.pop(sheetCtx, loc['id'] as String),
+            )),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<String?> _showRolePicker() {
