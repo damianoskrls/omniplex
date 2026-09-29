@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import 'tenant_logo.dart';
 
@@ -53,18 +54,22 @@ class GreetingHeader extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.apps_rounded, color: AppColors.lime, size: 13),
+                    const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.textSecondary, size: 12),
+                    const SizedBox(width: 6),
+                    SvgPicture.asset(
+                      'assets/icons/omniplex_icon.svg',
+                      width: 14, height: 14,
+                    ),
                     const SizedBox(width: 5),
-                    Text(
+                    const Text(
                       'Omniplex',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.lime,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(width: 3),
-                    Icon(Icons.chevron_right_rounded, color: AppColors.lime, size: 14),
                   ],
                 ),
               ),
@@ -331,8 +336,9 @@ class FloatingNavBar extends StatelessWidget {
   final IconData centerIcon;
   final Color? centerColor;
 
-  Widget _buildTab(int i, FloatingNavItem item) {
+  Widget _buildTab(BuildContext context, int i, FloatingNavItem item) {
     final selected = i == selectedIndex;
+    final primary = context.tenantPrimary;
     return Expanded(
       child: GestureDetector(
         onTap: () => onTap(i),
@@ -340,7 +346,7 @@ class FloatingNavBar extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppColors.lime.withValues(alpha: 0.15) : Colors.transparent,
+            color: selected ? primary.withValues(alpha: 0.13) : Colors.transparent,
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
@@ -349,7 +355,7 @@ class FloatingNavBar extends StatelessWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Icon(item.icon, size: 22, color: selected ? AppColors.lime : AppColors.textSecondary),
+                  Icon(item.icon, size: 22, color: selected ? primary : AppColors.textSecondary),
                   if (item.badgeCount > 0)
                     Positioned(
                       right: -6,
@@ -358,7 +364,7 @@ class FloatingNavBar extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                         constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
                         decoration: BoxDecoration(
-                          color: AppColors.lime,
+                          color: primary,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -367,7 +373,7 @@ class FloatingNavBar extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 8,
                             fontWeight: FontWeight.w800,
-                            color: Colors.black,
+                            color: Colors.white,
                             height: 1.1,
                           ),
                         ),
@@ -381,7 +387,7 @@ class FloatingNavBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? AppColors.lime : AppColors.textSecondary,
+                  color: selected ? primary : AppColors.textSecondary,
                 ),
               ),
             ],
@@ -393,13 +399,14 @@ class FloatingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = centerColor ?? AppColors.lime;
+    final primary = context.tenantPrimary;
+    final accentColor = centerColor ?? primary;
     if (centerAction != null && items.length >= 2) {
       final mid = items.length ~/ 2;
       final leftItems  = items.sublist(0, mid);
       final rightItems = items.sublist(mid);
-      int leftOffset  = 0;
-      int rightOffset = mid;
+      final leftOffset  = 0;
+      final rightOffset = mid;
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         child: Container(
@@ -414,29 +421,33 @@ class FloatingNavBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              ...leftItems.asMap().entries.map((e) => _buildTab(leftOffset + e.key, e.value)),
-              // Center QR button
+              ...leftItems.asMap().entries.map((e) => _buildTab(context, leftOffset + e.key, e.value)),
+              // Center QR button — gradient pill
               GestureDetector(
                 onTap: centerAction,
                 child: Container(
-                  width: 52,
-                  height: 52,
+                  width: 56,
+                  height: 56,
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(
-                    color: accentColor,
-                    borderRadius: BorderRadius.circular(18),
+                    gradient: LinearGradient(
+                      colors: [accentColor, accentColor.withValues(alpha: 0.7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: accentColor.withValues(alpha: 0.5),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
+                        color: accentColor.withValues(alpha: 0.45),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
-                  child: Icon(centerIcon, color: Colors.black, size: 26),
+                  child: Icon(centerIcon, color: Colors.white, size: 28),
                 ),
               ),
-              ...rightItems.asMap().entries.map((e) => _buildTab(rightOffset + e.key, e.value)),
+              ...rightItems.asMap().entries.map((e) => _buildTab(context, rightOffset + e.key, e.value)),
             ],
           ),
         ),
@@ -456,7 +467,7 @@ class FloatingNavBar extends StatelessWidget {
           ],
         ),
         child: Row(
-          children: List.generate(items.length, (i) => _buildTab(i, items[i])),
+          children: List.generate(items.length, (i) => _buildTab(context, i, items[i])),
         ),
       ),
     );

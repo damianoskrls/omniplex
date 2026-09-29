@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
 import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
+import '../theme/app_colors.dart';
 import '../widgets/gym_info_sheet.dart';
 import '../widgets/ui_kit.dart';
 import 'credits_screen.dart';
@@ -19,6 +20,8 @@ import 'my_qr_screen.dart';
 import 'dropin_screen.dart';
 import 'nutrition_screen.dart';
 import 'marketplace_screen.dart';
+import 'goals_screen.dart';
+import 'payments_screen.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/qr_checkin_sheet.dart';
@@ -83,42 +86,49 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return index;
   }
 
-  static const _maxNavItems = 5;
+  // 3 primary visible + 1 overflow = 4 total items → 2 | QR | 2 layout
+  static const _maxNavItems = 4;
 
   List<_TabItem> get _tabItems {
     final config = context.read<TenantConfig>();
-    // Primary tabs always shown first; secondary (optional features) go to overflow
     return [
+      // ── Primary (always visible, 2 left of QR) ──────────────
+      _TabItem(
+        key: 'packages',
+        icon: Icons.card_membership_outlined,
+        label: 'Πακέτα',
+        screen: const CreditsScreen(),
+      ),
       _TabItem(
         key: 'booking',
-        icon: Icons.fitness_center,
+        icon: Icons.fitness_center_outlined,
         label: config.label('book_cta', 'Κράτηση'),
         screen: const ServicesScreen(),
       ),
+      // ── Primary (visible, 1 right of QR before overflow) ────
+      _TabItem(
+        key: 'goals',
+        icon: Icons.track_changes_outlined,
+        label: 'Στόχοι',
+        screen: const GoalsScreen(),
+      ),
+      // ── Overflow ─────────────────────────────────────────────
       _TabItem(
         key: 'appointments',
-        icon: Icons.calendar_month,
+        icon: Icons.calendar_month_outlined,
         label: config.label('appointment_noun', 'Ραντεβού'),
         screen: const MyBookingsScreen(),
       ),
       _TabItem(
         key: 'community',
-        icon: Icons.people_outline,
-        label: AppStrings.of(context).community,
+        icon: Icons.people_outline_rounded,
+        label: 'Κοινότητα',
         screen: const CommunityScreen(),
       ),
-      // Secondary — appear in overflow when nav is full
-      if (config.featureMemberships)
-        _TabItem(
-          key: 'packages',
-          icon: Icons.card_membership,
-          label: AppStrings.of(context).packages,
-          screen: const CreditsScreen(),
-        ),
       if (config.featureNutrition && _hasNutritionAccess)
         _TabItem(
           key: 'nutrition',
-          icon: Icons.restaurant_menu,
+          icon: Icons.restaurant_menu_outlined,
           label: AppStrings.of(context).nutrition,
           screen: const NutritionScreen(),
         ),
@@ -129,6 +139,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           label: AppStrings.of(context).marketplace,
           screen: const MarketplaceScreen(),
         ),
+      _TabItem(
+        key: 'payments',
+        icon: Icons.payment_outlined,
+        label: 'Πληρωμές',
+        screen: const PaymentsScreen(),
+      ),
     ];
   }
 
@@ -410,23 +426,26 @@ class _MoreSheet extends StatelessWidget {
             decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 16),
-          ...tabs.map((tab) => ListTile(
-            leading: Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFFB8F55E).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
+          ...tabs.map((tab) {
+            final primary = context.tenantPrimary;
+            return ListTile(
+              leading: Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(tab.icon, color: primary, size: 22),
               ),
-              child: Icon(tab.icon, color: const Color(0xFFB8F55E), size: 22),
-            ),
-            title: Text(tab.label,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
-            trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-            onTap: () {
-              Navigator.pop(context);
-              onSelect(tab);
-            },
-          )),
+              title: Text(tab.label,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
+              trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+              onTap: () {
+                Navigator.pop(context);
+                onSelect(tab);
+              },
+            );
+          }),
           const SizedBox(height: 8),
         ],
       ),
