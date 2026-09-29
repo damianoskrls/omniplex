@@ -10,7 +10,15 @@ const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
 const _kBorder = Color(0xFF2A2B30);
 const _kGray   = Color(0xFF9A9CA3);
-const _kLime   = Color(0xFFC52473);
+const _kAccent = Color(0xFF7B3EAD);
+// _kLime kept as alias so it compiles; gradually replace usages below
+const _kLime   = _kAccent;
+
+const _kBrandGrad = LinearGradient(
+  transform: GradientRotation(3.396),
+  colors: [Color(0xFF4452D8), Color(0xFF4B50D3), Color(0xFF5D49C5), Color(0xFF7B3EAD), Color(0xFFA4308D), Color(0xFFC52473)],
+  stops: [0.1611, 0.2462, 0.3655, 0.5051, 0.6588, 0.7651],
+);
 
 class GlobalRegisterScreen extends StatefulWidget {
   const GlobalRegisterScreen({
@@ -362,16 +370,20 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                   child: Container(
                     height: 56,
                     decoration: BoxDecoration(
-                      color: _kLime,
+                      gradient: _loading ? null : _kBrandGrad,
+                      color: _loading ? _kBorder : null,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: _loading ? null : [
+                        BoxShadow(color: const Color(0xFF7B3EAD).withValues(alpha: 0.35), blurRadius: 18, offset: const Offset(0, 6)),
+                      ],
                     ),
                     alignment: Alignment.center,
                     child: _loading
                       ? const SizedBox(width: 22, height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.5, color: _kBg))
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
                       : Text('Δημιουργία Λογαριασμού',
                           style: GoogleFonts.manrope(
-                            fontSize: 15, fontWeight: FontWeight.w700, color: _kBg)),
+                            fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                 ),
                 const SizedBox(height: 20),

@@ -612,13 +612,18 @@ class _Slide3Visual extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Gym entrance photo
-                Image.network(
-                  'https://www.figma.com/api/mcp/asset/a46995c8-641e-48fe-9675-3c64103af2d5.png',
+                // Gym entrance visual
+                Container(
                   height: 325,
                   width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(height: 325, color: const Color(0xFF0D1117)),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF0D1020), Color(0xFF120B1E), Color(0xFF1A0D2E)],
+                    ),
+                  ),
+                  child: CustomPaint(painter: _GymEntrancePainter()),
                 ),
                 // Dark gradient overlay
                 Container(
@@ -712,12 +717,13 @@ class _QrPhoneMockup extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             // Camera texture
-            Opacity(
-              opacity: 0.7,
-              child: Image.network(
-                'https://www.figma.com/api/mcp/asset/7217b19b-1e77-4ed6-8742-602cfce3aaee.png',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(color: const Color(0xFF0A0A0A)),
+            Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 1.2,
+                  colors: [Color(0xFF1A1030), Color(0xFF0A0A14)],
+                ),
               ),
             ),
             // Dark overlay
@@ -1005,4 +1011,54 @@ class _CrosshairPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CrosshairPainter old) => old.glowOpacity != glowOpacity;
+}
+
+// ── Gym entrance background painter ──────────────────────────────────────────
+class _GymEntrancePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 1;
+
+    // Floor lines converging to vanishing point
+    const vx = 0.5;
+    const vy = 0.45;
+    final vp = Offset(size.width * vx, size.height * vy);
+    const lineColor = Color(0xFF2A2060);
+
+    for (final p in [
+      Offset(0, size.height * 0.6),
+      Offset(0, size.height * 0.75),
+      Offset(0, size.height),
+      Offset(size.width, size.height * 0.6),
+      Offset(size.width, size.height * 0.75),
+      Offset(size.width, size.height),
+    ]) {
+      canvas.drawLine(vp, p, paint..color = lineColor);
+    }
+
+    // Ceiling lines
+    for (final p in [
+      Offset(0, size.height * 0.1),
+      Offset(0, size.height * 0.25),
+      Offset(size.width, size.height * 0.1),
+      Offset(size.width, size.height * 0.25),
+    ]) {
+      canvas.drawLine(vp, p, paint..color = lineColor);
+    }
+
+    // Accent glow at vanishing point
+    canvas.drawCircle(vp, 60, Paint()
+      ..shader = RadialGradient(colors: [
+        const Color(0xFF7B3EAD).withValues(alpha: 0.4),
+        const Color(0xFF4452D8).withValues(alpha: 0.15),
+        Colors.transparent,
+      ]).createShader(Rect.fromCircle(center: vp, radius: 60)));
+
+    // Horizontal cross-line
+    canvas.drawLine(Offset(0, vp.dy), Offset(size.width, vp.dy),
+      Paint()..color = const Color(0xFF3A2060)..strokeWidth = 1);
+  }
+
+  @override
+  bool shouldRepaint(_GymEntrancePainter old) => false;
 }
