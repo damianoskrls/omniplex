@@ -1199,24 +1199,23 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                     ),
                   ),
 
-                  // Logo badge (home mode only)
-                  if (showLogoBadge)
-                    Positioned(
-                      bottom: -24, left: 16,
-                      child: Container(
-                        width: 56, height: 56,
-                        decoration: BoxDecoration(
-                          color: _kCard,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: _kBg, width: 2),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: logoUrl != null
-                          ? Image.network(logoUrl, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _logoFallback(color, name))
-                          : _logoFallback(color, name),
+                  // Logo badge (always visible)
+                  Positioned(
+                    bottom: -24, left: 16,
+                    child: Container(
+                      width: 56, height: 56,
+                      decoration: BoxDecoration(
+                        color: _kCard,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _kBg, width: 2),
                       ),
+                      clipBehavior: Clip.antiAlias,
+                      child: logoUrl != null
+                        ? Image.network(logoUrl, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _logoFallback(color, name))
+                        : _logoFallback(color, name),
                     ),
+                  ),
 
                   // Drop-in / Membership badge (results mode)
                   if (!showLogoBadge)
@@ -1245,7 +1244,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
 
             // Info section
             Padding(
-              padding: EdgeInsets.fromLTRB(16, showLogoBadge ? 36 : 14, 16, 14),
+              padding: const EdgeInsets.fromLTRB(16, 36, 16, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
