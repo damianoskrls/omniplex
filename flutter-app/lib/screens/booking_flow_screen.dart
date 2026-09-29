@@ -1038,17 +1038,6 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       const SizedBox(height: 4),
                       Text(slot.label!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
                     ],
-                    if (slot.capacityLabel != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        slot.capacityLabel!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontSize: 12,
-                              color: isWaitlist ? AppColors.orange : AppColors.lime,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ],
                     if (isWaitlist) ...[
                       const SizedBox(height: 4),
                       Text(

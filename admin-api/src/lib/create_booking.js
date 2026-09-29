@@ -188,12 +188,15 @@ async function createOneBooking(conn, {
   let finalStaffId = staff_id || null;
   if (!finalStaffId) {
     const pool = computed.slotMap[time] || [];
+    const openClass = !pool.length && computed.scheduleByTime?.has(time);
     if (pool.length && !service.hide_staff_selection) {
       throw new Error('Απαιτείται επιλογή γυμναστή');
     }
-    finalStaffId = await findStaffForSlot(
-      conn, bizId, service_id, computed, time, startsAt, { excludedStaffIds: excluded_staff_ids },
-    ) || null;
+    if (!openClass) {
+      finalStaffId = await findStaffForSlot(
+        conn, bizId, service_id, computed, time, startsAt, { excludedStaffIds: excluded_staff_ids },
+      ) || null;
+    }
   } else {
     const pool = computed.slotMap[time] || [];
     if (!pool.some(s => s.id === finalStaffId)) {

@@ -545,6 +545,39 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('staff place services skipped:', err.message);
   }
 
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS dropin_offers (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        business_id VARCHAR(36) NOT NULL,
+        service_id VARCHAR(36) NOT NULL,
+        location_id VARCHAR(36) NOT NULL,
+        price_cents INT NOT NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        UNIQUE KEY uq_dropin_offer (business_id, service_id, location_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS dropin_offer_staff (
+        offer_id VARCHAR(36) NOT NULL,
+        staff_id VARCHAR(36) NOT NULL,
+        PRIMARY KEY (offer_id, staff_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS dropin_offer_hours (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        offer_id VARCHAR(36) NOT NULL,
+        weekday TINYINT NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: drop-in offers ready');
+  } catch (err) {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('drop-in offers skipped:', err.message);
+  }
+
   // ── gym_join_requests.date_of_birth + specialty ─────────────
   try {
     await db.query(`ALTER TABLE gym_join_requests ADD COLUMN date_of_birth DATE NULL`);

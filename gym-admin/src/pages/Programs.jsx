@@ -666,6 +666,8 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
     _name: e.exercise_name, _muscle: e.muscle_group, _anim: e.animation_url,
   })) || []);
   const [search, setSearch] = useState('');
+  const [picked, setPicked] = useState(() => new Set());
+  const [batch, setBatch] = useState({ sets: '3', reps: '12', rest_secs: '60' });
   const [activeIdx, setActiveIdx] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -674,14 +676,42 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
     (e.muscle_group || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const addExercise = (ex) => {
-    const newIdx = items.length;
-    setItems(prev => [...prev, {
-      exercise_id: ex.id, sets: '', reps: '', duration_secs: '', rest_secs: '', notes: '',
-      _name: ex.name, _muscle: ex.muscle_group, _anim: ex.animation_url,
-    }]);
-    setActiveIdx(newIdx);
+  const togglePick = (id) => {
+    setPicked(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const addExercises = (list) => {
+    if (!list.length) return;
+    const start = items.length;
+    setItems(prev => [...prev, ...list.map(ex => ({
+      exercise_id: ex.id,
+      sets: batch.sets,
+      reps: batch.reps,
+      duration_secs: '',
+      rest_secs: batch.rest_secs,
+      notes: '',
+      _name: ex.name,
+      _muscle: ex.muscle_group,
+      _anim: ex.animation_url,
+    }))]);
+    setActiveIdx(start);
+    setPicked(new Set());
     setSearch('');
+  };
+
+  const addPicked = () => {
+    addExercises(exercises.filter(ex => picked.has(ex.id)));
+  };
+
+  const applyToAll = () => {
+    if (!activeItem) return;
+    const { sets, reps, duration_secs, rest_secs } = activeItem;
+    setItems(prev => prev.map(item => ({ ...item, sets, reps, duration_secs, rest_secs })));
   };
 
   const removeItem = (i) => {
@@ -753,33 +783,76 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
         <div style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', position: 'relative', flexShrink: 0 }}>
           <Search size={14} style={{ position: 'absolute', left: 22, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input className="form-input" style={{ paddingLeft: 32, fontSize: '0.82rem' }}
-            placeholder="Προσθήκη άσκησης..." value={search} onChange={e => setSearch(e.target.value)} />
+            placeholder="Αναζήτηση ασκήσεων..." value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => {
+              if (e.key !== 'Enter') return;
+              e.preventDefault();
+              if (picked.size) addPicked();
+            }} />
         </div>
+
+        {search && (
+          <div style={{ flex: '0 1 52%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, padding: '8px 10px 0' }}>
+              {[
+                ['sets', 'Σετ'],
+                ['reps', 'Επαν.'],
+                ['rest_secs', 'Ανάπ.'],
+              ].map(([key, label]) => (
+                <input key={key} className="form-input" type="number" min="0" inputMode="numeric"
+                  aria-label={label} title={label} placeholder={label} value={batch[key]}
+                  onChange={e => setBatch(b => ({ ...b, [key]: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
+                  style={{ fontSize: '0.75rem', textAlign: 'center', padding: '6px 4px' }} />
+              ))}
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 0' }}>
+              {filtered.length === 0 ? (
+                <div style={{ padding: 12, color: '#94a3b8', fontSize: '0.82rem' }}>Δεν βρέθηκε άσκηση</div>
+              ) : filtered.map(ex => {
+                const on = picked.has(ex.id);
+                return (
+                  <label key={ex.id}
+                    style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, background: on ? '#eff6ff' : 'transparent' }}>
+                    <input type="checkbox" checked={on} onChange={() => togglePick(ex.id)} />
+                    <ExerciseSVG name={ex.name} muscleGroup={ex.muscle_group} size={26} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ex.name}</div>
+                      {ex.muscle_group && <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{ex.muscle_group}</div>}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 6, padding: '8px 10px', borderTop: '1px solid #e2e8f0' }}>
+              <button type="button" className="btn btn-secondary" style={{ flex: 1, fontSize: '0.75rem', padding: '6px 8px' }}
+                onClick={() => {
+                  const ids = filtered.map(ex => ex.id);
+                  const allOn = ids.length > 0 && ids.every(id => picked.has(id));
+                  setPicked(prev => {
+                    const next = new Set(prev);
+                    ids.forEach(id => { if (allOn) next.delete(id); else next.add(id); });
+                    return next;
+                  });
+                }}>
+                {filtered.length > 0 && filtered.every(ex => picked.has(ex.id)) ? 'Καμία' : 'Όλες'}
+              </button>
+              <button type="button" className="btn btn-primary" disabled={picked.size === 0}
+                style={{ flex: 2, fontSize: '0.75rem', padding: '6px 8px' }}
+                onClick={addPicked}>
+                Προσθήκη ({picked.size})
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Exercise list */}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 0' }}>
-          {search ? (
-            filtered.length === 0 ? (
-              <div style={{ padding: 12, color: '#94a3b8', fontSize: '0.82rem' }}>Δεν βρέθηκε άσκηση</div>
-            ) : filtered.map(ex => (
-              <div key={ex.id} onMouseDown={() => addExercise(ex)}
-                style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-                onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
-                onMouseOut={e => e.currentTarget.style.background = ''}>
-                <ExerciseSVG name={ex.name} muscleGroup={ex.muscle_group} size={28} />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{ex.name}</div>
-                  {ex.muscle_group && <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{ex.muscle_group}</div>}
-                </div>
-              </div>
-            ))
-          ) : null}
-          {!search && (
-          <>
           {items.length === 0 && (
             <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8' }}>
               <Dumbbell size={28} style={{ opacity: 0.3, marginBottom: 8 }} />
-              <div style={{ fontSize: '0.8rem' }}>Αναζήτησε για να προσθέσεις ασκήσεις</div>
+              <div style={{ fontSize: '0.8rem' }}>Αναζήτησε, τσέκαρε όσες θες και πάτα Προσθήκη</div>
             </div>
           )}
           {items.map((item, i) => (
@@ -814,8 +887,6 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
               </button>
             </div>
           ))}
-          </>
-          )}
         </div>
       </div>
 
@@ -870,6 +941,12 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
                 </div>
               </div>
 
+              {items.length > 1 && (
+                <button type="button" onClick={applyToAll}
+                  style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', padding: 0, marginBottom: 12 }}>
+                  Ίδια σετ, επαναλήψεις και ανάπαυση σε όλες τις ασκήσεις
+                </button>
+              )}
               <div>
                 <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Σημειώσεις προπονητή</label>
                 <textarea className="form-input" rows={3} value={activeItem.notes}

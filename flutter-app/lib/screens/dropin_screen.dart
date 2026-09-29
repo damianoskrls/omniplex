@@ -40,15 +40,36 @@ class _DropinScreenState extends State<DropinScreen> {
       final api = context.read<AuthService>().api;
       final locs = await api.fetchLocations();
       final dropIns = locs.locations.where((l) => l.acceptsDropIn).toList();
-      final svcs = await api.fetchDropinServices();
       _dropInLocations = dropIns.isNotEmpty ? dropIns : locs.locations;
       _locationId = _dropInLocations.isNotEmpty ? _dropInLocations.first.id : null;
+      final svcs = await api.fetchDropinServices(locationId: _locationId);
       setState(() {
         _services = svcs;
         if (svcs.isNotEmpty) {
           _selectedService = svcs.first;
           _selectedServiceId = svcs.first['id'] as String;
         }
+      });
+      if (_selectedServiceId != null) await _loadSlots();
+    } catch (e) {
+      if (mounted) _showError('$e');
+    } finally {
+      if (mounted) setState(() => _loadingServices = false);
+    }
+  }
+
+  Future<void> _selectLocation(String id) async {
+    setState(() {
+      _locationId = id;
+      _loadingServices = true;
+    });
+    try {
+      final svcs = await context.read<AuthService>().api.fetchDropinServices(locationId: id);
+      if (!mounted) return;
+      setState(() {
+        _services = svcs;
+        _selectedService = svcs.isNotEmpty ? svcs.first : null;
+        _selectedServiceId = svcs.isNotEmpty ? svcs.first['id'] as String : null;
       });
       if (_selectedServiceId != null) await _loadSlots();
     } catch (e) {
@@ -68,6 +89,7 @@ class _DropinScreenState extends State<DropinScreen> {
         serviceId: _selectedServiceId!,
         date: dateStr,
         locationId: _locationId,
+        dropin: true,
       );
       setState(() {
         _slots = result.slots;
@@ -127,6 +149,38 @@ class _DropinScreenState extends State<DropinScreen> {
               child: Text('Κλείσε μία συνεδρία χωρίς συνδρομή', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             ),
             const SizedBox(height: 16),
+
+            if (_dropInLocations.length > 1)
+              SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _dropInLocations.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final loc = _dropInLocations[i];
+                    final selected = loc.id == _locationId;
+                    return GestureDetector(
+                      onTap: () => _selectLocation(loc.id),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: selected ? AppColors.surfaceLight : Colors.transparent,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: selected ? AppColors.lime : AppColors.border),
+                        ),
+                        child: Text(loc.name, style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? AppColors.lime : AppColors.textSecondary,
+                        )),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            if (_dropInLocations.length > 1) const SizedBox(height: 12),
 
             if (_loadingServices)
               const Expanded(child: Center(child: CircularProgressIndicator(color: AppColors.lime)))

@@ -532,12 +532,14 @@ class ApiService {
     required String date,
     String? excludeBookingId,
     String? locationId,
+    bool dropin = false,
   }) async {
     final params = {
       'service_id': serviceId,
       'date': date,
       if (excludeBookingId != null) 'exclude_booking_id': excludeBookingId,
       if (locationId != null) 'location_id': locationId,
+      if (dropin) 'dropin': '1',
     };
     final res = await _get('/api/booking/$bizId/slots', query: params);
     final data = _decode(res) as Map<String, dynamic>;
@@ -1181,8 +1183,10 @@ class ApiService {
   }
 
   // ── Drop-in ────────────────────────────────────────────────
-  Future<List<Map<String, dynamic>>> fetchDropinServices() async {
-    final res = await _get('/api/booking/$bizId/dropin/services');
+  Future<List<Map<String, dynamic>>> fetchDropinServices({String? locationId}) async {
+    final res = await _get('/api/booking/$bizId/dropin/services', query: {
+      if (locationId != null) 'location_id': locationId,
+    });
     final data = _decode(res) as List;
     return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }

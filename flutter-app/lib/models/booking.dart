@@ -193,7 +193,10 @@ class TimeSlot {
   final String? userConflictService;
   final bool userSameService;
 
-  bool get isBookable => !isFull && !userHasBooking && availableStaff.isNotEmpty;
+  bool get isBookable =>
+      !isFull &&
+      !userHasBooking &&
+      (availableStaff.isNotEmpty || (remainingSpots ?? availableCount ?? 0) > 0);
 
   String? get userConflictLabel {
     if (!userHasBooking) return null;

@@ -1141,9 +1141,6 @@ class _GymProfileScreenState extends State<GymProfileScreen>
               ),
           ]),
         ),
-        if ((entry['max_capacity'] as int?) != null)
-          Text('${entry['max_capacity']} άτ.',
-            style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
       ]),
     );
   }

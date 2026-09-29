@@ -7,7 +7,7 @@ import LocationCheckboxes from '../components/LocationCheckboxes';
 import { Plus, Trash2, Pencil, CalendarClock, Upload, X, Check, Sparkles } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
 
-const EMPTY = { name: '', description: '', category: '', duration_mins: 60, hide_staff_selection: false, slot_label_mode: 'time_only', drop_in_price_cents: '', requires_attendance_confirmation: true, requires_qr_scan: true, is_open_access: false };
+const EMPTY = { name: '', description: '', category: '', duration_mins: 60, hide_staff_selection: false, slot_label_mode: 'time_only', requires_attendance_confirmation: true, requires_qr_scan: true, is_open_access: false };
 
 function ImageUploadBox({ label, accept, currentUrl, onUpload, onRemove, hint }) {
   const inputRef = useRef();
@@ -200,7 +200,6 @@ export default function Services() {
       duration_mins: s.duration_mins || 60,
       hide_staff_selection: !!s.hide_staff_selection,
       slot_label_mode: s.slot_label_mode || 'time_only',
-      drop_in_price_cents: s.drop_in_price_cents != null ? String(Math.round(s.drop_in_price_cents / 100)) : '',
       requires_attendance_confirmation: s.requires_attendance_confirmation !== false,
       requires_qr_scan: s.requires_qr_scan !== false,
       is_open_access: !!s.is_open_access,
@@ -221,7 +220,6 @@ export default function Services() {
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const dropInEuros = parseFloat(form.drop_in_price_cents);
     const payload = {
       name: form.name,
       description: form.description || null,
@@ -230,7 +228,6 @@ export default function Services() {
       hide_staff_selection: form.hide_staff_selection,
       slot_label_mode: form.slot_label_mode,
       location_ids: locationIds,
-      drop_in_price_cents: form.drop_in_price_cents === '' ? null : Math.round(dropInEuros * 100),
       requires_attendance_confirmation: form.requires_attendance_confirmation,
       requires_qr_scan: form.requires_qr_scan,
       is_open_access: form.is_open_access,
@@ -615,22 +612,6 @@ export default function Services() {
                     </div>
                   </span>
                 </label>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Τιμή drop-in (€)</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  min={0}
-                  step={0.5}
-                  placeholder="π.χ. 12"
-                  value={form.drop_in_price_cents}
-                  onChange={e => setForm({ ...form, drop_in_price_cents: e.target.value })}
-                />
-                <div className="text-muted" style={{ marginTop: 4, fontSize: '0.8rem' }}>
-                  Τιμή για μεμονωμένη συνεδρία χωρίς πακέτο. Αφήστε κενό αν δεν επιτρέπεται drop-in.
-                </div>
               </div>
 
               {rooms.length > 0 && (

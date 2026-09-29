@@ -255,7 +255,7 @@ function LocationsStep({ checks, onSaved }) {
 
 function ServicesStep({ onSaved }) {
   const [locations, setLocations] = useState([]);
-  const [form, setForm] = useState({ name: '', duration_mins: 60, location_ids: [], drop_in: '' });
+  const [form, setForm] = useState({ name: '', duration_mins: 60, location_ids: [] });
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     api.get('/client-admin/locations').then((r) => setLocations((r.data || []).filter((l) => l.is_active))).catch(() => {});
@@ -271,18 +271,13 @@ function ServicesStep({ onSaved }) {
     if (!form.name.trim()) return toast.error('Βάλε όνομα υπηρεσίας');
     setSaving(true);
     try {
-      const created = await api.post('/client-admin/services', {
+      await api.post('/client-admin/services', {
         name: form.name.trim(),
         duration_mins: Number(form.duration_mins) || 60,
         location_ids: form.location_ids,
       });
-      if (form.drop_in !== '') {
-        await api.patch(`/client-admin/services/${created.data.id}`, {
-          drop_in_price_cents: Math.round(Number(form.drop_in) * 100),
-        });
-      }
       toast.success('Προστέθηκε υπηρεσία');
-      setForm({ name: '', duration_mins: 60, location_ids: [], drop_in: '' });
+      setForm({ name: '', duration_mins: 60, location_ids: [] });
       onSaved();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
@@ -308,7 +303,6 @@ function ServicesStep({ onSaved }) {
           ))}
         </div>
       </div>
-      <div className="form-group"><label className="form-label">Τιμή drop-in (€, προαιρετικά)</label><input className="form-input" value={form.drop_in} onChange={(e) => setForm({ ...form, drop_in: e.target.value })} placeholder="π.χ. 20" /></div>
       <button className="btn btn-primary" disabled={saving}>{saving ? '...' : 'Προσθήκη υπηρεσίας'}</button>
       <div style={{ marginTop: 10 }}><Link to="/services">Πλήρης λίστα υπηρεσιών και πρόγραμμα τάξεων</Link></div>
     </form>
@@ -406,63 +400,11 @@ function RoomsStep({ onSaved }) {
   );
 }
 
-function DropInStep({ onSaved }) {
-  const [locations, setLocations] = useState([]);
-  const [services, setServices] = useState([]);
-  useEffect(() => {
-    Promise.all([
-      api.get('/client-admin/locations'),
-      api.get('/client-admin/services'),
-    ]).then(([locs, svcs]) => {
-      setLocations((locs.data || []).filter((l) => l.is_active));
-      setServices((svcs.data || []).filter((s) => s.is_active !== 0));
-    }).catch(() => {});
-  }, []);
-  const toggleLoc = async (loc) => {
-    try {
-      await api.patch(`/client-admin/locations/${loc.id}`, { accepts_drop_in: loc.accepts_drop_in ? 0 : 1 });
-      setLocations((prev) => prev.map((l) => l.id === loc.id ? { ...l, accepts_drop_in: loc.accepts_drop_in ? 0 : 1 } : l));
-      onSaved();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Σφάλμα');
-    }
-  };
-  const savePrice = async (svc, euros) => {
-    try {
-      await api.patch(`/client-admin/services/${svc.id}`, {
-        drop_in_price_cents: euros === '' ? null : Math.round(Number(euros) * 100),
-      });
-      toast.success(`Drop-in για ${svc.name}`);
-      onSaved();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Σφάλμα');
-    }
-  };
+function DropInStep() {
   return (
     <div>
-      <StepNote>Το drop-in ανοίγει μόνο στα καταστήματα που το δέχονται, και μόνο στις υπηρεσίες που έχουν τιμή.</StepNote>
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>Καταστήματα</div>
-      {locations.map((loc) => (
-        <label key={loc.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <input type="checkbox" checked={!!loc.accepts_drop_in} onChange={() => toggleLoc(loc)} />
-          {loc.name}
-        </label>
-      ))}
-      <div style={{ fontWeight: 700, margin: '14px 0 8px' }}>Υπηρεσίες με τιμή drop-in</div>
-      {services.map((svc) => (
-        <DropInPrice key={svc.id} svc={svc} onSave={savePrice} />
-      ))}
-    </div>
-  );
-}
-
-function DropInPrice({ svc, onSave }) {
-  const [value, setValue] = useState(svc.drop_in_price_cents ? String(svc.drop_in_price_cents / 100) : '');
-  return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-      <div style={{ flex: 1 }}>{svc.name}</div>
-      <input className="form-input" style={{ maxWidth: 120 }} value={value} onChange={(e) => setValue(e.target.value)} placeholder="€" />
-      <button type="button" className="btn btn-secondary btn-sm" onClick={() => onSave(svc, value)}>ΟΚ</button>
+      <StepNote>Το drop-in ρυθμίζεται ξεχωριστά: υπηρεσία, κατάστημα, τιμή, ώρες και ποιος το αναλαμβάνει.</StepNote>
+      <Link to="/dropin" className="btn btn-primary">Άνοιγμα ρύθμισης drop-in</Link>
     </div>
   );
 }

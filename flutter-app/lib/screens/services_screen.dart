@@ -505,9 +505,7 @@ class _OccupancyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status   = occupancy['status'] as String? ?? 'unknown';
-    final current  = occupancy['current'] as int? ?? 0;
-    final capacity = occupancy['capacity'] as int?;
+    final status = occupancy['status'] as String? ?? 'unknown';
 
     final (Color dotColor, String label, Color bg) = switch (status) {
       'full'  => (Colors.red,          'Γεμάτο αυτή τη στιγμή', Colors.red.withValues(alpha: 0.08)),
@@ -515,8 +513,6 @@ class _OccupancyCard extends StatelessWidget {
       'quiet' => (AppColors.lime,      'Ελεύθερος χώρος',       AppColors.lime.withValues(alpha: 0.06)),
       _       => (AppColors.textSecondary, 'Άγνωστο', Colors.transparent),
     };
-
-    final ratio = (capacity != null && capacity > 0) ? (current / capacity).clamp(0.0, 1.0) : null;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -539,28 +535,9 @@ class _OccupancyCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: dotColor)),
-                if (ratio != null) ...[
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: ratio,
-                      backgroundColor: dotColor.withValues(alpha: 0.15),
-                      valueColor: AlwaysStoppedAnimation<Color>(dotColor),
-                      minHeight: 5,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
-          if (capacity != null) ...[
-            const SizedBox(width: 10),
-            Text(
-              '$current/$capacity',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: dotColor.withValues(alpha: 0.7)),
-            ),
-          ],
         ],
       ),
     );

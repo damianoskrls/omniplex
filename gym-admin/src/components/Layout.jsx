@@ -45,7 +45,7 @@ function buildNavGroups({ features, featureNutrition }) {
         ...(features.programs ? [{ to: '/programs', icon: Dumbbell, label: 'Προγράμματα Άσκησης' }] : []),
         { to: '/services', icon: Scissors, label: 'Υπηρεσίες' },
         { to: '/plans', icon: Tag, label: 'Πακέτα' },
-        { to: '/dropin-bookings', icon: Zap, label: 'Drop-in' },
+        { to: '/dropin', icon: Zap, label: 'Drop-in' },
         { to: '/rooms', icon: DoorOpen, label: 'Χώροι & Αίθουσες' },
         { to: '/locations', icon: MapPin, label: 'Καταστήματα' },
       ],

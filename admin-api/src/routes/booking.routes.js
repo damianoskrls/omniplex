@@ -24,6 +24,13 @@ const { enrichBookingWithTips } = require('../lib/booking_tips');
 const { normalizeWorkoutHealthPayload, mapBookingHealthFields, saveBookingWorkoutHealth } = require('../lib/workout_health');
 const { createUserNotification } = require('../lib/user_notifications');
 const {
+  loadActiveOffer,
+  businessHasDropinOffers,
+  filterSlotsByOffer,
+  buildDropinSlotMap,
+  weekdayFromDate,
+} = require('../lib/dropin_setup');
+const {
   listClientThreads,
   listClientPeers,
   getClientThreadById,
@@ -336,6 +343,26 @@ router.get('/:bizId/slots', softAuth, async (req, res) => {
       resolvedLocationId,
     );
     if (!computed) return res.status(404).json({ error: 'Η υπηρεσία δεν βρέθηκε' });
+
+    if (req.query.dropin === '1') {
+      const offer = await loadActiveOffer(db, req.params.bizId, service_id, resolvedLocationId);
+      if (!offer) {
+        return res.json({
+          slots: [],
+          day_status: 'no_availability',
+          message: 'Δεν υπάρχει drop-in για αυτό το κατάστημα και αυτή την υπηρεσία.',
+        });
+      }
+      computed.slotMap = await buildDropinSlotMap(
+        db,
+        req.params.bizId,
+        offer,
+        date,
+        computed.duration,
+      );
+      computed.scheduleByTime = new Map();
+      computed.staffPoolNames = [...new Set(Object.values(computed.slotMap).flat().map((s) => s.full_name))];
+    }
 
     const { staffPoolNames } = computed;
     if (computed.closedReason) {
@@ -1756,6 +1783,25 @@ router.post('/:bizId/messages', softAuth, requireActiveCustomer, async (req, res
 // GET /:bizId/dropin/services — services available for drop-in (price > 0)
 router.get('/:bizId/dropin/services', async (req, res) => {
   try {
+    const hasOffers = await businessHasDropinOffers(db, req.params.bizId);
+    if (hasOffers) {
+      const params = [req.params.bizId];
+      let locSql = '';
+      if (req.query.location_id) {
+        locSql = ' AND o.location_id = ?';
+        params.push(req.query.location_id);
+      }
+      const [rows] = await db.query(
+        `SELECT s.id, s.name, s.description, s.duration_mins, o.price_cents AS drop_in_price_cents,
+                s.category, s.color, o.location_id
+         FROM dropin_offers o
+         JOIN services s ON s.id = o.service_id
+         WHERE o.business_id = ? AND o.is_active = 1 AND s.is_active = 1 ${locSql}
+         ORDER BY s.category, s.name`,
+        params,
+      );
+      return res.json(rows);
+    }
     const [rows] = await db.query(
       `SELECT id, name, description, duration_mins, drop_in_price_cents, category, color
        FROM services
@@ -1819,10 +1865,33 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
     await conn.beginTransaction();
 
     const [[svc]] = await conn.query(
-      'SELECT id, name, drop_in_price_cents, max_capacity FROM services WHERE id = ? AND business_id = ? AND is_active = 1 AND drop_in_price_cents > 0',
+      'SELECT id, name, drop_in_price_cents, duration_mins, max_capacity FROM services WHERE id = ? AND business_id = ? AND is_active = 1',
       [service_id, bizId],
     );
     if (!svc) { await conn.rollback(); return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε' }); }
+
+    const offer = await loadActiveOffer(conn, bizId, service_id, location_id || null);
+    const usesOffers = await businessHasDropinOffers(conn, bizId);
+    if (usesOffers && !offer) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'Δεν υπάρχει drop-in για αυτό το κατάστημα και αυτή την υπηρεσία' });
+    }
+    if (offer) {
+      const allowed = filterSlotsByOffer(
+        { [String(time).slice(0, 5)]: [{ id: staff_id || [...offer.staffIds][0] }] },
+        offer,
+        weekdayFromDate(date),
+        svc.duration_mins || 0,
+      );
+      if (!Object.keys(allowed).length || (staff_id && !offer.staffIds.has(staff_id))) {
+        await conn.rollback();
+        return res.status(400).json({ error: 'Αυτή η ώρα δεν είναι διαθέσιμη για drop-in' });
+      }
+      svc.drop_in_price_cents = offer.price_cents;
+    } else if (!(svc.drop_in_price_cents > 0)) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε' });
+    }
 
     // Capacity check: count bookings + dropin_bookings for this slot
     const [[capRow]] = await conn.query(`

@@ -46,6 +46,7 @@ import Reviews from './pages/Reviews';
 import Analytics from './pages/Analytics';
 import StaffLeaves from './pages/StaffLeaves';
 import DropinBookings from './pages/DropinBookings';
+import DropinSetup from './pages/DropinSetup';
 import DiscoveryProfile from './pages/DiscoveryProfile';
 import ClassSchedule from './pages/ClassSchedule';
 import GymPhotos from './pages/GymPhotos';
@@ -121,6 +122,7 @@ export default function App() {
           <Route path="/reviews" element={<PrivateRoute ownerOnly><Reviews /></PrivateRoute>} />
           <Route path="/analytics" element={<PrivateRoute ownerOnly><Analytics /></PrivateRoute>} />
           <Route path="/staff-leaves" element={<PrivateRoute ownerOnly><StaffLeaves /></PrivateRoute>} />
+          <Route path="/dropin" element={<PrivateRoute ownerOnly><DropinSetup /></PrivateRoute>} />
           <Route path="/dropin-bookings" element={<PrivateRoute ownerOnly><DropinBookings /></PrivateRoute>} />
           <Route path="/discovery-profile" element={<PrivateRoute ownerOnly><DiscoveryProfile /></PrivateRoute>} />
           <Route path="/class-schedule" element={<PrivateRoute ownerOnly><ClassSchedule /></PrivateRoute>} />

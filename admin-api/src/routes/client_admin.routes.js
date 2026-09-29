@@ -45,6 +45,7 @@ const {
   saveStaffPlaces,
 } = require('../lib/staff_places');
 const { getSetupWizard, saveSetupWizard } = require('../lib/setup_wizard');
+const { listDropinSetup, saveDropinOffer, deleteDropinOffer } = require('../lib/dropin_setup');
 const { createOneBooking, chargeBookingMembershipOnConfirm, refundBookingMembershipOnRemove } = require('../lib/create_booking');
 const { sqlGymServiceCategories } = require('../lib/gym_services');
 const { deleteBookingForBusiness } = require('../lib/booking_delete');
@@ -5163,6 +5164,44 @@ router.delete('/closures/:id', requireClientAdmin, async (req, res) => {
     [req.params.id, req.admin.businessId]
   );
   return res.json({ ok: true });
+});
+
+// ── Drop-in setup (service + store + hours + staff) ───────────
+
+router.get('/dropin-setup', requireClientAdmin, async (req, res) => {
+  try {
+    const data = await listDropinSetup(db, req.admin.businessId);
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/dropin-setup', requireClientAdmin, async (req, res) => {
+  try {
+    const saved = await saveDropinOffer(db, req.admin.businessId, req.body);
+    return res.status(201).json(saved);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+router.put('/dropin-setup/:id', requireClientAdmin, async (req, res) => {
+  try {
+    const saved = await saveDropinOffer(db, req.admin.businessId, req.body, req.params.id);
+    return res.json(saved);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+router.delete('/dropin-setup/:id', requireClientAdmin, async (req, res) => {
+  try {
+    await deleteDropinOffer(db, req.admin.businessId, req.params.id);
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 // ── Drop-in Bookings (admin) ──────────────────────────────────
