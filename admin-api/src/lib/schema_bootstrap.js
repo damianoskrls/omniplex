@@ -429,6 +429,12 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_CANT_DROP_FIELD_OR_KEY') {}
   }
 
+  // ── global_users.last_login ──────────────────────────────────
+  try {
+    await db.query('ALTER TABLE global_users ADD COLUMN last_login DATETIME NULL');
+    console.log('✓ Schema: global_users.last_login added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('global_users.last_login skipped:', err.message); }
+
   // ── users.global_user_id ────────────────────────────────────
   try {
     await db.query('ALTER TABLE users ADD COLUMN global_user_id VARCHAR(36) NULL');

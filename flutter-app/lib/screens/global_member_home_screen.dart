@@ -851,6 +851,16 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   int _weekOffset = 0;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.dashboard != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _autoSelectFirstBooking();
+      });
+    }
+  }
+
+  @override
   void didUpdateWidget(_ScheduleTab old) {
     super.didUpdateWidget(old);
     if (old.dashboard != widget.dashboard && widget.dashboard != null) {
@@ -1123,11 +1133,12 @@ class _ScheduleBookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final time    = (booking['booking_time'] as String? ?? '').substring(0, 5);
-    final service = booking['service_name'] as String? ?? '';
-    final gym     = booking['app_name'] as String? ?? booking['business_name'] as String? ?? '';
-    final staff   = booking['staff_name'] as String?;
-    final status  = booking['status'] as String? ?? 'confirmed';
+    final time     = (booking['booking_time'] as String? ?? '').substring(0, 5);
+    final service  = booking['service_name'] as String? ?? '';
+    final gym      = booking['app_name'] as String? ?? booking['business_name'] as String? ?? '';
+    final staff    = booking['staff_name'] as String?;
+    final status   = booking['status'] as String? ?? 'confirmed';
+    final imgUrl   = booking['service_image_url'] as String?;
     final isCancel = status == 'cancelled';
 
     return GestureDetector(
@@ -1141,19 +1152,36 @@ class _ScheduleBookingCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(children: [
-        // Time column
-        SizedBox(
-          width: 52,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(time,
+        // Service image or time column
+        if (imgUrl != null && imgUrl.isNotEmpty)
+          Container(
+            width: 52, height: 52,
+            margin: const EdgeInsets.only(right: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: _kAccent.withValues(alpha: 0.12),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Image.network(imgUrl, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Icon(Icons.fitness_center_rounded, color: _kAccent, size: 22)),
+          )
+        else ...[
+          SizedBox(
+            width: 52,
+            child: Text(time,
               style: GoogleFonts.manrope(
                 fontSize: 20, fontWeight: FontWeight.w700,
                 color: isCancel ? _kGray : _kAccent)),
-          ]),
-        ),
-        Container(width: 1, height: 42, color: _kBorder, margin: const EdgeInsets.symmetric(horizontal: 14)),
+          ),
+          Container(width: 1, height: 42, color: _kBorder, margin: const EdgeInsets.symmetric(horizontal: 14)),
+        ],
         // Details
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (imgUrl != null && imgUrl.isNotEmpty)
+            Text(time,
+              style: GoogleFonts.manrope(
+                fontSize: 11, fontWeight: FontWeight.w600,
+                color: isCancel ? _kGray : _kAccent)),
           Text(service,
             style: GoogleFonts.manrope(
               fontSize: 14, fontWeight: FontWeight.w700,

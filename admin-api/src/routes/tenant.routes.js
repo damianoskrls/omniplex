@@ -154,10 +154,12 @@ router.get('/global-users', authenticate, requireMasterAdmin, async (req, res) =
     );
 
     const [rows] = await db.query(
-      `SELECT gu.id, gu.email, gu.full_name, gu.phone, gu.created_at,
-              COUNT(DISTINCT u.business_id) AS linked_gyms_count
+      `SELECT gu.id, gu.email, gu.full_name, gu.phone, gu.created_at, gu.last_login,
+              COUNT(DISTINCT u.business_id) AS member_gyms_count,
+              COUNT(DISTINCT s.business_id) AS trainer_gyms_count
        FROM global_users gu
        LEFT JOIN users u ON u.global_user_id = gu.id AND u.deleted_at IS NULL
+       LEFT JOIN staff s ON s.global_user_id = gu.id AND s.is_active = 1
        ${where}
        GROUP BY gu.id
        ORDER BY gu.created_at DESC
@@ -172,12 +174,12 @@ router.get('/global-users', authenticate, requireMasterAdmin, async (req, res) =
 router.get('/global-users/:id', authenticate, requireMasterAdmin, async (req, res) => {
   try {
     const [[user]] = await db.query(
-      `SELECT id, email, full_name, phone, created_at FROM global_users WHERE id = ?`,
+      `SELECT id, email, full_name, phone, created_at, last_login FROM global_users WHERE id = ?`,
       [req.params.id],
     );
     if (!user) return res.status(404).json({ error: 'Not found' });
 
-    // Linked via users table (gym admin added them OR auto-linked via OTP)
+    // Linked via users table (member role)
     const [linkedGyms] = await db.query(
       `SELECT u.id AS user_id, u.account_status AS user_status, u.created_at AS linked_at,
               b.id AS business_id, b.name AS business_name, b.slug, b.business_type
@@ -185,6 +187,17 @@ router.get('/global-users/:id', authenticate, requireMasterAdmin, async (req, re
        JOIN businesses b ON b.id = u.business_id
        WHERE u.global_user_id = ? AND u.deleted_at IS NULL
        ORDER BY u.created_at DESC`,
+      [req.params.id],
+    );
+
+    // Linked via staff table (trainer/staff role)
+    const [linkedStaff] = await db.query(
+      `SELECT s.id AS staff_id, s.role AS staff_role, s.created_at AS linked_at,
+              b.id AS business_id, b.name AS business_name, b.slug, b.business_type
+       FROM staff s
+       JOIN businesses b ON b.id = s.business_id
+       WHERE s.global_user_id = ? AND s.is_active = 1
+       ORDER BY s.created_at DESC`,
       [req.params.id],
     );
 
@@ -199,7 +212,7 @@ router.get('/global-users/:id', authenticate, requireMasterAdmin, async (req, re
       [req.params.id],
     );
 
-    return res.json({ user, linkedGyms, joinRequests });
+    return res.json({ user, linkedGyms, linkedStaff, joinRequests });
   } catch (err) { return res.status(500).json({ error: err.message }); }
 });
 

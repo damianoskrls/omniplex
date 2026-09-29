@@ -138,6 +138,7 @@ router.post('/auth/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Λάθος email ή κωδικός' });
 
+    db.query('UPDATE global_users SET last_login = NOW() WHERE id = ?', [user.id]).catch(() => {});
     const gyms = await getGymsForGlobalUser(user.id);
     return res.json({
       token: makeGlobalToken(user),
@@ -178,7 +179,7 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
     // Upcoming bookings for all gym accounts
     const [bookings] = await db.query(`
       SELECT b.id, b.booking_date, b.booking_time, b.status,
-             s.name AS service_name, s.duration_mins,
+             s.name AS service_name, s.duration_mins, s.image_url AS service_image_url,
              st.full_name AS staff_name,
              biz.id AS business_id, biz.name AS business_name,
              COALESCE(bc.app_name, biz.name) AS app_name, bc.primary_color, bc.logo_url
@@ -1308,6 +1309,7 @@ router.post('/auth/verify-otp', async (req, res) => {
       if (userWithPwd && userWithPwd.password_hash) {
         const pwdMatch = await bcrypt.compare(code, userWithPwd.password_hash);
         if (pwdMatch) {
+          db.query('UPDATE global_users SET last_login = NOW() WHERE id = ?', [userWithPwd.id]).catch(() => {});
           await autoLinkGlobalUser(userWithPwd.id, digits, userWithPwd.email);
           const gyms  = await getGymsForGlobalUser(userWithPwd.id);
           const token = makeGlobalToken(userWithPwd);
@@ -1340,6 +1342,7 @@ router.post('/auth/verify-otp', async (req, res) => {
 
     // Auto-link to any existing tenant records
     await autoLinkGlobalUser(user.id, digits, user.email);
+    db.query('UPDATE global_users SET last_login = NOW() WHERE id = ?', [user.id]).catch(() => {});
 
     const gyms  = await getGymsForGlobalUser(user.id);
     const token = makeGlobalToken(user);

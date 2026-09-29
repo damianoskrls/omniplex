@@ -113,13 +113,17 @@ export default function GlobalUsers() {
                 <th>Όνομα</th>
                 <th>Email</th>
                 <th>Τηλέφωνο</th>
-                <th>Γυμναστήρια</th>
+                <th>Ρόλοι</th>
                 <th>Εγγραφή</th>
+                <th>Τελ. σύνδεση</th>
                 <th style={{ width: 110 }}></th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(u => (
+              {rows.map(u => {
+                const isMember  = u.member_gyms_count > 0;
+                const isTrainer = u.trainer_gyms_count > 0;
+                return (
                 <tr key={u.id}>
                   <td>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -130,12 +134,17 @@ export default function GlobalUsers() {
                   <td style={{ color: 'var(--text-2)' }}>{u.email || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                   <td style={{ color: 'var(--text-2)' }}>{u.phone || <span style={{ color: 'var(--text-3)' }}>—</span>}</td>
                   <td>
-                    <span className={`badge ${u.linked_gyms_count > 0 ? 'badge-green' : 'badge-gray'}`}>
-                      {u.linked_gyms_count} γυμν.
+                    <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {isMember  && <span className="badge badge-green">Ασκούμενος{u.member_gyms_count > 1 ? ` ×${u.member_gyms_count}` : ''}</span>}
+                      {isTrainer && <span className="badge badge-blue">Trainer{u.trainer_gyms_count > 1 ? ` ×${u.trainer_gyms_count}` : ''}</span>}
+                      {!isMember && !isTrainer && <span className="badge badge-gray">Κανένα</span>}
                     </span>
                   </td>
                   <td style={{ color: 'var(--text-3)', fontSize: 12 }}>
                     {new Date(u.created_at).toLocaleDateString('el-GR')}
+                  </td>
+                  <td style={{ color: 'var(--text-3)', fontSize: 12 }}>
+                    {u.last_login ? new Date(u.last_login).toLocaleDateString('el-GR') : <span style={{ color: 'var(--text-3)' }}>—</span>}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 4 }}>
@@ -151,7 +160,8 @@ export default function GlobalUsers() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>
@@ -261,13 +271,19 @@ export default function GlobalUsers() {
                 <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Εγγραφή</div>
                 <div style={{ marginTop: 3, fontSize: 13 }}>{new Date(detailUser.user.created_at).toLocaleString('el-GR')}</div>
               </div>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Τελευταία Σύνδεση</div>
+                <div style={{ marginTop: 3, fontSize: 13 }}>
+                  {detailUser.user.last_login ? new Date(detailUser.user.last_login).toLocaleString('el-GR') : <span style={{ color: 'var(--text-3)' }}>—</span>}
+                </div>
+              </div>
             </div>
 
             <div style={{ fontWeight: 700, marginBottom: 10 }}>
-              Συνδεδεμένα Γυμναστήρια ({(detailUser.linkedGyms || []).length})
+              Ασκούμενος ({(detailUser.linkedGyms || []).length} γυμν.)
             </div>
             {(detailUser.linkedGyms || []).length === 0 ? (
-              <p style={{ color: 'var(--text-3)', fontSize: 13, marginBottom: 16 }}>Δεν έχει συνδεθεί με κάποιο γυμναστήριο.</p>
+              <p style={{ color: 'var(--text-3)', fontSize: 13, marginBottom: 16 }}>Δεν είναι μέλος σε κάποιο γυμναστήριο.</p>
             ) : (
               <div className="table-wrap" style={{ marginBottom: 16 }}>
                 <table style={{ fontSize: 13 }}>
@@ -278,13 +294,35 @@ export default function GlobalUsers() {
                     {(detailUser.linkedGyms || []).map(g => (
                       <tr key={g.user_id}>
                         <td>{g.business_name}</td>
-                        <td><span className="badge badge-green">Συνδεδεμένο</span></td>
+                        <td><span className="badge badge-green">Ασκούμενος</span></td>
                         <td style={{ color: 'var(--text-3)' }}>{new Date(g.linked_at).toLocaleDateString('el-GR')}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {(detailUser.linkedStaff || []).length > 0 && (
+              <>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>Trainer ({detailUser.linkedStaff.length} γυμν.)</div>
+                <div className="table-wrap" style={{ marginBottom: 16 }}>
+                  <table style={{ fontSize: 13 }}>
+                    <thead>
+                      <tr><th>Γυμναστήριο</th><th>Ρόλος</th><th>Σύνδεση</th></tr>
+                    </thead>
+                    <tbody>
+                      {detailUser.linkedStaff.map(s => (
+                        <tr key={s.staff_id}>
+                          <td>{s.business_name}</td>
+                          <td><span className="badge badge-blue">{s.staff_role || 'trainer'}</span></td>
+                          <td style={{ color: 'var(--text-3)' }}>{new Date(s.linked_at).toLocaleDateString('el-GR')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
             {(detailUser.joinRequests || []).length > 0 && (
               <>
