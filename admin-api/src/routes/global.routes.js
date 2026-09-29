@@ -1140,8 +1140,8 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
     } else {
       gymUserId = require('uuid').v4();
       await conn.query(
-        `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, role, account_status, created_at)
-         VALUES (?,?,?,?,?,?,'customer','active',NOW())`,
+        `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, account_status, created_at)
+         VALUES (?,?,?,?,?,?,'active',NOW())`,
         [gymUserId, biz.id, globalUser.id, user_info.full_name || '', user_info.email || '', phone],
       );
     }

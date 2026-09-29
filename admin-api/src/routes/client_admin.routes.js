@@ -957,8 +957,8 @@ router.post('/clients/add-global', requireClientAdmin, async (req, res) => {
 
     const newId = uuidv4();
     await db.query(
-      `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, account_status, role)
-       VALUES (?, ?, ?, ?, ?, ?, 'active', 'customer')`,
+      `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, account_status)
+       VALUES (?, ?, ?, ?, ?, ?, 'active')`,
       [newId, bizId, global_user_id, gu.full_name, gu.email || '', gu.phone || ''],
     );
     // Approve any existing join_request
@@ -7498,9 +7498,9 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
         } else {
           const userId = uuidv4();
           await db.query(
-            `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, date_of_birth, role, account_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'customer', 'active')`,
-            [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email || '', jr.phone || '', jr.date_of_birth || null],
+            `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, date_of_birth, account_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+            [userId, req.admin.businessId, jr.global_user_id, jr.full_name, jr.email || null, jr.phone || '', jr.date_of_birth || null],
           );
           recordId = userId;
         }
