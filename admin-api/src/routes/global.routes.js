@@ -181,7 +181,7 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
              s.name AS service_name, s.duration_mins,
              st.full_name AS staff_name,
              biz.id AS business_id, biz.name AS business_name,
-             bc.app_name, bc.primary_color, bc.logo_url
+             COALESCE(bc.app_name, biz.name) AS app_name, bc.primary_color, bc.logo_url
       FROM bookings b
       JOIN services s ON s.id = b.service_id
       LEFT JOIN staff st ON st.id = b.staff_id

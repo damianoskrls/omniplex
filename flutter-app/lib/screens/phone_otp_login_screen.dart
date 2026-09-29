@@ -177,8 +177,6 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
         !RegExp(r'^Χρήστης\s+\d+$').hasMatch(name);
     if (isNew || !hasName) {
       _goProfileDetails();
-    } else if (widget.globalAuth.preferredRole == null) {
-      _goRolePicker();
     } else {
       widget.onLoggedIn();
     }

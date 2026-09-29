@@ -19,6 +19,19 @@ const _kBorder = Color(0xFF2A2B30);
 const _kGray   = Color(0xFF9A9CA3);
 const _kLime   = Color(0xFFC6FF3D);
 const _kCyan   = Color(0xFF3EE6FF);
+const _kAccent = Color(0xFF7B3EAD); // brand gradient mid-point for solid uses
+
+const _kBrandGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [
+    Color(0xFF4452D8),
+    Color(0xFF5D49C5),
+    Color(0xFF7B3EAD),
+    Color(0xFFA4308D),
+    Color(0xFFC52473),
+  ],
+);
 
 class GlobalMemberHomeScreen extends StatefulWidget {
   const GlobalMemberHomeScreen({
@@ -98,7 +111,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('OK', style: TextStyle(color: _kLime)),
+              child: const Text('OK', style: TextStyle(color: _kAccent)),
             ),
           ],
         ),
@@ -109,9 +122,9 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   }
 
   Color _parseColor(String? hex) {
-    if (hex == null) return _kLime;
+    if (hex == null) return _kAccent;
     try { return Color(int.parse(hex.replaceFirst('#', '0xFF'))); }
-    catch (_) { return _kLime; }
+    catch (_) { return _kAccent; }
   }
 
   @override
@@ -138,6 +151,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             onEnterGym: _enterGym,
             dashboard: _dashboard,
             loading: _loading,
+            onRefresh: _loadDashboard,
           ),
           _MyGymsTab(
             globalAuth: widget.globalAuth,
@@ -187,13 +201,13 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
                         items[i].$2,
                         width: 20, height: 20,
                         colorFilter: ColorFilter.mode(
-                          active ? _kLime : _kGray, BlendMode.srcIn),
+                          active ? _kAccent : _kGray, BlendMode.srcIn),
                       ),
                       const SizedBox(height: 4),
                       Text(items[i].$1,
                         style: GoogleFonts.manrope(
                           fontSize: 10, fontWeight: FontWeight.w600,
-                          color: active ? _kLime : _kGray)),
+                          color: active ? _kAccent : _kGray)),
                     ],
                   ),
                 ),
@@ -257,7 +271,7 @@ class _HomeTab extends StatelessWidget {
     return Stack(
       children: [
         RefreshIndicator(
-          color: _kLime,
+          color: _kAccent,
           onRefresh: onRefresh,
           child: CustomScrollView(
             slivers: [
@@ -325,7 +339,7 @@ class _HomeTab extends StatelessWidget {
                         children: [
                           _QuickAction(
                             icon: Icons.fitness_center_rounded,
-                            iconColor: _kLime,
+                            iconColor: _kAccent,
                             iconBg: const Color(0xFF1A2A0A),
                             label: 'Κράτηση\nΜαθήματος',
                             onTap: () {
@@ -401,7 +415,7 @@ class _HomeTab extends StatelessWidget {
         if (enteringGym)
           const ColoredBox(
             color: Color(0xAA000000),
-            child: Center(child: CircularProgressIndicator(color: _kLime)),
+            child: Center(child: CircularProgressIndicator(color: _kAccent)),
           ),
       ],
     );
@@ -471,15 +485,15 @@ class _GymMemberCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: _kLime.withValues(alpha: 0.12),
+                    color: _kAccent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(9999),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.check_rounded, color: _kLime, size: 12),
+                    const Icon(Icons.check_rounded, color: _kAccent, size: 12),
                     const SizedBox(width: 4),
                     Text('Ενεργό',
                       style: GoogleFonts.manrope(
-                        fontSize: 11, fontWeight: FontWeight.w700, color: _kLime)),
+                        fontSize: 11, fontWeight: FontWeight.w700, color: _kAccent)),
                   ]),
                 ),
               ],
@@ -494,7 +508,7 @@ class _GymMemberCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(children: [
-                const Icon(Icons.calendar_today_outlined, size: 14, color: _kLime),
+                const Icon(Icons.calendar_today_outlined, size: 14, color: _kAccent),
                 const SizedBox(width: 6),
                 Text('Επόμενη: $nextStr',
                   style: GoogleFonts.manrope(fontSize: 12, color: Colors.white)),
@@ -528,12 +542,12 @@ class _GymMemberCard extends StatelessWidget {
               Container(
                 width: 42, height: 42,
                 decoration: BoxDecoration(
-                  color: _kLime.withValues(alpha: 0.12),
+                  color: _kAccent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _kLime.withValues(alpha: 0.3)),
+                  border: Border.all(color: _kAccent.withValues(alpha: 0.3)),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(Icons.qr_code_2_rounded, color: _kLime, size: 20),
+                child: const Icon(Icons.qr_code_2_rounded, color: _kAccent, size: 20),
               ),
             ]),
           ),
@@ -613,12 +627,12 @@ class _NextClassCard extends StatelessWidget {
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: _kLime,
+              gradient: _kBrandGradient,
               borderRadius: BorderRadius.circular(9999),
             ),
             alignment: Alignment.center,
             child: Text('Δες κράτηση', style: GoogleFonts.manrope(
-              fontSize: 12, fontWeight: FontWeight.w700, color: _kBg)),
+              fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
           ),
         ]),
       ]),
@@ -716,10 +730,10 @@ class _ThisWeekSection extends StatelessWidget {
                   child: Row(children: [
                     Container(
                       width: 6, height: 6,
-                      decoration: const BoxDecoration(color: _kLime, shape: BoxShape.circle)),
+                      decoration: const BoxDecoration(color: _kAccent, shape: BoxShape.circle)),
                     const SizedBox(width: 10),
                     Text(time, style: GoogleFonts.manrope(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: _kLime)),
+                      fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -769,7 +783,7 @@ class _WeekStrip extends StatelessWidget {
             Container(
               width: 32, height: 32,
               decoration: BoxDecoration(
-                color: today ? _kLime : Colors.transparent,
+                color: today ? _kAccent : Colors.transparent,
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
@@ -812,6 +826,7 @@ class _ScheduleTab extends StatefulWidget {
     required this.onEnterGym,
     required this.dashboard,
     required this.loading,
+    required this.onRefresh,
   });
 
   final GlobalAuthService globalAuth;
@@ -819,6 +834,7 @@ class _ScheduleTab extends StatefulWidget {
   final Future<void> Function(GlobalGym) onEnterGym;
   final Map<String, dynamic>? dashboard;
   final bool loading;
+  final Future<void> Function() onRefresh;
 
   @override
   State<_ScheduleTab> createState() => _ScheduleTabState();
@@ -839,7 +855,17 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     final ds = '${_selected.year.toString().padLeft(4, '0')}-'
         '${_selected.month.toString().padLeft(2, '0')}-'
         '${_selected.day.toString().padLeft(2, '0')}';
-    final list = _all.where((b) => b['booking_date'] == ds).toList();
+    final list = _all.where((b) => b['booking_date'] == ds).map((b) {
+      // Look up display name from the known gyms list (has correct app_name)
+      final bizId = b['business_id']?.toString();
+      GlobalGym? matched;
+      if (bizId != null) {
+        try { matched = widget.gyms.firstWhere((g) => g.businessId == bizId); }
+        catch (_) {}
+      }
+      if (matched != null) return {...b, 'app_name': matched.appName};
+      return b;
+    }).toList();
     list.sort((a, b) =>
         (a['booking_time'] as String? ?? '').compareTo(b['booking_time'] as String? ?? ''));
     return list;
@@ -924,14 +950,15 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                       width: 44,
                       margin: const EdgeInsets.symmetric(horizontal: 3),
                       decoration: BoxDecoration(
+                        gradient: isSelected ? _kBrandGradient : null,
                         color: isSelected
-                            ? _kLime
+                            ? null
                             : isToday
                                 ? _kCard
                                 : Colors.transparent,
                         borderRadius: BorderRadius.circular(14),
                         border: isToday && !isSelected
-                            ? Border.all(color: _kLime.withValues(alpha: 0.35))
+                            ? Border.all(color: _kAccent.withValues(alpha: 0.5))
                             : null,
                       ),
                       child: Column(
@@ -952,8 +979,8 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                             decoration: BoxDecoration(
                               color: hasBooking
                                   ? (isSelected
-                                      ? _kBg.withValues(alpha: 0.5)
-                                      : _kLime)
+                                      ? Colors.white.withValues(alpha: 0.6)
+                                      : _kAccent)
                                   : Colors.transparent,
                               shape: BoxShape.circle,
                             ),
@@ -980,7 +1007,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                   decoration: BoxDecoration(
                     color: bookings.isNotEmpty
-                        ? _kLime.withValues(alpha: 0.12)
+                        ? _kAccent.withValues(alpha: 0.15)
                         : _kCard,
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -988,7 +1015,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                     bookings.isEmpty ? 'Χωρίς κρατήσεις' : '${bookings.length} κρατήσεις',
                     style: GoogleFonts.manrope(
                       fontSize: 11, fontWeight: FontWeight.w600,
-                      color: bookings.isNotEmpty ? _kLime : _kGray),
+                      color: bookings.isNotEmpty ? _kAccent : _kGray),
                   ),
                 ),
               ]),
@@ -997,17 +1024,26 @@ class _ScheduleTabState extends State<_ScheduleTab> {
             // Content
             Expanded(
               child: widget.loading
-                ? const Center(child: CircularProgressIndicator(color: _kLime))
-                : bookings.isEmpty
-                  ? _NoBookingsDay()
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      itemCount: bookings.length,
-                      itemBuilder: (_, i) => _ScheduleBookingCard(
-                        booking: bookings[i],
-                        onTap: () => _showBookingDetail(context, bookings[i]),
-                      ),
-                    ),
+                ? const Center(child: CircularProgressIndicator(color: _kAccent))
+                : RefreshIndicator(
+                    color: _kAccent,
+                    backgroundColor: _kCard,
+                    onRefresh: widget.onRefresh,
+                    child: bookings.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [_NoBookingsDay()],
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                          itemCount: bookings.length,
+                          itemBuilder: (_, i) => _ScheduleBookingCard(
+                            booking: bookings[i],
+                            onTap: () => _showBookingDetail(context, bookings[i]),
+                          ),
+                        ),
+                  ),
             ),
           ],
         ),
@@ -1069,7 +1105,7 @@ class _ScheduleBookingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: _kCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isCancel ? _kBorder : _kLime.withValues(alpha: 0.18)),
+        border: Border.all(color: isCancel ? _kBorder : _kAccent.withValues(alpha: 0.3)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(children: [
@@ -1080,7 +1116,7 @@ class _ScheduleBookingCard extends StatelessWidget {
             Text(time,
               style: GoogleFonts.manrope(
                 fontSize: 20, fontWeight: FontWeight.w700,
-                color: isCancel ? _kGray : _kLime)),
+                color: isCancel ? _kGray : _kAccent)),
           ]),
         ),
         Container(width: 1, height: 42, color: _kBorder, margin: const EdgeInsets.symmetric(horizontal: 14)),
@@ -1209,7 +1245,7 @@ class _BookingDetailSheet extends StatelessWidget {
               fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 6),
           Text(gym,
-            style: GoogleFonts.manrope(fontSize: 14, color: _kLime, fontWeight: FontWeight.w600)),
+            style: GoogleFonts.manrope(fontSize: 14, color: _kAccent, fontWeight: FontWeight.w600)),
           const SizedBox(height: 20),
           _DetailRow(Icons.calendar_today_outlined, _fmt(date, time)),
           if (duration != null) _DetailRow(Icons.timer_outlined, '$duration λεπτά'),
@@ -1433,14 +1469,25 @@ class _MyGymsTabState extends State<_MyGymsTab> {
   @override
   Widget build(BuildContext context) {
     final gyms = widget.globalAuth.gyms;
-    final totalCount = gyms.length + _pendingRequests.length;
+    final trainerGyms = gyms.where((g) => g.isStaff).toList();
+    final memberGyms  = gyms.where((g) => !g.isStaff).toList();
+    final totalCount  = gyms.length + _pendingRequests.length;
+
+    Widget _sectionLabel(String label) => Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(label,
+        style: GoogleFonts.manrope(
+          fontSize: 12, fontWeight: FontWeight.w700,
+          color: _kGray, letterSpacing: 0.5)),
+    );
+
     return Scaffold(
       backgroundColor: _kBg,
       body: SafeArea(
         child: Stack(
           children: [
             RefreshIndicator(
-              color: _kLime,
+              color: _kAccent,
               backgroundColor: _kCard,
               onRefresh: () async {
                 await widget.globalAuth.refreshGyms();
@@ -1467,15 +1514,15 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                           height: 38,
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           decoration: BoxDecoration(
-                            color: _kLime.withValues(alpha: 0.10),
+                            color: _kAccent.withValues(alpha: 0.10),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: _kLime.withValues(alpha: 0.3)),
+                            border: Border.all(color: _kAccent.withValues(alpha: 0.3)),
                           ),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.add_rounded, color: _kLime, size: 16),
+                            const Icon(Icons.add_rounded, color: _kAccent, size: 16),
                             const SizedBox(width: 4),
                             Text('Προσθήκη', style: GoogleFonts.manrope(
-                              fontSize: 12, fontWeight: FontWeight.w700, color: _kLime)),
+                              fontSize: 12, fontWeight: FontWeight.w700, color: _kAccent)),
                           ]),
                         ),
                       ),
@@ -1483,15 +1530,28 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Active gym cards
-                  ...gyms.map((gym) {
-                    final color = widget.parseColor(gym.primaryColor);
-                    return _MyGymCard(
+                  // Trainer gyms section
+                  if (trainerGyms.isNotEmpty) ...[
+                    _sectionLabel('Ως Trainer · ${trainerGyms.length}'),
+                    ...trainerGyms.map((gym) => _MyGymCard(
                       gym: gym,
-                      accentColor: color,
+                      accentColor: widget.parseColor(gym.primaryColor),
                       onOpen: () => widget.onEnterGym(gym),
-                    );
-                  }),
+                    )),
+                    const SizedBox(height: 8),
+                  ],
+
+                  // Member gyms section
+                  if (memberGyms.isNotEmpty) ...[
+                    _sectionLabel('Ως Ασκούμενος · ${memberGyms.length}'),
+                    ...memberGyms.map((gym) => _MyGymCard(
+                      gym: gym,
+                      accentColor: widget.parseColor(gym.primaryColor),
+                      onOpen: () => widget.onEnterGym(gym),
+                    )),
+                    const SizedBox(height: 8),
+                  ],
+
 
                   // Pending join requests
                   if (!_loadingRequests && _pendingRequests.isNotEmpty) ...[
@@ -1544,7 +1604,7 @@ class _MyGymsTabState extends State<_MyGymsTab> {
             if (widget.enteringGym)
               const ColoredBox(
                 color: Color(0xAA000000),
-                child: Center(child: CircularProgressIndicator(color: _kLime)),
+                child: Center(child: CircularProgressIndicator(color: _kAccent)),
               ),
           ],
         ),
@@ -1630,7 +1690,7 @@ class _MyGymCard extends StatelessWidget {
   Color get _statusColor {
     if (gym.isStaff) return const Color(0xFF3EE6FF);
     switch (gym.userStatus) {
-      case 'active': return _kLime;
+      case 'active': return _kAccent;
       case 'pending': return const Color(0xFFF59E0B);
       default: return _kGray;
     }
@@ -1685,7 +1745,7 @@ class _MyGymCard extends StatelessWidget {
                   if (gym.isStaff)
                     Icon(Icons.sports_rounded, size: 11, color: _statusColor),
                   if (!gym.isStaff && !isPending)
-                    const Icon(Icons.check_rounded, size: 11, color: _kLime),
+                    const Icon(Icons.check_rounded, size: 11, color: _kAccent),
                   if (!gym.isStaff && isPending)
                     const Icon(Icons.hourglass_empty_rounded, size: 11, color: Color(0xFFF59E0B)),
                   const SizedBox(width: 3),
@@ -1739,12 +1799,12 @@ class _MyGymCard extends StatelessWidget {
                 Container(
                   width: 40, height: 40,
                   decoration: BoxDecoration(
-                    color: _kLime.withValues(alpha: 0.10),
+                    color: _kAccent.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _kLime.withValues(alpha: 0.3)),
+                    border: Border.all(color: _kAccent.withValues(alpha: 0.3)),
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(Icons.qr_code_2_rounded, color: _kLime, size: 18),
+                  child: const Icon(Icons.qr_code_2_rounded, color: _kAccent, size: 18),
                 ),
               ]),
             ),
