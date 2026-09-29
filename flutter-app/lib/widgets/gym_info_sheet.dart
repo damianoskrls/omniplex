@@ -156,9 +156,9 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                   ],
                   const SizedBox(height: 24),
                 ],
-                if (info.openingHours != null && info.openingHours!.days.isNotEmpty) ...[
-                  _SectionTitle(
-                    title: info.locations.isNotEmpty ? 'Γενικό ωράριο' : 'Ωράριο λειτουργίας',
+                if (info.locations.isEmpty && info.openingHours != null && info.openingHours!.days.isNotEmpty) ...[
+                  const _SectionTitle(
+                    title: 'Ωράριο λειτουργίας',
                   ),
                   const SizedBox(height: 10),
                   _OpeningHoursTable(hours: info.openingHours!),
@@ -166,7 +166,7 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                 ],
                 if (info.locations.isNotEmpty) ...[
                   _SectionTitle(
-                    title: info.multiLocation ? 'Τοποθεσίες & Αίθουσες' : 'Τοποθεσία & Αίθουσες',
+                    title: info.multiLocation ? 'Καταστήματα' : 'Κατάστημα',
                   ),
                   const SizedBox(height: 10),
                   ...info.locations.map(

@@ -50,6 +50,26 @@ async function staffCanCoverBooking(conn, bizId, staffId, booking, excludeStaffI
   );
   if (!svc) return { ok: false, reason: 'no_service' };
 
+  if (booking.location_id) {
+    const [[atLoc]] = await conn.query(
+      `SELECT 1 FROM staff s
+       WHERE s.id = ?
+         AND (
+           NOT EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = s.id)
+           OR EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = s.id AND sl.location_id = ?)
+         )
+         AND (
+           NOT EXISTS (SELECT 1 FROM staff_place_prefs pref WHERE pref.staff_id = s.id AND pref.location_id = ?)
+           OR EXISTS (
+             SELECT 1 FROM staff_location_services sls
+             WHERE sls.staff_id = s.id AND sls.location_id = ? AND sls.service_id = ?
+           )
+         )`,
+      [staffId, booking.location_id, booking.location_id, booking.location_id, booking.service_id],
+    );
+    if (!atLoc) return { ok: false, reason: 'no_service' };
+  }
+
   const [[leave]] = await conn.query(
     `SELECT 1 FROM staff_leaves
      WHERE staff_id = ? AND business_id = ?
@@ -64,6 +84,19 @@ async function staffCanCoverBooking(conn, bizId, staffId, booking, excludeStaffI
      WHERE sa.staff_id = ? AND sa.weekday = WEEKDAY(?) AND sa.is_active = 1
        AND sa.start_time <= TIME(?) AND sa.end_time >= TIME(?)
        AND (
+         ? IS NULL
+         OR sa.location_id = ?
+         OR (
+           sa.location_id IS NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM staff_availability sa_loc
+             WHERE sa_loc.staff_id = sa.staff_id
+               AND sa_loc.location_id = ?
+               AND sa_loc.is_active = 1
+           )
+         )
+       )
+       AND (
          sa.service_id = ?
          OR (
            sa.service_id IS NULL
@@ -73,11 +106,16 @@ async function staffCanCoverBooking(conn, bizId, staffId, booking, excludeStaffI
                AND sa2.service_id = ?
                AND sa2.weekday = sa.weekday
                AND sa2.is_active = 1
+               AND sa2.location_id <=> sa.location_id
            )
          )
        )
      LIMIT 1`,
-    [staffId, booking.starts_at, booking.starts_at, booking.ends_at, booking.service_id, booking.service_id],
+    [
+      staffId, booking.starts_at, booking.starts_at, booking.ends_at,
+      booking.location_id || null, booking.location_id || null, booking.location_id || null,
+      booking.service_id, booking.service_id,
+    ],
   );
   if (!avail) return { ok: false, reason: 'no_availability' };
 

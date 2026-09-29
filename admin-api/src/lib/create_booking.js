@@ -156,7 +156,14 @@ async function createOneBooking(conn, {
     await assertServiceAtLocation(conn, service_id, finalLocationId, bizId);
   }
 
-  await assertGymOpenOnDate(conn, bizId, date);
+  await assertGymOpenOnDate(
+    conn,
+    bizId,
+    date,
+    isNutritionConsult ? null : finalLocationId,
+    time,
+    service.duration_mins,
+  );
   if (!isSlotBookableForDate(date, time)) {
     throw new Error('Αυτή η ώρα έχει ήδη περάσει. Επίλεξε μεταγενέστερη ώρα.');
   }

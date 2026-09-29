@@ -51,6 +51,36 @@ function isWeekdayClosed(openingHours, wd) {
   return !!day.closed;
 }
 
+function timeToMinutes(timeVal) {
+  const [h, m] = String(timeVal).slice(0, 5).split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function slotFitsOpeningHours(openingHours, wd, time, durationMins = 0) {
+  if (!openingHours) return true;
+  const day = openingHours[wd] ?? openingHours[String(wd)];
+  if (!day || day.closed) return !day?.closed;
+  const open = timeToMinutes(day.open);
+  const close = timeToMinutes(day.close);
+  const start = timeToMinutes(time);
+  if (open == null || close == null || start == null) return true;
+  return start >= open && start + (durationMins || 0) <= close;
+}
+
+function clipToOpeningHours(slotMap, scheduleByTime, openingHours, wd, duration) {
+  const next = {};
+  for (const [time, staff] of Object.entries(slotMap || {})) {
+    if (slotFitsOpeningHours(openingHours, wd, time, duration)) next[time] = staff;
+  }
+  if (scheduleByTime) {
+    for (const time of [...scheduleByTime.keys()]) {
+      if (!slotFitsOpeningHours(openingHours, wd, time, duration)) scheduleByTime.delete(time);
+    }
+  }
+  return next;
+}
+
 async function getOpeningHours(dbConn, bizId) {
   const [[cfg]] = await dbConn.query(
     'SELECT opening_hours FROM business_configs WHERE business_id = ?',
@@ -59,11 +89,17 @@ async function getOpeningHours(dbConn, bizId) {
   return parseOpeningHours(cfg?.opening_hours);
 }
 
-async function assertGymOpenOnDate(dbConn, bizId, date) {
+async function assertGymOpenOnDate(dbConn, bizId, date, locationId = null, time = null, durationMins = 0) {
   const [[{ wd }]] = await dbConn.query('SELECT WEEKDAY(?) AS wd', [date]);
-  const openingHours = await getOpeningHours(dbConn, bizId);
+  const { getLocationOpeningHours } = require('./locations');
+  const openingHours = locationId
+    ? await getLocationOpeningHours(dbConn, bizId, locationId)
+    : await getOpeningHours(dbConn, bizId);
   if (isWeekdayClosed(openingHours, wd)) {
-    throw new Error('Το γυμναστήριο είναι κλειστό αυτή την ημέρα.');
+    throw new Error('Το κατάστημα είναι κλειστό αυτή την ημέρα.');
+  }
+  if (time && !slotFitsOpeningHours(openingHours, wd, time, durationMins)) {
+    throw new Error('Το κατάστημα είναι κλειστό αυτή την ώρα.');
   }
 
   const [[closure]] = await dbConn.query(
@@ -141,9 +177,32 @@ async function computeAvailableSlots(dbConn, bizId, serviceId, date, excludeBook
   const staffLocParams = locationId ? [locationId] : [];
 
   const availLocFilter = locationId
-    ? 'AND (sa.location_id IS NULL OR sa.location_id = ?)'
+    ? `AND (
+        sa.location_id = ?
+        OR (
+          sa.location_id IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM staff_availability sa_loc
+            WHERE sa_loc.staff_id = s.id
+              AND sa_loc.location_id = ?
+              AND sa_loc.is_active = 1
+          )
+        )
+      )
+      AND (
+        NOT EXISTS (
+          SELECT 1 FROM staff_place_prefs pref
+          WHERE pref.staff_id = s.id AND pref.location_id = ?
+        )
+        OR EXISTS (
+          SELECT 1 FROM staff_location_services sls
+          WHERE sls.staff_id = s.id AND sls.location_id = ? AND sls.service_id = ?
+        )
+      )`
     : '';
-  const availLocParams = locationId ? [locationId] : [];
+  const availLocParams = locationId
+    ? [locationId, locationId, locationId, locationId, serviceId]
+    : [];
 
   const [availableStaff] = await dbConn.query(`
     SELECT s.id, s.full_name, s.role, s.color_hex, s.avatar_url, s.bio,
@@ -164,6 +223,7 @@ async function computeAvailableSlots(dbConn, bizId, serviceId, date, excludeBook
               AND sa2.service_id = ?
               AND sa2.weekday = ?
               AND sa2.is_active = 1
+              AND sa2.location_id <=> sa.location_id
           )
         )
       )
@@ -299,14 +359,18 @@ async function computeAvailableSlots(dbConn, bizId, serviceId, date, excludeBook
     }
     const staffPoolNames = [...new Set(schedules.filter(s => s.staff_name).map(s => s.staff_name))];
     return {
-      service, slotMap, staffPoolNames, duration, scheduleByTime,
+      service,
+      slotMap: clipToOpeningHours(slotMap, scheduleByTime, openingHours, wd, duration),
+      staffPoolNames, duration, scheduleByTime,
       bookedByTime, waitlistByTime, locationId,
     };
   }
 
   if (!availableStaffFiltered.length) {
     return {
-      service, slotMap: {}, staffPoolNames: [], duration, scheduleByTime,
+      service,
+      slotMap: clipToOpeningHours({}, scheduleByTime, openingHours, wd, duration),
+      staffPoolNames: [], duration, scheduleByTime,
       bookedByTime, waitlistByTime, locationId,
     };
   }
@@ -345,7 +409,9 @@ async function computeAvailableSlots(dbConn, bizId, serviceId, date, excludeBook
 
   const staffPoolNames = [...new Set(availableStaffFiltered.map(s => s.full_name))];
   return {
-    service, slotMap: finalSlotMap, staffPoolNames, duration, scheduleByTime,
+    service,
+    slotMap: clipToOpeningHours(finalSlotMap, scheduleByTime, openingHours, wd, duration),
+    staffPoolNames, duration, scheduleByTime,
     bookedByTime, waitlistByTime, locationId,
   };
 }

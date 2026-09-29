@@ -135,6 +135,39 @@ async function enrichDashboardData(data) {
   return data;
 }
 
+function SetupBanner() {
+  const [status, setStatus] = useState(null);
+
+  useEffect(() => {
+    api.get('/client-admin/setup-wizard').then((r) => setStatus(r.data)).catch(() => {});
+  }, []);
+
+  if (!status || status.progress?.finished || status.progress?.dismissed) return null;
+  const missing = !status.checks?.has_name || !status.checks?.locations || !status.checks?.services;
+
+  const dismiss = async () => {
+    await api.patch('/client-admin/setup-wizard', { dismissed: true }).catch(() => {});
+    setStatus((prev) => prev && ({ ...prev, progress: { ...prev.progress, dismissed: true } }));
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', flexWrap: 'wrap', borderColor: missing ? '#fcd34d' : '#e2e8f0', background: missing ? '#fffbeb' : '#fff' }}>
+      <div>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Οδηγός έναρξης</div>
+        <div className="text-muted" style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>
+          {missing
+            ? 'Λείπουν στοιχεία, κατάστημα ή υπηρεσία. Χωρίς αυτά δεν μπορούν να γίνουν κρατήσεις.'
+            : 'Πέρνα βήμα βήμα ό,τι χρειάζεται το γυμναστήριο. Ό,τι δεν είναι απαραίτητο μπορείς να το παραλείψεις.'}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={dismiss}>Αργότερα</button>
+        <Link to="/setup" className="btn btn-primary btn-sm">Συνέχεια</Link>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -234,6 +267,7 @@ export default function Dashboard() {
         <div className="loading">Φόρτωση...</div>
       ) : (
         <>
+          <SetupBanner />
           <div className="dashboard-kpi-grid">
             {cards.map((c, i) => {
               const style = KPI_STYLES[i] || KPI_STYLES[0];

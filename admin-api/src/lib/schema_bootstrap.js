@@ -310,6 +310,11 @@ async function bootstrapSchema() {
     console.log('✓ Schema: business_configs.annual_leave_days added');
   } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('annual_leave_days skipped:', err.message); }
 
+  try {
+    await db.query('ALTER TABLE business_configs ADD COLUMN setup_wizard JSON NULL');
+    console.log('✓ Schema: business_configs.setup_wizard added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('setup_wizard skipped:', err.message); }
+
   // staff_leaves — leave requests with status workflow
   try {
     await db.query(`
@@ -517,6 +522,27 @@ async function bootstrapSchema() {
     console.log('✓ Schema: locations.accepts_drop_in added');
   } catch (err) {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('locations.accepts_drop_in skipped:', err.message);
+  }
+
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS staff_location_services (
+        staff_id VARCHAR(36) NOT NULL,
+        location_id VARCHAR(36) NOT NULL,
+        service_id VARCHAR(36) NOT NULL,
+        PRIMARY KEY (staff_id, location_id, service_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS staff_place_prefs (
+        staff_id VARCHAR(36) NOT NULL,
+        location_id VARCHAR(36) NOT NULL,
+        PRIMARY KEY (staff_id, location_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: staff place services ready');
+  } catch (err) {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('staff place services skipped:', err.message);
   }
 
   // ── gym_join_requests.date_of_birth + specialty ─────────────

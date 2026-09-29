@@ -1,96 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { mediaUrl, API_BASE } from '../utils/media';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import {
   Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, Dumbbell,
-  Search, Video, Play, UploadCloud, Check, Sparkles, User, Link2, Unlink,
+  Search, Video, Play, UploadCloud, Check, Sparkles, User,
 } from 'lucide-react';
-
-/* ─── Custom Service Selector ───────────────────────────────────────────────── */
-function ServiceSelect({ value, onChange, services }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const selected = services.find(s => s.id === value);
-
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-          padding: '8px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-          background: selected ? 'rgba(59,130,246,0.08)' : '#f8fafc',
-          border: selected ? '1.5px solid rgba(59,130,246,0.3)' : '1.5px solid #e2e8f0',
-          transition: 'border-color 0.15s',
-        }}
-      >
-        {selected
-          ? <Link2 size={13} style={{ color: '#3b82f6', flexShrink: 0 }} />
-          : <Unlink size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
-        }
-        <span style={{
-          flex: 1, fontSize: '0.8rem', fontWeight: selected ? 600 : 400,
-          color: selected ? '#1e40af' : '#64748b',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {selected ? selected.name : 'Χωρίς σύνδεση με υπηρεσία'}
-        </span>
-        <ChevronDown size={13} style={{ color: '#94a3b8', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-      </button>
-
-      {open && (
-        <div style={{
-          position: 'absolute', left: 0, right: 0, top: 'calc(100% + 4px)', zIndex: 30,
-          background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden',
-        }}>
-          <div
-            onMouseDown={() => { onChange(''); setOpen(false); }}
-            style={{
-              padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8,
-              cursor: 'pointer', fontSize: '0.82rem', color: !value ? '#1e293b' : '#64748b',
-              background: !value ? '#f0f9ff' : 'transparent',
-              borderBottom: '1px solid #f1f5f9',
-            }}
-            onMouseEnter={e => { if (value) e.currentTarget.style.background = '#f8fafc'; }}
-            onMouseLeave={e => { if (value) e.currentTarget.style.background = 'transparent'; }}
-          >
-            <Unlink size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
-            <span>Χωρίς σύνδεση με υπηρεσία</span>
-            {!value && <Check size={12} style={{ marginLeft: 'auto', color: '#3b82f6' }} />}
-          </div>
-          {services.map(s => (
-            <div
-              key={s.id}
-              onMouseDown={() => { onChange(s.id); setOpen(false); }}
-              style={{
-                padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8,
-                cursor: 'pointer', fontSize: '0.82rem', color: value === s.id ? '#1e40af' : '#1e293b',
-                background: value === s.id ? '#eff6ff' : 'transparent',
-                fontWeight: value === s.id ? 600 : 400,
-              }}
-              onMouseEnter={e => { if (value !== s.id) e.currentTarget.style.background = '#f8fafc'; }}
-              onMouseLeave={e => { if (value !== s.id) e.currentTarget.style.background = 'transparent'; }}
-            >
-              <Link2 size={13} style={{ color: value === s.id ? '#3b82f6' : '#94a3b8', flexShrink: 0 }} />
-              <span style={{ flex: 1, lineHeight: 1.4 }}>{s.name}</span>
-              {value === s.id && <Check size={12} style={{ marginLeft: 'auto', color: '#3b82f6', flexShrink: 0 }} />}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const isVideoUrl = (url) => url && /\.(mp4|mov|webm|avi)$/i.test(url);
 
@@ -807,56 +723,59 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
   const activeItem = activeIdx !== null ? items[activeIdx] : null;
 
   return (
-    <form onSubmit={submit} style={{ display: 'flex', height: '100%', minHeight: 500 }}>
-      {/* Left panel — exercise list */}
-      <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column' }}>
-        {/* Header fields */}
-        <div style={{ padding: '16px 14px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div>
-            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Τίτλος</label>
-            <input className="form-input" value={name} onChange={e => setName(e.target.value)}
-              placeholder="π.χ. Gym Machine Workout" required
-              style={{ fontWeight: 700, fontSize: '0.9rem' }} />
-          </div>
-          <div>
-            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Περιγραφή</label>
-            <input className="form-input" value={description} onChange={e => setDescription(e.target.value)}
-              placeholder="Προαιρετικά..." style={{ fontSize: '0.82rem' }} />
-          </div>
-          {services.length > 0 && (
-            <div>
-              <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Σύνδεση υπηρεσίας</label>
-              <ServiceSelect value={serviceId} onChange={setServiceId} services={services} />
-            </div>
-          )}
+    <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ flexShrink: 0, display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f1f5f9' }}>
+        <div>
+          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Τίτλος</label>
+          <input className="form-input" value={name} onChange={e => setName(e.target.value)}
+            placeholder="π.χ. Gym Machine Workout" required
+            style={{ fontWeight: 700, fontSize: '0.9rem' }} />
         </div>
+        <div>
+          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Περιγραφή</label>
+          <input className="form-input" value={description} onChange={e => setDescription(e.target.value)}
+            placeholder="Προαιρετικά..." style={{ fontSize: '0.82rem' }} />
+        </div>
+        <div>
+          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Υπηρεσία</label>
+          <select className="form-input" value={serviceId} onChange={e => setServiceId(e.target.value)} style={{ fontSize: '0.82rem' }}>
+            <option value="">Χωρίς σύνδεση</option>
+            {services.filter(s => s.is_active !== 0).map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-        {/* Search */}
-        <div style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+      {/* Left panel — exercise list */}
+      <div style={{ width: 280, flexShrink: 0, borderRight: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', position: 'relative', flexShrink: 0 }}>
           <Search size={14} style={{ position: 'absolute', left: 22, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input className="form-input" style={{ paddingLeft: 32, fontSize: '0.82rem' }}
             placeholder="Προσθήκη άσκησης..." value={search} onChange={e => setSearch(e.target.value)} />
-          {search && (
-            <div style={{ position: 'absolute', left: 12, right: 12, top: '100%', zIndex: 20, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: 220, overflowY: 'auto' }}>
-              {filtered.length === 0 && <div style={{ padding: 12, color: '#94a3b8', fontSize: '0.82rem' }}>Δεν βρέθηκε</div>}
-              {filtered.map(ex => (
-                <div key={ex.id} onMouseDown={() => addExercise(ex)}
-                  style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-                  onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
-                  onMouseOut={e => e.currentTarget.style.background = ''}>
-                  <ExerciseSVG name={ex.name} muscleGroup={ex.muscle_group} size={28} />
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{ex.name}</div>
-                    {ex.muscle_group && <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{ex.muscle_group}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Exercise list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 0' }}>
+          {search ? (
+            filtered.length === 0 ? (
+              <div style={{ padding: 12, color: '#94a3b8', fontSize: '0.82rem' }}>Δεν βρέθηκε άσκηση</div>
+            ) : filtered.map(ex => (
+              <div key={ex.id} onMouseDown={() => addExercise(ex)}
+                style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+                onMouseOut={e => e.currentTarget.style.background = ''}>
+                <ExerciseSVG name={ex.name} muscleGroup={ex.muscle_group} size={28} />
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{ex.name}</div>
+                  {ex.muscle_group && <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{ex.muscle_group}</div>}
+                </div>
+              </div>
+            ))
+          ) : null}
+          {!search && (
+          <>
           {items.length === 0 && (
             <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8' }}>
               <Dumbbell size={28} style={{ opacity: 0.3, marginBottom: 8 }} />
@@ -895,19 +814,13 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
               </button>
             </div>
           ))}
-        </div>
-
-        {/* Save */}
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: 8 }}>
-          <button type="button" className="btn btn-secondary" onClick={onClose} style={{ flex: 1, fontSize: '0.82rem' }}>Ακύρωση</button>
-          <button type="submit" className="btn btn-primary" disabled={saving} style={{ flex: 2, fontSize: '0.82rem' }}>
-            <Check size={13} /> {saving ? 'Αποθήκευση...' : (program?.id ? 'Αποθήκευση' : 'Δημιουργία')}
-          </button>
+          </>
+          )}
         </div>
       </div>
 
       {/* Right panel — exercise detail */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {activeItem ? (
           <>
             {/* Exercise header */}
@@ -929,7 +842,7 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
             </div>
 
             {/* Parameters */}
-            <div style={{ padding: '20px 24px', flex: 1, overflowY: 'auto' }}>
+            <div style={{ padding: '20px 24px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                 <div>
                   <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Σετ</label>
@@ -973,6 +886,14 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
             <div style={{ fontSize: '0.82rem' }}>για να ρυθμίσεις σετ, επαναλήψεις και σημειώσεις</div>
           </div>
         )}
+      </div>
+      </div>
+
+      <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button type="button" className="btn btn-secondary" onClick={onClose}>Ακύρωση</button>
+        <button type="submit" className="btn btn-primary" disabled={saving}>
+          <Check size={13} /> {saving ? 'Αποθήκευση...' : (program?.id ? 'Αποθήκευση' : 'Δημιουργία')}
+        </button>
       </div>
     </form>
   );
@@ -1202,11 +1123,12 @@ export default function Programs() {
       {modal && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" style={{
-            maxWidth: modal.type === 'program' ? 780 : 620,
+            maxWidth: modal.type === 'program' ? 920 : 620,
             width: '95vw',
             padding: 0,
             overflow: 'hidden',
             borderRadius: 16,
+            height: modal.type === 'program' ? 'min(88vh, 860px)' : undefined,
             maxHeight: '90vh',
             display: 'flex',
             flexDirection: 'column',

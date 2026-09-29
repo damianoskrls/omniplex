@@ -1,14 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { Save, Upload, Download } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
-import TimeInput from '../components/ui/TimeInput';
-const DAYS = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
-const DAYS_FULL = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
-
-const DEFAULT_HOURS = { open: '09:00', close: '21:00' };
 
 function GymCapacitySection() {
   const [capacity, setCapacity] = useState('');
@@ -76,10 +72,6 @@ export default function Settings() {
     feature_waitlist: 0,
     feature_nutrition: 0,
   });
-  // opening_hours: { 0: { open, close, closed }, 1: ..., ... }
-  const [openingHours, setOpeningHours] = useState(
-    Object.fromEntries([0,1,2,3,4,5,6].map(d => [d, { ...DEFAULT_HOURS, closed: d === 6 }]))
-  );
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [backing, setBacking] = useState(false);
@@ -101,36 +93,13 @@ export default function Settings() {
         feature_waitlist: d.feature_waitlist ?? 0,
         feature_nutrition: d.feature_nutrition ?? 0,
       });
-      if (d.opening_hours) {
-        try {
-          const oh = typeof d.opening_hours === 'string' ? JSON.parse(d.opening_hours) : d.opening_hours;
-          setOpeningHours(prev => ({ ...prev, ...oh }));
-        } catch (_) {}
-      }
     }).catch(() => toast.error('Σφάλμα φόρτωσης ρυθμίσεων'));
   }, []);
-
-  const updateHours = (day, key, val) => {
-    setOpeningHours(prev => ({ ...prev, [day]: { ...prev[day], [key]: val } }));
-  };
-
-  const applyAllDays = (day) => {
-    const src = openingHours[day];
-    setOpeningHours(prev => {
-      const next = { ...prev };
-      for (let d = 0; d <= 6; d++) next[d] = { ...src };
-      return next;
-    });
-    toast.success('Εφαρμόστηκε σε όλες τις μέρες');
-  };
 
   const save = async () => {
     setSaving(true);
     try {
-      await api.patch('/client-admin/settings', {
-        ...form,
-        opening_hours: openingHours,
-      });
+      await api.patch('/client-admin/settings', form);
       toast.success('Ρυθμίσεις αποθηκεύτηκαν');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
@@ -176,7 +145,8 @@ export default function Settings() {
     <Layout title="Ρυθμίσεις">
       <div className="page-header">
         <h1 className="page-title">Ρυθμίσεις</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Link to="/setup" className="btn btn-secondary">Οδηγός έναρξης</Link>
           <button className="btn btn-secondary" onClick={backup} disabled={backing}>
             <Download size={15} /> {backing ? 'Εξαγωγή...' : 'Backup δεδομένων'}
           </button>
@@ -277,51 +247,12 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Opening hours */}
         <div className="card">
-          <div className="modal-title" style={{ marginBottom: 4 }}>Ωράριο λειτουργίας</div>
-          <div className="text-muted" style={{ fontSize: '0.8rem', marginBottom: 16 }}>
-            Χρησιμοποιείται ως default για διαθεσιμότητα συνεργατών.
+          <div className="modal-title" style={{ marginBottom: 4 }}>Ωράριο καταστημάτων</div>
+          <div className="text-muted" style={{ fontSize: '0.85rem', lineHeight: 1.55, marginBottom: 14 }}>
+            Κάθε κατάστημα έχει το δικό του ωράριο. Δημιούργησε Κηφισιά, Νέα Ιωνία και τα υπόλοιπα, και όρισε πότε είναι ανοιχτό το καθένα.
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[0,1,2,3,4,5,6].map(day => {
-              const h = openingHours[day] || DEFAULT_HOURS;
-              return (
-                <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: h.closed ? '#fef2f2' : '#f8fafc', border: '1px solid #e2e8f0' }}>
-                  <div style={{ width: 36, fontWeight: 600, fontSize: '0.85rem', color: h.closed ? '#94a3b8' : '#374151' }}>
-                    {DAYS[day]}
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', marginRight: 4 }}>
-                    <input type="checkbox" checked={!h.closed} onChange={e => updateHours(day, 'closed', !e.target.checked)} />
-                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Ανοιχτά</span>
-                  </label>
-                  {!h.closed && (
-                    <>
-                      <TimeInput
-                        value={h.open}
-                        onChange={val => updateHours(day, 'open', val)}
-                      />
-                      <span style={{ color: '#94a3b8' }}>—</span>
-                      <TimeInput
-                        value={h.close}
-                        onChange={val => updateHours(day, 'close', val)}
-                      />
-                      <button
-                        type="button"
-                        title="Εφαρμογή σε όλες τις μέρες"
-                        onClick={() => applyAllDays(day)}
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#76C043', fontSize: '0.75rem', flexShrink: 0 }}
-                      >
-                        Σε όλες →
-                      </button>
-                    </>
-                  )}
-                  {h.closed && <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Κλειστά</span>}
-                </div>
-              );
-            })}
-          </div>
+          <Link to="/locations" className="btn btn-primary">Διαχείριση καταστημάτων</Link>
 
           {/* Mobile app branding */}
           <div style={{ marginTop: 24, padding: 16, background: '#f0fdf4', borderRadius: 12, border: '1px solid #c7d2fe' }}>

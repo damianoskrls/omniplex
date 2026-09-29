@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Save, Upload, Plus, X, CalendarOff, KeyRound, Clock, Check, Trash2, Copy } from 'lucide-react';
-import LocationCheckboxes from '../components/LocationCheckboxes';
 import StaffDeleteModal from '../components/StaffDeleteModal';
 import { mediaUrl, API_BASE } from '../utils/media';
 import AvailabilityEditor from '../components/AvailabilityEditor';
@@ -159,11 +158,6 @@ function PendingAvailabilityRequests({ staffId, onResolved }) {
 
 const DAYS = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
 
-function parseGymHours(raw) {
-  if (!raw) return null;
-  try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return null; }
-}
-
 function LeavesSection({ staffId }) {
   const [leaves, setLeaves] = useState([]);
   const [form, setForm] = useState({ date_from: '', date_to: '', reason: '' });
@@ -247,178 +241,75 @@ export default function StaffDetail() {
 
   const [profile, setProfile] = useState({ full_name: '', role: '', bio: '', color_hex: '#607D8B', avatar_url: null });
   const [services, setServices] = useState([]);
-  const [assigned, setAssigned] = useState([]);
-  const [availability, setAvailability] = useState({});
-  const [activeTab, setActiveTab] = useState(null);
-  const [gymHours, setGymHours] = useState(null);
+  const [places, setPlaces] = useState([]);
+  const [activePlaceId, setActivePlaceId] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
-  const [locationIds, setLocationIds] = useState([]);
-  const [locations, setLocations] = useState([]);
-  const [activeAvailLocationId, setActiveAvailLocationId] = useState('');
 
-  const staffLocations = useMemo(() => {
-    if (!locations.length) return [];
-    if (!locationIds.length) return locations;
-    return locations.filter((l) => locationIds.includes(l.id));
-  }, [locations, locationIds]);
-
-  const avKey = (sid, locId = activeAvailLocationId) => (
-    staffLocations.length > 1 ? `${sid}:${locId}` : sid
-  );
-
-  const serviceAvailStatus = (svcId) => {
-    if (staffLocations.length <= 1) {
-      const count = (availability[avKey(svcId)] || []).length;
-      return count > 0 ? 'ok' : 'empty';
-    }
-    const counts = staffLocations.map(
-      (loc) => (availability[`${svcId}:${loc.id}`] || []).length,
-    );
-    if (counts.every((c) => c > 0)) return 'ok';
-    if (counts.some((c) => c > 0)) return 'partial';
-    return 'empty';
-  };
+  const activePlace = places.find((p) => p.id === activePlaceId) || places[0] || null;
 
   const load = async () => {
-    const [staffRes, svcRes, assignedRes, settingsRes, locRes, allLocsRes] = await Promise.all([
+    const [staffRes, placesRes] = await Promise.all([
       api.get('/client-admin/staff'),
-      api.get('/client-admin/services'),
-      api.get(`/client-admin/staff/${id}/services`),
-      api.get('/client-admin/settings').catch(() => ({ data: null })),
-      api.get(`/client-admin/staff/${id}/locations`).catch(() => ({ data: [] })),
-      api.get('/client-admin/locations').catch(() => ({ data: [] })),
+      api.get(`/client-admin/staff/${id}/places`),
     ]);
 
     const member = staffRes.data.find(s => s.id === id);
     if (!member) { navigate('/staff'); return; }
 
     setProfile({ full_name: member.full_name, role: member.role, bio: member.bio || '', color_hex: member.color_hex || '#607D8B', avatar_url: member.avatar_url });
-
-    const gh = parseGymHours(settingsRes.data?.opening_hours);
-    setGymHours(gh);
-
-    const allServices = Array.isArray(svcRes.data) ? svcRes.data : [];
-    setServices(allServices);
-    const assignedIds = Array.isArray(assignedRes.data) ? assignedRes.data.map(r => r.service_id) : [];
-    setAssigned(assignedIds);
-    setLocationIds(locRes.data || []);
-    const locs = (allLocsRes.data || []).filter((l) => l.is_active);
-    setLocations(locs);
-    const assignedLocIds = locRes.data || [];
-    const staffLocs = assignedLocIds.length
-      ? locs.filter((l) => assignedLocIds.includes(l.id))
-      : locs;
-    const availLoc = activeAvailLocationId && staffLocs.some((l) => l.id === activeAvailLocationId)
-      ? activeAvailLocationId
-      : (staffLocs[0]?.id || '');
-    if (availLoc && availLoc !== activeAvailLocationId) setActiveAvailLocationId(availLoc);
-    if (assignedIds.length > 0 && !activeTab) setActiveTab(assignedIds[0]);
-
-    const avResults = await Promise.all(
-      assignedIds.flatMap((sid) => {
-        if (staffLocs.length > 1) {
-          return staffLocs.map((loc) =>
-            api.get(`/client-admin/staff/${id}/availability`, {
-              params: { service_id: sid, location_id: loc.id },
-            })
-              .then((r) => ({
-                key: `${sid}:${loc.id}`,
-                slots: r.data.map((s) => ({
-                  weekday: s.weekday,
-                  start_time: s.start_time?.slice(0, 5),
-                  end_time: s.end_time?.slice(0, 5),
-                })),
-              }))
-              .catch(() => ({ key: `${sid}:${loc.id}`, slots: [] }))
-          );
-        }
-        return [
-          api.get(`/client-admin/staff/${id}/availability?service_id=${sid}`)
-            .then((r) => ({
-              key: sid,
-              slots: r.data.map((s) => ({
-                weekday: s.weekday,
-                start_time: s.start_time?.slice(0, 5),
-                end_time: s.end_time?.slice(0, 5),
-              })),
-            }))
-            .catch(() => ({ key: sid, slots: [] })),
-        ];
-      })
-    );
-    const av = {};
-    for (const { key, slots } of avResults) av[key] = slots;
-    setAvailability(av);
+    setServices(placesRes.data.services || []);
+    const nextPlaces = placesRes.data.places || [];
+    setPlaces(nextPlaces);
+    setActivePlaceId((current) => (
+      nextPlaces.some((p) => p.id === current) ? current : (nextPlaces.find((p) => p.works_here)?.id || nextPlaces[0]?.id || '')
+    ));
   };
 
   useEffect(() => { load().catch(() => navigate('/staff')); }, [id]);
 
-  useEffect(() => {
-    if (!staffLocations.length) return;
-    if (!staffLocations.some((l) => l.id === activeAvailLocationId)) {
-      setActiveAvailLocationId(staffLocations[0].id);
-    }
-  }, [staffLocations, activeAvailLocationId]);
-
-  const toggleService = async (sid) => {
-    const next = assigned.includes(sid)
-      ? assigned.filter(x => x !== sid)
-      : [...assigned, sid];
-    setAssigned(next);
-    if (!assigned.includes(sid) && !availability[avKey(sid)]) {
-      setAvailability(prev => ({ ...prev, [avKey(sid)]: [] }));
-      setActiveTab(sid);
-    }
+  const patchPlace = (placeId, patch) => {
+    setPlaces((prev) => prev.map((p) => (p.id === placeId ? { ...p, ...patch } : p)));
   };
 
-  const setSlots = (sid, slots) => setAvailability((prev) => ({ ...prev, [avKey(sid)]: slots }));
+  const togglePlaceService = (place, serviceId) => {
+    const has = (place.service_ids || []).includes(serviceId);
+    patchPlace(place.id, {
+      service_ids: has
+        ? place.service_ids.filter((x) => x !== serviceId)
+        : [...(place.service_ids || []), serviceId],
+    });
+  };
 
   const copyScheduleToOtherLocations = () => {
-    if (!activeTab || staffLocations.length < 2) return;
-    const source = availability[avKey(activeTab)] || [];
-    if (!source.length) {
-      toast.error('Ορίσε πρώτα ωράριο για αυτό το γυμναστήριο');
+    if (!activePlace) return;
+    if (!activePlace.slots?.length) {
+      toast.error('Ορίσε πρώτα ώρες για αυτό το κατάστημα');
       return;
     }
-    const updates = {};
-    staffLocations.forEach((loc) => {
-      if (loc.id !== activeAvailLocationId) {
-        updates[`${activeTab}:${loc.id}`] = source.map((s) => ({ ...s }));
-      }
-    });
-    setAvailability((prev) => ({ ...prev, ...updates }));
-    toast.success('Το ωράριο αντιγράφηκε στα υπόλοιπα γυμναστήρια');
+    setPlaces((prev) => prev.map((p) => (
+      p.works_here && p.id !== activePlace.id
+        ? { ...p, slots: activePlace.slots.map((s) => ({ ...s })), hours_inherited: false }
+        : p
+    )));
+    toast.success('Οι ώρες αντιγράφηκαν στα άλλα καταστήματα όπου δουλεύει');
   };
 
   const save = async () => {
     setSaving(true);
     try {
-      await Promise.all([
-        api.patch(`/client-admin/staff/${id}`, profile),
-        api.put(`/client-admin/staff/${id}/services`, { service_ids: assigned }),
-        api.put(`/client-admin/staff/${id}/locations`, { location_ids: locationIds }),
-      ]);
-      // Delete general availability (no longer used)
-      await api.put(`/client-admin/staff/${id}/availability`, { slots: [], service_id: null });
-      for (const sid of assigned) {
-        if (staffLocations.length > 1) {
-          for (const loc of staffLocations) {
-            await api.put(`/client-admin/staff/${id}/availability`, {
-              slots: availability[`${sid}:${loc.id}`] || [],
-              service_id: sid,
-              location_id: loc.id,
-            });
-          }
-        } else {
-          await api.put(`/client-admin/staff/${id}/availability`, {
-            slots: availability[sid] || [],
-            service_id: sid,
-          });
-        }
-      }
+      await api.patch(`/client-admin/staff/${id}`, profile);
+      await api.put(`/client-admin/staff/${id}/places`, {
+        places: places.map((p) => ({
+          location_id: p.id,
+          works_here: !!p.works_here,
+          service_ids: p.works_here ? (p.service_ids || []) : [],
+          slots: p.works_here ? (p.slots || []) : [],
+        })),
+      });
       toast.success('Αποθηκεύτηκε');
+      await load();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
     } finally { setSaving(false); }
@@ -442,7 +333,11 @@ export default function StaffDetail() {
     ? (profile.avatar_url.startsWith('http') ? profile.avatar_url : `${API_BASE}${profile.avatar_url}`)
     : null;
 
-  const assignedServices = services.filter(s => assigned.includes(s.id));
+  const placeHours = activePlace?.opening_hours
+    ? (typeof activePlace.opening_hours === 'string'
+      ? (() => { try { return JSON.parse(activePlace.opening_hours); } catch { return null; } })()
+      : activePlace.opening_hours)
+    : null;
 
   return (
     <Layout title={profile.full_name || 'Προσωπικό'}>
@@ -490,152 +385,96 @@ export default function StaffDetail() {
         </div>
       </div>
 
-      {/* Services */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><span className="card-title">Υπηρεσίες</span></div>
-        <LocationCheckboxes value={locationIds} onChange={setLocationIds} label="Γυμναστήρια" />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {services.map(s => (
-            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: 8, cursor: 'pointer', background: assigned.includes(s.id) ? '#f0fdf4' : '#fff' }}>
-              <input type="checkbox" checked={assigned.includes(s.id)} onChange={() => toggleService(s.id)} />
-              {s.name}
-            </label>
-          ))}
-        </div>
-      </div>
-
       <PendingAvailabilityRequests staffId={id} onResolved={load} />
 
-      {/* Per-service availability */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header">
-          <span className="card-title">Ωράριο ανά υπηρεσία</span>
-          {!gymHours && (
-            <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>
-              ⚠ Δεν έχει οριστεί ωράριο γυμναστηρίου στις <a href="/settings">Ρυθμίσεις</a>
-            </span>
-          )}
-        </div>
-
-        {assignedServices.length === 0 ? (
-          <div className="text-muted">Επίλεξε υπηρεσίες παραπάνω για να ορίσεις ωράριο.</div>
+        <div className="card-header"><span className="card-title">Καταστήματα, υπηρεσίες και ώρες</span></div>
+        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: 14, lineHeight: 1.5 }}>
+          Σε κάθε κατάστημα διάλεξε αν δουλεύει, ποιες υπηρεσίες κάνει εκεί, και ένα ωράριο για όλες αυτές τις υπηρεσίες.
+        </p>
+        {!places.length ? (
+          <div className="text-muted">Δεν υπάρχουν καταστήματα. Πρόσθεσέ τα από το μενού Καταστήματα.</div>
         ) : (
           <>
-            {staffLocations.length > 1 && (
-              <div style={{ marginBottom: 16 }}>
-                <label className="form-label">Γυμναστήριο</label>
-                <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: 8 }}>
-                  Όρισε ξεχωριστό ωράριο για κάθε τοποθεσία. Τα γυμναστήρια προέρχονται από την επιλογή παραπάνω.
-                </p>
-                <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
-                  {staffLocations.map((loc) => {
-                    const locSlots = activeTab
-                      ? (availability[`${activeTab}:${loc.id}`] || []).length
-                      : assignedServices.reduce(
-                        (sum, svc) => sum + (availability[`${svc.id}:${loc.id}`] || []).length,
-                        0,
-                      );
-                    const active = activeAvailLocationId === loc.id;
-                    return (
-                      <button
-                        key={loc.id}
-                        type="button"
-                        onClick={() => setActiveAvailLocationId(loc.id)}
-                        style={{
-                          padding: '8px 18px',
-                          border: 'none',
-                          borderBottom: `2px solid ${active ? '#76C043' : 'transparent'}`,
-                          background: 'none',
-                          cursor: 'pointer',
-                          fontWeight: active ? 600 : 400,
-                          color: active ? '#76C043' : '#64748b',
-                          fontSize: '0.9rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        {loc.name}
-                        {locSlots > 0 ? (
-                          <span style={{ background: '#76C043', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: '0.7rem' }}>
-                            {locSlots}
-                          </span>
-                        ) : (
-                          <span style={{ background: '#fca5a5', color: '#7f1d1d', borderRadius: 10, padding: '1px 6px', fontSize: '0.7rem' }}>
-                            !
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            {/* Service tabs */}
             <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0', marginBottom: 16, flexWrap: 'wrap' }}>
-              {assignedServices.map(svc => {
-                const status = serviceAvailStatus(svc.id);
-                const slotCount = staffLocations.length > 1
-                  ? staffLocations.filter(
-                    (loc) => (availability[`${svc.id}:${loc.id}`] || []).length > 0,
-                  ).length
-                  : (availability[avKey(svc.id)] || []).length;
+              {places.map((place) => {
+                const active = activePlace?.id === place.id;
+                const ready = place.works_here && (place.service_ids || []).length > 0 && (place.slots || []).length > 0;
                 return (
                   <button
-                    key={svc.id}
+                    key={place.id}
                     type="button"
-                    onClick={() => setActiveTab(svc.id)}
+                    onClick={() => setActivePlaceId(place.id)}
                     style={{
                       padding: '8px 18px',
                       border: 'none',
-                      borderBottom: `2px solid ${activeTab === svc.id ? '#76C043' : 'transparent'}`,
+                      borderBottom: `2px solid ${active ? '#76C043' : 'transparent'}`,
                       background: 'none',
                       cursor: 'pointer',
-                      fontWeight: activeTab === svc.id ? 600 : 400,
-                      color: activeTab === svc.id ? '#76C043' : '#64748b',
+                      fontWeight: active ? 600 : 400,
+                      color: active ? '#76C043' : '#64748b',
                       fontSize: '0.9rem',
-                      display: 'flex', alignItems: 'center', gap: 6,
                     }}
                   >
-                    {svc.name}
-                    {status === 'ok' && (
-                      <span style={{ background: '#76C043', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: '0.7rem' }}>
-                        {staffLocations.length > 1 ? `${slotCount}/${staffLocations.length}` : slotCount}
-                      </span>
-                    )}
-                    {status === 'partial' && (
-                      <span style={{ background: '#fbbf24', color: '#78350f', borderRadius: 10, padding: '1px 6px', fontSize: '0.7rem' }}>
-                        {slotCount}/{staffLocations.length}
-                      </span>
-                    )}
-                    {status === 'empty' && (
-                      <span style={{ background: '#fca5a5', color: '#7f1d1d', borderRadius: 10, padding: '1px 6px', fontSize: '0.7rem' }}>
-                        !
-                      </span>
-                    )}
+                    {place.name} {place.works_here ? (ready ? '· έτοιμο' : '· ελλιπές') : '· όχι'}
                   </button>
                 );
               })}
             </div>
-
-            {activeTab && (
+            {activePlace && (
               <>
-                {staffLocations.length > 1 && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={copyScheduleToOtherLocations}
-                    >
-                      <Copy size={14} /> Αντιγραφή σε όλα τα γυμναστήρια
-                    </button>
-                  </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!activePlace.works_here}
+                    onChange={(e) => patchPlace(activePlace.id, { works_here: e.target.checked })}
+                  />
+                  Δουλεύει στο {activePlace.name}
+                </label>
+                {activePlace.works_here && (
+                  <>
+                    <div className="form-label">Τι κάνει εδώ</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                      {services.map((svc) => {
+                        const on = (activePlace.service_ids || []).includes(svc.id);
+                        return (
+                          <button
+                            key={svc.id}
+                            type="button"
+                            onClick={() => togglePlaceService(activePlace, svc.id)}
+                            style={{
+                              border: `1px solid ${on ? '#76C043' : '#e2e8f0'}`,
+                              background: on ? '#f0fdf4' : '#fff',
+                              borderRadius: 999,
+                              padding: '6px 12px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {svc.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <div className="form-label" style={{ marginBottom: 0 }}>Ώρες διαθεσιμότητας</div>
+                      {places.filter((p) => p.works_here).length > 1 && (
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={copyScheduleToOtherLocations}>
+                          <Copy size={14} /> Ίδιο ωράριο στα άλλα καταστήματα
+                        </button>
+                      )}
+                    </div>
+                    {activePlace.hours_inherited && (
+                      <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 8 }}>
+                        Αυτές οι ώρες δεν έχουν αποθηκευτεί ακόμα ειδικά για αυτό το κατάστημα. Πάτα αποθήκευση για να ισχύσουν μόνο εδώ.
+                      </div>
+                    )}
+                    <AvailabilityEditor
+                      slots={activePlace.slots || []}
+                      onChange={(next) => patchPlace(activePlace.id, { slots: next, hours_inherited: false })}
+                      gymHours={placeHours}
+                    />
+                  </>
                 )}
-                <AvailabilityEditor
-                  slots={availability[avKey(activeTab)] || []}
-                  onChange={(slots) => setSlots(activeTab, slots)}
-                  gymHours={gymHours}
-                />
               </>
             )}
           </>

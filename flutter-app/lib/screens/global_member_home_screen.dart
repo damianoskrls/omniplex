@@ -988,6 +988,11 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                       fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
                   Row(children: [
                     _NavBtn(
+                      icon: Icons.calendar_month_outlined,
+                      onTap: _syncGoogleCalendar,
+                    ),
+                    const SizedBox(width: 8),
+                    _NavBtn(
                       icon: Icons.chevron_left_rounded,
                       onTap: () => setState(() => _weekOffset--),
                     ),
@@ -1122,6 +1127,57 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     );
   }
 
+  Future<void> _syncGoogleCalendar() async {
+    final bookings = _all.where((b) {
+      final status = (b['status'] as String?) ?? 'confirmed';
+      return status != 'cancelled';
+    }).toList();
+    if (bookings.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Δεν υπάρχουν ραντεβού για συγχρονισμό')),
+      );
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _kCard,
+        title: const Text('Google Calendar', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Να ετοιμαστούν ${bookings.length} ραντεβού για το Google Calendar σου; Θα ανοίξει η κοινοποίηση για να τα προσθέσεις.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Άκυρο', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Συγχρονισμός', style: TextStyle(color: _kLime)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final ics = _bookingsToIcs(bookings);
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/omniplex-programma.ics');
+      await file.writeAsString(ics);
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'text/calendar', name: 'omniplex-programma.ics')],
+        subject: 'Πρόγραμμα OmniPlex',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Αποτυχία συγχρονισμού: $e')),
+      );
+    }
+  }
+
   void _showBookingDetail(BuildContext context, Map<String, dynamic> booking) {
     showModalBottomSheet<void>(
       context: context,
@@ -1134,6 +1190,75 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     );
   }
 }
+
+String _bookingsToIcs(List<Map<String, dynamic>> bookings) {
+  final stamp = _icsUtc(DateTime.now().toUtc());
+  final buf = StringBuffer()
+    ..writeln('BEGIN:VCALENDAR')
+    ..writeln('VERSION:2.0')
+    ..writeln('PRODID:-//OmniPlex//Schedule//EL')
+    ..writeln('CALSCALE:GREGORIAN')
+    ..writeln('METHOD:PUBLISH');
+  for (final b in bookings) {
+    final start = _parseBookingStart(b);
+    if (start == null) continue;
+    final mins = (b['duration_mins'] as num?)?.toInt() ?? 60;
+    final end = start.add(Duration(minutes: mins < 1 ? 60 : mins));
+    final service = (b['service_name'] as String?)?.trim();
+    final gym = ((b['app_name'] as String?) ?? (b['business_name'] as String?) ?? '').trim();
+    final isTrainer = b['role'] == 'staff';
+    final who = ((isTrainer ? b['client_name'] : b['staff_name']) as String?)?.trim();
+    final title = [
+      if (service != null && service.isNotEmpty) service else 'Ραντεβού',
+      if (gym.isNotEmpty) gym,
+    ].join(' — ');
+    final details = [
+      if (who != null && who.isNotEmpty) (isTrainer ? 'Πελάτης: $who' : 'Trainer: $who'),
+      if (gym.isNotEmpty) gym,
+    ].join('\n');
+    final uid = (b['id'] ?? '${b['booking_date']}_${b['booking_time']}').toString();
+    buf
+      ..writeln('BEGIN:VEVENT')
+      ..writeln('UID:${_icsEscape(uid)}@omniplex')
+      ..writeln('DTSTAMP:$stamp')
+      ..writeln('DTSTART:${_icsLocal(start)}')
+      ..writeln('DTEND:${_icsLocal(end)}')
+      ..writeln('SUMMARY:${_icsEscape(title)}')
+      ..writeln('DESCRIPTION:${_icsEscape(details)}')
+      ..writeln('END:VEVENT');
+  }
+  buf.writeln('END:VCALENDAR');
+  return buf.toString().replaceAll('\n', '\r\n');
+}
+
+DateTime? _parseBookingStart(Map<String, dynamic> booking) {
+  final date = (booking['booking_date'] as String?) ?? '';
+  final parts = date.split('-');
+  if (parts.length != 3) return null;
+  final year = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final day = int.tryParse(parts[2]);
+  if (year == null || month == null || day == null) return null;
+  final time = (booking['booking_time'] as String?) ?? '00:00:00';
+  final tp = time.split(':');
+  final hour = int.tryParse(tp.isNotEmpty ? tp[0] : '') ?? 0;
+  final minute = int.tryParse(tp.length > 1 ? tp[1] : '') ?? 0;
+  return DateTime(year, month, day, hour, minute);
+}
+
+String _icsLocal(DateTime dt) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${dt.year}${two(dt.month)}${two(dt.day)}T${two(dt.hour)}${two(dt.minute)}${two(dt.second)}';
+}
+
+String _icsUtc(DateTime dt) => '${_icsLocal(dt)}Z';
+
+String _icsEscape(String value) => value
+    .replaceAll('\\', '\\\\')
+    .replaceAll('\r\n', '\\n')
+    .replaceAll('\n', '\\n')
+    .replaceAll(',', '\\,')
+    .replaceAll(';', '\\;');
 
 class _NavBtn extends StatelessWidget {
   const _NavBtn({required this.icon, required this.onTap});

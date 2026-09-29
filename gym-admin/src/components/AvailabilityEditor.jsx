@@ -1,7 +1,7 @@
 import TimeInput from './ui/TimeInput';
 const DAYS_SHORT = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
 
-export default function AvailabilityEditor({ slots, onChange, gymHours, readOnly = false }) {
+export default function AvailabilityEditor({ slots, onChange, gymHours, readOnly = false, fillLabel = 'Γέμισε από το ωράριο του καταστήματος' }) {
   const gymOpen = (wd) => gymHours?.[wd]?.closed ? null : (gymHours?.[wd]?.open || '09:00');
   const gymClose = (wd) => gymHours?.[wd]?.closed ? null : (gymHours?.[wd]?.close || '21:00');
 
@@ -40,7 +40,7 @@ export default function AvailabilityEditor({ slots, onChange, gymHours, readOnly
       {!readOnly && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-secondary btn-sm" onClick={fillAllDays}>
-            Γέμισε από ωράριο γυμν.
+            {fillLabel}
           </button>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => onChange([])}>
             Καθαρισμός

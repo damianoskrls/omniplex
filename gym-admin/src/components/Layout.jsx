@@ -47,7 +47,7 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/plans', icon: Tag, label: 'Πακέτα' },
         { to: '/dropin-bookings', icon: Zap, label: 'Drop-in' },
         { to: '/rooms', icon: DoorOpen, label: 'Χώροι & Αίθουσες' },
-        { to: '/locations', icon: MapPin, label: 'Τοποθεσίες' },
+        { to: '/locations', icon: MapPin, label: 'Καταστήματα' },
       ],
     },
     {
@@ -96,6 +96,7 @@ function buildNavGroups({ features, featureNutrition }) {
       key: 'settings',
       label: 'Ρυθμίσεις',
       links: [
+        { to: '/setup', icon: ClipboardCheck, label: 'Οδηγός έναρξης' },
         { to: '/settings', icon: Settings, label: 'Γενικές Ρυθμίσεις' },
         { to: '/discovery-profile', icon: Globe, label: 'Προβολή στην Αγορά' },
         { to: '/online-payments', icon: CreditCard, label: 'Online Πληρωμές' },

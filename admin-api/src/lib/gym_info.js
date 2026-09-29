@@ -51,7 +51,7 @@ async function buildGymInfoPayload(dbConn, bizId) {
     city: loc.city || null,
     phone: loc.phone || null,
     email: loc.email || null,
-    opening_hours: mapOpeningHours(loc.opening_hours),
+    opening_hours: mapOpeningHours(loc.opening_hours) || mapOpeningHours(cfg?.opening_hours),
     rooms: roomsByLocation.get(loc.id) || [],
   }));
 

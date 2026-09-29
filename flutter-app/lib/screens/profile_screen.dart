@@ -12,6 +12,7 @@ import 'goals_screen.dart';
 import 'my_qr_screen.dart';
 import 'notifications_screen.dart';
 import 'messages_screen.dart';
+import 'staff_messages_screen.dart';
 import 'payments_screen.dart';
 import 'workout_metrics_screen.dart';
 
@@ -58,6 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = auth.user;
     if (user == null) return const SizedBox.shrink();
     final fitness = user.fitnessProfile;
+    final isStaff = user.isStaff;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -88,7 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 4),
                 Text(user.phone!, style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
               ],
-              if (fitness.fitnessGoalLabel != null) ...[
+              if (!isStaff && fitness.fitnessGoalLabel != null) ...[
                 const SizedBox(height: 12),
                 PillChip(
                   label: fitness.fitnessGoalLabel!,
@@ -96,7 +98,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   textColor: AppColors.teal,
                 ),
               ],
-              if (fitness.weightKg != null || fitness.targetWeightKg != null) ...[
+              if (!isStaff && (fitness.weightKg != null || fitness.targetWeightKg != null)) ...[
                 const SizedBox(height: 8),
                 Text(
                   [
@@ -106,7 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
                 ),
               ],
-              if (config.featureLoyaltyPoints) ...[
+              if (!isStaff && config.featureLoyaltyPoints) ...[
                 const SizedBox(height: 16),
                 PillChip(
                   label: '${config.label('loyalty_label', 'Πόντοι')}: ${user.loyaltyPoints}',
@@ -129,20 +131,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyQrScreen())),
               ),
               const Divider(height: 1, indent: 56),
-              _MenuTile(
-                icon: Icons.track_changes_outlined,
-                title: AppStrings.of(context).profileGoals,
-                subtitle: fitness.fitnessGoalLabel ?? AppStrings.of(context).profileGoalsSubtitle(''),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GoalsScreen())),
-              ),
-              const Divider(height: 1, indent: 56),
-              _MenuTile(
-                icon: Icons.insights_outlined,
-                title: AppStrings.of(context).profileMetrics,
-                subtitle: AppStrings.of(context).profileMetricsSubtitle,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkoutMetricsScreen())),
-              ),
-              const Divider(height: 1, indent: 56),
+              if (!isStaff) ...[
+                _MenuTile(
+                  icon: Icons.track_changes_outlined,
+                  title: AppStrings.of(context).profileGoals,
+                  subtitle: fitness.fitnessGoalLabel ?? AppStrings.of(context).profileGoalsSubtitle(''),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GoalsScreen())),
+                ),
+                const Divider(height: 1, indent: 56),
+                _MenuTile(
+                  icon: Icons.insights_outlined,
+                  title: AppStrings.of(context).profileMetrics,
+                  subtitle: AppStrings.of(context).profileMetricsSubtitle,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WorkoutMetricsScreen())),
+                ),
+                const Divider(height: 1, indent: 56),
+              ],
               if (auth.biometricAvailable)
                 SwitchListTile(
                   secondary: Container(
@@ -175,13 +179,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
               if (auth.biometricAvailable) const Divider(height: 1, indent: 56),
-              _MenuTile(
-                icon: Icons.receipt_long_outlined,
-                title: AppStrings.of(context).profilePayments,
-                subtitle: AppStrings.of(context).profilePaymentsSubtitle,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentsScreen())),
-              ),
-              const Divider(height: 1, indent: 56),
+              if (!isStaff) ...[
+                _MenuTile(
+                  icon: Icons.receipt_long_outlined,
+                  title: AppStrings.of(context).profilePayments,
+                  subtitle: AppStrings.of(context).profilePaymentsSubtitle,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentsScreen())),
+                ),
+                const Divider(height: 1, indent: 56),
+              ],
               _MenuTile(
                 icon: Icons.notifications_outlined,
                 title: AppStrings.of(context).profileNotifications,
@@ -193,7 +199,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: Icons.chat_bubble_outline,
                 title: AppStrings.of(context).profileMessages,
                 subtitle: AppStrings.of(context).profileMessagesSubtitle,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MessagesScreen())),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => isStaff ? const StaffMessagesScreen() : const MessagesScreen(),
+                  ),
+                ),
               ),
               const Divider(height: 1, indent: 56),
               _MenuTile(icon: Icons.email_outlined, title: AppStrings.of(context).email, subtitle: user.email),
@@ -201,7 +212,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (user.phone != null)
                 _MenuTile(icon: Icons.phone_outlined, title: AppStrings.of(context).profilePhone, subtitle: user.phone!),
               if (user.phone != null) const Divider(height: 1, indent: 56),
-              _MenuTile(icon: Icons.fitness_center, title: config.appName, subtitle: AppStrings.of(context).activeMember),
+              _MenuTile(
+                icon: Icons.fitness_center,
+                title: config.appName,
+                subtitle: isStaff ? 'Trainer' : AppStrings.of(context).activeMember,
+              ),
             ],
           ),
         ),
@@ -245,7 +260,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: EdgeInsets.zero,
             child: _MenuTile(
               icon: Icons.remove_circle_outline_rounded,
-              title: 'Αφαίρεση γυμναστηρίου',
+              title: isStaff ? 'Αφαίρεση ως trainer' : 'Αφαίρεση γυμναστηρίου',
               iconColor: AppColors.orange,
               titleColor: AppColors.orange,
               onTap: () async {
@@ -255,9 +270,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     backgroundColor: const Color(0xFF16171B),
                     title: const Text('Αφαίρεση γυμναστηρίου',
                         style: TextStyle(color: Colors.white)),
-                    content: const Text(
-                      'Θα αφαιρεθείς ως ασκούμενος από αυτό το γυμναστήριο. Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.',
-                      style: TextStyle(color: Colors.white70),
+                    content: Text(
+                      isStaff
+                          ? 'Θα αφαιρεθείς ως trainer από αυτό το γυμναστήριο. Η σύνδεσή σου ως ασκούμενος, αν υπάρχει, μένει.'
+                          : 'Θα αφαιρεθείς ως ασκούμενος από αυτό το γυμναστήριο. Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.',
+                      style: const TextStyle(color: Colors.white70),
                     ),
                     actions: [
                       TextButton(

@@ -12,6 +12,10 @@ import 'credits_screen.dart';
 import 'my_bookings_screen.dart';
 import 'notifications_screen.dart';
 import 'messages_screen.dart';
+import 'staff_clients_screen.dart';
+import 'staff_leaves_screen.dart';
+import 'staff_messages_screen.dart';
+import 'staff_schedule_screen.dart';
 import 'community_screen.dart';
 import 'profile_screen.dart';
 import 'services_screen.dart';
@@ -102,6 +106,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   List<_TabItem> get _tabItems {
     final config = context.read<TenantConfig>();
+    if (context.read<AuthService>().user?.isStaff == true) {
+      return [
+        _TabItem(
+          key: 'schedule',
+          icon: Icons.calendar_today_outlined,
+          label: 'Πρόγραμμα',
+          screen: const StaffScheduleScreen(),
+        ),
+        _TabItem(
+          key: 'clients',
+          icon: Icons.people_outline_rounded,
+          label: 'Πελάτες',
+          screen: const StaffClientsScreen(),
+        ),
+        _TabItem(
+          key: 'leave',
+          icon: Icons.flight_takeoff_outlined,
+          label: 'Άδειες',
+          screen: const StaffLeavesScreen(),
+        ),
+        _TabItem(
+          key: 'messages',
+          icon: Icons.chat_bubble_outline_rounded,
+          label: 'Μηνύματα',
+          screen: const StaffMessagesScreen(),
+        ),
+      ];
+    }
     return [
       // ── Primary (always visible, 2 left of QR) ──────────────
       _TabItem(
@@ -214,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final config = context.read<TenantConfig>();
     if (!config.featureNutrition) return;
     final auth = context.read<AuthService>();
-    if (!auth.isLoggedIn) return;
+    if (!auth.isLoggedIn || auth.user?.isStaff == true) return;
     try {
       final hasAccess = await auth.api.fetchNutritionAccess();
       if (!mounted) return;
@@ -251,15 +283,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _showMessages({String? threadId}) {
+    final staff = context.read<AuthService>().user?.isStaff == true;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MessagesScreen(
-          initialThreadId: threadId,
-          onUnreadChanged: (count) {
-            if (mounted) setState(() => _messageUnreadCount = count);
-          },
-        ),
+        builder: (_) => staff
+            ? const StaffMessagesScreen()
+            : MessagesScreen(
+                initialThreadId: threadId,
+                onUnreadChanged: (count) {
+                  if (mounted) setState(() => _messageUnreadCount = count);
+                },
+              ),
       ),
     ).then((_) => _refreshUnread());
   }
@@ -356,7 +391,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
       ),
-      floatingActionButton: tabs[_index].key == 'community' ? null : FloatingActionButton(
+      floatingActionButton: (user.isStaff || tabs[_index].key == 'community') ? null : FloatingActionButton(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiAgentScreen())),
         backgroundColor: Colors.transparent,
         elevation: 0,

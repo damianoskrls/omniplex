@@ -38,6 +38,13 @@ const {
   ensureDefaultLocation,
   getDefaultLocationId,
 } = require('../lib/locations');
+const {
+  getLocationTeam,
+  saveLocationTeam,
+  getStaffPlaces,
+  saveStaffPlaces,
+} = require('../lib/staff_places');
+const { getSetupWizard, saveSetupWizard } = require('../lib/setup_wizard');
 const { createOneBooking, chargeBookingMembershipOnConfirm, refundBookingMembershipOnRemove } = require('../lib/create_booking');
 const { sqlGymServiceCategories } = require('../lib/gym_services');
 const { deleteBookingForBusiness } = require('../lib/booking_delete');
@@ -4984,6 +4991,42 @@ router.delete('/locations/:id', requireClientAdmin, async (req, res) => {
   return res.json({ ok: true });
 });
 
+router.get('/locations/:id/team', requireClientAdmin, async (req, res) => {
+  try {
+    const team = await getLocationTeam(db, req.admin.businessId, req.params.id);
+    return res.json(team);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+router.put('/locations/:id/team', requireClientAdmin, async (req, res) => {
+  try {
+    await saveLocationTeam(db, req.admin.businessId, req.params.id, req.body || {});
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+router.get('/staff/:id/places', requireClientAdmin, async (req, res) => {
+  try {
+    const data = await getStaffPlaces(db, req.admin.businessId, req.params.id);
+    return res.json(data);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+router.put('/staff/:id/places', requireClientAdmin, async (req, res) => {
+  try {
+    await saveStaffPlaces(db, req.admin.businessId, req.params.id, req.body || {});
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 router.get('/staff/:id/locations', requireClientAdmin, async (req, res) => {
   const ids = await getStaffLocationIds(db, req.params.id);
   return res.json(ids);
@@ -5340,6 +5383,23 @@ router.patch('/settings', requireClientAdmin, async (req, res) => {
      req.admin.businessId]
   );
   return res.json({ ok: true });
+});
+
+router.get('/setup-wizard', requireClientAdmin, async (req, res) => {
+  try {
+    return res.json(await getSetupWizard(db, req.admin.businessId));
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/setup-wizard', requireClientAdmin, async (req, res) => {
+  try {
+    const progress = await saveSetupWizard(db, req.admin.businessId, req.body || {});
+    return res.json({ progress });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 // Logo upload for gym settings

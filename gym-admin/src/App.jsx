@@ -18,6 +18,7 @@ import EntranceScanner from './pages/EntranceScanner';
 import Rooms from './pages/Rooms';
 import Locations from './pages/Locations';
 import Settings from './pages/Settings';
+import SetupWizard from './pages/SetupWizard';
 import Notifications from './pages/Notifications';
 import Nutrition from './pages/Nutrition';
 import NutritionClients from './pages/NutritionClients';
@@ -88,6 +89,7 @@ export default function App() {
           <Route path="/locations" element={<PrivateRoute ownerOnly><Locations /></PrivateRoute>} />
           <Route path="/notifications" element={<PrivateRoute ownerOnly><Notifications /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute ownerOnly><Settings /></PrivateRoute>} />
+          <Route path="/setup" element={<PrivateRoute ownerOnly><SetupWizard /></PrivateRoute>} />
           <Route path="/kiosk" element={<PrivateRoute ownerOnly><Kiosk /></PrivateRoute>} />
           <Route path="/entrance-scanner" element={<PrivateRoute ownerOnly><EntranceScanner /></PrivateRoute>} />
           <Route path="/nutrition" element={<NutritionRoute><Navigate to="/nutrition/clients" replace /></NutritionRoute>} />
