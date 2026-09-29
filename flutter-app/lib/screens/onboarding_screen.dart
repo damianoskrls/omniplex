@@ -149,26 +149,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  SvgPicture.asset('assets/omniplex_logo.svg', height: 26),
-                  if (_page < _slides.length - 1)
-                    GestureDetector(
-                      onTap: _finish,
-                      child: Text(
-                        'SKIP',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w400,
-                          color: _gray,
-                          letterSpacing: 2.2,
+              child: SizedBox(
+                height: 36,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SvgPicture.asset('assets/omniplex_logo.svg', height: 26),
+                    if (_page < _slides.length - 1)
+                      GestureDetector(
+                        onTap: _finish,
+                        child: Text(
+                          'SKIP',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                            color: _gray,
+                            letterSpacing: 2.2,
+                          ),
                         ),
-                      ),
-                    )
-                  else
-                    const SizedBox(),
-                ],
+                      )
+                    else
+                      const SizedBox(),
+                  ],
+                ),
               ),
             ),
           ),

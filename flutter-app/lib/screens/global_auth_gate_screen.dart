@@ -138,11 +138,11 @@ class _PrimaryButton extends StatelessWidget {
       child: Container(
         height: 64,
         decoration: BoxDecoration(
-          color: _kLime,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: _kLime.withValues(alpha: 0.25),
+              color: Colors.white.withValues(alpha: 0.15),
               blurRadius: 20, offset: const Offset(0, 8)),
           ],
         ),
