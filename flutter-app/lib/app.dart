@@ -200,7 +200,12 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                       return const GymSplashScreen();
                     }
                     if (auth.user!.isAdmin) return const AdminShellScreen();
-                    if (auth.user!.isStaff) return StaffHomeScreen(onSwitchGym: widget.onSwitchGym);
+                    if (auth.user!.isStaff) {
+                      return StaffHomeScreen(
+                        onSwitchGym: widget.onSwitchGym,
+                        onRemoveGym: widget.onRemoveGym,
+                      );
+                    }
                     return HomeScreen(
                       onSwitchGym: widget.onSwitchGym,
                       onRemoveGym: widget.onRemoveGym,

@@ -159,8 +159,15 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             onEnterGym: _enterGym,
             onAddGym: () => setState(() => _tab = 1),
             onRemoveGym: (gym) async {
-              await widget.globalAuth.removeGym(gym.businessId);
-              await _loadDashboard();
+              try {
+                await widget.globalAuth.removeGym(gym.businessId, role: gym.userType);
+                await _loadDashboard();
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Αποτυχία αφαίρεσης: $e'), backgroundColor: Colors.red.shade700),
+                );
+              }
             },
             parseColor: _parseColor,
           ),
@@ -1133,10 +1140,14 @@ class _ScheduleBookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final time     = (booking['booking_time'] as String? ?? '').substring(0, 5);
+    final rawTime  = booking['booking_time'] as String? ?? '';
+    final time     = rawTime.length >= 5 ? rawTime.substring(0, 5) : rawTime;
     final service  = booking['service_name'] as String? ?? '';
     final gym      = booking['app_name'] as String? ?? booking['business_name'] as String? ?? '';
-    final staff    = booking['staff_name'] as String?;
+    final isTrainer = booking['role'] == 'staff';
+    final who      = isTrainer
+        ? (booking['client_name'] as String?)
+        : (booking['staff_name'] as String?);
     final status   = booking['status'] as String? ?? 'confirmed';
     final imgUrl   = booking['service_image_url'] as String?;
     final isCancel = status == 'cancelled';
@@ -1187,13 +1198,21 @@ class _ScheduleBookingCard extends StatelessWidget {
               fontSize: 14, fontWeight: FontWeight.w700,
               color: isCancel ? _kGray : Colors.white)),
           const SizedBox(height: 3),
+          Text(isTrainer ? 'Ως trainer' : 'Ως ασκούμενος',
+            style: GoogleFonts.manrope(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isTrainer ? const Color(0xFF3EE6FF) : _kAccent)),
+          const SizedBox(height: 2),
           Row(children: [
             const Icon(Icons.fitness_center_rounded, size: 11, color: _kGray),
             const SizedBox(width: 4),
-            Text(gym, style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
-            if (staff != null) ...[
+            Flexible(child: Text(gym, overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.manrope(fontSize: 11, color: _kGray))),
+            if (who != null && who.isNotEmpty) ...[
               Text(' · ', style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
-              Text(staff, style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
+              Flexible(child: Text(isTrainer ? 'Πελάτης: $who' : who, overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.manrope(fontSize: 11, color: _kGray))),
             ],
           ]),
         ])),
@@ -1835,7 +1854,9 @@ class _MyGymCard extends StatelessWidget {
                         title: Text('Αφαίρεση γυμναστηρίου',
                           style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white)),
                         content: Text(
-                          'Θέλεις να αφαιρέσεις το "${gym.appName}" από τη λίστα σου; Ο admin θα ενημερωθεί.',
+                          gym.isStaff
+                            ? 'Θα αφαιρεθείς ως trainer από το "${gym.appName}". Η σύνδεσή σου ως ασκούμενος, αν υπάρχει, μένει.'
+                            : 'Θα αφαιρεθείς ως ασκούμενος από το "${gym.appName}". Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.',
                           style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
                         actions: [
                           TextButton(

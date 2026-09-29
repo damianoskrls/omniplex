@@ -133,6 +133,47 @@ class ApiService {
     return _decode(res) as Map<String, dynamic>;
   }
 
+  Future<List<Map<String, dynamic>>> fetchTrainerMessageThreads() async {
+    final res = await _get('/api/client-admin/messages/threads');
+    final data = _decode(res);
+    if (data is List) return data.cast<Map<String, dynamic>>();
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTrainerMessageContacts() async {
+    final res = await _get('/api/client-admin/messages/contacts');
+    final data = _decode(res);
+    if (data is List) return data.cast<Map<String, dynamic>>();
+    return [];
+  }
+
+  Future<Map<String, dynamic>> fetchTrainerMessageThread(String threadId) async {
+    final res = await _get('/api/client-admin/messages/threads/$threadId');
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> openTrainerMessageThread(String clientUserId) async {
+    final res = await _post('/api/client-admin/messages/threads', {
+      'client_user_id': clientUserId,
+    });
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  Future<void> sendTrainerMessage(String threadId, String body) async {
+    await _post('/api/client-admin/messages/threads/$threadId/messages', {'body': body});
+  }
+
+  Future<void> markTrainerThreadRead(String threadId) async {
+    await _post('/api/client-admin/messages/threads/$threadId/read', {});
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTrainerClients() async {
+    final res = await _get('/api/client-admin/trainer/clients');
+    final data = _decode(res);
+    if (data is List) return data.cast<Map<String, dynamic>>();
+    return [];
+  }
+
   Future<Map<String, dynamic>> addStaffLeave({
     required String dateFrom, required String dateTo, String? reason,
   }) async {

@@ -256,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: const Text('Αφαίρεση γυμναστηρίου',
                         style: TextStyle(color: Colors.white)),
                     content: const Text(
-                      'Θα αφαιρεθεί το γυμναστήριο από τη λίστα σου στο Omniplex. Μπορείς να το ξαναπροσθέσεις οποτεδήποτε.',
+                      'Θα αφαιρεθείς ως ασκούμενος από αυτό το γυμναστήριο. Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.',
                       style: TextStyle(color: Colors.white70),
                     ),
                     actions: [
@@ -274,7 +274,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 );
                 if (confirmed != true) return;
-                await auth.logout();
                 await widget.onRemoveGym!();
               },
             ),

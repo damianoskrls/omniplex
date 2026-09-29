@@ -239,11 +239,12 @@ class GlobalAuthService extends ChangeNotifier {
     return body['token'] as String;
   }
 
-  /// Remove a gym from the user's Omniplex list (unlinks global_user_id on gym's user row)
-  Future<void> removeGym(String businessId) async {
+  /// Remove one gym link. [role] is `member` or `staff` so a trainer
+  /// link and a member link at the same gym can be removed separately.
+  Future<void> removeGym(String businessId, {String role = 'member'}) async {
     if (_token == null) throw 'Not logged in';
     final res = await http.delete(
-      Uri.parse('$_apiBase/global/gyms/$businessId'),
+      Uri.parse('$_apiBase/global/gyms/$businessId').replace(queryParameters: {'role': role}),
       headers: {'Authorization': 'Bearer $_token'},
     );
     if (res.statusCode != 200) {

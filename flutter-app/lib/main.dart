@@ -385,7 +385,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
           onSwitchGym: _globalAuth.isLoggedIn ? _resetToSelector : null,
           onRemoveGym: _globalAuth.isLoggedIn
               ? () async {
-                  await _globalAuth.removeGym(_config!.businessId);
+                  final role = _auth?.user?.isStaff == true ? 'staff' : 'member';
+                  await _auth?.logout();
+                  await _globalAuth.removeGym(_config!.businessId, role: role);
                   _resetToSelector();
                 }
               : null,

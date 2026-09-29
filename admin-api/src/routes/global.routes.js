@@ -174,26 +174,48 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
     const gyms = await getGymsForGlobalUser(req.globalUser.globalUserId);
     if (!gyms.length) return res.json({ gyms: [], upcoming_bookings: [] });
 
-    const userIds = gyms.map(g => g.user_id);
+    const memberIds = gyms.filter(g => g.user_type !== 'staff').map(g => g.user_id).filter(Boolean);
+    const staffIds = gyms.filter(g => g.user_type === 'staff').map(g => g.staff_id || g.user_id).filter(Boolean);
 
-    // Upcoming bookings for all gym accounts
-    const [bookings] = await db.query(`
-      SELECT b.id, b.booking_date, b.booking_time, b.status,
+    const selectSql = `
+      SELECT b.id,
+             DATE_FORMAT(b.starts_at, '%Y-%m-%d') AS booking_date,
+             DATE_FORMAT(b.starts_at, '%H:%i:%s') AS booking_time,
+             b.status,
              s.name AS service_name, s.duration_mins, s.image_url AS service_image_url,
              st.full_name AS staff_name,
+             u.full_name AS client_name,
              biz.id AS business_id, biz.name AS business_name,
-             COALESCE(bc.app_name, biz.name) AS app_name, bc.primary_color, bc.logo_url
+             COALESCE(bc.app_name, biz.name) AS app_name, bc.primary_color, bc.logo_url`;
+    const fromSql = `
       FROM bookings b
       JOIN services s ON s.id = b.service_id
       LEFT JOIN staff st ON st.id = b.staff_id
+      LEFT JOIN users u ON u.id = b.user_id
       JOIN businesses biz ON biz.id = b.business_id
-      LEFT JOIN business_configs bc ON bc.business_id = b.business_id
-      WHERE b.user_id IN (?)
-        AND b.booking_date >= CURDATE()
-        AND b.status IN ('pending','confirmed')
-      ORDER BY b.booking_date ASC, b.booking_time ASC
-      LIMIT 20
-    `, [userIds]);
+      LEFT JOIN business_configs bc ON bc.business_id = b.business_id`;
+    const windowSql = `
+        AND b.starts_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+        AND b.status IN ('pending','confirmed')`;
+
+    const parts = [];
+    const params = [];
+    if (memberIds.length) {
+      parts.push(`${selectSql}, 'member' AS role ${fromSql}
+        WHERE b.user_id IN (?) ${windowSql}`);
+      params.push(memberIds);
+    }
+    if (staffIds.length) {
+      parts.push(`${selectSql}, 'staff' AS role ${fromSql}
+        WHERE b.staff_id IN (?) ${windowSql}`);
+      params.push(staffIds);
+    }
+    if (!parts.length) return res.json({ gyms, upcoming_bookings: [] });
+
+    const [bookings] = await db.query(
+      `${parts.join(' UNION ALL ')} ORDER BY booking_date ASC, booking_time ASC LIMIT 300`,
+      params,
+    );
 
     return res.json({ gyms, upcoming_bookings: bookings });
   } catch (err) {
@@ -690,21 +712,33 @@ router.post('/trainer-token', requireGlobal, async (req, res) => {
 
 router.delete('/gyms/:businessId', requireGlobal, async (req, res) => {
   const { businessId } = req.params;
+  const role = req.query.role;
+  if (role && role !== 'member' && role !== 'staff') {
+    return res.status(400).json({ error: 'role must be member or staff' });
+  }
+  const unlinkMember = !role || role === 'member';
+  const unlinkStaff = !role || role === 'staff';
   try {
-    // Unlink member account
-    const [memberResult] = await db.query(
-      `UPDATE users SET global_user_id = NULL
-       WHERE global_user_id = ? AND business_id = ? AND deleted_at IS NULL`,
-      [req.globalUser.globalUserId, businessId],
-    );
-    // Unlink staff/trainer account if exists
-    const [staffResult] = await db.query(
-      `UPDATE staff SET global_user_id = NULL
-       WHERE global_user_id = ? AND business_id = ? AND is_active = 1`,
-      [req.globalUser.globalUserId, businessId],
-    );
+    let memberRows = 0;
+    let staffRows = 0;
+    if (unlinkMember) {
+      const [memberResult] = await db.query(
+        `UPDATE users SET global_user_id = NULL
+         WHERE global_user_id = ? AND business_id = ? AND deleted_at IS NULL`,
+        [req.globalUser.globalUserId, businessId],
+      );
+      memberRows = memberResult.affectedRows;
+    }
+    if (unlinkStaff) {
+      const [staffResult] = await db.query(
+        `UPDATE staff SET global_user_id = NULL
+         WHERE global_user_id = ? AND business_id = ? AND is_active = 1`,
+        [req.globalUser.globalUserId, businessId],
+      );
+      staffRows = staffResult.affectedRows;
+    }
 
-    if (memberResult.affectedRows === 0 && staffResult.affectedRows === 0) {
+    if (memberRows === 0 && staffRows === 0) {
       return res.status(404).json({ error: 'Gym not found in your list' });
     }
 
@@ -723,13 +757,15 @@ router.delete('/gyms/:businessId', requireGlobal, async (req, res) => {
       );
       const gymName = biz?.app_name || 'γυμναστήριο';
       const { v4: uuidv4n } = require('uuid');
+      const leftAs = staffRows && memberRows ? 'μέλος και trainer'
+        : staffRows ? 'trainer' : 'ασκούμενος';
       await db.query(
         `INSERT INTO admin_notifications (id, business_id, type, title, body, payload)
-         VALUES (?, ?, 'member_left', 'Αποχώρηση μέλους', ?, ?)`,
+         VALUES (?, ?, 'member_left', 'Αποχώρηση', ?, ?)`,
         [
           uuidv4n(), businessId,
-          `${userName} αφαίρεσε το ${gymName} από το OmniPlex του.`,
-          JSON.stringify({ global_user_id: req.globalUser.globalUserId, user_name: userName }),
+          `${userName} αφαιρέθηκε ως ${leftAs} από το ${gymName}.`,
+          JSON.stringify({ global_user_id: req.globalUser.globalUserId, user_name: userName, role: role || 'both' }),
         ],
       );
     } catch (notifErr) {

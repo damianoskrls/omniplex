@@ -5,14 +5,15 @@ import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
 import '../services/auth_service.dart';
 import '../widgets/omni_design.dart';
-import 'messages_inbox_screen.dart';
-import 'staff_leave_screen.dart';
+import 'staff_clients_screen.dart';
+import 'staff_leaves_screen.dart';
+import 'staff_messages_screen.dart';
 import 'staff_schedule_screen.dart';
-import 'training_programs_screen.dart';
 
 class StaffHomeScreen extends StatefulWidget {
-  const StaffHomeScreen({super.key, this.onSwitchGym});
+  const StaffHomeScreen({super.key, this.onSwitchGym, this.onRemoveGym});
   final VoidCallback? onSwitchGym;
+  final Future<void> Function()? onRemoveGym;
 
   @override
   State<StaffHomeScreen> createState() => _StaffHomeScreenState();
@@ -65,9 +66,9 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
         children: [
           _buildHomeTab(user, config),
           const StaffScheduleScreen(),
-          const MessagesInboxScreen(),
-          const StaffLeaveScreen(),
-          const TrainingProgramsScreen(),
+          const StaffMessagesScreen(),
+          const StaffLeavesScreen(),
+          const StaffClientsScreen(),
           _buildProfileTab(user, config),
         ],
       ),
@@ -253,7 +254,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
       _QuickAction(Icons.calendar_today_outlined, 'ΠΡΟΓΡΑΜΜΑ', null, () => setState(() => _tab = 1)),
       _QuickAction(Icons.send_outlined, 'ΜΗΝΥΜΑΤΑ', kCyan, () => setState(() => _tab = 2)),
       _QuickAction(Icons.flight_takeoff_outlined, 'ΑΔΕΙΑ', null, () => setState(() => _tab = 3)),
-      _QuickAction(Icons.fitness_center_outlined, 'ΠΡΟΓΡΑΜ/ΤΑ', null, () => setState(() => _tab = 4)),
+      _QuickAction(Icons.people_outline_rounded, 'ΠΕΛΑΤΕΣ', null, () => setState(() => _tab = 4)),
       _QuickAction(Icons.person_outline_rounded, 'ΠΡΟΦΙΛ', null, () => setState(() => _tab = 5)),
     ];
 
@@ -507,12 +508,32 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                     Text(user?.fullName ?? '', style: GoogleFonts.spaceGrotesk(
                       fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                     const SizedBox(height: 4),
-                    Text('Trainer · ${config.appName}', style: GoogleFonts.manrope(
-                      fontSize: 12, color: _kGray9C)),
+                    Text(
+                      '${user?.staffRole?.isNotEmpty == true ? user!.staffRole : 'Trainer'} · ${config.appName}',
+                      style: GoogleFonts.manrope(fontSize: 12, color: _kGray9C),
+                    ),
+                    if ((user?.email ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(user!.email, style: GoogleFonts.manrope(fontSize: 12, color: _kGray6B)),
+                    ],
                   ],
                 )),
               ]),
             ),
+            if ((user?.bio ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _kDark16,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _kBorder26),
+                ),
+                child: Text(user!.bio!.trim(), style: GoogleFonts.manrope(
+                  fontSize: 13, color: Colors.white70, height: 1.4)),
+              ),
+            ],
             const SizedBox(height: 32),
             if (widget.onSwitchGym != null)
               _profileAction(
@@ -521,6 +542,40 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                 color: kCyan,
                 onTap: widget.onSwitchGym!,
               ),
+            if (widget.onRemoveGym != null) ...[
+              const SizedBox(height: 12),
+              _profileAction(
+                icon: Icons.remove_circle_outline_rounded,
+                label: 'Αφαίρεση ως trainer',
+                color: Colors.redAccent,
+                onTap: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: const Color(0xFF161616),
+                      title: const Text('Αφαίρεση γυμναστηρίου',
+                        style: TextStyle(color: Colors.white)),
+                      content: Text(
+                        'Θα αφαιρεθείς ως trainer από το ${config.appName}. Η σύνδεσή σου ως ασκούμενος, αν υπάρχει, μένει.',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Άκυρο'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Αφαίρεση', style: TextStyle(color: Colors.redAccent)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
+                  await widget.onRemoveGym!();
+                },
+              ),
+            ],
             const SizedBox(height: 12),
             _profileAction(
               icon: Icons.logout_rounded,
@@ -565,7 +620,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
       (Icons.calendar_today, 'ΠΡΟΓΡΑΜΜΑ'),
       (Icons.send_outlined, 'ΜΗΝΥΜΑΤΑ'),
       (Icons.flight_takeoff_outlined, 'ΑΔΕΙΑ'),
-      (Icons.fitness_center, 'ΠΡΟΓΡΑΜ/ΤΑ'),
+      (Icons.people_outline_rounded, 'ΠΕΛΑΤΕΣ'),
       (Icons.person_outline_rounded, 'ΠΡΟΦΙΛ'),
     ];
 

@@ -161,33 +161,45 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
             itemBuilder: (ctx, i) => _buildSlide(ctx, _slides[i]),
           ),
 
-          // Top bar: logo left + skip right
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              child: SizedBox(
-                height: 36,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset('assets/icons/omniplex_icon.svg', width: 28, height: 28),
-                    if (_page < _slides.length - 1)
-                      GestureDetector(
-                        onTap: _finish,
-                        child: Text(
-                          'SKIP',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            color: _gray,
-                            letterSpacing: 2.2,
+          // Top bar: logo left + skip right.
+          // Must be Positioned — StackFit.expand would stretch an unpositioned
+          // bar to full height and vertically center the logo and SKIP over the cards.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(56, 8, 56, 0),
+                child: SizedBox(
+                  height: 36,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SvgPicture.asset('assets/icons/omniplex_icon.svg', width: 28, height: 28),
+                      if (_page < _slides.length - 1)
+                        GestureDetector(
+                          onTap: _finish,
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                            child: Text(
+                              'SKIP',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: _gray,
+                                letterSpacing: 2.2,
+                              ),
+                            ),
                           ),
-                        ),
-                      )
-                    else
-                      const SizedBox(),
-                  ],
+                        )
+                      else
+                        const SizedBox(width: 28, height: 28),
+                    ],
+                  ),
                 ),
               ),
             ),
