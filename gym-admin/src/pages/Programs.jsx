@@ -1207,9 +1207,12 @@ export default function Programs() {
             padding: 0,
             overflow: 'hidden',
             borderRadius: 16,
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
           }} onClick={e => e.stopPropagation()}>
             {/* Modal header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
               <div style={{ fontWeight: 800, fontSize: '1rem' }}>
                 {modal.type === 'exercise'
                   ? (modal.data?.id ? 'Επεξεργασία άσκησης' : 'Νέα άσκηση')
@@ -1219,11 +1222,13 @@ export default function Programs() {
                 <X size={20} />
               </button>
             </div>
-            {modal.type === 'exercise' ? (
-              <ExerciseForm initial={modal.data} onSave={() => { setModal(null); load(); }} onClose={() => setModal(null)} />
-            ) : (
-              <ProgramBuilder program={modal.data} exercises={exercises} services={services} onSave={() => { setModal(null); load(); }} onClose={() => setModal(null)} />
-            )}
+            <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+              {modal.type === 'exercise' ? (
+                <ExerciseForm initial={modal.data} onSave={() => { setModal(null); load(); }} onClose={() => setModal(null)} />
+              ) : (
+                <ProgramBuilder program={modal.data} exercises={exercises} services={services} onSave={() => { setModal(null); load(); }} onClose={() => setModal(null)} />
+              )}
+            </div>
           </div>
         </div>
       )}

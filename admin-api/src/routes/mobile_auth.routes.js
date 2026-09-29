@@ -569,7 +569,7 @@ router.get('/staff/me', async (req, res) => {
   let decoded;
   try { decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret'); }
   catch { return res.status(401).json({ error: 'Λήξη ή μη έγκυρο token' }); }
-  if (decoded.role !== 'staff') return res.status(403).json({ error: 'Απαγορεύεται' });
+  if (!['staff', 'trainer'].includes(decoded.role)) return res.status(403).json({ error: 'Απαγορεύεται' });
 
   try {
     const [[s]] = await db.query(
@@ -599,7 +599,7 @@ function requireMobileStaff(req, res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7) : header;
   try {
     const d = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    if (d.role !== 'staff') return res.status(403).json({ error: 'Απαγορεύεται' });
+    if (!['staff', 'trainer'].includes(d.role)) return res.status(403).json({ error: 'Απαγορεύεται' });
     req.staffId    = d.staffId;
     req.businessId = d.businessId;
     next();

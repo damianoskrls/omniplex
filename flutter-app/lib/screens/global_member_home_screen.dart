@@ -158,6 +158,10 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             enteringGym: _enteringGym,
             onEnterGym: _enterGym,
             onAddGym: () => setState(() => _tab = 1),
+            onRemoveGym: (gym) async {
+              await widget.globalAuth.removeGym(gym.businessId);
+              await _loadDashboard();
+            },
             parseColor: _parseColor,
           ),
           _ProfileTab(
@@ -263,7 +267,9 @@ class _HomeTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final firstName = globalAuth.user?.fullName.split(' ').first ?? '';
     final gyms = globalAuth.gyms;
-    final primaryGym = gyms.isNotEmpty ? gyms.first : null;
+    // Prefer member gym for the home card; fall back to staff gym if no member gyms
+    final memberGyms = gyms.where((g) => !g.isStaff).toList();
+    final primaryGym = memberGyms.isNotEmpty ? memberGyms.first : gyms.isNotEmpty ? gyms.first : null;
     final upcoming = (dashboard?['upcoming_bookings'] as List?)
         ?.cast<Map<String, dynamic>>() ?? [];
     final nextBooking = upcoming.isNotEmpty ? upcoming.first : null;
@@ -844,6 +850,32 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   DateTime _selected = DateTime.now();
   int _weekOffset = 0;
 
+  @override
+  void didUpdateWidget(_ScheduleTab old) {
+    super.didUpdateWidget(old);
+    if (old.dashboard != widget.dashboard && widget.dashboard != null) {
+      _autoSelectFirstBooking();
+    }
+  }
+
+  void _autoSelectFirstBooking() {
+    final all = (widget.dashboard?['upcoming_bookings'] as List?)
+        ?.cast<Map<String, dynamic>>() ?? [];
+    if (all.isEmpty) return;
+    final todayKey = _dateKey(DateTime.now());
+    final todayHasBooking = all.any((b) => (b['booking_date'] as String? ?? '') == todayKey);
+    if (!todayHasBooking) {
+      final firstDate = DateTime.tryParse(all.first['booking_date'] as String? ?? '');
+      if (firstDate != null) {
+        final now = DateTime.now();
+        final monday = now.subtract(Duration(days: now.weekday - 1));
+        final daysFromMonday = firstDate.difference(monday).inDays;
+        final weekOffset = daysFromMonday ~/ 7;
+        if (mounted) setState(() { _selected = firstDate; _weekOffset = weekOffset; });
+      }
+    }
+  }
+
   List<Map<String, dynamic>> get _all =>
       (widget.dashboard?['upcoming_bookings'] as List?)
           ?.cast<Map<String, dynamic>>() ?? [];
@@ -1409,6 +1441,7 @@ class _MyGymsTab extends StatefulWidget {
     required this.enteringGym,
     required this.onEnterGym,
     required this.onAddGym,
+    required this.onRemoveGym,
     required this.parseColor,
   });
 
@@ -1416,6 +1449,7 @@ class _MyGymsTab extends StatefulWidget {
   final bool enteringGym;
   final Future<void> Function(GlobalGym) onEnterGym;
   final VoidCallback onAddGym;
+  final Future<void> Function(GlobalGym) onRemoveGym;
   final Color Function(String?) parseColor;
 
   @override
@@ -1537,6 +1571,7 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                       gym: gym,
                       accentColor: widget.parseColor(gym.primaryColor),
                       onOpen: () => widget.onEnterGym(gym),
+                      onRemove: () => widget.onRemoveGym(gym),
                     )),
                     const SizedBox(height: 8),
                   ],
@@ -1548,6 +1583,7 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                       gym: gym,
                       accentColor: widget.parseColor(gym.primaryColor),
                       onOpen: () => widget.onEnterGym(gym),
+                      onRemove: () => widget.onRemoveGym(gym),
                     )),
                     const SizedBox(height: 8),
                   ],
@@ -1671,11 +1707,13 @@ class _MyGymCard extends StatelessWidget {
     required this.gym,
     required this.accentColor,
     required this.onOpen,
+    required this.onRemove,
   });
 
   final GlobalGym gym;
   final Color accentColor;
   final VoidCallback onOpen;
+  final VoidCallback onRemove;
 
   String get _statusLabel {
     if (gym.isStaff) return 'Trainer';
@@ -1752,6 +1790,50 @@ class _MyGymCard extends StatelessWidget {
                   Text(_statusLabel, style: GoogleFonts.manrope(
                     fontSize: 10, fontWeight: FontWeight.w700, color: _statusColor)),
                 ]),
+              ),
+              const SizedBox(width: 4),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert_rounded, color: _kGray, size: 18),
+                color: const Color(0xFF1C1C2E),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: EdgeInsets.zero,
+                onSelected: (value) {
+                  if (value == 'remove') {
+                    showDialog<void>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: const Color(0xFF1C1C2E),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: Text('Αφαίρεση γυμναστηρίου',
+                          style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white)),
+                        content: Text(
+                          'Θέλεις να αφαιρέσεις το "${gym.appName}" από τη λίστα σου; Ο admin θα ενημερωθεί.',
+                          style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: Text('Άκυρο', style: GoogleFonts.manrope(color: _kGray)),
+                          ),
+                          TextButton(
+                            onPressed: () { Navigator.pop(ctx); onRemove(); },
+                            child: Text('Αφαίρεση',
+                              style: GoogleFonts.manrope(color: Colors.redAccent, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'remove',
+                    child: Row(children: [
+                      const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent, size: 16),
+                      const SizedBox(width: 8),
+                      Text('Αφαίρεση', style: GoogleFonts.manrope(color: Colors.redAccent, fontSize: 13)),
+                    ]),
+                  ),
+                ],
               ),
             ]),
           ),

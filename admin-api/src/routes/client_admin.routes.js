@@ -7004,6 +7004,8 @@ router.get('/my-programs', async (req, res) => {
   const bizId = req.headers['x-business-id'];
   const userId = req.headers['x-user-id'];
   if (!bizId || !userId) return res.status(400).json({ error: 'Missing headers' });
+
+  // Personal assignments
   const [assignments] = await db.query(
     `SELECT cp.id as assignment_id, cp.assigned_at, cp.notes as assignment_notes,
             wp.id as program_id, wp.name as program_name, wp.description as program_description,
@@ -7014,8 +7016,42 @@ router.get('/my-programs', async (req, res) => {
      ORDER BY cp.assigned_at DESC`,
     [userId, bizId]
   );
+
+  // Service-level programs: any active program linked to a service the user has membership for
+  const [servicePrograms] = await db.query(
+    `SELECT NULL as assignment_id, wp.created_at as assigned_at, NULL as assignment_notes,
+            wp.id as program_id, wp.name as program_name, wp.description as program_description,
+            wp.service_id
+     FROM workout_programs wp
+     WHERE wp.business_id=? AND wp.is_active=1 AND wp.service_id IS NOT NULL
+       AND (
+         wp.service_id IN (
+           SELECT service_id FROM user_memberships
+           WHERE user_id=? AND business_id=?
+             AND valid_until >= CURDATE() AND service_id IS NOT NULL
+         )
+         OR wp.service_id IN (
+           SELECT ps.service_id FROM plan_services ps
+           JOIN user_memberships um ON um.plan_id = ps.plan_id
+           WHERE um.user_id=? AND um.business_id=?
+             AND um.valid_until >= CURDATE() AND um.plan_id IS NOT NULL
+         )
+       )`,
+    [bizId, userId, bizId, userId, bizId]
+  );
+
+  // Merge: personal assignments first, then service programs not already included
+  const seenIds = new Set(assignments.map(a => a.program_id));
+  const combined = [...assignments];
+  for (const sp of servicePrograms) {
+    if (!seenIds.has(sp.program_id)) {
+      combined.push(sp);
+      seenIds.add(sp.program_id);
+    }
+  }
+
   const result = [];
-  for (const a of assignments) {
+  for (const a of combined) {
     const [exs] = await db.query(
       `SELECT pe.*, e.name AS exercise_name, e.muscle_group, e.animation_url, e.thumbnail_url, e.description AS exercise_description
        FROM program_exercises pe

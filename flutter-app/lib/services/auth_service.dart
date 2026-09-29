@@ -144,7 +144,7 @@ class AuthService extends ChangeNotifier {
 
   Future<AppUser> _fetchMe(String token) {
     final role = _jwtRole(token);
-    if (role == 'staff') return api.staffMe();
+    if (role == 'staff' || role == 'trainer') return api.staffMe();
     if (role == 'client_admin') return _adminUserFromToken(token);
     return api.me();
   }

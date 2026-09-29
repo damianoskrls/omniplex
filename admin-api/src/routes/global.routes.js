@@ -688,14 +688,53 @@ router.post('/trainer-token', requireGlobal, async (req, res) => {
 });
 
 router.delete('/gyms/:businessId', requireGlobal, async (req, res) => {
+  const { businessId } = req.params;
   try {
-    const { businessId } = req.params;
-    const [result] = await db.query(
+    // Unlink member account
+    const [memberResult] = await db.query(
       `UPDATE users SET global_user_id = NULL
        WHERE global_user_id = ? AND business_id = ? AND deleted_at IS NULL`,
       [req.globalUser.globalUserId, businessId],
     );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Gym not found in your list' });
+    // Unlink staff/trainer account if exists
+    const [staffResult] = await db.query(
+      `UPDATE staff SET global_user_id = NULL
+       WHERE global_user_id = ? AND business_id = ? AND is_active = 1`,
+      [req.globalUser.globalUserId, businessId],
+    );
+
+    if (memberResult.affectedRows === 0 && staffResult.affectedRows === 0) {
+      return res.status(404).json({ error: 'Gym not found in your list' });
+    }
+
+    // Notify gym admin
+    try {
+      const [[gu]] = await db.query(
+        'SELECT full_name FROM global_users WHERE id = ?',
+        [req.globalUser.globalUserId],
+      );
+      const userName = gu?.full_name || req.globalUser.fullName || 'Χρήστης';
+      const [[biz]] = await db.query(
+        `SELECT b.id, COALESCE(bc.app_name, b.name) AS app_name
+         FROM businesses b LEFT JOIN business_configs bc ON bc.business_id = b.id
+         WHERE b.id = ?`,
+        [businessId],
+      );
+      const gymName = biz?.app_name || 'γυμναστήριο';
+      const { v4: uuidv4n } = require('uuid');
+      await db.query(
+        `INSERT INTO admin_notifications (id, business_id, type, title, body, payload)
+         VALUES (?, ?, 'member_left', 'Αποχώρηση μέλους', ?, ?)`,
+        [
+          uuidv4n(), businessId,
+          `${userName} αφαίρεσε το ${gymName} από το OmniPlex του.`,
+          JSON.stringify({ global_user_id: req.globalUser.globalUserId, user_name: userName }),
+        ],
+      );
+    } catch (notifErr) {
+      console.error('[NOTIFY] gym-remove admin notification failed:', notifErr.message);
+    }
+
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
