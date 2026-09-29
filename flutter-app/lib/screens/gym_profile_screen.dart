@@ -123,11 +123,32 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     }
     final bizId = _gym?['business_id'] as String?;
     if (bizId == null) return;
+
+    // Always show role picker — user may want different role per gym
     final role = await _showRolePicker();
     if (role == null || !mounted) return;
 
+    // Skip form if user already has name + phone from onboarding
+    final user = widget.globalAuth?.user;
+    final storedName = user?.fullName ?? '';
+    final isDefaultName = RegExp(r'^Χρήστης\s+\d+$').hasMatch(storedName.trim());
+    final hasName  = storedName.isNotEmpty && !isDefaultName;
+    final hasPhone = (user?.phone ?? '').isNotEmpty;
+
+    if (hasName && hasPhone) {
+      final base = {'full_name': storedName, 'phone': user!.phone};
+      if (role == 'both') {
+        await _submitJoinRequest(bizId, 'member', Map.from(base));
+        if (!mounted) return;
+        await _submitJoinRequest(bizId, 'staff', Map.from(base));
+      } else {
+        await _submitJoinRequest(bizId, role, Map.from(base));
+      }
+      return;
+    }
+
+    // Fallback: show form (user is missing name or phone)
     if (role == 'both') {
-      // Collect combined form then submit 2 requests
       final formData = await _showJoinForm('both');
       if (formData == null || !mounted) return;
       await _submitJoinRequest(bizId, 'member', {
