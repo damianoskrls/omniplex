@@ -630,8 +630,9 @@ router.get('/staff/schedule', requireMobileStaff, async (req, res) => {
         AND b.starts_at >= ?
         AND b.starts_at < ?
         AND b.status NOT IN ('cancelled')
+        AND b.staff_id = ?
       ORDER BY b.starts_at ASC
-    `, [req.businessId, date, nextStr]);
+    `, [req.businessId, date, nextStr, req.staffId]);
     return res.json({ bookings, date });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -655,8 +656,9 @@ router.get('/staff/schedule/week', requireMobileStaff, async (req, res) => {
         AND b.starts_at >= ?
         AND b.starts_at < ?
         AND b.status NOT IN ('cancelled')
+        AND b.staff_id = ?
       ORDER BY b.starts_at ASC
-    `, [req.businessId, from, toStr]);
+    `, [req.businessId, from, toStr, req.staffId]);
     return res.json({ bookings, from, to: toStr });
   } catch (err) {
     return res.status(500).json({ error: err.message });

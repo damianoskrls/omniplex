@@ -1,43 +1,111 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../config/tenant_config.dart';
+import '../services/auth_service.dart';
 import '../widgets/omni_design.dart';
+import 'messages_inbox_screen.dart';
+import 'staff_leave_screen.dart';
+import 'staff_schedule_screen.dart';
+import 'training_programs_screen.dart';
 
-class StaffHomeScreen extends StatelessWidget {
-  const StaffHomeScreen({super.key});
+class StaffHomeScreen extends StatefulWidget {
+  const StaffHomeScreen({super.key, this.onSwitchGym});
+  final VoidCallback? onSwitchGym;
 
+  @override
+  State<StaffHomeScreen> createState() => _StaffHomeScreenState();
+}
+
+class _StaffHomeScreenState extends State<StaffHomeScreen> {
   static const _kGray6B = Color(0xFF6B7280);
   static const _kGray9C = Color(0xFF9CA3AF);
   static const _kDark16 = Color(0xFF161616);
   static const _kDark1C = Color(0xFF1C1C1C);
   static const _kBorder26 = Color(0xFF262626);
 
+  int _tab = 0;
+  List<Map<String, dynamic>> _todayBookings = [];
+  bool _loadingSchedule = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTodaySchedule();
+  }
+
+  Future<void> _loadTodaySchedule() async {
+    setState(() => _loadingSchedule = true);
+    try {
+      final api = context.read<AuthService>().api;
+      final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final result = await api.fetchStaffSchedule(date: date);
+      if (mounted) {
+        setState(() {
+          _todayBookings = (result['bookings'] as List).cast<Map<String, dynamic>>();
+        });
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loadingSchedule = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final auth   = context.watch<AuthService>();
+    final config = context.read<TenantConfig>();
+    final user   = auth.user;
+
     return Scaffold(
       backgroundColor: kBg,
-      body: Stack(
+      body: IndexedStack(
+        index: _tab,
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 96),
+          _buildHomeTab(user, config),
+          const StaffScheduleScreen(),
+          const MessagesInboxScreen(),
+          const StaffLeaveScreen(),
+          const TrainingProgramsScreen(),
+          _buildProfileTab(user, config),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  // ── HOME TAB ───────────────────────────────────────────────────────────────
+
+  Widget _buildHomeTab(user, TenantConfig config) {
+    final now = DateTime.now();
+    final greeting = now.hour < 12 ? 'Καλημέρα' : now.hour < 18 ? 'Καλό απόγευμα' : 'Καλό βράδυ';
+    final gymName  = config.appName.toUpperCase();
+
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: _loadTodaySchedule,
+          color: kLime,
+          backgroundColor: _kDark16,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(),
+                _buildHeader(greeting, user?.fullName ?? '', gymName),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 0),
-                      _buildShiftCard(),
+                      const SizedBox(height: 24),
+                      _buildSummaryCard(now),
                       const SizedBox(height: 32),
                       _buildQuickActionsSection(),
                       const SizedBox(height: 32),
                       _buildScheduleSection(),
-                      const SizedBox(height: 32),
-                      _buildWorkloadChart(),
-                      const SizedBox(height: 32),
-                      _buildTrialsSection(),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -45,19 +113,18 @@ class StaffHomeScreen extends StatelessWidget {
               ],
             ),
           ),
-          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomNav()),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(String greeting, String name, String gymName) {
     return Container(
       decoration: BoxDecoration(
         color: kBg.withValues(alpha: 0.90),
         border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 56, 24, 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,57 +132,57 @@ class StaffHomeScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Good morning,', style: GoogleFonts.manrope(
-                fontSize: 14, color: _kGray9C)),
+              Text(greeting, style: GoogleFonts.manrope(fontSize: 14, color: _kGray9C)),
               const SizedBox(height: 3),
-              Text('Maria 👋', style: GoogleFonts.spaceGrotesk(
+              Text(name, style: GoogleFonts.spaceGrotesk(
                 fontSize: 24, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.6)),
               const SizedBox(height: 3),
-              Row(
-                children: [
-                  Text('FITNESS CLUB ATHENS', style: GoogleFonts.manrope(
-                    fontSize: 11, fontWeight: FontWeight.w700,
-                    color: kCyan, letterSpacing: 1.1)),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.keyboard_arrow_down, color: kCyan, size: 12),
-                ],
+              GestureDetector(
+                onTap: widget.onSwitchGym,
+                child: Row(
+                  children: [
+                    Text(gymName, style: GoogleFonts.manrope(
+                      fontSize: 11, fontWeight: FontWeight.w700,
+                      color: kCyan, letterSpacing: 1.1)),
+                    if (widget.onSwitchGym != null) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.swap_horiz_rounded, color: kCyan, size: 14),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(
-                  color: _kDark16,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _kBorder26),
-                ),
-                child: const Center(child: Icon(Icons.notifications_outlined, color: Colors.white, size: 20)),
-              ),
-              Positioned(
-                top: 12, right: 12,
-                child: Container(
-                  width: 10, height: 10,
+          GestureDetector(
+            onTap: () {
+              // future: open notifications
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 48, height: 48,
                   decoration: BoxDecoration(
-                    color: kLime,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: kBg, width: 2),
+                    color: _kDark16,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _kBorder26),
                   ),
+                  child: const Center(child: Icon(Icons.notifications_outlined, color: Colors.white, size: 20)),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildShiftCard() {
+  Widget _buildSummaryCard(DateTime now) {
+    final dateStr  = DateFormat('EEEE d MMMM', 'el_GR').format(now);
+    final pending  = _todayBookings.where((b) => b['status'] != 'cancelled').length;
+
     return Container(
-      margin: const EdgeInsets.only(top: 24),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -133,50 +200,47 @@ class StaffHomeScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Avatar
           Container(
             width: 48, height: 56,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-              color: const Color(0xFF3A2E1E),
+              color: const Color(0xFF1A2A1A),
             ),
-            child: const Icon(Icons.person, color: Color(0xFFD4A06A), size: 28),
+            child: const Icon(Icons.fitness_center_rounded, color: kLime, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('CURRENT SHIFT', style: GoogleFonts.manrope(
+                Text('ΣΗΜΕΡΑ', style: GoogleFonts.manrope(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: _kGray6B, letterSpacing: -0.5)),
-                Text('On Duty • 08:00 - 14:00', style: GoogleFonts.manrope(
-                  fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                Text(dateStr, style: GoogleFonts.manrope(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(width: 8, height: 8, decoration: const BoxDecoration(color: kLime, shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    Text('ACTIVE NOW', style: GoogleFonts.manrope(
-                      fontSize: 10, fontWeight: FontWeight.w700,
-                      color: kLime, letterSpacing: 1.0)),
-                  ],
-                ),
+                Row(children: [
+                  Container(width: 8, height: 8, decoration: const BoxDecoration(color: kLime, shape: BoxShape.circle)),
+                  const SizedBox(width: 8),
+                  Text('ΕΝΕΡΓΟΣ', style: GoogleFonts.manrope(
+                    fontSize: 10, fontWeight: FontWeight.w700,
+                    color: kLime, letterSpacing: 1.0)),
+                ]),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text("TODAY'S\nEARNINGS", style: GoogleFonts.manrope(
+              Text('ΚΡΑΤΗΣΕΙΣ', style: GoogleFonts.manrope(
                 fontSize: 10, fontWeight: FontWeight.w700,
-                color: _kGray6B, letterSpacing: -0.5),
-                textAlign: TextAlign.right),
-              const SizedBox(height: 2),
-              Text('€142.50', style: GoogleFonts.spaceGrotesk(
-                fontSize: 20, fontWeight: FontWeight.w800,
-                color: kCyan)),
+                color: _kGray6B, letterSpacing: -0.5)),
+              const SizedBox(height: 4),
+              _loadingSchedule
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: kCyan))
+                  : Text('$pending', style: GoogleFonts.spaceGrotesk(
+                      fontSize: 28, fontWeight: FontWeight.w800, color: kCyan)),
             ],
           ),
         ],
@@ -186,56 +250,52 @@ class StaffHomeScreen extends StatelessWidget {
 
   Widget _buildQuickActionsSection() {
     final actions = [
-      (Icons.add, 'ADD APPT', null),
-      (Icons.history, 'AVAILABILITY', null),
-      (Icons.flight_takeoff, 'LEAVE', null),
-      (Icons.fitness_center, 'PROGRAMS', null),
-      (Icons.chat_bubble_outline, 'MESSAGES', kCyan),
+      _QuickAction(Icons.calendar_today_outlined, 'ΠΡΟΓΡΑΜΜΑ', null, () => setState(() => _tab = 1)),
+      _QuickAction(Icons.send_outlined, 'ΜΗΝΥΜΑΤΑ', kCyan, () => setState(() => _tab = 2)),
+      _QuickAction(Icons.flight_takeoff_outlined, 'ΑΔΕΙΑ', null, () => setState(() => _tab = 3)),
+      _QuickAction(Icons.fitness_center_outlined, 'ΠΡΟΓΡΑΜ/ΤΑ', null, () => setState(() => _tab = 4)),
+      _QuickAction(Icons.person_outline_rounded, 'ΠΡΟΦΙΛ', null, () => setState(() => _tab = 5)),
     ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('QUICK ACTIONS', style: GoogleFonts.spaceGrotesk(
-          fontSize: 14, fontWeight: FontWeight.w700,
-          color: kCyan, letterSpacing: 1.4)),
+        Text('ΓΡΗΓΟΡΕΣ ΕΝΕΡΓΕΙΕΣ', style: GoogleFonts.spaceGrotesk(
+          fontSize: 14, fontWeight: FontWeight.w700, color: kCyan, letterSpacing: 1.4)),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: actions.map((a) {
-            return Expanded(
-              child: Column(
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: _kDark16,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: _kBorder26),
-                        ),
-                        child: Center(child: Icon(a.$1, color: Colors.white, size: 18)),
-                      ),
-                      if (a.$3 != null)
-                        Positioned(
-                          top: 8, right: 8,
-                          child: Container(
-                            width: 8, height: 8,
-                            decoration: BoxDecoration(color: a.$3, shape: BoxShape.circle),
-                          ),
-                        ),
-                    ],
+          children: actions.map((a) => Expanded(
+            child: GestureDetector(
+              onTap: a.onTap,
+              child: Column(children: [
+                Stack(clipBehavior: Clip.none, children: [
+                  Container(
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: _kDark16,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _kBorder26),
+                    ),
+                    child: Center(child: Icon(a.icon, color: Colors.white, size: 18)),
                   ),
-                  const SizedBox(height: 8),
-                  Text(a.$2, style: GoogleFonts.manrope(
-                    fontSize: 9, fontWeight: FontWeight.w700,
-                    color: _kGray9C, letterSpacing: -0.225),
-                    textAlign: TextAlign.center),
-                ],
-              ),
-            );
-          }).toList(),
+                  if (a.badge != null)
+                    Positioned(
+                      top: 8, right: 8,
+                      child: Container(
+                        width: 8, height: 8,
+                        decoration: BoxDecoration(color: a.badge, shape: BoxShape.circle),
+                      ),
+                    ),
+                ]),
+                const SizedBox(height: 8),
+                Text(a.label, style: GoogleFonts.manrope(
+                  fontSize: 8, fontWeight: FontWeight.w700,
+                  color: _kGray9C, letterSpacing: -0.2),
+                  textAlign: TextAlign.center),
+              ]),
+            ),
+          )).toList(),
         ),
       ],
     );
@@ -248,95 +308,105 @@ class StaffHomeScreen extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("TODAY'S SCHEDULE", style: GoogleFonts.spaceGrotesk(
-              fontSize: 14, fontWeight: FontWeight.w700,
-              color: kCyan, letterSpacing: 1.4)),
-            Text('MON, OCT 21', style: GoogleFonts.manrope(
-              fontSize: 10, fontWeight: FontWeight.w700,
-              color: _kGray6B, letterSpacing: 1.0)),
+            Text("ΠΡΟΓΡΑΜΜΑ ΣΗΜΕΡΑ", style: GoogleFonts.spaceGrotesk(
+              fontSize: 14, fontWeight: FontWeight.w700, color: kCyan, letterSpacing: 1.4)),
+            Text(
+              DateFormat('EEE, d MMM', 'el_GR').format(DateTime.now()).toUpperCase(),
+              style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w700,
+                color: _kGray6B, letterSpacing: 1.0)),
           ],
         ),
         const SizedBox(height: 16),
-        // Schedule items with timeline
-        _buildTimelineItem(
-          time: '08:00', sub: 'DONE',
-          title: 'Gym Cleaning Routine', detail: 'Facility Task',
-          detailColor: _kGray6B, timeColor: Colors.white, subColor: _kGray6B,
-          isActive: false, isDone: true,
-          trailing: const Icon(Icons.check_circle_outline, color: Color(0xFF6B7280), size: 16),
-        ),
-        _buildTimelineItem(
-          time: '09:00', sub: '60 MIN',
-          title: 'Personal Training', detail: 'Client: Alex Johnson',
-          detailColor: _kGray9C, timeColor: kLime, subColor: kLime,
-          isActive: true, isDone: false,
-          trailing: Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(color: kLime, borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.qr_code_scanner, color: kBg, size: 20),
-          ),
-        ),
-        _buildTimelineItem(
-          time: '10:30', sub: '90 MIN',
-          title: 'CrossFit WOD', detail: 'Group Class • 18 Booked',
-          detailColor: _kGray9C, timeColor: Colors.white, subColor: _kGray6B,
-          isActive: false, isDone: false,
-          trailing: _buildAvatarStack(),
-        ),
-        _buildTimelineItem(
-          time: '18:30', sub: '60 MIN',
-          title: 'CrossFit Advanced', detail: 'Group Class • 12 Booked',
-          detailColor: _kGray9C, timeColor: Colors.white, subColor: _kGray6B,
-          isActive: false, isDone: false, isLast: true,
-          trailing: const Icon(Icons.people_outline, color: Color(0xFF6B7280), size: 20),
-        ),
+        if (_loadingSchedule)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(32),
+            child: CircularProgressIndicator(color: kLime, strokeWidth: 2),
+          ))
+        else if (_todayBookings.isEmpty)
+          _buildEmptySchedule()
+        else
+          ..._buildBookingTimeline(),
       ],
     );
   }
 
+  Widget _buildEmptySchedule() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: _kDark16,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorder26),
+      ),
+      child: Center(
+        child: Column(children: [
+          Icon(Icons.event_available_outlined, color: _kGray6B, size: 32),
+          const SizedBox(height: 8),
+          Text('Δεν υπάρχουν κρατήσεις σήμερα',
+            style: GoogleFonts.manrope(fontSize: 13, color: _kGray6B)),
+        ]),
+      ),
+    );
+  }
+
+  List<Widget> _buildBookingTimeline() {
+    final now = DateTime.now();
+    final items = <Widget>[];
+    for (int i = 0; i < _todayBookings.length; i++) {
+      final b = _todayBookings[i];
+      final startsAt = DateTime.tryParse(b['starts_at'] as String? ?? '');
+      final endsAt   = DateTime.tryParse(b['ends_at']   as String? ?? '');
+      if (startsAt == null) continue;
+
+      final isActive = startsAt.isBefore(now) && (endsAt?.isAfter(now) ?? false);
+      final isDone   = endsAt != null && endsAt.isBefore(now);
+      final isLast   = i == _todayBookings.length - 1;
+      final time     = DateFormat('HH:mm').format(startsAt);
+      final dur      = endsAt != null
+          ? '${endsAt.difference(startsAt).inMinutes} ΛΕΠ'
+          : b['duration_mins'] != null ? '${b['duration_mins']} ΛΕΠ' : '';
+      final client   = b['client_name'] as String? ?? '';
+      final service  = b['service_name'] as String? ?? '';
+      final isTrial  = (b['is_trial'] as int?) == 1;
+
+      items.add(_buildTimelineItem(
+        time: time, sub: dur,
+        title: service,
+        detail: isTrial ? 'Trial • $client' : client.isNotEmpty ? client : 'Ομαδικό',
+        isActive: isActive, isDone: isDone, isLast: isLast,
+        isTrial: isTrial,
+      ));
+    }
+    return items;
+  }
+
   Widget _buildTimelineItem({
-    required String time,
-    required String sub,
-    required String title,
-    required String detail,
-    required Color detailColor,
-    required Color timeColor,
-    required Color subColor,
-    required bool isActive,
-    required bool isDone,
-    bool isLast = false,
-    required Widget trailing,
+    required String time, required String sub,
+    required String title, required String detail,
+    required bool isActive, required bool isDone,
+    bool isLast = false, bool isTrial = false,
   }) {
     return Opacity(
-      opacity: isDone ? 0.50 : 1.0,
+      opacity: isDone ? 0.55 : 1.0,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Timeline column
           SizedBox(
             width: 40,
-            child: Column(
-              children: [
-                Container(
-                  width: isActive ? 20 : 16,
-                  height: isActive ? 20 : 16,
-                  decoration: BoxDecoration(
-                    color: isActive ? kLime : _kBorder26,
-                    shape: BoxShape.circle,
-                    border: isActive ? Border.all(color: kBg, width: 4) : Border.all(color: kBg, width: 2),
-                    boxShadow: isActive ? [BoxShadow(
-                      color: kLime.withValues(alpha: 0.50), blurRadius: 10)] : null,
-                  ),
+            child: Column(children: [
+              Container(
+                width: isActive ? 20 : 16, height: isActive ? 20 : 16,
+                decoration: BoxDecoration(
+                  color: isActive ? kLime : _kBorder26,
+                  shape: BoxShape.circle,
+                  border: isActive ? Border.all(color: kBg, width: 4) : Border.all(color: kBg, width: 2),
+                  boxShadow: isActive ? [BoxShadow(color: kLime.withValues(alpha: 0.50), blurRadius: 10)] : null,
                 ),
-                if (!isLast)
-                  Container(
-                    width: 2, height: 80,
-                    color: isActive ? kLime.withValues(alpha: 0.30) : _kBorder26,
-                  ),
-              ],
-            ),
+              ),
+              if (!isLast)
+                Container(width: 2, height: 80, color: isActive ? kLime.withValues(alpha: 0.30) : _kBorder26),
+            ]),
           ),
-          const SizedBox(width: 0),
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
@@ -348,51 +418,49 @@ class StaffHomeScreen extends StatelessWidget {
                   border: Border.all(
                     color: isActive ? kLime.withValues(alpha: 0.30) : _kBorder26),
                 ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 50,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(time, style: GoogleFonts.manrope(
-                            fontSize: 12, fontWeight: FontWeight.w700,
-                            color: timeColor)),
-                          Text(sub, style: GoogleFonts.manrope(
-                            fontSize: 9, fontWeight: FontWeight.w700,
-                            color: subColor, letterSpacing: 0.27)),
-                        ],
-                      ),
+                child: Row(children: [
+                  SizedBox(
+                    width: 50,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(time, style: GoogleFonts.manrope(
+                          fontSize: 12, fontWeight: FontWeight.w700,
+                          color: isActive ? kLime : Colors.white)),
+                        Text(sub, style: GoogleFonts.manrope(
+                          fontSize: 9, fontWeight: FontWeight.w700,
+                          color: isActive ? kLime : _kGray6B, letterSpacing: 0.27)),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(title, style: GoogleFonts.manrope(
-                            fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                          RichText(
-                            text: TextSpan(
-                              style: GoogleFonts.manrope(fontSize: 10, color: detailColor),
-                              children: detail.contains('Booked')
-                                  ? [
-                                      TextSpan(text: '${detail.split('•')[0]}• '),
-                                      TextSpan(text: detail.split('• ')[1], style: GoogleFonts.manrope(color: kCyan)),
-                                    ]
-                                  : detail.contains('Client:')
-                                      ? [
-                                          TextSpan(text: 'Client: '),
-                                          TextSpan(text: detail.split(': ')[1], style: GoogleFonts.manrope(color: Colors.white, fontSize: 10)),
-                                        ]
-                                      : [TextSpan(text: detail)],
-                            ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: Text(title, style: GoogleFonts.manrope(
+                              fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
                           ),
-                        ],
-                      ),
+                          if (isTrial)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: kCyan.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: kCyan.withValues(alpha: 0.4)),
+                              ),
+                              child: Text('TRIAL', style: GoogleFonts.manrope(
+                                fontSize: 8, fontWeight: FontWeight.w800,
+                                color: kCyan, letterSpacing: 0.5)),
+                            ),
+                        ]),
+                        Text(detail, style: GoogleFonts.manrope(fontSize: 10, color: _kGray9C)),
+                      ],
                     ),
-                    trailing,
-                  ],
-                ),
+                  ),
+                ]),
               ),
             ),
           ),
@@ -401,197 +469,147 @@ class StaffHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatarStack() {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(width: 24, height: 24, decoration: BoxDecoration(
-          shape: BoxShape.circle, color: const Color(0xFF4A4A4A),
-          border: Border.all(color: _kDark16))),
-        Positioned(left: 16, child: Container(width: 24, height: 24, decoration: BoxDecoration(
-          shape: BoxShape.circle, color: const Color(0xFF5A5A6A),
-          border: Border.all(color: _kDark16)))),
-        Positioned(left: 32, child: Container(
-          width: 24, height: 24,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: _kBorder26, border: Border.all(color: _kDark16)),
-          child: Center(child: Text('+16', style: GoogleFonts.manrope(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white))),
-        )),
-        const SizedBox(width: 56),
-      ],
-    );
-  }
+  // ── PROFILE TAB ────────────────────────────────────────────────────────────
 
-  Widget _buildWorkloadChart() {
-    final bars = [32.0, 68.0, 48.0, 24.0, 16.0, 36.0, 76.0, 56.0];
-    final peakIndices = {1, 6};
-    final labels = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment(-0.85, -1),
-          end: Alignment(0.85, 1),
-          colors: [Color(0x66262626), Color(0x99161616)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('STAFF WORKLOAD', style: GoogleFonts.manrope(
-                fontSize: 10, fontWeight: FontWeight.w700,
-                color: _kGray9C, letterSpacing: 1.0)),
-              Text('Peak at 11:00 AM', style: GoogleFonts.manrope(
-                fontSize: 10, fontWeight: FontWeight.w700, color: kLime)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 80,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: bars.asMap().entries.map((e) {
-                final isPeak = peakIndices.contains(e.key);
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 1),
-                    child: Container(
-                      height: e.value,
-                      decoration: BoxDecoration(
-                        color: isPeak ? kLime : _kBorder26,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                        boxShadow: isPeak ? [BoxShadow(color: kLime.withValues(alpha: 0.30), blurRadius: 10)] : null,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: labels.map((l) => Text(l, style: GoogleFonts.manrope(
-              fontSize: 8, fontWeight: FontWeight.w700,
-              color: _kGray6B, letterSpacing: -0.4))).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTrialsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("Today's Trials", style: GoogleFonts.spaceGrotesk(
-          fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-        const SizedBox(height: 16),
-        Row(
+  Widget _buildProfileTab(user, TenantConfig config) {
+    final auth = context.read<AuthService>();
+    return Scaffold(
+      backgroundColor: kBg,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 72, 24, 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTrialCard('Morning Yoga'),
-            const SizedBox(width: 12),
-            _buildTrialCard('HIIT Intro'),
+            Text('ΠΡΟΦΙΛ', style: GoogleFonts.spaceGrotesk(
+              fontSize: 14, fontWeight: FontWeight.w700, color: kCyan, letterSpacing: 1.4)),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _kDark16,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _kBorder26),
+              ),
+              child: Row(children: [
+                Container(
+                  width: 56, height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF2A3A2A),
+                    border: Border.all(color: kLime.withValues(alpha: 0.4)),
+                  ),
+                  child: const Icon(Icons.person_rounded, color: kLime, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user?.fullName ?? '', style: GoogleFonts.spaceGrotesk(
+                      fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                    const SizedBox(height: 4),
+                    Text('Trainer · ${config.appName}', style: GoogleFonts.manrope(
+                      fontSize: 12, color: _kGray9C)),
+                  ],
+                )),
+              ]),
+            ),
+            const SizedBox(height: 32),
+            if (widget.onSwitchGym != null)
+              _profileAction(
+                icon: Icons.swap_horiz_rounded,
+                label: 'Αλλαγή γυμναστηρίου',
+                color: kCyan,
+                onTap: widget.onSwitchGym!,
+              ),
+            const SizedBox(height: 12),
+            _profileAction(
+              icon: Icons.logout_rounded,
+              label: 'Αποσύνδεση από γυμναστήριο',
+              color: Colors.redAccent,
+              onTap: () async {
+                await auth.logout();
+              },
+            ),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildTrialCard(String name) {
-    return Container(
-      width: 150, height: 80,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _kBorder26, borderRadius: BorderRadius.circular(16)),
-      child: Text(name, style: GoogleFonts.manrope(fontSize: 14, color: Colors.white)),
+  Widget _profileAction({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _kDark16,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _kBorder26),
+        ),
+        child: Row(children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Text(label, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+          const Spacer(),
+          Icon(Icons.chevron_right_rounded, color: _kGray6B, size: 20),
+        ]),
+      ),
     );
   }
+
+  // ── BOTTOM NAV ─────────────────────────────────────────────────────────────
 
   Widget _buildBottomNav() {
+    final items = [
+      (Icons.home_filled, 'ΑΡΧΙΚΗ'),
+      (Icons.calendar_today, 'ΠΡΟΓΡΑΜΜΑ'),
+      (Icons.send_outlined, 'ΜΗΝΥΜΑΤΑ'),
+      (Icons.flight_takeoff_outlined, 'ΑΔΕΙΑ'),
+      (Icons.fitness_center, 'ΠΡΟΓΡΑΜ/ΤΑ'),
+      (Icons.person_outline_rounded, 'ΠΡΟΦΙΛ'),
+    ];
+
     return Container(
-      height: 80,
       decoration: BoxDecoration(
-        color: kBg.withValues(alpha: 0.95),
+        color: kBg.withValues(alpha: 0.97),
         border: const Border(top: BorderSide(color: Color(0xFF262626))),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavItem(Icons.home_filled, 'HOME', true),
-          _buildNavItem(Icons.calendar_today, 'SCHEDULE', false),
-          _buildNavItem(Icons.group_outlined, 'CLIENTS', false),
-          _buildChatNav(),
-          _buildProfileNav(),
-          _buildNavItem(Icons.science_outlined, 'TRIALS', false),
-        ],
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          child: Row(
+            children: items.asMap().entries.map((e) {
+              final active = _tab == e.key;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _tab = e.key),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(e.value.$1, color: active ? kLime : _kGray6B, size: 20),
+                      const SizedBox(height: 4),
+                      Text(e.value.$2, style: GoogleFonts.manrope(
+                        fontSize: 8, fontWeight: FontWeight.w700,
+                        color: active ? kLime : _kGray6B, letterSpacing: 0.9),
+                        textAlign: TextAlign.center),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }
+}
 
-  Widget _buildNavItem(IconData icon, String label, bool active) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: active ? kLime : _kGray6B, size: 20),
-        const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.manrope(
-          fontSize: 9, fontWeight: FontWeight.w700,
-          color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
-      ],
-    );
-  }
-
-  Widget _buildChatNav() {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.send_outlined, color: Color(0xFF6B7280), size: 20),
-            const SizedBox(height: 4),
-            Text('CHAT', style: GoogleFonts.manrope(
-              fontSize: 9, fontWeight: FontWeight.w700,
-              color: _kGray6B, letterSpacing: 0.9)),
-          ],
-        ),
-        Positioned(
-          top: 10, right: -4,
-          child: Container(
-            width: 10, height: 10,
-            decoration: BoxDecoration(
-              color: kCyan, shape: BoxShape.circle,
-              border: Border.all(color: kBg, width: 2)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProfileNav() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 24, height: 24,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: _kGray6B),
-            color: const Color(0xFF3A2E1E),
-          ),
-          child: const Icon(Icons.person, color: Colors.white, size: 14),
-        ),
-        const SizedBox(height: 4),
-        Text('PROFILE', style: GoogleFonts.manrope(
-          fontSize: 9, fontWeight: FontWeight.w700,
-          color: _kGray6B, letterSpacing: 0.9)),
-      ],
-    );
-  }
+// ── Helper ─────────────────────────────────────────────────────────────────────
+class _QuickAction {
+  const _QuickAction(this.icon, this.label, this.badge, this.onTap);
+  final IconData icon;
+  final String label;
+  final Color? badge;
+  final VoidCallback onTap;
 }
