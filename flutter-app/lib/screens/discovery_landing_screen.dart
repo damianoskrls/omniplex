@@ -116,7 +116,11 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   }
 
   void _onFocusChanged() {
-    if (mounted) setState(() => _searchFocused = _searchFocus.hasFocus);
+    // Only activate search mode on focus gain — never deactivate from focus loss
+    // (bottom sheets / pickers steal focus temporarily and must not reset state)
+    if (_searchFocus.hasFocus && mounted) {
+      setState(() => _searchFocused = true);
+    }
   }
 
   Future<void> _loadFeatured() async {
@@ -140,8 +144,11 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     _debounce?.cancel();
     if (v.trim().isEmpty && _activeCategory.isEmpty) {
       if (_searched) setState(() { _results = []; _searched = false; });
+      return;
     }
-    // No auto-search — user submits explicitly (onSubmitted or taps suggestion)
+    if (v.trim().length >= 2) {
+      _debounce = Timer(const Duration(milliseconds: 500), _search);
+    }
   }
 
   Future<void> _search() async {
@@ -465,6 +472,10 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSearchFocusedTopBar(),
+                if (_hasActiveFilters) ...[
+                  const SizedBox(height: 12),
+                  _buildActiveFiltersRow(),
+                ],
                 const SizedBox(height: 28),
                 _buildRecentSearches(),
                 const SizedBox(height: 24),
@@ -545,20 +556,35 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         ),
       ),
       const SizedBox(width: 10),
-      // Single filter button
+      // Filter button — shows lime dot when filters are active
       GestureDetector(
         onTap: _showFilterSheet,
-        child: Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(
-            color: _kCard,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _kBorder),
-          ),
-          alignment: Alignment.center,
-          child: SvgPicture.asset('assets/icons/discovery_filter.svg',
-            width: 16, height: 16,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: _hasActiveFilters ? _kLime.withValues(alpha: 0.12) : _kCard,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _hasActiveFilters ? _kLime : _kBorder),
+              ),
+              alignment: Alignment.center,
+              child: SvgPicture.asset('assets/icons/discovery_filter.svg',
+                width: 16, height: 16,
+                colorFilter: ColorFilter.mode(
+                  _hasActiveFilters ? _kLime : Colors.white, BlendMode.srcIn)),
+            ),
+            if (_hasActiveFilters)
+              Positioned(
+                top: -3, right: -3,
+                child: Container(
+                  width: 10, height: 10,
+                  decoration: const BoxDecoration(
+                    color: _kLime, shape: BoxShape.circle),
+                ),
+              ),
+          ],
         ),
       ),
     ]);
@@ -614,7 +640,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             _filterMinRating  = rating;
             _filterMaxPrice   = price;
           });
-          if (_searched) _search();
+          _search(); // always search after applying filters
         },
         onClearAll: () {
           setState(() {
@@ -622,7 +648,11 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             _filterMinRating  = null;
             _filterMaxPrice   = null;
           });
-          if (_searched) _search();
+          if (_searchCtrl.text.trim().isNotEmpty || _activeCategory.isNotEmpty) {
+            _search();
+          } else if (_searched) {
+            setState(() { _results = []; _searched = false; });
+          }
         },
       ),
     );
