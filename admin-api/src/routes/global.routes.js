@@ -1290,7 +1290,7 @@ router.post('/auth/verify-otp', async (req, res) => {
     let is_new = false;
     if (!user) {
       const id = uuidv4();
-      const name = (full_name || '').trim() || `Χρήστης ${digits.slice(-4)}`;
+      const name = (full_name || '').trim() || '';
       await db.query(
         `INSERT INTO global_users (id, phone, full_name, email) VALUES (?, ?, ?, NULL)`,
         [id, digits, name],

@@ -78,9 +78,12 @@ class _GlobalProfileDetailsScreenState
             children: [
               const SizedBox(height: 32),
 
-              // Back
+              // Back — log out so the new user doesn't remain with an empty/default name
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () async {
+                  await widget.globalAuth.clear();
+                  if (context.mounted) Navigator.pop(context);
+                },
                 child: Container(
                   width: 40, height: 40,
                   decoration: BoxDecoration(
