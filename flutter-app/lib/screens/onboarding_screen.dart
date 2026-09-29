@@ -210,10 +210,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> with TickerProvider
                       child: Container(
                         height: 56,
                         decoration: BoxDecoration(
-                          color: _lime,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(9999),
                           boxShadow: [
-                            BoxShadow(color: _lime.withValues(alpha: 0.35), blurRadius: 12),
+                            BoxShadow(color: Colors.white.withValues(alpha: 0.15), blurRadius: 16),
                           ],
                         ),
                         child: Row(
@@ -363,8 +363,6 @@ class _Slide1Visual extends StatelessWidget {
           right: 4, bottom: -16,
           child: _GymCard(name: _gyms[3].name, sub: _gyms[3].loc, imgUrl: _gyms[3].img),
         ),
-        // OmniPlex logo center
-        SvgPicture.asset('assets/omniplex_logo.svg', height: 40),
       ],
     );
   }

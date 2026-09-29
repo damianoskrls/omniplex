@@ -50,122 +50,137 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
     return Scaffold(
       backgroundColor: _kBg,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 0, 28, 36),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 32),
+        child: Column(
+          children: [
+            // Scrollable content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(28, 0, 28, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 32),
 
-              // Back
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: _kCard,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _kBorder),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
-                ),
-              ),
+                    // Back
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          color: _kCard,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _kBorder),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 18),
+                      ),
+                    ),
 
-              const SizedBox(height: 32),
+                    const SizedBox(height: 32),
 
-              Text(widget.isOptional ? 'Βήμα 2 από 2' : 'ΕΠΙΛΟΓΗ ΡΟΛΟΥ',
-                style: GoogleFonts.manrope(
-                  fontSize: 11, fontWeight: FontWeight.w600,
-                  color: _kGray, letterSpacing: 1.5)),
-              const SizedBox(height: 10),
-              Text('Πώς θα\nχρησιμοποιήσεις\nτο OmniPlex;',
-                style: GoogleFonts.manrope(
-                  fontSize: 30, fontWeight: FontWeight.w700,
-                  color: Colors.white, letterSpacing: -0.75, height: 1.15)),
-              const SizedBox(height: 8),
-              Text('Επέλεξε τον ρόλο σου για να σε κατευθύνουμε σωστά.',
-                style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.55)),
-
-              const SizedBox(height: 36),
-
-              // Ασκούμενος
-              _RoleCard(
-                icon: Icons.fitness_center_rounded,
-                iconColor: _kLime,
-                title: 'Ασκούμενος',
-                subtitle: 'Θέλω να βρω γυμναστήριο, να κάνω κρατήσεις\nκαι να παρακολουθώ την πρόοδό μου.',
-                selected: _selected == GlobalRole.client,
-                onTap: () => setState(() => _selected = GlobalRole.client),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Γυμναστής
-              _RoleCard(
-                icon: Icons.sports_rounded,
-                iconColor: const Color(0xFF3EE6FF),
-                title: 'Γυμναστής / Professional',
-                subtitle: 'Εργάζομαι σε γυμναστήριο ή είμαι personal\ntrainer και θέλω να συνδεθώ με το χώρο μου.',
-                selected: _selected == GlobalRole.trainer,
-                onTap: () => setState(() => _selected = GlobalRole.trainer),
-              ),
-
-              const SizedBox(height: 14),
-
-              // Και τα 2
-              _RoleCard(
-                icon: Icons.diversity_3_rounded,
-                iconColor: const Color(0xFFA78BFA),
-                title: 'Ασκούμενος & Trainer',
-                subtitle: 'Κάνω προπόνηση αλλά και δουλεύω ή προπονώ\nσε γυμναστήριο.',
-                selected: _selected == GlobalRole.both,
-                onTap: () => setState(() => _selected = GlobalRole.both),
-              ),
-
-              const Spacer(),
-
-              // Continue button
-              GestureDetector(
-                onTap: _selected != null ? _next : null,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: _selected != null ? _kLime : _kCard,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _selected != null ? _kLime : _kBorder),
-                    boxShadow: _selected != null ? [
-                      BoxShadow(
-                        color: _kLime.withValues(alpha: 0.28),
-                        blurRadius: 16, offset: const Offset(0, 6)),
-                    ] : null,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text('Συνέχεια',
-                    style: GoogleFonts.manrope(
-                      fontSize: 15, fontWeight: FontWeight.w700,
-                      color: _selected != null ? _kBg : _kGray)),
-                ),
-              ),
-
-              if (widget.isOptional) ...[
-                const SizedBox(height: 16),
-                Center(
-                  child: GestureDetector(
-                    onTap: _skip,
-                    child: Text('Παράλειψη',
+                    Text(widget.isOptional ? 'Βήμα 2 από 2' : 'ΕΠΙΛΟΓΗ ΡΟΛΟΥ',
                       style: GoogleFonts.manrope(
-                        fontSize: 13, fontWeight: FontWeight.w600,
-                        color: _kGray,
-                        decoration: TextDecoration.underline,
-                        decorationColor: _kGray,
-                      )),
-                  ),
+                        fontSize: 11, fontWeight: FontWeight.w600,
+                        color: _kGray, letterSpacing: 1.5)),
+                    const SizedBox(height: 10),
+                    Text('Πώς θα\nχρησιμοποιήσεις\nτο OmniPlex;',
+                      style: GoogleFonts.manrope(
+                        fontSize: 30, fontWeight: FontWeight.w700,
+                        color: Colors.white, letterSpacing: -0.75, height: 1.15)),
+                    const SizedBox(height: 8),
+                    Text('Επέλεξε τον ρόλο σου για να σε κατευθύνουμε σωστά.',
+                      style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.55)),
+
+                    const SizedBox(height: 36),
+
+                    // Ασκούμενος
+                    _RoleCard(
+                      icon: Icons.fitness_center_rounded,
+                      iconColor: _kLime,
+                      title: 'Ασκούμενος',
+                      subtitle: 'Θέλω να βρω γυμναστήριο, να κάνω κρατήσεις\nκαι να παρακολουθώ την πρόοδό μου.',
+                      selected: _selected == GlobalRole.client,
+                      onTap: () => setState(() => _selected = GlobalRole.client),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Γυμναστής
+                    _RoleCard(
+                      icon: Icons.sports_rounded,
+                      iconColor: const Color(0xFF3EE6FF),
+                      title: 'Γυμναστής / Professional',
+                      subtitle: 'Εργάζομαι σε γυμναστήριο ή είμαι personal\ntrainer και θέλω να συνδεθώ με το χώρο μου.',
+                      selected: _selected == GlobalRole.trainer,
+                      onTap: () => setState(() => _selected = GlobalRole.trainer),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Και τα 2
+                    _RoleCard(
+                      icon: Icons.diversity_3_rounded,
+                      iconColor: const Color(0xFFA78BFA),
+                      title: 'Ασκούμενος & Trainer',
+                      subtitle: 'Κάνω προπόνηση αλλά και δουλεύω ή προπονώ\nσε γυμναστήριο.',
+                      selected: _selected == GlobalRole.both,
+                      onTap: () => setState(() => _selected = GlobalRole.both),
+                    ),
+
+                    const SizedBox(height: 8),
+                  ],
                 ),
-              ],
-            ],
-          ),
+              ),
+            ),
+
+            // Fixed bottom buttons
+            Padding(
+              padding: const EdgeInsets.fromLTRB(28, 8, 28, 36),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: _selected != null ? _next : null,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: _selected != null ? _kLime : _kCard,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _selected != null ? _kLime : _kBorder),
+                        boxShadow: _selected != null ? [
+                          BoxShadow(
+                            color: _kLime.withValues(alpha: 0.28),
+                            blurRadius: 16, offset: const Offset(0, 6)),
+                        ] : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text('Συνέχεια',
+                        style: GoogleFonts.manrope(
+                          fontSize: 15, fontWeight: FontWeight.w700,
+                          color: _selected != null ? _kBg : _kGray)),
+                    ),
+                  ),
+
+                  if (widget.isOptional) ...[
+                    const SizedBox(height: 16),
+                    Center(
+                      child: GestureDetector(
+                        onTap: _skip,
+                        child: Text('Παράλειψη',
+                          style: GoogleFonts.manrope(
+                            fontSize: 13, fontWeight: FontWeight.w600,
+                            color: _kGray,
+                            decoration: TextDecoration.underline,
+                            decorationColor: _kGray,
+                          )),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
