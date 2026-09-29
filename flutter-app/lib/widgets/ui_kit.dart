@@ -327,6 +327,8 @@ class FloatingNavBar extends StatelessWidget {
     this.centerAction,
     this.centerIcon = Icons.qr_code_2_rounded,
     this.centerColor,
+    this.centerGradient,
+    this.activeColor,
   });
 
   final int selectedIndex;
@@ -335,10 +337,12 @@ class FloatingNavBar extends StatelessWidget {
   final VoidCallback? centerAction;
   final IconData centerIcon;
   final Color? centerColor;
+  final Gradient? centerGradient;
+  final Color? activeColor;
 
   Widget _buildTab(BuildContext context, int i, FloatingNavItem item) {
     final selected = i == selectedIndex;
-    final primary = context.tenantPrimary;
+    final primary = activeColor ?? context.tenantPrimary;
     return Expanded(
       child: GestureDetector(
         onTap: () => onTap(i),
@@ -401,6 +405,14 @@ class FloatingNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = context.tenantPrimary;
     final accentColor = centerColor ?? primary;
+    final qrGradient = centerGradient ?? LinearGradient(
+      colors: [accentColor, accentColor.withValues(alpha: 0.7)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+    final shadowColor = centerGradient != null
+        ? const Color(0xFF4452D8)
+        : accentColor;
     if (centerAction != null && items.length >= 2) {
       final mid = items.length ~/ 2;
       final leftItems  = items.sublist(0, mid);
@@ -430,15 +442,11 @@ class FloatingNavBar extends StatelessWidget {
                   height: 56,
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [accentColor, accentColor.withValues(alpha: 0.7)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    gradient: qrGradient,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: accentColor.withValues(alpha: 0.45),
+                        color: shadowColor.withValues(alpha: 0.45),
                         blurRadius: 18,
                         offset: const Offset(0, 6),
                       ),

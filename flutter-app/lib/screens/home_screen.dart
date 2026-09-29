@@ -22,6 +22,7 @@ import 'nutrition_screen.dart';
 import 'marketplace_screen.dart';
 import 'goals_screen.dart';
 import 'payments_screen.dart';
+import 'gym_dashboard_screen.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/qr_checkin_sheet.dart';
@@ -45,6 +46,16 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
+
+const _kBrandAccent = Color(0xFF7B3EAD);
+const _kBrandNavGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [
+    Color(0xFF4452D8), Color(0xFF5D49C5), Color(0xFF7B3EAD),
+    Color(0xFFA4308D), Color(0xFFC52473),
+  ],
+);
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static _HomeScreenState? _active;
@@ -94,10 +105,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return [
       // ── Primary (always visible, 2 left of QR) ──────────────
       _TabItem(
-        key: 'packages',
-        icon: Icons.card_membership_outlined,
-        label: 'Πακέτα',
-        screen: const CreditsScreen(),
+        key: 'gym_dashboard',
+        icon: Icons.home_outlined,
+        label: 'My Gym',
+        screen: const GymDashboardScreen(),
       ),
       _TabItem(
         key: 'booking',
@@ -124,6 +135,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         icon: Icons.people_outline_rounded,
         label: 'Κοινότητα',
         screen: const CommunityScreen(),
+      ),
+      _TabItem(
+        key: 'packages',
+        icon: Icons.card_membership_outlined,
+        label: 'Πακέτα',
+        screen: const CreditsScreen(),
       ),
       if (config.featureNutrition && _hasNutritionAccess)
         _TabItem(
@@ -371,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             return;
           }
           setState(() => _index = i);
-          if (tabs[i].key == 'packages' || tabs[i].key == 'booking') {
+          if (tabs[i].key == 'gym_dashboard' || tabs[i].key == 'booking') {
             _loadNutritionAccess();
           }
         },
@@ -385,6 +402,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           MaterialPageRoute(builder: (_) => const MyQrScreen()),
         ),
         centerIcon: Icons.qr_code_2_rounded,
+        centerGradient: _kBrandNavGradient,
+        activeColor: _kBrandAccent,
       ),
     );
   }
