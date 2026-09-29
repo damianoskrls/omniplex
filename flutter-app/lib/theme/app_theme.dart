@@ -45,7 +45,7 @@ class AppTheme {
         hintStyle: const TextStyle(color: AppColors.textSecondary),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: primary, width: 1.5)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
