@@ -70,15 +70,17 @@ class GlobalUser {
   final String id;
   final String email;
   final String fullName;
+  final String phone;
 
-  const GlobalUser({required this.id, required this.email, required this.fullName});
+  const GlobalUser({required this.id, required this.email, required this.fullName, this.phone = ''});
 
   factory GlobalUser.fromJson(Map<String, dynamic> j) => GlobalUser(
     id:       j['id'] as String? ?? '',
     email:    j['email'] as String? ?? '',
     fullName: j['full_name'] as String? ?? '',
+    phone:    j['phone'] as String? ?? '',
   );
-  Map<String, dynamic> toJson() => {'id': id, 'email': email, 'full_name': fullName};
+  Map<String, dynamic> toJson() => {'id': id, 'email': email, 'full_name': fullName, 'phone': phone};
 }
 
 class GlobalAuthService extends ChangeNotifier {

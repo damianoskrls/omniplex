@@ -213,8 +213,10 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
   Future<Map<String, String?>?> _showJoinForm(String role) {
     final user = widget.globalAuth?.user;
-    final nameCtrl       = TextEditingController(text: user?.fullName ?? '');
-    final phoneCtrl      = TextEditingController();
+    final storedName = user?.fullName ?? '';
+    final isDefaultName = RegExp(r'^Χρήστης\s+\d+$').hasMatch(storedName.trim());
+    final nameCtrl       = TextEditingController(text: isDefaultName ? '' : storedName);
+    final phoneCtrl      = TextEditingController(text: user?.phone ?? '');
     final emailCtrl      = TextEditingController(text: (user?.email.isNotEmpty == true) ? user!.email : '');
     final dobCtrl        = TextEditingController(); // date_of_birth (member / both)
     final specialtyCtrl  = TextEditingController(); // specialty (staff / both)
@@ -645,7 +647,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           if (_enteringGym)
             const ColoredBox(
               color: Color(0xAA000000),
-              child: Center(child: CircularProgressIndicator(color: _kLime)),
+              child: Center(child: CircularProgressIndicator(color: Colors.white)),
             ),
         ],
       ),
@@ -693,23 +695,6 @@ class _GymProfileScreenState extends State<GymProfileScreen>
             ),
           ),
 
-          // Logo badge
-          Positioned(
-            left: 20, bottom: -36,
-            child: Container(
-              width: 80, height: 80,
-              decoration: BoxDecoration(
-                color: _kCard,
-                shape: BoxShape.circle,
-                border: Border.all(color: _kBg, width: 4),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: logoUrl != null
-                ? Image.network(logoUrl, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _logoFallback(accent, name))
-                : _logoFallback(accent, name),
-            ),
-          ),
         ],
       ),
     );
@@ -719,9 +704,24 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     final city    = _gym?['city'] as String? ?? '';
     final rating  = (_gym?['rating'] as num?)?.toStringAsFixed(1);
     final reviews = _gym?['review_count'] as int? ?? 0;
+    final logoUrl = _gym?['logo_url'] as String?;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 46, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (logoUrl != null && logoUrl.isNotEmpty) ...[
+          Container(
+            height: 52,
+            constraints: const BoxConstraints(maxWidth: 200),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Image.network(logoUrl, fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox()),
+          ),
+          const SizedBox(height: 14),
+        ],
         _loadingGym
           ? _shimmer(220, 26)
           : Text(name, style: GoogleFonts.manrope(
@@ -756,7 +756,6 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-      height: 48,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: _kCard,
@@ -765,10 +764,12 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       ),
       child: TabBar(
         controller: _tabCtrl,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
-          color: _kLime,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(10),
         ),
         labelStyle: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700),
@@ -940,8 +941,65 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         const SizedBox(height: 14),
         _buildHoursCard(),
         const SizedBox(height: 28),
+
+        _buildContactSection(),
       ]),
     );
+  }
+
+  Widget _buildContactSection() {
+    final phone   = _gym?['phone'] as String?;
+    final email   = _gym?['email'] as String?;
+    final website = _gym?['website'] as String?;
+    final address = _gym?['address'] as String?;
+
+    final items = <Map<String, dynamic>>[
+      if (phone != null && phone.isNotEmpty)
+        {'icon': Icons.phone_outlined, 'label': phone},
+      if (email != null && email.isNotEmpty)
+        {'icon': Icons.email_outlined, 'label': email},
+      if (website != null && website.isNotEmpty)
+        {'icon': Icons.language_outlined, 'label': website},
+      if (address != null && address.isNotEmpty)
+        {'icon': Icons.location_on_outlined, 'label': address},
+    ];
+
+    if (items.isEmpty) return const SizedBox();
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionTitle('Επικοινωνία'),
+      const SizedBox(height: 14),
+      Container(
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _kBorder),
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: Column(
+          children: List.generate(items.length, (i) {
+            final item = items[i];
+            return Container(
+              decoration: BoxDecoration(
+                border: i < items.length - 1
+                  ? const Border(bottom: BorderSide(color: Color(0xFF26272C)))
+                  : null,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(children: [
+                Icon(item['icon'] as IconData, color: _kGray, size: 18),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(item['label'] as String,
+                    style: GoogleFonts.manrope(fontSize: 13, color: Colors.white)),
+                ),
+              ]),
+            );
+          }),
+        ),
+      ),
+      const SizedBox(height: 28),
+    ]);
   }
 
   Widget _buildHoursCard() {
@@ -1056,7 +1114,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                   onTap: () => setState(() => _scheduleDay = day),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isSelected ? _kLime : Colors.transparent,
+                      color: isSelected ? Colors.white : Colors.transparent,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     alignment: Alignment.center,
@@ -1072,7 +1130,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                             bottom: -4, left: 0, right: 0,
                             child: Center(child: Container(
                               width: 4, height: 4,
-                              decoration: const BoxDecoration(color: _kLime, shape: BoxShape.circle),
+                              decoration: const BoxDecoration(color: Colors.white54, shape: BoxShape.circle),
                             )),
                           ),
                       ],
@@ -1159,7 +1217,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   Widget _buildPackagesTab() {
     if (_loadingPkgs) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const CircularProgressIndicator(color: _kLime),
+        const CircularProgressIndicator(color: Colors.white),
         const SizedBox(height: 12),
         Text('Φόρτωση πακέτων...', style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
       ]));
@@ -1203,6 +1261,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     final cents    = (plan['price_cents'] as int?) ?? 0;
     final euros    = (cents / 100).toStringAsFixed(cents % 100 == 0 ? 0 : 2);
     final svcName  = plan['service_name'] as String?;
+    final imageUrl = plan['image_url'] as String?;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1211,68 +1270,82 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _kBorder),
       ),
-      padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Expanded(
-            child: Text(name, style: GoogleFonts.manrope(
-              fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+        if (imageUrl != null && imageUrl.isNotEmpty)
+          Image.network(
+            imageUrl,
+            width: double.infinity,
+            height: 150,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const SizedBox(),
           ),
-          Text('€$euros',
-            style: GoogleFonts.manrope(
-              fontSize: 20, fontWeight: FontWeight.w800, color: _kLime)),
-        ]),
 
-        if (svcName != null && svcName.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(svcName, style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
-        ],
-
-        const SizedBox(height: 10),
-
-        // Meta pills
-        Wrap(spacing: 8, children: [
-          if (sessions != null)
-            _metaPill('$sessions ${sessions == 1 ? 'συνεδρία' : 'συνεδρίες'}',
-              Icons.fitness_center_outlined),
-          if (billing != null)
-            _metaPill(_billingLabel(billing), Icons.calendar_today_outlined),
-        ]),
-
-        const SizedBox(height: 14),
-
-        _isMember
-          ? Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: _kLime.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _kLime.withValues(alpha: 0.3)),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Expanded(
+                child: Text(name, style: GoogleFonts.manrope(
+                  fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.check_circle_outline, color: _kLime, size: 16),
-                const SizedBox(width: 6),
-                Text('Είσαι ήδη μέλος',
-                  style: GoogleFonts.manrope(
-                    fontSize: 13, fontWeight: FontWeight.w700, color: _kLime)),
-              ]),
-            )
-          : GestureDetector(
-              onTap: () => _purchasePlan(plan),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                  color: _kLime,
-                  borderRadius: BorderRadius.circular(12),
+              Text('€$euros',
+                style: GoogleFonts.manrope(
+                  fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+            ]),
+
+            if (svcName != null && svcName.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(svcName, style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+            ],
+
+            const SizedBox(height: 10),
+
+            // Meta pills
+            Wrap(spacing: 8, children: [
+              if (sessions != null)
+                _metaPill('$sessions ${sessions == 1 ? 'συνεδρία' : 'συνεδρίες'}',
+                  Icons.fitness_center_outlined),
+              if (billing != null)
+                _metaPill(_billingLabel(billing), Icons.calendar_today_outlined),
+            ]),
+
+            const SizedBox(height: 14),
+
+            _isMember
+              ? Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
+                    const SizedBox(width: 6),
+                    Text('Είσαι ήδη μέλος',
+                      style: GoogleFonts.manrope(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                  ]),
+                )
+              : GestureDetector(
+                  onTap: () => _purchasePlan(plan),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text('Αγορά πακέτου – €$euros',
+                      style: GoogleFonts.manrope(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: _kBg, letterSpacing: 0.3)),
+                  ),
                 ),
-                alignment: Alignment.center,
-                child: Text('Αγορά πακέτου – €$euros',
-                  style: GoogleFonts.manrope(
-                    fontSize: 13, fontWeight: FontWeight.w700, color: _kBg, letterSpacing: 0.3)),
-              ),
-            ),
+          ]),
+        ),
       ]),
     );
   }
@@ -1357,13 +1430,13 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                     alignment: Alignment.center,
                     child: _joiningGym
                       ? const SizedBox(width: 18, height: 18,
-                          child: CircularProgressIndicator(color: _kLime, strokeWidth: 2))
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          const Icon(Icons.add_circle_outline, color: _kLime, size: 16),
+                          const Icon(Icons.add_circle_outline, color: Colors.white, size: 16),
                           const SizedBox(width: 6),
                           Text('Προσθήκη στα γυμναστήριά μου',
                             style: GoogleFonts.manrope(
-                              fontSize: 13, fontWeight: FontWeight.w600, color: _kLime)),
+                              fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                         ]),
                   ),
                 ),
@@ -1402,7 +1475,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: onTap == null ? _kLime.withValues(alpha: 0.5) : _kLime,
+          color: onTap == null ? Colors.white.withValues(alpha: 0.5) : Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.center,

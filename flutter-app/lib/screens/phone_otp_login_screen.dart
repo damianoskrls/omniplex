@@ -171,7 +171,10 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
 
   void _routeAfterLogin(Map<String, dynamic> result) {
     final isNew = result['is_new'] == true;
-    final hasName = (widget.globalAuth.user?.fullName ?? '').trim().isNotEmpty;
+    final name = (widget.globalAuth.user?.fullName ?? '').trim();
+    // Treat empty name or the default "Χρήστης XXXX" pattern as missing
+    final hasName = name.isNotEmpty &&
+        !RegExp(r'^Χρήστης\s+\d+$').hasMatch(name);
     if (isNew || !hasName) {
       _goProfileDetails();
     } else if (widget.globalAuth.preferredRole == null) {

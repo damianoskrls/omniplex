@@ -39,17 +39,7 @@ export default function JoinRequests() {
         const path = data.record_role === 'staff'
           ? `/staff/${data.record_id}`
           : `/clients/${data.record_id}`;
-        toast((t) => (
-          <span>
-            {data.record_role === 'staff' ? 'Trainer' : 'Πελάτης'} δημιουργήθηκε.{' '}
-            <button
-              onClick={() => { toast.dismiss(t.id); navigate(path); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 700, color: '#76C043' }}
-            >
-              Προβολή →
-            </button>
-          </span>
-        ), { duration: 6000 });
+        navigate(path);
       }
     } catch (e) {
       toast.error(e.response?.data?.error || 'Σφάλμα');

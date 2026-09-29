@@ -7471,6 +7471,29 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
       }
     }
 
+    // Send push notification to the global user
+    if (status === 'approved' && jr.global_user_id) {
+      try {
+        const [[biz]] = await db.query('SELECT name, app_name FROM businesses WHERE id = ?', [req.admin.businessId]);
+        const gymName = biz?.app_name || biz?.name || 'το γυμναστήριο';
+        const { sendFcm } = require('../lib/push');
+        const { getGlobalUserFcmTokens } = require('./global.routes');
+        const tokens = await getGlobalUserFcmTokens(jr.global_user_id);
+        if (tokens.length) {
+          const isStaff = jr.role === 'staff';
+          await sendFcm(tokens, {
+            title: isStaff ? 'Εγκρίθηκες ως Trainer!' : `Εγκρίθηκες στο ${gymName}!`,
+            body: isStaff
+              ? `Το αίτημά σου για trainer στο ${gymName} εγκρίθηκε. Άνοιξε το OmniPlex!`
+              : `Τo αίτημά σου εγκρίθηκε. Άνοιξε το OmniPlex για να δεις τα πακέτα σου.`,
+            data: { type: 'join_approved', gym_name: gymName, role: jr.role },
+          });
+        }
+      } catch (pushErr) {
+        console.error('[NOTIFY] join-request push failed:', pushErr.message);
+      }
+    }
+
     return res.json({ ok: true, record_id: recordId, record_role: recordRole });
   } catch (err) {
     return res.status(500).json({ error: err.message });
