@@ -103,7 +103,7 @@ function PendingAvailabilityRequests({ staffId, onResolved }) {
   const [requests, setRequests] = useState([]);
 
   const load = () => api.get(`/client-admin/staff/${staffId}/availability-requests`, { params: { status: 'pending' } })
-    .then(r => setRequests(r.data))
+    .then(r => setRequests(Array.isArray(r.data) ? r.data : []))
     .catch(() => {});
 
   useEffect(() => { load(); }, [staffId]);
@@ -170,7 +170,7 @@ function LeavesSection({ staffId }) {
   const [saving, setSaving] = useState(false);
 
   const load = () => api.get(`/client-admin/staff/${staffId}/leaves`)
-    .then(r => setLeaves(r.data)).catch(() => {});
+    .then(r => setLeaves(Array.isArray(r.data) ? r.data : [])).catch(() => {});
 
   useEffect(() => { load(); }, [staffId]);
 
