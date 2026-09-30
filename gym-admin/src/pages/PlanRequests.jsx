@@ -6,16 +6,20 @@ import toast from 'react-hot-toast';
 export default function PlanRequests() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [trialFor, setTrialFor] = useState(null);
   const [when, setWhen] = useState({ date: '', time: '18:00' });
 
   async function load() {
     setLoading(true);
+    setLoadError('');
     try {
       const r = await api.get('/client-admin/plan-requests');
       setRows(r.data || []);
-    } catch {
-      toast.error('Σφάλμα φόρτωσης');
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Σφάλμα φόρτωσης';
+      setLoadError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -67,7 +71,9 @@ export default function PlanRequests() {
       <p style={{ color: 'var(--text-2)', marginTop: -8, marginBottom: 16, maxWidth: 720 }}>
         Όταν ένα μέλος ζητάει άλλο πρόγραμμα, το βλέπεις εδώ. Αν ζητάει εγγραφή, η αποδοχή προσθέτει το πακέτο και η πληρωμή μένει εκκρεμής στην καρτέλα του. Αν ζητάει δοκιμαστικό, ορίζεις μέρα και ώρα.
       </p>
-      {loading ? <div className="text-muted">Φόρτωση…</div> : pending.length === 0 ? (
+      {loading ? <div className="text-muted">Φόρτωση…</div> : loadError ? (
+        <div className="card" style={{ color: 'var(--danger, #dc2626)' }}>{loadError}</div>
+      ) : pending.length === 0 ? (
         <div className="card text-muted">Δεν υπάρχουν εκκρεμή αιτήματα.</div>
       ) : pending.map(row => (
         <div key={row.id} className="card" style={{ marginBottom: 12 }}>

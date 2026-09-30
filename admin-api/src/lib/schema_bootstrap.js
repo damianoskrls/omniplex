@@ -308,8 +308,9 @@ async function bootstrapSchema() {
         resolved_at  DATETIME    NULL,
         INDEX idx_ppr_biz (business_id, status),
         INDEX idx_ppr_user (user_id, plan_id)
-      )
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    await db.query('ALTER TABLE plan_purchase_requests CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
     console.log('✓ Schema: plan purchase requests ready');
   } catch (err) {
     console.warn('plan purchase requests skipped:', err.message);

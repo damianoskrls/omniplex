@@ -27,11 +27,11 @@ router.get('/', requireAdmin, async (req, res) => {
       `SELECT r.id, r.kind, r.status, r.created_at, r.resolved_at, r.user_id, r.plan_id, r.service_id,
               u.full_name, u.phone, bp.name AS plan_name, bp.price_cents, s.name AS service_name
        FROM plan_purchase_requests r
-       JOIN users u ON u.id = r.user_id
-       JOIN business_plans bp ON bp.id = r.plan_id
-       LEFT JOIN services s ON s.id = r.service_id
+       JOIN users u ON u.id = (r.user_id COLLATE utf8mb4_unicode_ci)
+       JOIN business_plans bp ON bp.id = (r.plan_id COLLATE utf8mb4_unicode_ci)
+       LEFT JOIN services s ON s.id = (r.service_id COLLATE utf8mb4_unicode_ci)
        WHERE r.business_id = ?
-       ORDER BY r.status = 'pending' DESC, r.created_at DESC
+       ORDER BY (r.status COLLATE utf8mb4_unicode_ci) = (_utf8mb4'pending' COLLATE utf8mb4_unicode_ci) DESC, r.created_at DESC
        LIMIT 100`,
       [req.bizId],
     );
@@ -45,8 +45,8 @@ router.post('/:id/reject', requireAdmin, async (req, res) => {
   try {
     const [[row]] = await db.query(
       `SELECT r.*, bp.name AS plan_name FROM plan_purchase_requests r
-       JOIN business_plans bp ON bp.id = r.plan_id
-       WHERE r.id = ? AND r.business_id = ? AND r.status = 'pending'`,
+       JOIN business_plans bp ON bp.id = (r.plan_id COLLATE utf8mb4_unicode_ci)
+       WHERE r.id = ? AND r.business_id = ? AND (r.status COLLATE utf8mb4_unicode_ci) = (_utf8mb4'pending' COLLATE utf8mb4_unicode_ci)`,
       [req.params.id, req.bizId],
     );
     if (!row) return res.status(404).json({ error: 'Το αίτημα δεν βρέθηκε' });
@@ -72,7 +72,7 @@ router.post('/:id/accept', requireAdmin, async (req, res) => {
   const conn = await db.getConnection();
   try {
     const [[row]] = await conn.query(
-      `SELECT * FROM plan_purchase_requests WHERE id = ? AND business_id = ? AND status = 'pending'`,
+      `SELECT * FROM plan_purchase_requests WHERE id = ? AND business_id = ? AND (status COLLATE utf8mb4_unicode_ci) = (_utf8mb4'pending' COLLATE utf8mb4_unicode_ci)`,
       [req.params.id, req.bizId],
     );
     if (!row) return res.status(404).json({ error: 'Το αίτημα δεν βρέθηκε' });
