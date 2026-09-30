@@ -43,12 +43,13 @@ class _DropinScreenState extends State<DropinScreen> {
       _dropInLocations = dropIns.isNotEmpty ? dropIns : locs.locations;
       _locationId = _dropInLocations.isNotEmpty ? _dropInLocations.first.id : null;
       final svcs = await api.fetchDropinServices(locationId: _locationId);
+      final owned = (await api.fetchServices()).map((s) => s.id).toSet();
+      final missing = svcs.where((s) => !owned.contains(s['id'])).toList();
+      final shown = missing.isNotEmpty ? missing : svcs;
       setState(() {
-        _services = svcs;
-        if (svcs.isNotEmpty) {
-          _selectedService = svcs.first;
-          _selectedServiceId = svcs.first['id'] as String;
-        }
+        _services = shown;
+        _selectedService = shown.isNotEmpty ? shown.first : null;
+        _selectedServiceId = shown.isNotEmpty ? shown.first['id'] as String : null;
       });
       if (_selectedServiceId != null) await _loadSlots();
     } catch (e) {
@@ -64,12 +65,16 @@ class _DropinScreenState extends State<DropinScreen> {
       _loadingServices = true;
     });
     try {
-      final svcs = await context.read<AuthService>().api.fetchDropinServices(locationId: id);
+      final api = context.read<AuthService>().api;
+      final svcs = await api.fetchDropinServices(locationId: id);
+      final owned = (await api.fetchServices()).map((s) => s.id).toSet();
+      final missing = svcs.where((s) => !owned.contains(s['id'])).toList();
+      final shown = missing.isNotEmpty ? missing : svcs;
       if (!mounted) return;
       setState(() {
-        _services = svcs;
-        _selectedService = svcs.isNotEmpty ? svcs.first : null;
-        _selectedServiceId = svcs.isNotEmpty ? svcs.first['id'] as String : null;
+        _services = shown;
+        _selectedService = shown.isNotEmpty ? shown.first : null;
+        _selectedServiceId = shown.isNotEmpty ? shown.first['id'] as String : null;
       });
       if (_selectedServiceId != null) await _loadSlots();
     } catch (e) {

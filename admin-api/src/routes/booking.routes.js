@@ -49,7 +49,7 @@ const {
 } = require('../lib/message_upload');
 const { assertImageUploadAllowed } = require('../lib/message_attachments');
 const { buildGymInfoPayload } = require('../lib/gym_info');
-const { awardLoyaltyPoints, getUserStats } = require('../lib/loyalty');
+const { awardLoyaltyPoints, getUserStats, previewRewardPrice, applyRewardPrice } = require('../lib/loyalty');
 const { mapPaymentRow } = require('../lib/payments');
 const { createOneBooking, assertNoUserBookingConflict } = require('../lib/create_booking');
 const {
@@ -306,8 +306,78 @@ function requireCustomer(req, res) {
 router.get('/:bizId/extra-services', softAuth, async (req, res) => {
   if (!requireCustomer(req, res)) return;
   try {
-    const services = await listExtraServices(db, req.params.bizId, req.user.userId);
-    return res.json({ services });
+    const bizId = req.params.bizId;
+    const userId = req.user.userId;
+    const services = await listExtraServices(db, bizId, userId);
+    const [pending] = await db.query(
+      `SELECT plan_id, kind FROM plan_purchase_requests
+       WHERE business_id = ? AND user_id = ? AND status = 'pending'`,
+      [bizId, userId],
+    ).catch(() => [[]]);
+    const pendingByPlan = new Map((pending || []).map((row) => [row.plan_id, row.kind]));
+    for (const service of services) {
+      for (const plan of service.plans || []) {
+        plan.pending_kind = pendingByPlan.get(plan.id) || null;
+      }
+    }
+    const [[prov]] = await db.query(
+      'SELECT config FROM payment_providers WHERE business_id = ? AND is_active = 1 LIMIT 1',
+      [bizId],
+    );
+    let stripeReady = false;
+    if (prov?.config) {
+      const cfg = typeof prov.config === 'string' ? JSON.parse(prov.config) : prov.config;
+      stripeReady = !!(cfg.secret_key && cfg.publishable_key);
+    }
+    return res.json({ services, stripe_ready: stripeReady });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/:bizId/plan-request', softAuth, async (req, res) => {
+  if (!requireCustomer(req, res)) return;
+  const { plan_id, kind, service_id } = req.body || {};
+  if (!plan_id) return res.status(400).json({ error: 'Διάλεξε πακέτο' });
+  if (kind !== 'trial' && kind !== 'enroll') {
+    return res.status(400).json({ error: 'Διάλεξε δοκιμαστικό ή εγγραφή στο πακέτο' });
+  }
+  const bizId = req.params.bizId;
+  const userId = req.user.userId;
+  try {
+    const plan = await loadPlanForBusiness(db, bizId, plan_id);
+    if (!plan) return res.status(404).json({ error: 'Το πακέτο δεν βρέθηκε' });
+    const [[existing]] = await db.query(
+      `SELECT id FROM plan_purchase_requests
+       WHERE business_id = ? AND user_id = ? AND plan_id = ? AND status = 'pending'`,
+      [bizId, userId, plan_id],
+    );
+    if (existing) return res.status(400).json({ error: 'Υπάρχει ήδη εκκρεμές αίτημα για αυτό το πακέτο' });
+    const id = uuidv4();
+    await db.query(
+      `INSERT INTO plan_purchase_requests (id, business_id, user_id, plan_id, service_id, kind)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, bizId, userId, plan_id, service_id || plan.service_ids?.[0] || null, kind],
+    );
+    const [[user]] = await db.query('SELECT full_name FROM users WHERE id = ?', [userId]);
+    const label = kind === 'trial' ? 'δοκιμαστικό' : 'εγγραφή στο πακέτο';
+    try {
+      const { createAdminNotification } = require('../lib/notifications');
+      await createAdminNotification(db, {
+        businessId: bizId,
+        type: 'plan_request',
+        title: kind === 'trial' ? 'Αίτημα δοκιμαστικού' : 'Αίτημα πακέτου',
+        body: `${user?.full_name || 'Πελάτης'} ζήτησε ${label}: ${plan.name}.`,
+        payload: { request_id: id, user_id: userId, plan_id, kind },
+      });
+    } catch (_) {}
+    return res.json({
+      ok: true,
+      id,
+      message: kind === 'trial'
+        ? 'Το αίτημα δοκιμαστικού στάλθηκε στο γυμναστήριο.'
+        : 'Το αίτημα εγγραφής στάλθηκε. Το γυμναστήριο θα το δει και θα περάσει την πληρωμή.',
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -1986,9 +2056,10 @@ router.post('/:bizId/dropin/payment-intent', softAuth, async (req, res) => {
     );
     if (!svc) return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε ή δεν έχει drop-in τιμή' });
 
+    const priced = await previewRewardPrice(conn, req.user?.userId, req.params.bizId, svc.drop_in_price_cents);
     const { createPaymentIntent } = require('../lib/online_payments');
     const intent = await createPaymentIntent(conn, req.params.bizId, {
-      amountCents: svc.drop_in_price_cents,
+      amountCents: priced.priceCents,
       metadata: { service_id, service_name: svc.name },
       userId: req.user?.userId || null,
       userEmail: req.user?.email || null,
@@ -2051,6 +2122,11 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
     } else if (!(svc.drop_in_price_cents > 0)) {
       await conn.rollback();
       return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε' });
+    }
+
+    if (req.user?.userId) {
+      const priced = await applyRewardPrice(conn, req.user.userId, bizId, svc.drop_in_price_cents);
+      svc.drop_in_price_cents = priced.priceCents;
     }
 
     // Capacity check: count bookings + dropin_bookings for this slot

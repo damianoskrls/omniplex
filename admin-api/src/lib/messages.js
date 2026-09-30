@@ -1006,6 +1006,30 @@ async function sendClientMessage(conn, actor, { body, threadId, peer: peerInput,
     `SELECT peer_role FROM message_threads WHERE id = ? LIMIT 1`,
     [threadRow.id]
   );
+  try {
+    const previewText = type === 'image' ? 'Φωτογραφία' : (text.length > 100 ? `${text.slice(0, 100)}…` : text);
+    let staffId = null;
+    const [[thread]] = await conn.execute(
+      'SELECT peer_role, peer_staff_id, peer_nutritionist_id FROM message_threads WHERE id = ?',
+      [threadRow.id],
+    );
+    if (thread?.peer_role === 'trainer') staffId = thread.peer_staff_id;
+    if (thread?.peer_role === 'nutritionist' && thread.peer_nutritionist_id) {
+      const [[nut]] = await conn.execute('SELECT staff_id FROM nutritionists WHERE id = ?', [thread.peer_nutritionist_id]);
+      staffId = nut?.staff_id || null;
+    }
+    if (staffId) {
+      const tokens = await getUserFcmTokens(conn, staffId);
+      if (tokens.length) {
+        await sendFcm(tokens, {
+          title: senderName,
+          body: previewText,
+          data: { type: 'message', thread_id: threadRow.id },
+        });
+      }
+    }
+  } catch (_) {}
+
   if (threadMeta[0]?.peer_role === 'admin') {
     try {
       await createAdminNotification(conn, actor.businessId, {

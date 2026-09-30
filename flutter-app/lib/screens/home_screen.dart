@@ -32,6 +32,7 @@ import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/qr_checkin_sheet.dart';
 import 'ai_agent_screen.dart';
+import 'member_intake_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialTab = 0, this.onSwitchGym, this.onRemoveGym});
@@ -108,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<_TabItem> get _tabItems {
     final config = context.read<TenantConfig>();
     final user = context.read<AuthService>().user;
-    if (user?.isNutritionist == true) {
+    if (user?.isNutritionist == true && user?.staffKind == 'nutritionist') {
       return [
         _TabItem(
           key: 'nutrition_clients',
@@ -251,6 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshUnread();
       _loadNutritionAccess();
+      MemberIntakeScreen.promptIfNeeded(context);
     });
     _unreadTimer = Timer.periodic(const Duration(seconds: 45), (_) => _refreshUnread());
   }

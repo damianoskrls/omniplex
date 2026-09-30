@@ -115,12 +115,64 @@ function sendFcmLegacy(tokens, { title, body, data, imageUrl }, serverKey) {
   });
 }
 
-async function getUserFcmTokens(dbConn, userId) {
+async function getGlobalUserFcmTokens(dbConn, globalUserId) {
+  if (!globalUserId) return [];
   const [rows] = await dbConn.query(
-    'SELECT fcm_token FROM device_tokens WHERE user_id = ?',
-    [userId]
+    'SELECT fcm_token FROM global_device_tokens WHERE global_user_id = ?',
+    [globalUserId],
   );
-  return rows.map(r => r.fcm_token);
+  return rows.map((r) => r.fcm_token).filter(Boolean);
 }
 
-module.exports = { sendFcm, getUserFcmTokens, absoluteMediaUrl };
+/** Gym device tokens plus the OmniPlex token, so pushes arrive outside the gym too. */
+async function getUserFcmTokens(dbConn, userId) {
+  if (!userId) return [];
+  const [gymRows] = await dbConn.query(
+    'SELECT fcm_token FROM device_tokens WHERE user_id = ?',
+    [userId],
+  );
+  let globalUserId = null;
+  const [[member]] = await dbConn.query(
+    'SELECT global_user_id FROM users WHERE id = ?',
+    [userId],
+  );
+  globalUserId = member?.global_user_id || null;
+  if (!globalUserId) {
+    const [[staff]] = await dbConn.query(
+      'SELECT global_user_id FROM staff WHERE id = ?',
+      [userId],
+    );
+    globalUserId = staff?.global_user_id || null;
+  }
+  const globalTokens = await getGlobalUserFcmTokens(dbConn, globalUserId);
+  return [...new Set([...gymRows.map((r) => r.fcm_token), ...globalTokens].filter(Boolean))];
+}
+
+async function sendFcmMany(tokens, payload) {
+  const admin = getAdmin();
+  const unique = [...new Set((tokens || []).filter(Boolean))];
+  if (!unique.length) return { sent: 0, failure: 0, skipped: true };
+  if (!admin || typeof admin.messaging().sendEachForMulticast !== 'function') {
+    return sendFcm(unique, payload);
+  }
+  const stringData = Object.fromEntries(
+    Object.entries(payload.data || {}).map(([k, v]) => [k, String(v)]),
+  );
+  let sent = 0;
+  let failure = 0;
+  for (let i = 0; i < unique.length; i += 500) {
+    const chunk = unique.slice(i, i + 500);
+    const res = await admin.messaging().sendEachForMulticast({
+      tokens: chunk,
+      notification: { title: payload.title, body: payload.body },
+      data: stringData,
+      android: { priority: 'high', notification: { channelId: 'bookup_push', sound: 'default', priority: 'high' } },
+      apns: { payload: { aps: { sound: 'default' } } },
+    });
+    sent += res.successCount || 0;
+    failure += res.failureCount || 0;
+  }
+  return { sent, failure, skipped: false };
+}
+
+module.exports = { sendFcm, sendFcmMany, getUserFcmTokens, getGlobalUserFcmTokens, absoluteMediaUrl };

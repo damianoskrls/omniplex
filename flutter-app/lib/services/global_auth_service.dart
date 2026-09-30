@@ -231,13 +231,47 @@ class GlobalAuthService extends ChangeNotifier {
     await refreshGyms();
   }
 
+  Future<Map<String, dynamic>> submitJoinRequest({
+    required String businessId,
+    required String role,
+    String? specialty,
+    String? fullName,
+    String? phone,
+    String? email,
+    String? locationId,
+  }) async {
+    if (_token == null) throw 'Not logged in';
+    final res = await http.post(
+      Uri.parse('$_apiBase/global/join-requests'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_token'},
+      body: jsonEncode({
+        'business_id': businessId,
+        'role': role,
+        if (specialty != null) 'specialty': specialty,
+        if (fullName != null) 'full_name': fullName,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (locationId != null) 'location_id': locationId,
+      }),
+    );
+    final body = jsonDecode(res.body);
+    if (body is! Map<String, dynamic>) throw 'Το αίτημα δεν στάλθηκε';
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw body['message'] ?? body['error'] ?? 'Το αίτημα δεν στάλθηκε';
+    }
+    return body;
+  }
+
   /// Get a per-gym trainer JWT for a staff-linked global user
-  Future<String> getTrainerToken(String businessId) async {
+  Future<String> getTrainerToken(String businessId, {String? asKind}) async {
     if (_token == null) throw 'Not logged in';
     final res = await http.post(
       Uri.parse('$_apiBase/global/trainer-token'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_token'},
-      body: jsonEncode({'business_id': businessId}),
+      body: jsonEncode({
+        'business_id': businessId,
+        if (asKind != null) 'as': asKind,
+      }),
     );
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 200) throw body['error'] ?? 'Failed to get trainer token';

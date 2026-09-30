@@ -579,7 +579,12 @@ router.get('/staff/me', async (req, res) => {
       [decoded.staffId],
     );
     if (!s) return res.status(404).json({ error: 'Δεν βρέθηκε' });
-    const isNutritionist = Number(s.is_nutritionist) === 1 || decoded.role === 'nutritionist';
+    const nutritionByRole = /διατροφ|nutri/i.test(s.role || '');
+    const trainerByRole = /trainer|γυμναστ|coach|personal/i.test(s.role || '');
+    const isNutritionist = Number(s.is_nutritionist) === 1 || nutritionByRole || decoded.role === 'nutritionist';
+    const staffKind = (isNutritionist && !trainerByRole) || decoded.role === 'nutritionist'
+      ? 'nutritionist'
+      : (/φυσιο|physio/i.test(s.role || '') ? 'physiotherapist' : 'trainer');
     return res.json({
       id:          s.id,
       full_name:   s.full_name,
@@ -590,7 +595,7 @@ router.get('/staff/me', async (req, res) => {
       bio:         s.bio,
       business_id: s.business_id,
       is_nutritionist: isNutritionist,
-      staff_kind: isNutritionist ? 'nutritionist' : (/φυσιο|physio/i.test(s.role || '') ? 'physiotherapist' : 'trainer'),
+      staff_kind: staffKind,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });

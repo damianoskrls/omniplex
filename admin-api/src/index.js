@@ -26,6 +26,9 @@ const gdprRoutes            = require('./routes/gdpr.routes');
 const campaignsRoutes       = require('./routes/campaigns.routes');
 const questionnairesRoutes  = require('./routes/questionnaires.routes');
 const remindersRoutes       = require('./routes/reminders.routes');
+const loyaltyRoutes         = require('./routes/loyalty.routes');
+const memberIntakeRoutes    = require('./routes/member_intake.routes');
+const planRequestRoutes     = require('./routes/plan_requests.routes');
 const { router: globalRoutes } = require('./routes/global.routes');
 const { startNotificationWorker } = require('./lib/notification_worker');
 const { startMessageAttachmentWorker } = require('./lib/message_attachments');
@@ -70,6 +73,9 @@ app.use('/api/gdpr',            gdprRoutes);
 app.use('/api/campaigns',       campaignsRoutes);
 app.use('/api/questionnaires',  questionnairesRoutes);
 app.use('/api/reminders',       remindersRoutes);
+app.use('/api/loyalty',         loyaltyRoutes);
+app.use('/api/member',          memberIntakeRoutes);
+app.use('/api/client-admin/plan-requests', planRequestRoutes);
 app.use('/api/global',          globalRoutes);
 
 // Health check

@@ -526,24 +526,24 @@ class _GymSplashScreenState extends State<GymSplashScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 108, height: 108,
-                  decoration: BoxDecoration(
-                    color: primary.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: primary.withValues(alpha: 0.25), width: 1.5),
-                  ),
-                  child: config.logoUrl != null && config.logoUrl!.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(28),
-                        child: Image.network(
-                          config.logoUrl!,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => _GymInitial(name: config.appName, color: primary),
-                        ),
-                      )
-                    : _GymInitial(name: config.appName, color: primary),
-                ),
+                if (config.logoUrl != null && config.logoUrl!.isNotEmpty)
+                  Container(
+                    constraints: const BoxConstraints(maxWidth: 240, minHeight: 72, maxHeight: 120),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Image.network(
+                      config.logoUrl!,
+                      width: 200,
+                      height: 88,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => _GymInitial(name: config.appName, color: primary),
+                    ),
+                  )
+                else
+                  _GymInitial(name: config.appName, color: primary),
                 const SizedBox(height: 28),
                 Text(
                   config.appName,

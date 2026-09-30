@@ -113,6 +113,7 @@ export default function GdprSign() {
   return (
     <GdprShell gymName={data.gym_name}>
       <div style={{ marginBottom: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: '1.15rem', marginBottom: 8 }}>{data.title || 'Ηλεκτρονική εγγραφή'}</div>
         <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: 4 }}>Πελάτης</div>
         <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{data.full_name}</div>
       </div>

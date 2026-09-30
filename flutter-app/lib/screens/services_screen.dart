@@ -80,7 +80,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
       var dropInAllowed = false;
       try {
         final locs = await api.fetchLocations();
-        dropInAllowed = locs.locations.any((l) => l.acceptsDropIn);
+        final dropins = await api.fetchDropinServices();
+        final owned = services.map((s) => s.id).toSet();
+        dropInAllowed = dropins.any((s) => !owned.contains(s['id']))
+            || locs.locations.any((l) => l.acceptsDropIn);
       } catch (_) {}
 
       // Load occupancy + open-access services in parallel
@@ -129,7 +132,13 @@ class _ServicesScreenState extends State<ServicesScreen> {
           final programs = await api.fetchMyPrograms(userId);
           for (final p in programs) {
             final sid = p['service_id'] as String?;
-            if (sid != null) serviceHasPrograms[sid] = true;
+            if (sid != null && sid.isNotEmpty) serviceHasPrograms[sid] = true;
+            final extra = p['service_ids'];
+            if (extra is List) {
+              for (final id in extra) {
+                if (id is String && id.isNotEmpty) serviceHasPrograms[id] = true;
+              }
+            }
           }
         }
       } catch (_) {}
@@ -264,7 +273,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Drop-in', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                        Text('Κλείσε μία συνεδρία χωρίς συνδρομή', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text('Αγόρασε μία συνεδρία για υπηρεσία που δεν έχεις', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                   ),

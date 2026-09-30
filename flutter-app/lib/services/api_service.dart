@@ -476,11 +476,27 @@ class ApiService {
     return NutritionGoals.fromJson(_decode(res) as Map<String, dynamic>);
   }
 
-  Future<List<Map<String, dynamic>>> fetchExtraServices() async {
+  Future<({List<Map<String, dynamic>> services, bool stripeReady})> fetchExtraServices() async {
     final res = await _get('/api/booking/$bizId/extra-services');
     final data = _decode(res);
     final list = data is Map ? (data['services'] as List? ?? []) : <dynamic>[];
-    return list.cast<Map<String, dynamic>>();
+    return (
+      services: list.cast<Map<String, dynamic>>(),
+      stripeReady: data is Map && data['stripe_ready'] == true,
+    );
+  }
+
+  Future<Map<String, dynamic>> requestExtraPlan({
+    required String planId,
+    required String kind,
+    String? serviceId,
+  }) async {
+    final res = await _post('/api/booking/$bizId/plan-request', {
+      'plan_id': planId,
+      'kind': kind,
+      if (serviceId != null) 'service_id': serviceId,
+    });
+    return Map<String, dynamic>.from(_decode(res) as Map);
   }
 
   Future<Map<String, dynamic>> buyExtraPlan(String planId) async {

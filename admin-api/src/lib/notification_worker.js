@@ -38,7 +38,7 @@ async function processDayBeforeReminders(conn) {
       AND sss.is_active = 1
     WHERE b.status IN ('confirmed', 'pending')
       AND b.day_before_notified = 0
-      AND bc.booking_reminder_24h = 1
+      AND COALESCE(bc.booking_reminder_24h, 1) = 1
       AND b.starts_at BETWEEN DATE_ADD(NOW(), INTERVAL 23 HOUR)
                           AND DATE_ADD(NOW(), INTERVAL 25 HOUR)
   `);
@@ -79,7 +79,7 @@ async function processHourBeforeReminders(conn) {
     LEFT JOIN user_memberships m ON m.id = b.membership_id
     WHERE b.status IN ('confirmed', 'pending')
       AND b.prep_notified = 0
-      AND bc.booking_reminder_1h = 1
+      AND COALESCE(bc.booking_reminder_1h, 1) = 1
       AND b.starts_at BETWEEN DATE_ADD(NOW(), INTERVAL 50 MINUTE)
                           AND DATE_ADD(NOW(), INTERVAL 70 MINUTE)
       AND b.starts_at > NOW()
@@ -292,6 +292,16 @@ async function processAutoPaymentReminders(conn) {
         payload: { payment_id: p.id, due_date: due, auto: true },
       });
     }
+  }
+}
+
+async function processMembershipReminders(conn) {
+  const [businesses] = await conn.query(
+    'SELECT business_id, COALESCE(grace_period_days, 15) AS grace_period_days FROM business_configs',
+  );
+  for (const biz of businesses) {
+    const days = 7;
+    const graceDays = biz.grace_period_days ?? 15;
 
     const [memberships] = await conn.query(`
       SELECT m.id AS membership_id, m.user_id, m.business_id, m.valid_until,
@@ -328,12 +338,6 @@ async function processAutoPaymentReminders(conn) {
         payload: { membership_id: m.membership_id, due_date: due, auto: true },
       });
     }
-
-    const [[graceCfg]] = await conn.query(
-      'SELECT grace_period_days FROM business_configs WHERE business_id = ?',
-      [biz.business_id],
-    );
-    const graceDays = graceCfg?.grace_period_days ?? 15;
 
     const [expiredToday] = await conn.query(`
       SELECT m.id AS membership_id, m.user_id, m.business_id, m.valid_until,
@@ -432,6 +436,7 @@ async function processBookingNotifications() {
     await processPostWorkoutReminders(conn);
     await processMissedCheckinReminders(conn);
     await processAutoPaymentReminders(conn);
+    await processMembershipReminders(conn);
     await processExpiredWaitlistOffers(conn);
     await processAtRiskReturns(conn);
     await processMonthlyReports(conn);

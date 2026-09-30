@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../config/tenant_config.dart';
+import '../theme/brand.dart';
 import 'gym_entry_splash.dart';
 import 'phone_otp_login_screen.dart';
 
@@ -64,8 +65,20 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       _slug != null &&
       widget.globalAuth!.gyms.any((g) => g.slug == _slug && g.isStaff);
   bool get _canEnter => _memberLinked || _staffLinked;
+  bool get _nutritionistHere => widget.globalAuth?.gyms.any(
+        (g) => g.slug == _slug && g.staffKind == 'nutritionist',
+      ) ?? false;
+  bool get _canAskMember => !_memberLinked && !_memberPending;
+  bool get _canAskNutritionist => !_nutritionistHere && !_staffPending;
+  bool get _canAskOtherStaff => !_staffLinked && !_staffPending;
   bool get _canRequest => widget.globalAuth?.isLoggedIn == true &&
-      !((_memberLinked || _memberPending) && (_staffLinked || _staffPending));
+      (_canAskMember || _canAskNutritionist || _canAskOtherStaff);
+  bool get _dropInOn => _gym?['accepts_drop_in'] == true || _dropins.isNotEmpty;
+  List<Map<String, dynamic>> get _dropins {
+    final raw = _gym?['dropin_services'];
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
 
   @override
   void initState() {
@@ -244,31 +257,36 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                 style: const TextStyle(fontSize: 13, color: Color(0xFF9A9CA3))),
             ),
             const SizedBox(height: 20),
-            if (!_memberLinked && !_memberPending)
+            if (_canAskMember)
               _RoleOption(
                 icon: Icons.fitness_center_rounded,
                 color: const Color(0xFFC6FF3D),
                 title: 'Ασκούμενος',
-                subtitle: 'Θέλω να κάνω κρατήσεις ως πελάτης',
+                subtitle: _staffLinked
+                    ? 'Θέλω να γίνω και πελάτης σε αυτό το γυμναστήριο'
+                    : 'Θέλω να κάνω κρατήσεις ως πελάτης',
                 onTap: () => Navigator.pop(sheetCtx, 'member'),
               ),
-            if (!_memberLinked && !_memberPending && !_staffLinked && !_staffPending)
+            if (_canAskMember && (_canAskNutritionist || _canAskOtherStaff))
               const SizedBox(height: 10),
-            if (!_staffLinked && !_staffPending) ...[
+            if (_canAskNutritionist)
+              _RoleOption(
+                icon: Icons.restaurant_menu_rounded,
+                color: const Color(0xFF34D399),
+                title: 'Διατροφολόγος',
+                subtitle: _staffLinked
+                    ? 'Είμαι ήδη trainer και θέλω να γίνω και διατροφολόγος'
+                    : 'Θέλω πρόσβαση στους πελάτες διατροφής',
+                onTap: () => Navigator.pop(sheetCtx, 'staff:nutritionist'),
+              ),
+            if (_canAskOtherStaff) ...[
+              if (_canAskNutritionist) const SizedBox(height: 10),
               _RoleOption(
                 icon: Icons.sports_rounded,
                 color: const Color(0xFF3EE6FF),
                 title: 'Trainer',
                 subtitle: 'Εργάζομαι ως γυμναστής',
                 onTap: () => Navigator.pop(sheetCtx, 'staff:trainer'),
-              ),
-              const SizedBox(height: 10),
-              _RoleOption(
-                icon: Icons.restaurant_menu_rounded,
-                color: const Color(0xFF34D399),
-                title: 'Διατροφολόγος',
-                subtitle: 'Θέλω πρόσβαση στους πελάτες διατροφής',
-                onTap: () => Navigator.pop(sheetCtx, 'staff:nutritionist'),
               ),
               const SizedBox(height: 10),
               _RoleOption(
@@ -374,9 +392,16 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     setState(() => _enteringGym = true);
     try {
       final bizId = _gym!['business_id'] as String;
+      GlobalGym? staffHere;
+      for (final gym in widget.globalAuth!.gyms) {
+        if (gym.slug == _slug && gym.isStaff) {
+          staffHere = gym;
+          break;
+        }
+      }
       final gymToken = _memberLinked
           ? await widget.globalAuth!.getGymToken(bizId)
-          : await widget.globalAuth!.getTrainerToken(bizId);
+          : await widget.globalAuth!.getTrainerToken(bizId, asKind: staffHere?.staffKind);
       await BiometricAuthService.instance.saveToken(bizId, gymToken);
       final config = await TenantConfig.loadFromApi(
         slug:       _slug!,
@@ -404,6 +429,51 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       );
     } finally {
       if (mounted) setState(() => _enteringGym = false);
+    }
+  }
+
+  Future<void> _bookDropIn(Map<String, dynamic> offer) async {
+    if (widget.globalAuth == null || !widget.globalAuth!.isLoggedIn) {
+      _showLoginPrompt();
+      return;
+    }
+    final bizId = _gym?['business_id'] as String?;
+    final serviceId = offer['id'] as String?;
+    if (bizId == null || serviceId == null) return;
+
+    final locations = ((_gym?['locations'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .where((loc) => offer['location_id'] == null || loc['id'] == offer['location_id'])
+        .toList();
+    var locationId = offer['location_id'] as String? ??
+        (locations.length == 1 ? locations.first['id'] as String? : null);
+    if (locations.length > 1 && locationId == null) {
+      final picked = await _showLocationPicker(locations);
+      if (picked == null || !mounted) return;
+      locationId = picked;
+    }
+
+    final booked = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => _DropInBookSheet(
+        apiBase: _apiBase,
+        bizId: bizId,
+        serviceId: serviceId,
+        serviceName: offer['name'] as String? ?? 'Drop-in',
+        locationId: locationId,
+        priceCents: (offer['drop_in_price_cents'] as num?)?.toInt() ?? 0,
+        globalAuth: widget.globalAuth!,
+        memberLinked: _memberLinked,
+      ),
+    );
+    if (booked == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Η drop-in κράτηση καταχωρήθηκε.'),
+        backgroundColor: Color(0xFF16171B),
+      ));
     }
   }
 
@@ -1199,7 +1269,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         Text('Φόρτωση πακέτων...', style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
       ]));
     }
-    if (_packages.isEmpty) {
+    if (_packages.isEmpty && _dropins.isEmpty) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         const Icon(Icons.inventory_2_outlined, color: _kGray, size: 48),
         const SizedBox(height: 12),
@@ -1216,7 +1286,18 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-      children: grouped.entries.map((e) {
+      children: [
+        if (_dropins.isNotEmpty) ...[
+          Text('Drop-in', style: GoogleFonts.manrope(
+            fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+          const SizedBox(height: 6),
+          Text('Μία συνεδρία, χωρίς πακέτο. Ισχύει και αν είσαι ήδη πελάτης, για υπηρεσία που δεν έχεις.',
+            style: GoogleFonts.manrope(fontSize: 12, color: _kGray, height: 1.4)),
+          const SizedBox(height: 12),
+          ..._dropins.map(_buildDropinCard),
+          const SizedBox(height: 24),
+        ],
+        ...grouped.entries.map((e) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1227,7 +1308,54 @@ class _GymProfileScreenState extends State<GymProfileScreen>
             const SizedBox(height: 24),
           ],
         );
-      }).toList(),
+      }),
+      ],
+    );
+  }
+
+  Widget _buildDropinCard(Map<String, dynamic> offer) {
+    final cents = (offer['drop_in_price_cents'] as num?)?.toInt() ?? 0;
+    final euros = (cents / 100).toStringAsFixed(cents % 100 == 0 ? 0 : 2);
+    final name = offer['name'] as String? ?? 'Drop-in';
+    final mins = offer['duration_mins'];
+    final place = offer['location_name'] as String?;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text(name, style: GoogleFonts.manrope(
+            fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white))),
+          Text('€$euros', style: GoogleFonts.manrope(
+            fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+        ]),
+        const SizedBox(height: 6),
+        Text([
+          if (mins != null) '$mins λεπτά',
+          if (place != null && place.isNotEmpty) place,
+          'Χωρίς συνδρομή',
+        ].join(' · '), style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+        const SizedBox(height: 14),
+        GestureDetector(
+          onTap: () => _bookDropIn(offer),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            decoration: BoxDecoration(
+              gradient: kBrandGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: Text('Αγορά drop-in – €$euros', style: GoogleFonts.manrope(
+              fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+          ),
+        ),
+      ]),
     );
   }
 
@@ -1295,14 +1423,14 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      gradient: kBrandGradient,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       _memberLinked ? 'Πάρε και αυτό το πακέτο – €$euros' : 'Αγορά πακέτου – €$euros',
                       style: GoogleFonts.manrope(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: _kBg, letterSpacing: 0.3)),
+                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.3)),
                   ),
                 ),
           ]),
@@ -1370,17 +1498,18 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           const SizedBox(height: 10),
           _pendingJoinBanner(),
         ],
-        if (!_canEnter && !_memberPending && !_staffPending)
+        if (_dropInOn || (!_canEnter && !_memberPending && !_staffPending))
           Row(children: [
-            if (_gym?['accepts_drop_in'] == true) ...[
+            if (_dropInOn) ...[
               Expanded(
-                child: _outlineButton('Κλείσε Drop-in', () => _tabCtrl.animateTo(2)),
+                child: _outlineButton('Drop-in', () => _tabCtrl.animateTo(2)),
               ),
               const SizedBox(width: 12),
             ],
-            Expanded(
-              child: _limeButton('Δες Πακέτα', () => _tabCtrl.animateTo(2)),
-            ),
+            if (!_canEnter && !_memberPending && !_staffPending)
+              Expanded(
+                child: _limeButton('Δες Πακέτα', () => _tabCtrl.animateTo(2)),
+              ),
           ]),
         if (_canRequest) ...[
           const SizedBox(height: 10),
@@ -1441,17 +1570,18 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: onTap == null ? Colors.white.withValues(alpha: 0.5) : Colors.white,
+          gradient: onTap == null ? null : kBrandGradient,
+          color: onTap == null ? Colors.white24 : null,
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.center,
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           if (icon != null) ...[
-            Icon(icon, color: _kBg, size: 18),
+            Icon(icon, color: Colors.white, size: 18),
             const SizedBox(width: 8),
           ],
           Text(label, style: GoogleFonts.manrope(
-            fontSize: 14, fontWeight: FontWeight.w700, color: _kBg, letterSpacing: 0.3)),
+            fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 0.3)),
         ]),
       ),
     );
@@ -1531,6 +1661,216 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       case 'drop_in':   return 'Drop-in';
       default:          return billing;
     }
+  }
+}
+
+class _DropInBookSheet extends StatefulWidget {
+  const _DropInBookSheet({
+    required this.apiBase,
+    required this.bizId,
+    required this.serviceId,
+    required this.serviceName,
+    required this.locationId,
+    required this.priceCents,
+    required this.globalAuth,
+    required this.memberLinked,
+  });
+
+  final String apiBase;
+  final String bizId;
+  final String serviceId;
+  final String serviceName;
+  final String? locationId;
+  final int priceCents;
+  final GlobalAuthService globalAuth;
+  final bool memberLinked;
+
+  @override
+  State<_DropInBookSheet> createState() => _DropInBookSheetState();
+}
+
+class _DropInBookSheetState extends State<_DropInBookSheet> {
+  DateTime _date = DateTime.now();
+  List<Map<String, dynamic>> _slots = [];
+  bool _loading = true;
+  bool _booking = false;
+  String? _message;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  String _ymd(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _message = null; _slots = []; });
+    try {
+      final uri = Uri.parse('${widget.apiBase}/booking/${widget.bizId}/slots').replace(
+        queryParameters: {
+          'service_id': widget.serviceId,
+          'date': _ymd(_date),
+          'dropin': '1',
+          if (widget.locationId != null) 'location_id': widget.locationId!,
+        },
+      );
+      final res = await http.get(uri);
+      if (!mounted) return;
+      final body = jsonDecode(res.body);
+      if (res.statusCode != 200 || body is! Map) {
+        setState(() => _message = 'Δεν φορτώθηκαν οι ώρες');
+        return;
+      }
+      final raw = body['slots'];
+      final slots = raw is List
+          ? raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).where((s) {
+              final full = s['is_full'] == true;
+              return !full;
+            }).toList()
+          : <Map<String, dynamic>>[];
+      setState(() {
+        _slots = slots;
+        _message = slots.isEmpty ? (body['message'] as String? ?? 'Δεν υπάρχουν ώρες αυτή την ημέρα') : null;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _message = 'Δεν φορτώθηκαν οι ώρες');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _confirm(Map<String, dynamic> slot) async {
+    setState(() => _booking = true);
+    try {
+      String? gymToken;
+      if (widget.memberLinked) {
+        gymToken = await widget.globalAuth.getGymToken(widget.bizId);
+      }
+      final user = widget.globalAuth.user;
+      final headers = {
+        'Content-Type': 'application/json',
+        if (gymToken != null) 'Authorization': 'Bearer $gymToken',
+      };
+      final time = (slot['time'] as String? ?? '').length >= 5
+          ? (slot['time'] as String).substring(0, 5)
+          : slot['time'];
+      final staff = slot['available_staff'];
+      final staffId = staff is List && staff.isNotEmpty ? staff.first['id'] : null;
+      final res = await http.post(
+        Uri.parse('${widget.apiBase}/booking/${widget.bizId}/dropin/book'),
+        headers: headers,
+        body: jsonEncode({
+          'service_id': widget.serviceId,
+          'date': _ymd(_date),
+          'time': time,
+          'location_id': widget.locationId,
+          'staff_id': staffId,
+          'payment_method': 'venue',
+          if (gymToken == null) 'guest_name': user?.fullName,
+          if (gymToken == null) 'guest_email': user?.email,
+          if (gymToken == null) 'guest_phone': user?.phone,
+        }),
+      );
+      if (!mounted) return;
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        Navigator.pop(context, true);
+        return;
+      }
+      final body = jsonDecode(res.body);
+      final err = body is Map ? (body['error'] ?? 'Η κράτηση απέτυχε') : 'Η κράτηση απέτυχε';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err.toString()), backgroundColor: Colors.red.shade700),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red.shade700),
+      );
+    } finally {
+      if (mounted) setState(() => _booking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final euros = (widget.priceCents / 100).toStringAsFixed(widget.priceCents % 100 == 0 ? 0 : 2);
+    final days = List.generate(7, (i) => DateTime.now().add(Duration(days: i)));
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16171B),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFF2A2B30)),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Center(child: Container(width: 36, height: 4,
+          decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+        const SizedBox(height: 14),
+        Text(widget.serviceName, style: GoogleFonts.manrope(
+          fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+        Text('€$euros · πληρωμή στο γυμναστήριο', style: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFF9A9CA3))),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 36,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: days.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              final day = days[i];
+              final on = day.year == _date.year && day.month == _date.month && day.day == _date.day;
+              return GestureDetector(
+                onTap: _booking ? null : () { setState(() => _date = day); _load(); },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: on ? kBrandGradient : null,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: on ? Colors.transparent : const Color(0xFF2A2B30)),
+                  ),
+                  child: Text('${day.day}/${day.month}', style: GoogleFonts.manrope(
+                    fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator(color: Colors.white)),
+          )
+        else if (_message != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Text(_message!, style: GoogleFonts.manrope(color: const Color(0xFF9A9CA3))),
+          )
+        else
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final slot in _slots)
+              GestureDetector(
+                onTap: _booking ? null : () => _confirm(slot),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0A0A0A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF2A2B30)),
+                  ),
+                  child: Text((slot['time'] as String? ?? '').length >= 5
+                      ? (slot['time'] as String).substring(0, 5)
+                      : (slot['time']?.toString() ?? ''),
+                    style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              ),
+          ]),
+      ]),
+    );
   }
 }
 

@@ -659,7 +659,10 @@ function ExerciseForm({ initial, onSave, onClose }) {
 function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) {
   const [name, setName] = useState(program?.name || '');
   const [description, setDescription] = useState(program?.description || '');
-  const [serviceId, setServiceId] = useState(program?.service_id || '');
+  const [serviceIds, setServiceIds] = useState(() => {
+    if (Array.isArray(program?.service_ids) && program.service_ids.length) return program.service_ids;
+    return program?.service_id ? [program.service_id] : [];
+  });
   const [items, setItems] = useState(program?.exercises?.map(e => ({
     exercise_id: e.exercise_id, sets: e.exercise_sets || '', reps: e.exercise_reps || '',
     duration_secs: e.duration_secs || '', rest_secs: e.rest_secs || '', notes: e.notes || '',
@@ -708,6 +711,11 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
     addExercises(exercises.filter(ex => picked.has(ex.id)));
   };
 
+  const addAllFromLibrary = () => {
+    const already = new Set(items.map(it => it.exercise_id));
+    addExercises(exercises.filter(ex => !already.has(ex.id)));
+  };
+
   const applyToAll = () => {
     if (!activeItem) return;
     const { sets, reps, duration_secs, rest_secs } = activeItem;
@@ -727,7 +735,9 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
     setSaving(true);
     try {
       const payload = {
-        name, description, service_id: serviceId || null,
+        name, description,
+        service_ids: serviceIds,
+        service_id: serviceIds[0] || null,
         exercises: items.map(it => ({
           exercise_id: it.exercise_id,
           sets: it.sets ? Number(it.sets) : null,
@@ -767,15 +777,28 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
             placeholder="Προαιρετικά..." style={{ fontSize: '0.82rem' }} />
         </div>
         <div>
-          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Υπηρεσία</label>
-          <select className="form-input" value={serviceId} onChange={e => setServiceId(e.target.value)} style={{ fontSize: '0.82rem' }}>
-            <option value="">Χωρίς σύνδεση</option>
-            {services.filter(s => s.is_active !== 0).map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Υπηρεσίες</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 96, overflowY: 'auto' }}>
+            {services.filter(s => s.is_active !== 0).map(s => {
+              const on = serviceIds.includes(s.id);
+              return (
+                <label key={s.id} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+                  fontSize: '0.75rem', fontWeight: 600, padding: '3px 8px', borderRadius: 20,
+                  background: on ? '#eff6ff' : '#f8fafc',
+                  color: on ? '#3b82f6' : '#64748b',
+                  border: `1px solid ${on ? '#bfdbfe' : '#e2e8f0'}`,
+                }}>
+                  <input type="checkbox" checked={on} onChange={() => setServiceIds(prev => (
+                    prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                  ))} />
+                  {s.name}
+                </label>
+              );
+            })}
+          </div>
           <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4, lineHeight: 1.35 }}>
-            Όλο το πρόγραμμα φαίνεται στην εφαρμογή σε όποιον έχει αυτή την υπηρεσία.
+            Μπορείς να τσεκάρεις περισσότερες από μία. Η αποθήκευση περνάει όλο το πρόγραμμα σε όλες.
           </div>
         </div>
       </div>
@@ -783,6 +806,26 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
       <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
       {/* Left panel — exercise list */}
       <div style={{ width: 280, flexShrink: 0, borderRight: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ padding: '8px 10px', borderBottom: '1px solid #f1f5f9', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+            {[
+              ['sets', 'Σετ'],
+              ['reps', 'Επαν.'],
+              ['rest_secs', 'Ανάπ.'],
+            ].map(([key, label]) => (
+              <input key={key} className="form-input" type="number" min="0" inputMode="numeric"
+                aria-label={label} title={label} placeholder={label} value={batch[key]}
+                onChange={e => setBatch(b => ({ ...b, [key]: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
+                style={{ fontSize: '0.75rem', textAlign: 'center', padding: '6px 4px' }} />
+            ))}
+          </div>
+          <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '6px 8px' }}
+            disabled={exercises.every(ex => items.some(it => it.exercise_id === ex.id))}
+            onClick={addAllFromLibrary}>
+            Πρόσθεσε όλες τις ασκήσεις
+          </button>
+        </div>
         <div style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', position: 'relative', flexShrink: 0 }}>
           <Search size={14} style={{ position: 'absolute', left: 22, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input className="form-input" style={{ paddingLeft: 32, fontSize: '0.82rem' }}
@@ -797,19 +840,6 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
 
         {search && (
           <div style={{ flex: '0 1 52%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, padding: '8px 10px 0' }}>
-              {[
-                ['sets', 'Σετ'],
-                ['reps', 'Επαν.'],
-                ['rest_secs', 'Ανάπ.'],
-              ].map(([key, label]) => (
-                <input key={key} className="form-input" type="number" min="0" inputMode="numeric"
-                  aria-label={label} title={label} placeholder={label} value={batch[key]}
-                  onChange={e => setBatch(b => ({ ...b, [key]: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
-                  style={{ fontSize: '0.75rem', textAlign: 'center', padding: '6px 4px' }} />
-              ))}
-            </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 0' }}>
               {filtered.length === 0 ? (
                 <div style={{ padding: 12, color: '#94a3b8', fontSize: '0.82rem' }}>Δεν βρέθηκε άσκηση</div>
@@ -1130,14 +1160,42 @@ export default function Programs() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700 }}>{prog.name}</div>
                     {prog.description && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>{prog.description}</div>}
-                    {prog.service_id && (() => {
-                      const svc = services.find(s => s.id === prog.service_id);
-                      return svc ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, padding: '2px 8px', background: '#eff6ff', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600, color: '#3b82f6' }}>
-                          <span>📌</span> {svc.name}
-                        </div>
-                      ) : null;
-                    })()}
+                    <div
+                      onMouseDown={e => e.stopPropagation()}
+                      onClick={e => e.stopPropagation()}
+                      style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}
+                    >
+                      {services.filter(s => s.is_active !== 0).map(s => {
+                        const current = prog.service_ids?.length
+                          ? prog.service_ids
+                          : (prog.service_id ? [prog.service_id] : []);
+                        const on = current.includes(s.id);
+                        return (
+                          <label key={s.id} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+                            fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                            background: on ? '#eff6ff' : '#f8fafc',
+                            color: on ? '#3b82f6' : '#64748b',
+                            border: `1px solid ${on ? '#bfdbfe' : '#e2e8f0'}`,
+                          }}>
+                            <input type="checkbox" checked={on} onChange={async () => {
+                              const next = on ? current.filter(id => id !== s.id) : [...current, s.id];
+                              try {
+                                await api.patch(`/client-admin/programs/${prog.id}`, {
+                                  service_ids: next,
+                                  service_id: next[0] || null,
+                                });
+                                toast.success(next.length ? 'Οι υπηρεσίες ενημερώθηκαν' : 'Αφαιρέθηκαν οι υπηρεσίες');
+                                load();
+                              } catch (err) {
+                                toast.error(err.response?.data?.error || 'Σφάλμα');
+                              }
+                            }} />
+                            {s.name}
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <button className="btn btn-secondary btn-sm" onClick={e => { e.stopPropagation(); openProgramEdit(prog); }}>

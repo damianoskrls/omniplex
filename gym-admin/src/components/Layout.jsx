@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck, Zap, Globe, Image, CalendarDays,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck, Zap, Globe, Image, CalendarDays, Gift,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
@@ -18,10 +18,11 @@ function buildNavGroups({ features, featureNutrition }) {
   return [
     {
       key: 'clients',
-      label: 'Πελάτες & Κρατήσεις',
+      label: 'Πελάτες',
       links: [
         { to: '/clients', icon: Users, label: 'Πελάτες' },
         { to: '/trials', icon: Target, label: 'Δοκιμαστικά' },
+        { to: '/plan-requests', icon: ClipboardList, label: 'Αιτήματα πακέτων' },
         { to: '/at-risk', icon: AlertTriangle, label: 'Πελάτες σε Κίνδυνο' },
         { to: '/bookings', icon: Calendar, label: 'Κρατήσεις' },
         { to: '/waitlist-config', icon: ListOrdered, label: 'Λίστα Αναμονής' },
@@ -30,7 +31,7 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     ...(featureNutrition ? [{
       key: 'nutrition',
-      label: 'Διατροφολόγια',
+      label: 'Διατροφή',
       links: [
         { to: '/nutrition/clients', icon: Users, label: 'Πελάτες Διατροφής' },
         { to: '/nutrition/bookings', icon: Calendar, label: 'Κρατήσεις Διατροφής' },
@@ -40,7 +41,7 @@ function buildNavGroups({ features, featureNutrition }) {
     }] : []),
     {
       key: 'programs',
-      label: 'Πρόγραμμα & Υπηρεσίες',
+      label: 'Υπηρεσίες',
       links: [
         ...(features.programs ? [{ to: '/programs', icon: Dumbbell, label: 'Προγράμματα Άσκησης' }] : []),
         { to: '/services', icon: Scissors, label: 'Υπηρεσίες' },
@@ -52,19 +53,20 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     {
       key: 'communication',
-      label: 'Επικοινωνία & Marketing',
+      label: 'Επικοινωνία',
       links: [
         { to: '/messages', icon: MessageSquare, label: 'Μηνύματα' },
         { to: '/notifications', icon: Bell, label: 'Ειδοποιήσεις' },
         { to: '/bulk-message', icon: Send, label: 'Μαζική Αποστολή' },
         { to: '/questionnaires', icon: ClipboardCheck, label: 'Ερωτηματολόγια' },
         { to: '/reviews', icon: Star, label: 'Αξιολογήσεις' },
+        { to: '/rewards', icon: Gift, label: 'Επιβράβευση' },
         { to: '/community', icon: UsersRound, label: 'Κοινότητα' },
       ],
     },
     {
       key: 'marketplace',
-      label: 'Marketplace & E-shop',
+      label: 'Marketplace',
       links: [
         { to: '/marketplace', end: true, icon: ShoppingBag, label: 'Προϊόντα & Κατηγορίες' },
         { to: '/marketplace/orders', icon: ClipboardList, label: 'Παραγγελίες' },
@@ -74,9 +76,10 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     {
       key: 'reports',
-      label: 'Αναφορές & Οικονομικά',
+      label: 'Οικονομικά',
       links: [
         { to: '/reports', icon: BarChart2, label: 'Αναφορές' },
+        { to: '/analytics', icon: Activity, label: 'Στατιστικά' },
         { to: '/monthly-report', icon: TrendingUp, label: 'Αναφορά Αξίας' },
         { to: '/expenses', icon: Receipt, label: 'Γενικά Έξοδα' },
         { to: '/export', icon: FileDown, label: 'Εξαγωγή Excel' },
@@ -84,7 +87,7 @@ function buildNavGroups({ features, featureNutrition }) {
     },
     {
       key: 'staff',
-      label: 'Διαχείριση Προσωπικού & Συνεργατών',
+      label: 'Ομάδα',
       links: [
         { to: '/staff', icon: UserCog, label: 'Προσωπικό' },
         ...(featureNutrition ? [{ to: '/nutrition/nutritionists', icon: UserCircle, label: 'Διατροφολόγοι' }] : []),
@@ -100,7 +103,7 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/settings', icon: Settings, label: 'Γενικές Ρυθμίσεις' },
         { to: '/discovery-profile', icon: Globe, label: 'Προβολή στην Αγορά' },
         { to: '/online-payments', icon: CreditCard, label: 'Online Πληρωμές' },
-        { to: '/gdpr', icon: ShieldCheck, label: 'GDPR — Συναίνεση' },
+        { to: '/gdpr', icon: ShieldCheck, label: 'Ηλεκτρονικές εγγραφές' },
         { to: '/reminders', icon: Bell, label: 'Αυτόματες Υπενθυμίσεις' },
       ],
     },
@@ -282,6 +285,10 @@ export default function Layout({ children, title, variant, headerActions }) {
         ) : isNutritionist ? (
           <div className="sidebar-business">
             <div className="sidebar-business__role">Διατροφολόγος</div>
+          </div>
+        ) : business?.name ? (
+          <div className="sidebar-business">
+            <div className="sidebar-business__role">{business.name}</div>
           </div>
         ) : null}
 

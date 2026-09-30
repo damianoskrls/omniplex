@@ -13,6 +13,7 @@ import '../services/language_service.dart';
 import '../services/push_service.dart';
 import '../config/tenant_config.dart';
 import 'discovery_landing_screen.dart';
+import 'electronic_documents_screen.dart';
 import 'gym_entry_splash.dart';
 import 'gym_profile_screen.dart';
 
@@ -68,6 +69,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     _loadDashboard();
     _loadNotificationCount();
     PushService.instance.onForegroundData = (data) {
+      _loadNotificationCount();
       final type = data['type']?.toString() ?? '';
       if (type != 'join_approved' && type != 'join_rejected') return;
       _loadDashboard();
@@ -149,7 +151,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     setState(() => _enteringGym = true);
     try {
       final gymToken = gym.isStaff
-          ? await widget.globalAuth.getTrainerToken(gym.businessId)
+          ? await widget.globalAuth.getTrainerToken(gym.businessId, asKind: gym.staffKind)
           : await widget.globalAuth.getGymToken(gym.businessId);
       debugPrint('[MemberHome._enterGym] Got gymToken, saving...');
       // Disable biometrics first (setBiometricEnabled clears old token), then save fresh token
@@ -2272,6 +2274,16 @@ class _ProfileTab extends StatelessWidget {
 
             // Settings rows
             _SettingRow(icon: Icons.notifications_outlined, label: 'Ειδοποιήσεις', onTap: onNotifications),
+            _SettingRow(
+              icon: Icons.draw_outlined,
+              label: 'Ηλεκτρονικές εγγραφές',
+              onTap: () => Navigator.push(context, MaterialPageRoute(
+                builder: (_) => ElectronicDocumentsScreen.global(
+                  apiBase: 'https://passionate-grace-production-98ad.up.railway.app/api',
+                  token: globalAuth.token ?? '',
+                ),
+              )),
+            ),
             ListenableBuilder(
               listenable: LanguageService.instance,
               builder: (context, _) => _SettingRow(

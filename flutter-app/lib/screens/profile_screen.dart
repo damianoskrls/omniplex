@@ -5,11 +5,15 @@ import '../config/tenant_config.dart';
 import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_auth_service.dart';
+import '../services/global_auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import 'goals_screen.dart';
 import 'my_qr_screen.dart';
+import 'electronic_documents_screen.dart';
+import 'member_intake_screen.dart';
+import 'rewards_screen.dart';
 import 'notifications_screen.dart';
 import 'messages_screen.dart';
 import 'staff_messages_screen.dart';
@@ -49,6 +53,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _biometricLabel = label;
         _biometricIcon = icon;
       });
+    }
+  }
+
+  Future<void> _requestExtraRole(BuildContext context, {required String role, String? specialty}) async {
+    final config = context.read<TenantConfig>();
+    final auth = context.read<AuthService>();
+    final global = GlobalAuthService();
+    await global.init();
+    if (!context.mounted) return;
+    if (!global.isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Συνδέσου από το OmniPlex για να στείλεις αίτημα.')),
+      );
+      return;
+    }
+    if (role == 'member' && global.gyms.any((g) => g.businessId == config.businessId && !g.isStaff)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Είσαι ήδη ασκούμενος σε αυτό το γυμναστήριο.')),
+      );
+      return;
+    }
+    String? locationId;
+    try {
+      final locs = await auth.api.fetchLocations();
+      if (locs.locations.length > 1) {
+        if (!context.mounted) return;
+        locationId = await showDialog<String>(
+          context: context,
+          builder: (ctx) => SimpleDialog(
+            title: const Text('Σε ποιο κατάστημα;'),
+            children: [
+              for (final loc in locs.locations)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(ctx, loc.id),
+                  child: Text(loc.name),
+                ),
+            ],
+          ),
+        );
+        if (locationId == null) return;
+      } else if (locs.locations.length == 1) {
+        locationId = locs.locations.first.id;
+      }
+    } catch (_) {}
+    try {
+      final user = global.user;
+      final res = await global.submitJoinRequest(
+        businessId: config.businessId,
+        role: role,
+        specialty: specialty,
+        fullName: user?.fullName ?? auth.user?.fullName,
+        phone: user?.phone ?? auth.user?.phone,
+        email: user?.email,
+        locationId: locationId,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res['message']?.toString() ?? 'Το αίτημα στάλθηκε. Ο διαχειριστής θα το δει για έγκριση.')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -188,6 +254,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const Divider(height: 1, indent: 56),
               ],
+              if (!isStaff) ...[
+                _MenuTile(
+                  icon: Icons.health_and_safety_outlined,
+                  title: 'Κάρτα υγείας',
+                  subtitle: 'Στόχος, παθήσεις, φάρμακα, έγγραφο γιατρού',
+                  onTap: () {
+                    final base = config.apiBaseUrl.replaceAll(RegExp(r'/$'), '');
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => MemberIntakeScreen(
+                        apiBase: '$base/api',
+                        token: auth.api.token ?? '',
+                        bizId: config.businessId,
+                      ),
+                    ));
+                  },
+                ),
+                const Divider(height: 1, indent: 56),
+              ],
+              if (!isStaff && config.featureLoyaltyPoints) ...[
+                _MenuTile(
+                  icon: Icons.card_giftcard_outlined,
+                  title: 'Επιβράβευση',
+                  subtitle: 'Εκπτώσεις και προσφορές για συχνούς',
+                  onTap: () {
+                    final base = config.apiBaseUrl.replaceAll(RegExp(r'/$'), '');
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => RewardsScreen(
+                        apiBase: '$base/api',
+                        token: auth.api.token ?? '',
+                      ),
+                    ));
+                  },
+                ),
+                const Divider(height: 1, indent: 56),
+              ],
+              if (!isStaff) ...[
+                _MenuTile(
+                  icon: Icons.draw_outlined,
+                  title: 'Ηλεκτρονικές εγγραφές',
+                  subtitle: 'Εγγραφή, ανανέωση, δήλωση συμμετοχής',
+                  onTap: () {
+                    final auth = context.read<AuthService>();
+                    final base = auth.config.apiBaseUrl.replaceAll(RegExp(r'/$'), '');
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => ElectronicDocumentsScreen.gym(
+                        apiBase: '$base/api',
+                        token: auth.api.token ?? '',
+                      ),
+                    ));
+                  },
+                ),
+                const Divider(height: 1, indent: 56),
+              ],
               _MenuTile(
                 icon: Icons.notifications_outlined,
                 title: AppStrings.of(context).profileNotifications,
@@ -212,6 +331,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (user.phone != null)
                 _MenuTile(icon: Icons.phone_outlined, title: AppStrings.of(context).profilePhone, subtitle: user.phone!),
               if (user.phone != null) const Divider(height: 1, indent: 56),
+              if (isStaff && !user.isNutritionist) ...[
+                _MenuTile(
+                  icon: Icons.restaurant_menu_rounded,
+                  title: 'Αίτημα διατροφολόγου',
+                  subtitle: 'Ζήτα να γίνεις και διατροφολόγος σε αυτό το γυμναστήριο',
+                  onTap: () => _requestExtraRole(context, role: 'staff', specialty: 'Διατροφολόγος'),
+                ),
+                const Divider(height: 1, indent: 56),
+              ],
+              if (isStaff) ...[
+                _MenuTile(
+                  icon: Icons.fitness_center_rounded,
+                  title: 'Αίτημα ασκούμενου',
+                  subtitle: 'Ζήτα να γίνεις και πελάτης στο ίδιο γυμναστήριο',
+                  onTap: () => _requestExtraRole(context, role: 'member'),
+                ),
+                const Divider(height: 1, indent: 56),
+              ],
               _MenuTile(
                 icon: Icons.fitness_center,
                 title: config.appName,

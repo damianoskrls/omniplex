@@ -182,10 +182,10 @@ async function computeAvailableSlots(dbConn, bizId, serviceId, date, excludeBook
         OR (
           sa.location_id IS NULL
           AND NOT EXISTS (
-            SELECT 1 FROM staff_availability sa_loc
-            WHERE sa_loc.staff_id = s.id
-              AND sa_loc.location_id = ?
-              AND sa_loc.is_active = 1
+            SELECT 1 FROM staff_availability sa_any
+            WHERE sa_any.staff_id = s.id
+              AND sa_any.location_id IS NOT NULL
+              AND sa_any.is_active = 1
           )
         )
       )
@@ -201,7 +201,7 @@ async function computeAvailableSlots(dbConn, bizId, serviceId, date, excludeBook
       )`
     : '';
   const availLocParams = locationId
-    ? [locationId, locationId, locationId, locationId, serviceId]
+    ? [locationId, locationId, locationId, serviceId]
     : [];
 
   const [availableStaff] = await dbConn.query(`

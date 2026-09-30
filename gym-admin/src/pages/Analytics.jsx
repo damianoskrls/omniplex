@@ -63,7 +63,7 @@ function KpiCard({ label, value, prev, prevLabel, icon: Icon, gradient, trendVal
   );
 }
 
-function BarList({ items, valueKey, labelKey, color }) {
+function BarList({ items, valueKey, labelKey, color, format = fmt }) {
   if (!items?.length) return <div style={{ color: 'var(--text-3)', fontSize: 13, padding: '8px 0' }}>Δεν υπάρχουν δεδομένα</div>;
   const max = Math.max(...items.map(i => i[valueKey] || 0), 1);
   return (
@@ -74,7 +74,7 @@ function BarList({ items, valueKey, labelKey, color }) {
           <div key={i}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-2)' }}>{item[labelKey] || 'Άλλο'}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{fmt(item[valueKey])}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{format(item[valueKey])}</span>
             </div>
             <div style={{ height: 6, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
               <div style={{
@@ -168,7 +168,7 @@ export default function Analytics() {
           </div>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.3px' }}>Αναλυτικά Στοιχεία</h1>
-            <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>Έσοδα, έξοδα & μετατροπές</p>
+            <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 2 }}>Γυμναστές, δοκιμαστικά και καταστήματα</p>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -246,6 +246,82 @@ export default function Analytics() {
               <BarList items={data.expenses_by_category} valueKey="total" labelKey="category" color="linear-gradient(90deg,#FCA5A5,#EF4444)" />
             </div>
           </div>
+
+          <div style={{ background: 'var(--surface)', borderRadius: 18, padding: 24, border: '1px solid var(--border)', marginTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} />
+              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>Γυμναστές</span>
+            </div>
+            <p style={{ fontSize: 12.5, color: 'var(--text-3)', marginBottom: 16 }}>
+              Ποιος κλείνει τα περισσότερα δοκιμαστικά και πόσα γίνονται μέλη.
+            </p>
+            <BarList
+              items={[...(data.trainers || [])].sort((a, b) => b.trials - a.trials).slice(0, 8)}
+              valueKey="trials"
+              labelKey="name"
+              color="linear-gradient(90deg,#FCD34D,#F59E0B)"
+              format={(n) => `${n} δοκιμ.`}
+            />
+            {(data.trainers || []).length > 0 && (
+              <div style={{ overflowX: 'auto', marginTop: 18 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      {['Γυμναστής', 'Δοκιμαστικά', 'Έγιναν μέλη', 'Συνεδρίες', 'Παρουσίες', 'Πελάτες'].map((h) => (
+                        <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, color: 'var(--text-3)', fontWeight: 700 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.trainers || []).map((t) => (
+                      <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '10px', fontWeight: 700 }}>{t.name}</td>
+                        <td style={{ padding: '10px', fontWeight: 800 }}>{t.trials}</td>
+                        <td style={{ padding: '10px' }}>{t.conversions} · {t.conversion_rate}%</td>
+                        <td style={{ padding: '10px' }}>{t.sessions}</td>
+                        <td style={{ padding: '10px' }}>{t.attended}</td>
+                        <td style={{ padding: '10px' }}>{t.clients}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {(data.locations || []).length > 1 && (
+            <div style={{ background: 'var(--surface)', borderRadius: 18, padding: 24, border: '1px solid var(--border)', marginTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>Καταστήματα</span>
+              </div>
+              <p style={{ fontSize: 12.5, color: 'var(--text-3)', marginBottom: 16 }}>
+                Κρατήσεις, δοκιμαστικά και παρουσίες σε κάθε γυμναστήριο.
+              </p>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      {['Κατάστημα', 'Κρατήσεις', 'Δοκιμαστικά', 'Παρουσίες', 'Πελάτες'].map((h) => (
+                        <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, color: 'var(--text-3)', fontWeight: 700 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.locations.map((loc) => (
+                      <tr key={loc.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '10px', fontWeight: 700 }}>{loc.name}</td>
+                        <td style={{ padding: '10px' }}>{loc.bookings}</td>
+                        <td style={{ padding: '10px', fontWeight: 800 }}>{loc.trials}</td>
+                        <td style={{ padding: '10px' }}>{loc.attended}</td>
+                        <td style={{ padding: '10px' }}>{loc.clients}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

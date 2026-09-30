@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../firebase_background.dart';
 import '../firebase_options.dart';
 import 'auth_service.dart';
+import 'global_auth_service.dart';
 import 'notification_service.dart';
 
 typedef PushTapHandler = void Function(String payload);
@@ -19,6 +20,7 @@ class PushService {
   PushTapHandler? onTap;
   void Function(Map<String, dynamic> data)? onForegroundData;
   AuthService? _auth;
+  GlobalAuthService? _global;
   String? _pendingTapPayload;
 
   bool get isReady => _ready;
@@ -63,6 +65,19 @@ class PushService {
     }
   }
 
+  Future<void> registerGlobal(GlobalAuthService global) async {
+    _global = global;
+    if (!_ready || !global.isLoggedIn) return;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null || token.isEmpty) return;
+      await global.registerFcmToken(token, platform: _platformLabel());
+      debugPrint('FCM global token registered');
+    } catch (e) {
+      debugPrint('FCM global registration failed: $e');
+    }
+  }
+
   Future<void> registerWithAuth(AuthService auth) async {
     _auth = auth;
     if (!_ready || !auth.isLoggedIn) return;
@@ -94,6 +109,10 @@ class PushService {
     if (auth == null || !auth.isLoggedIn) return;
     try {
       await auth.api.registerDeviceToken(token, platform: _platformLabel());
+      final global = _global;
+      if (global != null && global.isLoggedIn) {
+        await global.registerFcmToken(token, platform: _platformLabel());
+      }
       debugPrint('FCM token refreshed & registered');
     } catch (e) {
       debugPrint('FCM token refresh registration failed: $e');

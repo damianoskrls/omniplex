@@ -7094,13 +7094,64 @@ router.post('/exercises/:id/media', requireClientAdmin, (req, res, next) => {
   res.json({ url });
 });
 
+function serviceIdsFromBody(body) {
+  if (Array.isArray(body.service_ids)) {
+    return [...new Set(body.service_ids.map(id => String(id || '').trim()).filter(Boolean))];
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'service_id')) {
+    return body.service_id ? [String(body.service_id)] : [];
+  }
+  return null;
+}
+
+async function replaceProgramServices(bizId, programId, serviceIds) {
+  let ids = serviceIds;
+  if (ids.length) {
+    const [ok] = await db.query(
+      'SELECT id FROM services WHERE business_id=? AND id IN (?)',
+      [bizId, ids]
+    );
+    const allowed = new Set(ok.map(r => r.id));
+    ids = ids.filter(id => allowed.has(id));
+  }
+  await db.query('DELETE FROM workout_program_services WHERE program_id=?', [programId]);
+  for (const sid of ids) {
+    await db.query(
+      'INSERT INTO workout_program_services (program_id, service_id) VALUES (?,?)',
+      [programId, sid]
+    );
+  }
+  await db.query(
+    'UPDATE workout_programs SET service_id=? WHERE id=? AND business_id=?',
+    [ids[0] || null, programId, bizId]
+  );
+  return ids;
+}
+
+async function withServiceIds(rows) {
+  if (!rows.length) return rows;
+  const [links] = await db.query(
+    'SELECT program_id, service_id FROM workout_program_services WHERE program_id IN (?)',
+    [rows.map(r => r.id)]
+  );
+  const map = new Map();
+  for (const link of links) {
+    if (!map.has(link.program_id)) map.set(link.program_id, []);
+    map.get(link.program_id).push(link.service_id);
+  }
+  return rows.map(r => ({
+    ...r,
+    service_ids: map.get(r.id) || (r.service_id ? [r.service_id] : []),
+  }));
+}
+
 // --- Programs ---
 router.get('/programs', requireClientAdmin, async (req, res) => {
   const [rows] = await db.query(
     'SELECT * FROM workout_programs WHERE business_id=? ORDER BY created_at DESC',
     [req.admin.businessId]
   );
-  res.json(rows);
+  res.json(await withServiceIds(rows));
 });
 
 router.get('/programs/:id', requireClientAdmin, async (req, res) => {
@@ -7113,17 +7164,20 @@ router.get('/programs/:id', requireClientAdmin, async (req, res) => {
      WHERE pe.program_id=? ORDER BY pe.sort_order`,
     [req.params.id]
   );
-  res.json({ ...prog, exercises: items });
+  const [withIds] = await withServiceIds([prog]);
+  res.json({ ...withIds, exercises: items });
 });
 
 router.post('/programs', requireClientAdmin, async (req, res) => {
-  const { name, description, service_id, exercises = [] } = req.body;
+  const { name, description, exercises = [] } = req.body;
   if (!name) return res.status(400).json({ error: 'Το όνομα είναι υποχρεωτικό' });
+  const serviceIds = serviceIdsFromBody(req.body) || [];
   const id = uuidv4();
   await db.query(
     'INSERT INTO workout_programs (id,business_id,service_id,name,description) VALUES (?,?,?,?,?)',
-    [id, req.admin.businessId, service_id||null, name, description||null]
+    [id, req.admin.businessId, serviceIds[0] || null, name, description||null]
   );
+  await replaceProgramServices(req.admin.businessId, id, serviceIds);
   for (let i = 0; i < exercises.length; i++) {
     const ex = exercises[i];
     await db.query(
@@ -7135,16 +7189,24 @@ router.post('/programs', requireClientAdmin, async (req, res) => {
 });
 
 router.patch('/programs/:id', requireClientAdmin, async (req, res) => {
-  const { name, description, is_active, service_id, exercises } = req.body;
+  const { name, description, is_active, exercises } = req.body;
   const fields = [];
   const vals = [];
   if (name !== undefined) { fields.push('name=?'); vals.push(name); }
   if (description !== undefined) { fields.push('description=?'); vals.push(description||null); }
   if (is_active !== undefined) { fields.push('is_active=?'); vals.push(is_active ? 1 : 0); }
-  if (service_id !== undefined) { fields.push('service_id=?'); vals.push(service_id||null); }
   if (fields.length) {
     vals.push(req.params.id, req.admin.businessId);
     await db.query(`UPDATE workout_programs SET ${fields.join(',')} WHERE id=? AND business_id=?`, vals);
+  }
+  const serviceIds = serviceIdsFromBody(req.body);
+  if (serviceIds) {
+    const [[owns]] = await db.query(
+      'SELECT id FROM workout_programs WHERE id=? AND business_id=?',
+      [req.params.id, req.admin.businessId]
+    );
+    if (!owns) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    await replaceProgramServices(req.admin.businessId, req.params.id, serviceIds);
   }
   if (exercises !== undefined) {
     await db.query('DELETE FROM program_exercises WHERE program_id=?', [req.params.id]);
@@ -7309,13 +7371,44 @@ router.get('/my-programs', async (req, res) => {
     [userId, bizId]
   );
 
-  // Service-level programs: the whole program is visible to anyone with an active package for that service
+  const programIds = [...new Set(assignments.map(a => a.program_id))];
+  const linkMap = new Map();
+  if (programIds.length) {
+    const [links] = await db.query(
+      'SELECT program_id, service_id FROM workout_program_services WHERE program_id IN (?)',
+      [programIds]
+    );
+    for (const link of links) {
+      if (!linkMap.has(link.program_id)) linkMap.set(link.program_id, []);
+      linkMap.get(link.program_id).push(link.service_id);
+    }
+  }
+  const expandedAssignments = [];
+  for (const row of assignments) {
+    const ids = linkMap.get(row.program_id) || (row.service_id ? [row.service_id] : []);
+    if (!ids.length) {
+      expandedAssignments.push({ ...row, service_ids: [] });
+      continue;
+    }
+    for (const sid of ids) {
+      expandedAssignments.push({ ...row, service_id: sid, service_ids: ids });
+    }
+  }
+
+  // One row per service the member actually has, so the same program shows under each of them.
   const [servicePrograms] = await db.query(
     `SELECT NULL as assignment_id, wp.created_at as assigned_at, NULL as assignment_notes,
             wp.id as program_id, wp.name as program_name, wp.description as program_description,
-            wp.service_id
+            links.service_id
      FROM workout_programs wp
-     WHERE wp.business_id = ? AND wp.is_active = 1 AND wp.service_id IS NOT NULL
+     JOIN (
+       SELECT program_id, service_id FROM workout_program_services
+       UNION
+       SELECT id AS program_id, service_id FROM workout_programs
+       WHERE service_id IS NOT NULL
+         AND id NOT IN (SELECT program_id FROM workout_program_services)
+     ) links ON links.program_id = wp.id
+     WHERE wp.business_id = ? AND wp.is_active = 1
        AND EXISTS (
          SELECT 1
          FROM user_memberships um
@@ -7326,22 +7419,22 @@ router.get('/my-programs', async (req, res) => {
            AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
            AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
            AND (
-             um.service_id = wp.service_id
-             OR bp.service_id = wp.service_id
-             OR psi.service_id = wp.service_id
-             OR spa.service_id = wp.service_id
+             um.service_id = links.service_id
+             OR bp.service_id = links.service_id
+             OR psi.service_id = links.service_id
+             OR spa.service_id = links.service_id
            )
        )`,
     [bizId, userId, bizId]
   );
 
-  // Merge: personal assignments first, then service programs not already included
-  const seenIds = new Set(assignments.map(a => a.program_id));
-  const combined = [...assignments];
+  const seenKeys = new Set(expandedAssignments.map(a => `${a.program_id}:${a.service_id || ''}`));
+  const combined = [...expandedAssignments];
   for (const sp of servicePrograms) {
-    if (!seenIds.has(sp.program_id)) {
-      combined.push(sp);
-      seenIds.add(sp.program_id);
+    const key = `${sp.program_id}:${sp.service_id || ''}`;
+    if (!seenKeys.has(key)) {
+      combined.push({ ...sp, service_ids: [sp.service_id] });
+      seenKeys.add(key);
     }
   }
 
@@ -7809,12 +7902,20 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
           : kind === 'physiotherapist' ? 'Φυσιοθεραπευτής'
           : (jr.specialty || 'Trainer');
         if (existingStaff) {
-          await db.query(
-            `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?),
-             role = ?, is_nutritionist = ?
-             WHERE id = ?`,
-            [jr.global_user_id, jr.phone || '', roleLabel, kind === 'nutritionist' ? 1 : 0, existingStaff.id],
-          );
+          if (kind === 'nutritionist') {
+            await db.query(
+              `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?), is_nutritionist = 1
+               WHERE id = ?`,
+              [jr.global_user_id, jr.phone || '', existingStaff.id],
+            );
+          } else {
+            await db.query(
+              `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?),
+               role = ?, is_nutritionist = ?
+               WHERE id = ?`,
+              [jr.global_user_id, jr.phone || '', roleLabel, 0, existingStaff.id],
+            );
+          }
           recordId = existingStaff.id;
         } else {
           const staffId = uuidv4();

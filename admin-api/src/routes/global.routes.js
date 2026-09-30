@@ -65,9 +65,10 @@ async function getGymsForGlobalUser(globalUserId) {
     WHERE s.global_user_id = ? AND s.is_active = 1
   `, [globalUserId]);
 
+  const staffExpanded = staffRows.flatMap(expandStaffGyms);
   const seen = new Set();
-  const all = [...memberRows, ...staffRows].filter(r => {
-    const key = `${r.business_id}:${r.user_type}`;
+  const all = [...memberRows, ...staffExpanded].filter(r => {
+    const key = `${r.business_id}:${r.user_type}:${r.staff_kind || ''}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -85,15 +86,32 @@ async function getGymsForGlobalUser(globalUserId) {
     user_status:   r.status,
     user_type:     r.user_type,
     staff_id:      r.staff_id || null,
-    staff_kind:    r.user_type === 'staff' ? staffKindFromRow(r) : null,
+    staff_kind:    r.user_type === 'staff' ? (r.staff_kind || staffKindFromRow(r)) : null,
   }));
 }
 
 function staffKindFromRow(row) {
   const role = String(row.staff_role || row.role || row.specialty || '');
-  if (Number(row.is_nutritionist) === 1 || /διατροφ|nutri/i.test(role)) return 'nutritionist';
-  if (/φυσιο|physio/i.test(role)) return 'physiotherapist';
+  const nutrition = Number(row.is_nutritionist) === 1 || /διατροφ|nutri/i.test(role);
+  const physio = /φυσιο|physio/i.test(role);
+  const trainer = /trainer|γυμναστ|coach|personal/i.test(role);
+  if (nutrition && trainer) return 'trainer';
+  if (nutrition) return 'nutritionist';
+  if (physio) return 'physiotherapist';
   return 'trainer';
+}
+
+function expandStaffGyms(row) {
+  const role = String(row.staff_role || '');
+  const nutrition = Number(row.is_nutritionist) === 1 || /διατροφ|nutri/i.test(role);
+  const trainer = /trainer|γυμναστ|coach|personal/i.test(role);
+  if (nutrition && trainer) {
+    return [
+      { ...row, staff_kind: 'trainer' },
+      { ...row, staff_kind: 'nutritionist' },
+    ];
+  }
+  return [{ ...row, staff_kind: staffKindFromRow(row) }];
 }
 
 function staffKindLabel(specialty) {
@@ -246,25 +264,114 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
   }
 });
 
+router.get('/me/documents', requireGlobal, async (req, res) => {
+  try {
+    const gyms = await getGymsForGlobalUser(req.globalUser.globalUserId);
+    const userIds = [...new Set(gyms.map((g) => g.user_id).filter(Boolean))];
+    if (!userIds.length) return res.json([]);
+    const [rows] = await db.query(
+      `SELECT g.id, g.user_id, g.business_id, g.kind, g.title, g.program_name, g.full_name,
+              g.signed_at, g.expires_at, g.created_at, g.body_snapshot,
+              COALESCE(bc.app_name, b.name) AS gym_name
+       FROM gdpr_consents g
+       JOIN businesses b ON b.id = g.business_id
+       LEFT JOIN business_configs bc ON bc.business_id = g.business_id
+       WHERE g.user_id IN (?)
+       ORDER BY g.signed_at IS NULL DESC, g.created_at DESC
+       LIMIT 50`,
+      [userIds],
+    ).catch(() => [[]]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/me/documents/:id', requireGlobal, async (req, res) => {
+  try {
+    const gyms = await getGymsForGlobalUser(req.globalUser.globalUserId);
+    const userIds = [...new Set(gyms.map((g) => g.user_id).filter(Boolean))];
+    if (!userIds.length) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    const [[row]] = await db.query(
+      `SELECT g.*, COALESCE(bc.app_name, b.name) AS gym_name, bc.gdpr_text
+       FROM gdpr_consents g
+       JOIN businesses b ON b.id = g.business_id
+       LEFT JOIN business_configs bc ON bc.business_id = g.business_id
+       WHERE g.id = ? AND g.user_id IN (?)`,
+      [req.params.id, userIds],
+    );
+    if (!row) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    res.json({
+      id: row.id,
+      kind: row.kind || 'gdpr',
+      title: row.title,
+      program_name: row.program_name,
+      full_name: row.full_name,
+      gym_name: row.gym_name,
+      signed_at: row.signed_at,
+      body: row.body_snapshot || row.gdpr_text || '',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/me/documents/:id/sign', requireGlobal, async (req, res) => {
+  const { signature_data } = req.body || {};
+  if (!signature_data) return res.status(400).json({ error: 'Signature required' });
+  try {
+    const gyms = await getGymsForGlobalUser(req.globalUser.globalUserId);
+    const userIds = [...new Set(gyms.map((g) => g.user_id).filter(Boolean))];
+    if (!userIds.length) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    const [[row]] = await db.query(
+      'SELECT id, signed_at, expires_at FROM gdpr_consents WHERE id = ? AND user_id IN (?)',
+      [req.params.id, userIds],
+    );
+    if (!row) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    if (new Date(row.expires_at) < new Date()) return res.status(410).json({ error: 'Το έγγραφο έχει λήξει' });
+    if (row.signed_at) return res.json({ ok: true, already_signed: true });
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+    await db.query(
+      'UPDATE gdpr_consents SET signed_at = NOW(), signature_data = ?, ip_address = ? WHERE id = ?',
+      [signature_data, ip, row.id],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/me/notifications', requireGlobal, async (req, res) => {
   try {
     const gyms = await getGymsForGlobalUser(req.globalUser.globalUserId);
     const userIds = [...new Set(gyms.map((g) => g.user_id).filter(Boolean))];
-    if (!userIds.length) return res.json({ notifications: [], unread_count: 0 });
-    const [rows] = await db.query(
-      `SELECT n.id, n.type, n.title, n.body, n.is_read, n.created_at, n.business_id,
-              COALESCE(bc.app_name, biz.name) AS gym_name
-       FROM user_notifications n
-       JOIN businesses biz ON biz.id = n.business_id
-       LEFT JOIN business_configs bc ON bc.business_id = n.business_id
-       WHERE n.user_id IN (?)
-       ORDER BY n.created_at DESC
-       LIMIT 80`,
-      [userIds],
-    );
+    const [rows] = userIds.length
+      ? await db.query(
+        `SELECT n.id, n.type, n.title, n.body, n.is_read, n.created_at, n.business_id,
+                COALESCE(bc.app_name, biz.name) AS gym_name
+         FROM user_notifications n
+         JOIN businesses biz ON biz.id = n.business_id
+         LEFT JOIN business_configs bc ON bc.business_id = n.business_id
+         WHERE n.user_id IN (?)
+         ORDER BY n.created_at DESC
+         LIMIT 80`,
+        [userIds],
+      )
+      : [[]];
+    const [platform] = await db.query(
+      `SELECT id, type, title, body, is_read, created_at, NULL AS business_id, 'OmniPlex' AS gym_name
+       FROM global_user_notifications
+       WHERE global_user_id = ?
+       ORDER BY created_at DESC
+       LIMIT 40`,
+      [req.globalUser.globalUserId],
+    ).catch(() => [[]]);
+    const notifications = [...rows, ...(platform || [])]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 80);
     return res.json({
-      notifications: rows,
-      unread_count: rows.filter((row) => !row.is_read).length,
+      notifications,
+      unread_count: notifications.filter((row) => !row.is_read).length,
     });
   } catch (err) {
     console.error(err);
@@ -276,11 +383,16 @@ router.patch('/me/notifications/:id/read', requireGlobal, async (req, res) => {
   try {
     const gyms = await getGymsForGlobalUser(req.globalUser.globalUserId);
     const userIds = [...new Set(gyms.map((g) => g.user_id).filter(Boolean))];
-    if (!userIds.length) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    if (userIds.length) {
+      await db.query(
+        'UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id IN (?)',
+        [req.params.id, userIds],
+      );
+    }
     await db.query(
-      'UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id IN (?)',
-      [req.params.id, userIds],
-    );
+      'UPDATE global_user_notifications SET is_read = 1 WHERE id = ? AND global_user_id = ?',
+      [req.params.id, req.globalUser.globalUserId],
+    ).catch(() => {});
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -403,6 +515,10 @@ router.get('/discovery/gyms', async (req, res) => {
         SELECT DISTINCT b.id, b.slug, b.name, b.business_type, b.city, b.description,
                b.latitude, b.longitude,
                c.app_name, c.primary_color, c.logo_url,
+               (b.accepts_drop_in = 1
+                 OR EXISTS (SELECT 1 FROM locations dl WHERE dl.business_id = b.id AND dl.is_active = 1 AND dl.accepts_drop_in = 1)
+                 OR EXISTS (SELECT 1 FROM dropin_offers dof WHERE dof.business_id = b.id AND dof.is_active = 1)
+               ) AS has_drop_in,
                ${distanceExpr} AS distance_km
         FROM businesses b
         LEFT JOIN business_configs c ON c.business_id = b.id
@@ -417,6 +533,10 @@ router.get('/discovery/gyms', async (req, res) => {
         SELECT b.id, b.slug, b.name, b.business_type, b.city, b.description,
                b.latitude, b.longitude,
                c.app_name, c.primary_color, c.logo_url,
+               (b.accepts_drop_in = 1
+                 OR EXISTS (SELECT 1 FROM locations dl WHERE dl.business_id = b.id AND dl.is_active = 1 AND dl.accepts_drop_in = 1)
+                 OR EXISTS (SELECT 1 FROM dropin_offers dof WHERE dof.business_id = b.id AND dof.is_active = 1)
+               ) AS has_drop_in,
                ${distanceExpr} AS distance_km
         FROM businesses b
         LEFT JOIN business_configs c ON c.business_id = b.id
@@ -456,6 +576,7 @@ router.get('/discovery/gyms', async (req, res) => {
       latitude:      r.latitude  != null ? parseFloat(r.latitude)  : null,
       longitude:     r.longitude != null ? parseFloat(r.longitude) : null,
       distance_km:   r.distance_km != null ? parseFloat(Number(r.distance_km).toFixed(1)) : null,
+      has_drop_in:   !!r.has_drop_in,
     })));
   } catch (err) {
     console.error(err);
@@ -530,7 +651,32 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       [biz.id],
     );
 
+    let dropinServices = [];
+    try {
+      const [offerRows] = await db.query(
+        `SELECT s.id, s.name, s.duration_mins, o.price_cents AS drop_in_price_cents,
+                o.location_id, l.name AS location_name
+         FROM dropin_offers o
+         JOIN services s ON s.id = o.service_id
+         LEFT JOIN locations l ON l.id = o.location_id
+         WHERE o.business_id = ? AND o.is_active = 1 AND s.is_active = 1
+         ORDER BY s.name`,
+        [biz.id],
+      );
+      dropinServices = offerRows;
+      if (!dropinServices.length) {
+        const [priced] = await db.query(
+          `SELECT id, name, duration_mins, drop_in_price_cents, NULL AS location_id, NULL AS location_name
+           FROM services
+           WHERE business_id = ? AND is_active = 1 AND drop_in_price_cents > 0
+           ORDER BY name`,
+          [biz.id],
+        );
+        dropinServices = priced;
+      }
+    } catch (_) {}
     const coverPhoto = photos.find(p => p.is_cover) || photos[0] || null;
+    const dropInOn = !!biz.accepts_drop_in || locations.some((l) => l.accepts_drop_in) || dropinServices.length > 0;
     return res.json({
       business_id:       biz.id,
       slug:              biz.slug,
@@ -546,8 +692,9 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       logo_url:          biz.logo_url || null,
       cover_url:         coverPhoto?.url || null,
       online_payments:   !!biz.feature_online_payments,
-      accepts_drop_in:       !!biz.accepts_drop_in,
+      accepts_drop_in:       dropInOn,
       drop_in_price_cents:   biz.drop_in_price_cents || 0,
+      dropin_services:       dropinServices,
       photos,
       trainers,
       schedule,
@@ -612,11 +759,19 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
 
     if (isStaff) {
       const [linkedStaff] = await db.query(
-        'SELECT id FROM staff WHERE global_user_id = ? AND business_id = ? AND is_active = 1',
+        'SELECT id, role, COALESCE(is_nutritionist, 0) AS is_nutritionist FROM staff WHERE global_user_id = ? AND business_id = ? AND is_active = 1',
         [globalUserId, business_id],
       );
       if (linkedStaff.length) {
-        return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη συνδεδεμένος στο προσωπικό αυτού του γυμναστηρίου' });
+        const kind = staffKindFromRow({ specialty, is_nutritionist: 0 });
+        const alreadyNutritionist = Number(linkedStaff[0].is_nutritionist) === 1
+          || /διατροφ|nutri/i.test(linkedStaff[0].role || '');
+        if (kind === 'nutritionist' && alreadyNutritionist) {
+          return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη διατροφολόγος σε αυτό το γυμναστήριο' });
+        }
+        if (kind !== 'nutritionist') {
+          return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη συνδεδεμένος στο προσωπικό αυτού του γυμναστηρίου' });
+        }
       }
     } else {
       const [linked] = await db.query(
@@ -762,9 +917,13 @@ router.post('/trainer-token', requireGlobal, async (req, res) => {
     );
     if (!rows.length) return res.status(404).json({ error: 'Staff record not found' });
     const s = rows[0];
-    const kind = staffKindFromRow(s);
+    const requested = req.body.as === 'nutritionist' || req.body.as === 'trainer' ? req.body.as : null;
+    const kind = requested || staffKindFromRow(s);
+    if (kind === 'nutritionist' && Number(s.is_nutritionist) !== 1 && !/διατροφ|nutri/i.test(s.role || '')) {
+      return res.status(403).json({ error: 'Δεν έχει εγκριθεί ακόμα η πρόσβαση διατροφολόγου' });
+    }
     let nutritionistId = null;
-    if (kind === 'nutritionist') {
+    if (kind === 'nutritionist' || Number(s.is_nutritionist) === 1) {
       const [[nut]] = await db.query(
         'SELECT id FROM nutritionists WHERE business_id = ? AND staff_id = ? AND is_active = 1 LIMIT 1',
         [business_id, s.id],
@@ -1555,11 +1714,8 @@ router.put('/profile', requireGlobal, async (req, res) => {
 
 // ── Helper: get all FCM tokens for a global user ─────────────
 async function getGlobalUserFcmTokens(globalUserId) {
-  const [rows] = await db.query(
-    `SELECT fcm_token FROM global_device_tokens WHERE global_user_id = ?`,
-    [globalUserId],
-  );
-  return rows.map(r => r.fcm_token);
+  const { getGlobalUserFcmTokens: fromPush } = require('../lib/push');
+  return fromPush(db, globalUserId);
 }
 
 module.exports = { router, getGlobalUserFcmTokens };

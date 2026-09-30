@@ -13,7 +13,7 @@ export default function Gdpr() {
   const [savingText, setSavingText] = useState(false);
   const [showSend, setShowSend] = useState(false);
   const [sending, setSending] = useState(false);
-  const [form, setForm] = useState({ user_id: '', full_name: '', phone: '', email: '' });
+  const [form, setForm] = useState({ user_id: '', full_name: '', phone: '', email: '', kind: 'registration', program_name: '' });
   const [newLink, setNewLink] = useState('');
   const [clientSearch, setClientSearch] = useState('');
 
@@ -43,7 +43,7 @@ export default function Gdpr() {
   }
 
   function pickClient(c) {
-    setForm({ user_id: c.id, full_name: c.full_name, phone: c.phone || '', email: c.email || '' });
+    setForm(f => ({ ...f, user_id: c.id, full_name: c.full_name, phone: c.phone || '', email: c.email || '' }));
     setClientSearch('');
   }
 
@@ -54,7 +54,7 @@ export default function Gdpr() {
       const r = await api.post('/gdpr/consents', form);
       setNewLink(r.data.link);
       toast.success('Σύνδεσμος δημιουργήθηκε!');
-      setForm({ user_id: '', full_name: '', phone: '', email: '' });
+      setForm({ user_id: '', full_name: '', phone: '', email: '', kind: 'registration', program_name: '' });
       load();
     } catch { toast.error('Σφάλμα'); }
     finally { setSending(false); }
@@ -68,7 +68,7 @@ export default function Gdpr() {
   const pending = consents.filter(c => !c.signed_at).length;
 
   return (
-    <Layout title="GDPR — Συναίνεση">
+    <Layout title="Ηλεκτρονικές εγγραφές">
       {/* Stats */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
         {[
@@ -104,6 +104,17 @@ export default function Gdpr() {
               </div>
             )}
           </div>
+
+          <select className="form-input" value={form.kind} onChange={e => setForm(f => ({ ...f, kind: e.target.value }))} style={{ marginBottom: 10 }}>
+            <option value="registration">Νέα εγγραφή μέλους</option>
+            <option value="renewal">Ανανέωση συνδρομής</option>
+            <option value="participation">Δήλωση συμμετοχής</option>
+            <option value="gdpr">Συναίνεση GDPR</option>
+          </select>
+          {form.kind === 'participation' && (
+            <input className="form-input" placeholder="Όνομα προγράμματος ή δράσης" value={form.program_name}
+              onChange={e => setForm(f => ({ ...f, program_name: e.target.value }))} style={{ marginBottom: 10 }} />
+          )}
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <input className="form-input" placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={{ flex: 1 }} />
@@ -160,7 +171,7 @@ export default function Gdpr() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Πελάτης', 'Τηλέφωνο', 'Email', 'Αποστολή', 'Υπογραφή', 'Κατάσταση'].map(h => (
+                  {['Έγγραφο', 'Πελάτης', 'Τηλέφωνο', 'Αποστολή', 'Υπογραφή', 'Κατάσταση'].map(h => (
                     <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-3)', fontWeight: 600, fontSize: '0.75rem' }}>{h}</th>
                   ))}
                 </tr>
@@ -168,9 +179,9 @@ export default function Gdpr() {
               <tbody>
                 {consents.map(c => (
                   <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '10px' }}>{c.title || c.kind || 'GDPR'}</td>
                     <td style={{ padding: '10px' }}>{c.full_name || c.linked_client || '—'}</td>
                     <td style={{ padding: '10px', color: 'var(--text-2)' }}>{c.phone || '—'}</td>
-                    <td style={{ padding: '10px', color: 'var(--text-2)' }}>{c.email || '—'}</td>
                     <td style={{ padding: '10px', color: 'var(--text-3)', fontSize: '0.78rem' }}>{new Date(c.created_at).toLocaleDateString('el-GR')}</td>
                     <td style={{ padding: '10px', color: 'var(--text-3)', fontSize: '0.78rem' }}>
                       {c.signed_at ? new Date(c.signed_at).toLocaleDateString('el-GR') : '—'}

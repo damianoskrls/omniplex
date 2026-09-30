@@ -82,6 +82,7 @@ export default function ClientDetail() {
   const [programAssignOpen, setProgramAssignOpen] = useState(false);
   const [assigningProgram, setAssigningProgram] = useState('');
   const [profileForm, setProfileForm] = useState(profileFromClient({}));
+  const [memberFile, setMemberFile] = useState(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [locationIds, setLocationIds] = useState([]);
   const [editForm, setEditForm] = useState({
@@ -237,6 +238,7 @@ export default function ClientDetail() {
     setLocationIds(locRes.data || []);
     setClientPrograms(progRes.data || []);
     setAllPrograms(allProgRes.data || []);
+    api.get(`/member/admin/${id}`).then(r => setMemberFile(r.data)).catch(() => setMemberFile(null));
   };
 
   useEffect(() => { load().catch(() => navigate('/clients')); }, [id]);
@@ -651,6 +653,32 @@ export default function ClientDetail() {
           <Save size={14} /> {savingProfile ? 'Αποθήκευση...' : 'Αποθήκευση προφίλ'}
         </button>
       </div>
+
+      {memberFile && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div style={{ fontWeight: 800, marginBottom: 12 }}>Κάρτα υγείας & πρώτη εγγραφή</div>
+          {!memberFile.intake_completed ? (
+            <div className="text-muted">Ο πελάτης δεν έχει συμπληρώσει ακόμα το ερωτηματολόγιο εγγραφής.</div>
+          ) : (
+            <div style={{ display: 'grid', gap: 6, fontSize: '0.88rem', marginBottom: 12 }}>
+              <div>Στόχος: {memberFile.goals?.find(g => g.id === memberFile.intake?.fitness_goal)?.label || memberFile.intake?.fitness_goal || '—'}</div>
+              <div>Γιατί έρχεται: {memberFile.intake?.motivation || '—'}</div>
+              <div>Τι θέλει να πετύχει: {memberFile.intake?.goal_text || '—'}</div>
+              <div>Εμπειρία: {{ beginner: 'Αρχάριος', some: 'Κάποια εμπειρία', regular: 'Τακτικά' }[memberFile.intake?.experience] || '—'}</div>
+              <div>Φορές / εβδομάδα: {memberFile.intake?.visits_per_week ?? '—'}</div>
+            </div>
+          )}
+          <div style={{ display: 'grid', gap: 6, fontSize: '0.88rem' }}>
+            <div>Πρόβλημα υγείας: {memberFile.health?.has_conditions ? (memberFile.health.conditions_text || 'Ναι') : 'Όχι'}</div>
+            <div>Φάρμακα: {memberFile.health?.takes_medication ? (memberFile.health.medication_text || 'Ναι') : 'Όχι'}</div>
+            {memberFile.health?.document_url && (
+              <a href={mediaUrl(memberFile.health.document_url)} target="_blank" rel="noreferrer">
+                Έγγραφο γιατρού{memberFile.health.document_name ? `: ${memberFile.health.document_name}` : ''}
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="page-header">
         <div>

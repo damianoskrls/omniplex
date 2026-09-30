@@ -222,6 +222,7 @@ export default function StaffDetail() {
   const [profile, setProfile] = useState({ full_name: '', role: '', bio: '', phone: '', color_hex: '#607D8B', avatar_url: null });
   const [services, setServices] = useState([]);
   const [places, setPlaces] = useState([]);
+  const [templateSlots, setTemplateSlots] = useState([]);
   const [activePlaceId, setActivePlaceId] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -241,6 +242,7 @@ export default function StaffDetail() {
 
     setProfile({ full_name: member.full_name, role: member.role, bio: member.bio || '', phone: member.phone || '', color_hex: member.color_hex || '#607D8B', avatar_url: member.avatar_url });
     setServices(placesRes.data.services || []);
+    setTemplateSlots(placesRes.data.template_slots || []);
     const nextPlaces = placesRes.data.places || [];
     setPlaces(nextPlaces);
     setActivePlaceId((current) => (
@@ -294,6 +296,10 @@ export default function StaffDetail() {
   };
 
   const save = async () => {
+    if (places.length > 1 && !places.some((p) => p.works_here)) {
+      toast.error('Τσέκαρε τουλάχιστον ένα κατάστημα όπου δουλεύει');
+      return;
+    }
     setSaving(true);
     try {
       await api.patch(`/client-admin/staff/${id}`, profile);
@@ -390,7 +396,7 @@ export default function StaffDetail() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-header"><span className="card-title">Καταστήματα, υπηρεσίες και ώρες</span></div>
         <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: 14, lineHeight: 1.5 }}>
-          Σε κάθε κατάστημα διάλεξε αν δουλεύει και ποιες υπηρεσίες κάνει. Οι ώρες διαθεσιμότητας ακολουθούν το πρόγραμμα που έχεις περάσει σε κάθε υπηρεσία.
+          Τσέκαρε μόνο τα καταστήματα όπου δουλεύει. Οι ώρες μπαίνουν εκεί και πουθενά αλλού — αν δουλεύει μόνο στην Πάτρα, τα άλλα γυμναστήρια μένουν κενά.
         </p>
         {!places.length ? (
           <div className="text-muted">Δεν υπάρχουν καταστήματα. Πρόσθεσέ τα από το μενού Καταστήματα.</div>
@@ -427,7 +433,19 @@ export default function StaffDetail() {
                   <input
                     type="checkbox"
                     checked={!!activePlace.works_here}
-                    onChange={(e) => patchPlace(activePlace.id, { works_here: e.target.checked })}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      if (!on) {
+                        patchPlace(activePlace.id, { works_here: false });
+                        return;
+                      }
+                      const existing = activePlace.slots || [];
+                      patchPlace(activePlace.id, {
+                        works_here: true,
+                        slots: existing.length ? existing : templateSlots.map((slot) => ({ ...slot })),
+                        hours_inherited: false,
+                      });
+                    }}
                   />
                   Δουλεύει στο {activePlace.name}
                 </label>

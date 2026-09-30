@@ -367,6 +367,62 @@ router.get('/:bizId/analytics', authenticate, async (req, res) => {
        WHERE business_id=? AND status='completed' AND starts_at BETWEEN ? AND ?`,
       [bizId, ...range(prevStart, prevEnd)]);
 
+    let trainerRows = [];
+    let trainerConversions = [];
+    let locationRows = [];
+    try {
+    const [trainerResult] = await db.query(
+      `SELECT s.id, s.full_name, s.color_hex,
+              COALESCE(SUM(b.id IS NOT NULL AND b.is_trial = 1 AND b.status <> 'cancelled'), 0) AS trials,
+              COALESCE(SUM(b.id IS NOT NULL AND COALESCE(b.is_trial, 0) = 0 AND b.status <> 'cancelled'), 0) AS sessions,
+              COALESCE(SUM(b.attendance_confirmed = 1), 0) AS attended,
+              COALESCE(SUM(b.status = 'no_show'), 0) AS no_shows,
+              COUNT(DISTINCT IF(b.id IS NOT NULL AND b.status <> 'cancelled', b.user_id, NULL)) AS clients
+       FROM staff s
+       LEFT JOIN bookings b
+         ON b.staff_id = s.id AND b.business_id = s.business_id
+        AND b.starts_at BETWEEN ? AND ?
+       WHERE s.business_id = ? AND s.is_active = 1
+         AND COALESCE(s.is_general_pool, 0) = 0
+         AND COALESCE(s.is_nutritionist, 0) = 0
+       GROUP BY s.id, s.full_name, s.color_hex
+       ORDER BY trials DESC, sessions DESC, s.full_name`,
+      [...range(start, end), bizId],
+    );
+    trainerRows = trainerResult;
+    const [convResult] = await db.query(
+      `SELECT b.staff_id, COUNT(DISTINCT b.user_id) AS conversions
+       FROM bookings b
+       JOIN user_memberships m ON m.user_id = b.user_id AND m.business_id = b.business_id
+       WHERE b.business_id = ? AND b.is_trial = 1 AND b.status <> 'cancelled'
+         AND b.starts_at BETWEEN ? AND ?
+         AND m.valid_from >= DATE(b.starts_at)
+         AND COALESCE(m.membership_status, 'active') <> 'trial'
+       GROUP BY b.staff_id`,
+      [bizId, ...range(start, end)],
+    );
+    trainerConversions = convResult;
+    const [locationResult] = await db.query(
+      `SELECT l.id, l.name,
+              COALESCE(SUM(b.id IS NOT NULL AND b.status <> 'cancelled'), 0) AS bookings,
+              COALESCE(SUM(b.id IS NOT NULL AND b.is_trial = 1 AND b.status <> 'cancelled'), 0) AS trials,
+              COALESCE(SUM(b.attendance_confirmed = 1), 0) AS attended,
+              COUNT(DISTINCT IF(b.id IS NOT NULL AND b.status <> 'cancelled', b.user_id, NULL)) AS clients
+       FROM locations l
+       LEFT JOIN bookings b
+         ON b.location_id = l.id AND b.business_id = l.business_id
+        AND b.starts_at BETWEEN ? AND ?
+       WHERE l.business_id = ? AND l.is_active = 1
+       GROUP BY l.id, l.name
+       ORDER BY trials DESC, bookings DESC, l.name`,
+      [...range(start, end), bizId],
+    );
+    locationRows = locationResult;
+    } catch (statsErr) {
+      console.warn('trainer analytics skipped:', statsErr.message);
+    }
+    const convByStaff = new Map(trainerConversions.map((row) => [row.staff_id, Number(row.conversions) || 0]));
+
     const c2e = (cents) => Math.round((cents || 0) / 100); // cents → euros
     return res.json({
       period: { year, month, start, end },
@@ -380,6 +436,30 @@ router.get('/:bizId/analytics', authenticate, async (req, res) => {
       new_members: { current: newMembers.total, previous: newMembersPrev.total },
       revenue_by_service: revByService.map(r => ({ service_name: r.service_name, revenue: c2e(r.revenue_cents), bookings: r.bookings_count })),
       expenses_by_category: expByCategory.map(r => ({ category: r.category, total: c2e(r.total) })),
+      trainers: trainerRows.map((row) => {
+        const trials = Number(row.trials) || 0;
+        const converted = convByStaff.get(row.id) || 0;
+        return {
+          id: row.id,
+          name: row.full_name,
+          color: row.color_hex,
+          trials,
+          sessions: Number(row.sessions) || 0,
+          attended: Number(row.attended) || 0,
+          no_shows: Number(row.no_shows) || 0,
+          clients: Number(row.clients) || 0,
+          conversions: converted,
+          conversion_rate: trials > 0 ? Math.round((converted / trials) * 100) : 0,
+        };
+      }),
+      locations: locationRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        bookings: Number(row.bookings) || 0,
+        trials: Number(row.trials) || 0,
+        attended: Number(row.attended) || 0,
+        clients: Number(row.clients) || 0,
+      })),
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });

@@ -209,6 +209,112 @@ async function bootstrapSchema() {
     console.warn('gdpr_consents table skipped:', err.message);
   }
 
+  await db.query(`ALTER TABLE gdpr_consents ADD COLUMN kind VARCHAR(32) NOT NULL DEFAULT 'gdpr'`).catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gdpr_consents.kind skipped:', err.message);
+  });
+  await db.query(`ALTER TABLE gdpr_consents ADD COLUMN title VARCHAR(200) NULL`).catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gdpr_consents.title skipped:', err.message);
+  });
+  await db.query(`ALTER TABLE gdpr_consents ADD COLUMN body_snapshot MEDIUMTEXT NULL`).catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gdpr_consents.body_snapshot skipped:', err.message);
+  });
+  await db.query(`ALTER TABLE gdpr_consents ADD COLUMN program_name VARCHAR(200) NULL`).catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gdpr_consents.program_name skipped:', err.message);
+  });
+
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS loyalty_rewards (
+        id               VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id      VARCHAR(36)  NOT NULL,
+        title            VARCHAR(200) NOT NULL,
+        description      VARCHAR(500) NULL,
+        reward_type      VARCHAR(32)  NOT NULL,
+        discount_percent INT          NULL,
+        discount_cents   INT          NULL,
+        points_cost      INT          NOT NULL DEFAULT 0,
+        min_visits       INT          NOT NULL DEFAULT 0,
+        active           TINYINT      NOT NULL DEFAULT 1,
+        created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_lr_biz (business_id)
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS loyalty_redemptions (
+        id           VARCHAR(36) NOT NULL PRIMARY KEY,
+        business_id  VARCHAR(36) NOT NULL,
+        user_id      VARCHAR(36) NOT NULL,
+        reward_id    VARCHAR(36) NOT NULL,
+        points_spent INT         NOT NULL DEFAULT 0,
+        status       VARCHAR(16) NOT NULL DEFAULT 'active',
+        created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        used_at      DATETIME    NULL,
+        INDEX idx_lred_user (user_id, status),
+        INDEX idx_lred_biz (business_id)
+      )
+    `);
+    console.log('✓ Schema: loyalty rewards ready');
+  } catch (err) {
+    console.warn('loyalty rewards skipped:', err.message);
+  }
+
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS member_intakes (
+        id              VARCHAR(36) NOT NULL PRIMARY KEY,
+        business_id     VARCHAR(36) NOT NULL,
+        user_id         VARCHAR(36) NOT NULL,
+        fitness_goal    VARCHAR(64) NULL,
+        motivation      TEXT        NULL,
+        goal_text       TEXT        NULL,
+        experience      VARCHAR(32) NULL,
+        visits_per_week INT         NULL,
+        completed_at    DATETIME    NULL,
+        updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_member_intake (business_id, user_id)
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS member_health_cards (
+        id                VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id       VARCHAR(36)  NOT NULL,
+        user_id           VARCHAR(36)  NOT NULL,
+        has_conditions    TINYINT      NOT NULL DEFAULT 0,
+        conditions_text   TEXT         NULL,
+        takes_medication  TINYINT      NOT NULL DEFAULT 0,
+        medication_text   TEXT         NULL,
+        document_url      VARCHAR(500) NULL,
+        document_name     VARCHAR(255) NULL,
+        updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_member_health (business_id, user_id)
+      )
+    `);
+    console.log('✓ Schema: member intake and health card ready');
+  } catch (err) {
+    console.warn('member intake skipped:', err.message);
+  }
+
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS plan_purchase_requests (
+        id           VARCHAR(36) NOT NULL PRIMARY KEY,
+        business_id  VARCHAR(36) NOT NULL,
+        user_id      VARCHAR(36) NOT NULL,
+        plan_id      VARCHAR(36) NOT NULL,
+        service_id   VARCHAR(36) NULL,
+        kind         VARCHAR(16) NOT NULL,
+        status       VARCHAR(16) NOT NULL DEFAULT 'pending',
+        created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        resolved_at  DATETIME    NULL,
+        INDEX idx_ppr_biz (business_id, status),
+        INDEX idx_ppr_user (user_id, plan_id)
+      )
+    `);
+    console.log('✓ Schema: plan purchase requests ready');
+  } catch (err) {
+    console.warn('plan purchase requests skipped:', err.message);
+  }
+
   // Add last_seen_at to users for online presence
   try {
     await db.query('ALTER TABLE users ADD COLUMN last_seen_at DATETIME NULL');
@@ -790,6 +896,24 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('workout_programs.service_id skipped:', err.message);
   });
 
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS workout_program_services (
+        program_id VARCHAR(36) NOT NULL,
+        service_id VARCHAR(36) NOT NULL,
+        PRIMARY KEY (program_id, service_id),
+        INDEX idx_wps_service (service_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await db.query(`
+      INSERT IGNORE INTO workout_program_services (program_id, service_id)
+      SELECT id, service_id FROM workout_programs WHERE service_id IS NOT NULL
+    `);
+    console.log('✓ Schema: workout_program_services ready');
+  } catch (err) {
+    console.warn('workout_program_services skipped:', err.message);
+  }
+
   // ── businesses: drop_in_price_cents ──────────────────────────
   try {
     await db.query(`ALTER TABLE businesses ADD COLUMN drop_in_price_cents INT NOT NULL DEFAULT 0`);
@@ -812,6 +936,21 @@ async function bootstrapSchema() {
   } catch (err) {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('global_device_tokens skipped:', err.message);
   }
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS global_user_notifications (
+      id VARCHAR(36) NOT NULL PRIMARY KEY,
+      global_user_id VARCHAR(36) NOT NULL,
+      type VARCHAR(64) NOT NULL DEFAULT 'platform',
+      title VARCHAR(255) NOT NULL,
+      body TEXT NULL,
+      is_read TINYINT(1) NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_gun_user (global_user_id, created_at)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `).catch((err) => {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('global_user_notifications skipped:', err.message);
+  });
 
   await db.query('ALTER TABLE community_posts ADD COLUMN service_id VARCHAR(36) NULL').catch((err) => {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('community_posts.service_id skipped:', err.message);

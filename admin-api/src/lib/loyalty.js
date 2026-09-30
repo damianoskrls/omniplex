@@ -100,8 +100,77 @@ async function getUserStats(conn, userId, businessId) {
   };
 }
 
+async function visitsLast30Days(conn, userId, businessId) {
+  const [[row]] = await conn.query(`
+    SELECT COUNT(*) AS cnt FROM bookings
+    WHERE user_id = ? AND business_id = ?
+      AND attendance_confirmed = 1
+      AND status NOT IN ('cancelled', 'no_show')
+      AND starts_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+  `, [userId, businessId]);
+  return Number(row?.cnt || 0);
+}
+
+function discountedPrice(priceCents, reward) {
+  const price = Number(priceCents) || 0;
+  if (reward.reward_type === 'discount_percent') {
+    const pct = Math.min(100, Math.max(0, Number(reward.discount_percent) || 0));
+    return Math.max(0, Math.round(price * (1 - pct / 100)));
+  }
+  if (reward.reward_type === 'discount_fixed') {
+    return Math.max(0, price - (Number(reward.discount_cents) || 0));
+  }
+  return price;
+}
+
+async function activeDiscountRows(conn, userId, businessId) {
+  const [rows] = await conn.query(`
+    SELECT r.id AS redemption_id, w.reward_type, w.discount_percent, w.discount_cents, w.title
+    FROM loyalty_redemptions r
+    JOIN loyalty_rewards w ON w.id = r.reward_id
+    WHERE r.user_id = ? AND r.business_id = ? AND r.status = 'active'
+      AND w.active = 1
+      AND w.reward_type IN ('discount_percent', 'discount_fixed')
+    ORDER BY r.created_at ASC
+  `, [userId, businessId]);
+  return rows;
+}
+
+function bestDiscount(priceCents, rows) {
+  let best = null;
+  for (const row of rows) {
+    const next = discountedPrice(priceCents, row);
+    if (next < Number(priceCents) && (!best || next < best.priceCents)) {
+      best = { priceCents: next, redemptionId: row.redemption_id, title: row.title };
+    }
+  }
+  return best;
+}
+
+async function previewRewardPrice(conn, userId, businessId, priceCents) {
+  if (!userId) return { priceCents: Number(priceCents) || 0, title: null, redemptionId: null };
+  const best = bestDiscount(priceCents, await activeDiscountRows(conn, userId, businessId));
+  return best || { priceCents: Number(priceCents) || 0, title: null, redemptionId: null };
+}
+
+async function applyRewardPrice(conn, userId, businessId, priceCents) {
+  const preview = await previewRewardPrice(conn, userId, businessId, priceCents);
+  if (!preview.redemptionId) return preview;
+  const [result] = await conn.query(
+    `UPDATE loyalty_redemptions SET status = 'used', used_at = NOW() WHERE id = ? AND status = 'active'`,
+    [preview.redemptionId],
+  );
+  if (!result.affectedRows) {
+    return { priceCents: Number(priceCents) || 0, title: null, redemptionId: null };
+  }
+  return preview;
+}
+
 module.exports = {
   countConfirmedSessions,
   awardLoyaltyPoints,
   getUserStats,
+  visitsLast30Days,
+  previewRewardPrice,
+  applyRewardPrice,
 };

@@ -105,19 +105,25 @@ class _GymEntrySplashState extends State<_GymEntrySplash> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 24)],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: logo != null && logo.isNotEmpty
-                      ? Image.network(logo, fit: BoxFit.cover, errorBuilder: (_, _, _) => _mark())
-                      : _mark(),
-                ),
+                if (logo != null && logo.isNotEmpty)
+                  Container(
+                    constraints: const BoxConstraints(maxWidth: 240, minHeight: 72, maxHeight: 120),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 24)],
+                    ),
+                    child: Image.network(
+                      logo,
+                      fit: BoxFit.contain,
+                      width: 200,
+                      height: 88,
+                      errorBuilder: (_, _, _) => _mark(),
+                    ),
+                  )
+                else
+                  _mark(),
                 const SizedBox(height: 18),
                 Text(
                   widget.name,
@@ -133,7 +139,14 @@ class _GymEntrySplashState extends State<_GymEntrySplash> {
   }
 
   Widget _mark() {
-    return Center(
+    return Container(
+      width: 88,
+      height: 88,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Text(
         widget.name.isEmpty ? 'G' : widget.name.characters.first.toUpperCase(),
         style: GoogleFonts.manrope(fontSize: 36, fontWeight: FontWeight.w800, color: const Color(0xFF7B3EAD)),

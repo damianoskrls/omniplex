@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import '../services/global_auth_service.dart';
+import '../theme/brand.dart';
 import '../config/tenant_config.dart';
 import 'global_register_screen.dart';
 import 'phone_otp_login_screen.dart';
@@ -1338,14 +1339,14 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                             height: 40,
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             decoration: BoxDecoration(
-                              color: _kLime,
+                              gradient: kBrandGradient,
                               borderRadius: BorderRadius.circular(9999),
                             ),
                             alignment: Alignment.center,
                             child: Text('Δες το γυμναστήριο',
                               style: GoogleFonts.manrope(
                                 fontSize: 12, fontWeight: FontWeight.w700,
-                                color: _kBg, letterSpacing: 0.3)),
+                                color: Colors.white, letterSpacing: 0.3)),
                           )
                         : Container(
                             width: 36, height: 36,

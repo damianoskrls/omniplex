@@ -173,6 +173,18 @@ class WorkoutProgramsScreen extends StatefulWidget {
   State<WorkoutProgramsScreen> createState() => _WorkoutProgramsScreenState();
 }
 
+bool _programMatchesService(Map<String, dynamic> program, String? serviceId) {
+  if (serviceId == null) return true;
+  if (program['service_id'] == serviceId) return true;
+  final extra = program['service_ids'];
+  if (extra is List) {
+    for (final id in extra) {
+      if (id == serviceId) return true;
+    }
+  }
+  return false;
+}
+
 class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
   bool _loading = true;
   String? _error;
@@ -195,7 +207,7 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
     try {
       final all = await auth.api.fetchMyPrograms(userId);
       final data = widget.serviceId != null
-          ? all.where((p) => p['service_id'] == widget.serviceId).toList()
+          ? all.where((p) => _programMatchesService(p, widget.serviceId)).toList()
           : all;
       if (mounted) setState(() { _programs = data; _loading = false; });
     } on ApiException catch (e) {

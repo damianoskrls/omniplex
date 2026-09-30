@@ -15,6 +15,7 @@ class AddServiceScreen extends StatefulWidget {
 class _AddServiceScreenState extends State<AddServiceScreen> {
   List<Map<String, dynamic>> _services = [];
   bool _loading = true;
+  bool _stripeReady = false;
   String? _error;
   String? _buyingId;
 
@@ -30,9 +31,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       _error = null;
     });
     try {
-      final services = await context.read<AuthService>().api.fetchExtraServices();
+      final result = await context.read<AuthService>().api.fetchExtraServices();
       if (!mounted) return;
-      setState(() => _services = services);
+      setState(() {
+        _services = result.services;
+        _stripeReady = result.stripeReady;
+      });
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
@@ -50,6 +54,53 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     final n = value is num ? value.toInt() : int.tryParse('$value');
     if (n == null || n <= 0 || n >= 9999) return 'Απεριόριστες συνεδρίες';
     return n == 1 ? '1 συνεδρία' : '$n συνεδρίες';
+  }
+
+  Future<void> _request(Map<String, dynamic> plan, String serviceId) async {
+    final planId = plan['id']?.toString();
+    if (planId == null) return;
+    final kind = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Τι θέλεις να ζητήσεις;', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Το γυμναστήριο θα δει το αίτημα και θα το αποδεχτεί.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Άκυρο')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'trial'),
+            child: const Text('Πρώτα δοκιμαστικό'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'enroll'),
+            child: const Text('Εγγραφή στο πακέτο'),
+          ),
+        ],
+      ),
+    );
+    if (kind == null || !mounted) return;
+    setState(() => _buyingId = planId);
+    try {
+      final result = await context.read<AuthService>().api.requestExtraPlan(
+        planId: planId,
+        kind: kind,
+        serviceId: serviceId,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message']?.toString() ?? 'Το αίτημα στάλθηκε')),
+      );
+      await _load();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _buyingId = null);
+    }
   }
 
   Future<void> _buy(Map<String, dynamic> plan) async {
@@ -133,6 +184,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
   Widget _serviceCard(Map<String, dynamic> service) {
     final plans = (service['plans'] as List? ?? []).cast<Map<String, dynamic>>();
+    final serviceId = service['id']?.toString() ?? '';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -164,36 +216,43 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             ...plans.map((plan) {
               final id = plan['id']?.toString();
               final cents = (plan['price_cents'] as num?)?.toInt() ?? 0;
+              final pending = plan['pending_kind']?.toString();
               final busy = _buyingId == id;
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    Text(plan['name']?.toString() ?? 'Πακέτο',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      '${_sessions(plan['sessions'])} · ${_price(cents)}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    if (pending != null)
+                      Text(
+                        pending == 'trial' ? 'Εκκρεμεί αίτημα δοκιμαστικού' : 'Εκκρεμεί αίτημα εγγραφής',
+                        style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                      )
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          Text(plan['name']?.toString() ?? 'Πακέτο',
-                              style: const TextStyle(fontWeight: FontWeight.w700)),
-                          Text(
-                            '${_sessions(plan['sessions'])} · ${_price(cents)}',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          if (_stripeReady)
+                            FilledButton(
+                              onPressed: busy || _buyingId != null ? null : () => _buy(plan),
+                              child: busy
+                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Text('Πλήρωσε τώρα'),
+                            ),
+                          OutlinedButton(
+                            onPressed: busy || _buyingId != null ? null : () => _request(plan, serviceId),
+                            child: const Text('Αίτημα'),
                           ),
                         ],
                       ),
-                    ),
-                    FilledButton(
-                      onPressed: busy || _buyingId != null ? null : () => _buy(plan),
-                      style: FilledButton.styleFrom(
-                        foregroundColor: Colors.white,
-                      ),
-                      child: busy
-                          ? const SizedBox(
-                              width: 16, height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Text('Πάρε το'),
-                    ),
                   ],
                 ),
               );

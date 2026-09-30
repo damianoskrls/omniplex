@@ -199,6 +199,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
     try {
       await NotificationService.instance.init();
       await PushService.instance.init();
+      await PushService.instance.registerGlobal(_globalAuth);
     } catch (_) {}
   }
 

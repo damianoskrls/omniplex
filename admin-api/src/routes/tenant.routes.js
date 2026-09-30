@@ -249,6 +249,40 @@ router.delete('/global-users/:id', authenticate, requireMasterAdmin, async (req,
   } catch (err) { return res.status(500).json({ error: err.message }); }
 });
 
+// POST /api/tenants/push — super admin broadcast to OmniPlex users
+router.post('/push', authenticate, requireMasterAdmin, async (req, res) => {
+  const title = String(req.body.title || '').trim();
+  const body = String(req.body.body || '').trim();
+  const ids = Array.isArray(req.body.global_user_ids) ? req.body.global_user_ids.filter(Boolean) : [];
+  if (!title || !body) return res.status(400).json({ error: 'Χρειάζεται τίτλος και κείμενο' });
+  try {
+    const { sendFcmMany, getGlobalUserFcmTokens } = require('../lib/push');
+    const [users] = ids.length
+      ? await db.query('SELECT id FROM global_users WHERE id IN (?)', [ids])
+      : await db.query('SELECT id FROM global_users');
+    let notified = 0;
+    const tokens = [];
+    for (const user of users) {
+      const id = uuidv4();
+      await db.query(
+        `INSERT INTO global_user_notifications (id, global_user_id, type, title, body)
+         VALUES (?, ?, 'platform', ?, ?)`,
+        [id, user.id, title, body],
+      );
+      notified += 1;
+      tokens.push(...await getGlobalUserFcmTokens(db, user.id));
+    }
+    const push = await sendFcmMany(tokens, {
+      title,
+      body,
+      data: { type: 'platform', action: 'open_notifications' },
+    });
+    return res.json({ ok: true, users: notified, sent: push.sent || 0, skipped: !!push.skipped });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ============================================================
 // GET /api/tenants/:id — Full config for one tenant
 // ============================================================

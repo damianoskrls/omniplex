@@ -107,9 +107,10 @@ async function slotsFor(dbConn, staffId, locationId) {
   return { slots: mapSlots(generic), inherited: generic.length > 0 };
 }
 
-function worksHere(locationIds, locationId) {
-  if (!locationIds.length) return { works: true, implicitAll: true };
-  return { works: locationIds.includes(locationId), implicitAll: false };
+function worksHere(locationIds, locationId, { locationCount = 1 } = {}) {
+  if (locationIds.length) return { works: locationIds.includes(locationId), implicitAll: false };
+  if (locationCount <= 1) return { works: true, implicitAll: true };
+  return { works: false, implicitAll: false };
 }
 
 async function getLocationTeam(dbConn, bizId, locationId) {
@@ -122,22 +123,23 @@ async function getLocationTeam(dbConn, bizId, locationId) {
     err.status = 404;
     throw err;
   }
-  const [staff, services] = await Promise.all([
+  const [staff, services, locations] = await Promise.all([
     listGymStaff(dbConn, bizId),
     listBookableServices(dbConn, bizId),
+    listActiveLocations(dbConn, bizId),
   ]);
   const indexes = await loadIndexes(dbConn, staff.map((s) => s.id));
   const trainers = [];
   for (const member of staff) {
     const assignedLocs = indexes.locationsByStaff.get(member.id) || [];
-    const here = worksHere(assignedLocs, locationId);
+    const hours = await slotsFor(dbConn, member.id, locationId);
+    const here = worksHere(assignedLocs, locationId, { locationCount: locations.length });
     const key = `${member.id}:${locationId}`;
     const explicit = indexes.placeServices.get(key);
     const configured = indexes.configured.has(key);
-    const serviceIds = configured
-      ? (explicit || [])
-      : (indexes.servicesByStaff.get(member.id) || []);
-    const hours = await slotsFor(dbConn, member.id, locationId);
+    const serviceIds = here.works
+      ? (configured ? (explicit || []) : (indexes.servicesByStaff.get(member.id) || []))
+      : [];
     trainers.push({
       id: member.id,
       full_name: member.full_name,
@@ -147,41 +149,25 @@ async function getLocationTeam(dbConn, bizId, locationId) {
       implicit_all: here.implicitAll,
       services_configured: configured,
       service_ids: serviceIds,
-      slots: hours.slots,
-      hours_inherited: hours.inherited,
+      slots: here.works ? (hours.inherited && !here.implicitAll ? [] : hours.slots) : [],
+      hours_inherited: here.works && here.implicitAll && hours.inherited,
     });
   }
   return { services, trainers };
 }
 
-async function setWorksHere(conn, staffId, locationId, shouldWork, allLocationIds) {
-  const [rows] = await conn.query(
-    'SELECT location_id FROM staff_locations WHERE staff_id = ?',
-    [staffId],
-  );
-  const current = rows.map((r) => r.location_id);
-  if (!current.length) {
-    if (shouldWork) return;
-    for (const id of allLocationIds) {
-      if (id === locationId) continue;
-      await conn.query(
-        'INSERT IGNORE INTO staff_locations (staff_id, location_id) VALUES (?, ?)',
-        [staffId, id],
-      );
-    }
-    return;
-  }
+async function setWorksHere(conn, staffId, locationId, shouldWork) {
   if (shouldWork) {
     await conn.query(
       'INSERT IGNORE INTO staff_locations (staff_id, location_id) VALUES (?, ?)',
       [staffId, locationId],
     );
-  } else {
-    await conn.query(
-      'DELETE FROM staff_locations WHERE staff_id = ? AND location_id = ?',
-      [staffId, locationId],
-    );
+    return;
   }
+  await conn.query(
+    'DELETE FROM staff_locations WHERE staff_id = ? AND location_id = ?',
+    [staffId, locationId],
+  );
 }
 
 async function replacePlaceServices(conn, staffId, locationId, serviceIds) {
@@ -224,6 +210,10 @@ async function clearPlace(conn, staffId, locationId) {
     'DELETE FROM staff_place_prefs WHERE staff_id = ? AND location_id = ?',
     [staffId, locationId],
   );
+  await conn.query(
+    'DELETE FROM staff_availability WHERE staff_id = ? AND location_id = ?',
+    [staffId, locationId],
+  );
 }
 
 async function replaceLocationHours(conn, staffId, locationId, slots) {
@@ -257,14 +247,13 @@ async function saveLocationTeam(dbConn, bizId, locationId, { trainers = [], hour
     err.status = 404;
     throw err;
   }
-  const allIds = locations.map((l) => l.id);
   const conn = await dbConn.getConnection();
   try {
     await conn.beginTransaction();
     for (const member of trainers) {
       if (!member?.staff_id) continue;
       if (!(await assertStaffInBusiness(conn, bizId, member.staff_id))) continue;
-      await setWorksHere(conn, member.staff_id, locationId, !!member.works_here, allIds);
+      await setWorksHere(conn, member.staff_id, locationId, !!member.works_here);
       if (member.works_here) {
         await replacePlaceServices(conn, member.staff_id, locationId, member.service_ids || []);
       } else {
@@ -307,11 +296,12 @@ async function getStaffPlaces(dbConn, bizId, staffId) {
   const assignedLocs = indexes.locationsByStaff.get(staffId) || [];
   const places = [];
   for (const loc of locations) {
-    const here = worksHere(assignedLocs, loc.id);
+    const hours = await slotsFor(dbConn, staffId, loc.id);
+    const here = worksHere(assignedLocs, loc.id, { locationCount: locations.length });
     const key = `${staffId}:${loc.id}`;
     const configured = indexes.configured.has(key);
     const explicit = indexes.placeServices.get(key);
-    const hours = await slotsFor(dbConn, staffId, loc.id);
+    const ownSlots = hours.inherited ? [] : hours.slots;
     places.push({
       id: loc.id,
       name: loc.name,
@@ -319,12 +309,21 @@ async function getStaffPlaces(dbConn, bizId, staffId) {
       works_here: here.works,
       implicit_all: here.implicitAll,
       services_configured: configured,
-      service_ids: configured ? (explicit || []) : (indexes.servicesByStaff.get(staffId) || []),
-      slots: hours.slots,
-      hours_inherited: hours.inherited,
+      service_ids: configured
+        ? (explicit || [])
+        : (here.works ? (indexes.servicesByStaff.get(staffId) || []) : []),
+      slots: here.works ? (here.implicitAll ? hours.slots : ownSlots) : ownSlots,
+      hours_inherited: here.works && here.implicitAll && hours.inherited,
     });
   }
-  return { services, places };
+  const [generic] = await dbConn.query(
+    `SELECT weekday, start_time, end_time
+     FROM staff_availability
+     WHERE staff_id = ? AND location_id IS NULL AND service_id IS NULL AND is_active = 1
+     ORDER BY weekday, start_time`,
+    [staffId],
+  );
+  return { services, places, template_slots: mapSlots(generic) };
 }
 
 async function saveStaffPlaces(dbConn, bizId, staffId, { places = [] } = {}) {
@@ -341,7 +340,7 @@ async function saveStaffPlaces(dbConn, bizId, staffId, { places = [] } = {}) {
     await conn.beginTransaction();
     for (const place of places) {
       if (!place?.location_id || !allowed.has(place.location_id)) continue;
-      await setWorksHere(conn, staffId, place.location_id, !!place.works_here, allIds);
+      await setWorksHere(conn, staffId, place.location_id, !!place.works_here);
       if (place.works_here) {
         await replacePlaceServices(conn, staffId, place.location_id, place.service_ids || []);
         if (Array.isArray(place.slots)) {
@@ -351,6 +350,10 @@ async function saveStaffPlaces(dbConn, bizId, staffId, { places = [] } = {}) {
         await clearPlace(conn, staffId, place.location_id);
       }
     }
+    await conn.query(
+      'DELETE FROM staff_availability WHERE staff_id = ? AND location_id IS NULL',
+      [staffId],
+    );
     await conn.commit();
   } catch (err) {
     await conn.rollback();

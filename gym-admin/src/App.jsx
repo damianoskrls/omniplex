@@ -59,6 +59,8 @@ import BulkMessage from './pages/BulkMessage';
 import Questionnaires from './pages/Questionnaires';
 import QuestionnaireSign from './pages/QuestionnaireSign';
 import Reminders from './pages/Reminders';
+import Rewards from './pages/Rewards';
+import PlanRequests from './pages/PlanRequests';
 
 function HomeRedirect() {
   const { isNutritionist, isTrainer } = useAuth();
@@ -135,6 +137,8 @@ export default function App() {
           <Route path="/gdpr/:token" element={<GdprSign />} />
           <Route path="/questionnaires" element={<PrivateRoute ownerOnly><Questionnaires /></PrivateRoute>} />
           <Route path="/reminders" element={<PrivateRoute ownerOnly><Reminders /></PrivateRoute>} />
+          <Route path="/rewards" element={<PrivateRoute ownerOnly><Rewards /></PrivateRoute>} />
+          <Route path="/plan-requests" element={<PrivateRoute ownerOnly><PlanRequests /></PrivateRoute>} />
           <Route path="/q/:token" element={<QuestionnaireSign />} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
