@@ -7,7 +7,10 @@ function requireAdmin(req, res, next) {
   const jwt = require('jsonwebtoken');
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    if (payload.role !== 'owner' && payload.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    const role = payload.role;
+    if (role !== 'client_admin' && role !== 'owner' && role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     req.bizId = payload.businessId || payload.business_id || payload.bizId;
     next();
   } catch { return res.status(401).json({ error: 'Unauthorized' }); }
@@ -20,9 +23,7 @@ router.get('/settings', requireAdmin, async (req, res) => {
       'SELECT reminder_settings FROM business_configs WHERE business_id=?',
       [req.bizId]
     );
-    const raw = rows[0]?.reminder_settings;
-    const settings = raw ? JSON.parse(raw) : getDefaults();
-    res.json(settings);
+    res.json(parseSettings(rows[0]?.reminder_settings));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -53,6 +54,12 @@ router.get('/log', requireAdmin, async (req, res) => {
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+function parseSettings(raw) {
+  if (!raw) return getDefaults();
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch { return getDefaults(); }
+}
 
 function getDefaults() {
   return {

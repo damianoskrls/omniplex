@@ -50,7 +50,7 @@ export default function Reminders() {
     try {
       const [s, l] = await Promise.all([
         api.get('/reminders/settings'),
-        api.get('/reminders/log'),
+        api.get('/reminders/log').catch(() => ({ data: [] })),
       ]);
       setSettings(s.data);
       setLog(l.data || []);
