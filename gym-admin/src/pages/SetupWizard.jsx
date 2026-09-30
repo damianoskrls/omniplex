@@ -575,13 +575,13 @@ function NutritionStep({ checks, onSaved }) {
 
 function StaffStep({ onSaved }) {
   const [items, setItems] = useState(null);
-  const [form, setForm] = useState({ full_name: '', role: 'Trainer' });
+  const [form, setForm] = useState({ full_name: '', role: 'Trainer', phone: '' });
   const [saving, setSaving] = useState(false);
   const load = () => api.get('/client-admin/staff').then((r) => {
     setItems((r.data || []).map((s) => ({
       key: s.id,
       title: s.full_name,
-      meta: [s.role, (s.services || []).map((svc) => svc.service_name).join(', ')].filter(Boolean).join(' · '),
+      meta: [s.role, s.phone || 'χωρίς κινητό', (s.services || []).map((svc) => svc.service_name).join(', ')].filter(Boolean).join(' · '),
     })));
   }).catch(() => setItems([]));
   useEffect(() => { load(); }, []);
@@ -591,7 +591,7 @@ function StaffStep({ onSaved }) {
     try {
       await api.post('/client-admin/staff', form);
       toast.success('Προστέθηκε. Τις ώρες και τις υπηρεσίες του τις ορίζεις στο επόμενο βήμα ή στην καρτέλα του.');
-      setForm({ full_name: '', role: 'Trainer' });
+      setForm({ full_name: '', role: 'Trainer', phone: '' });
       await load();
       onSaved();
     } catch (err) {
@@ -607,7 +607,9 @@ function StaffStep({ onSaved }) {
       <div className="form-grid-2">
         <div className="form-group"><label className="form-label">Ονοματεπώνυμο</label><input className="form-input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required /></div>
         <div className="form-group"><label className="form-label">Ρόλος</label><input className="form-input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} required /></div>
+        <div className="form-group"><label className="form-label">Κινητό</label><input className="form-input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="69XXXXXXXX" inputMode="tel" required /></div>
       </div>
+      <p className="text-muted" style={{ fontSize: '0.82rem', marginTop: -6 }}>Με αυτό το κινητό μπαίνει στο app και βλέπει το γυμναστήριο ως trainer.</p>
       <button className="btn btn-primary" disabled={saving}>{saving ? '...' : 'Προσθήκη'}</button>
       <div style={{ marginTop: 10 }}><Link to="/staff">Λίστα προσωπικού</Link></div>
     </form>

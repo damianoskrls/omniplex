@@ -13,6 +13,7 @@ import '../utils/image_upload.dart';
 import '../widgets/image_lightbox.dart';
 import '../widgets/message_bubble_content.dart';
 import 'messages_screen.dart';
+import 'staff_messages_screen.dart';
 
 // Notifier used by HomeScreen to tell CommunityScreen which post to highlight
 final _highlightPostNotifier = ValueNotifier<String?>(null);
@@ -30,6 +31,8 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> {
   List<Map<String, dynamic>> _posts = [];
+  List<Map<String, dynamic>> _services = [];
+  String? _serviceId;
   bool _loading = true;
   String? _nextCursor;
   bool _loadingMore = false;
@@ -76,10 +79,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Future<void> _load({bool silent = false}) async {
     if (!silent) setState(() => _loading = true);
     try {
-      final r = await _api.getCommunityPosts();
+      final r = await _api.getCommunityPosts(serviceId: _serviceId);
       if (!mounted) return;
       setState(() {
         _posts = List<Map<String, dynamic>>.from(r['posts'] ?? []);
+        _services = List<Map<String, dynamic>>.from(r['services'] ?? []);
+        _serviceId = r['service_id'] as String? ?? _serviceId;
         _nextCursor = r['next_cursor'] as String?;
         _loading = false;
       });
@@ -92,7 +97,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     if (_nextCursor == null || _loadingMore) return;
     setState(() => _loadingMore = true);
     try {
-      final r = await _api.getCommunityPosts(cursor: _nextCursor);
+      final r = await _api.getCommunityPosts(cursor: _nextCursor, serviceId: _serviceId);
       if (!mounted) return;
       setState(() {
         _posts.addAll(List<Map<String, dynamic>>.from(r['posts'] ?? []));
@@ -160,6 +165,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _openMessagePicker() async {
+    if (context.read<AuthService>().user?.isStaff == true) {
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffMessagesScreen()));
+      return;
+    }
     List<Map<String, dynamic>> peers;
     try {
       peers = await _api.fetchMessagePeers();
@@ -233,7 +242,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _NewPostSheet(api: _api, base: _base),
+      builder: (_) => _NewPostSheet(api: _api, base: _base, serviceId: _serviceId),
     );
     if (result == true) _load();
   }
@@ -259,8 +268,40 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ),
         ],
       ),
-      body: _loading
+      body: Column(
+        children: [
+          if (_services.isNotEmpty)
+            SizedBox(
+              height: 52,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                itemCount: _services.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final service = _services[i];
+                  final id = service['id'] as String?;
+                  final selected = id == _serviceId;
+                  return ChoiceChip(
+                    label: Text(service['name'] as String? ?? 'Υπηρεσία'),
+                    selected: selected,
+                    onSelected: id == null ? null : (_) {
+                      setState(() => _serviceId = id);
+                      _load();
+                    },
+                    selectedColor: AppColors.lime,
+                    labelStyle: TextStyle(
+                      color: selected ? Colors.black : AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  );
+                },
+              ),
+            ),
+          Expanded(child: _loading
           ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
+          : _services.isEmpty
+          ? Center(child: Text('Δεν έχεις ενεργό πρόγραμμα για κοινότητα.', style: const TextStyle(color: AppColors.textSecondary)))
           : RefreshIndicator(
               color: AppColors.lime,
               onRefresh: _load,
@@ -297,19 +338,23 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         }
                         final postId = _posts[i]['id'] as String;
                         _postKeys[postId] ??= GlobalKey();
+                        final myId = context.read<AuthService>().user?.id;
                         return _PostCard(
                           key: _postKeys[postId],
                           post: _posts[i],
                           base: _base,
                           onReact: () => _react(postId, i),
                           onComment: () => _openComments(i),
-                          onDelete: _posts[i]['user_id'] != null ? () => _deletePost(postId) : null,
+                          onDelete: (_posts[i]['user_id'] == myId || _posts[i]['staff_id'] == myId) ? () => _deletePost(postId) : null,
                           highlighted: _highlightedPostId == postId,
                         );
                       },
                     ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
+          ),
+        ],
+      ),
+      floatingActionButton: _serviceId == null ? null : FloatingActionButton.extended(
         onPressed: _openNewPost,
         icon: const Icon(Icons.edit_outlined),
         label: Text(AppStrings.of(context).communityNewPost),
@@ -606,7 +651,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     _comments = List<Map<String, dynamic>>.from(widget.post['comments'] ?? []);
     _myUserId = context.read<AuthService>().user?.id;
     _controller.addListener(_onTextChanged);
-    widget.api.fetchCommunityMentionables().then((m) { if (mounted) setState(() => _mentionables = m); });
+    widget.api.fetchCommunityMentionables(serviceId: widget.post['service_id'] as String?).then((m) { if (mounted) setState(() => _mentionables = m); });
   }
 
   @override
@@ -813,7 +858,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 class _NewPostSheet extends StatefulWidget {
   final ApiService api;
   final String base;
-  const _NewPostSheet({required this.api, required this.base});
+  final String? serviceId;
+  const _NewPostSheet({required this.api, required this.base, required this.serviceId});
 
   @override
   State<_NewPostSheet> createState() => _NewPostSheetState();
@@ -832,7 +878,7 @@ class _NewPostSheetState extends State<_NewPostSheet> {
   void initState() {
     super.initState();
     _controller.addListener(_onTextChanged);
-    widget.api.fetchCommunityMentionables().then((m) { if (mounted) setState(() => _mentionables = m); });
+    widget.api.fetchCommunityMentionables(serviceId: widget.serviceId).then((m) { if (mounted) setState(() => _mentionables = m); });
   }
 
   @override
@@ -927,7 +973,12 @@ class _NewPostSheetState extends State<_NewPostSheet> {
     if (body.isEmpty && _media.isEmpty) return;
     setState(() => _posting = true);
     try {
-      await widget.api.createCommunityPostWithMentions(body: body.isEmpty ? null : body, media: _media, mentions: _pendingMentions.isNotEmpty ? _pendingMentions : null);
+      await widget.api.createCommunityPostWithMentions(
+        body: body.isEmpty ? null : body,
+        media: _media,
+        mentions: _pendingMentions.isNotEmpty ? _pendingMentions : null,
+        serviceId: widget.serviceId,
+      );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Σφάλμα: $e')));

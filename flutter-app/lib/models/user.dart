@@ -16,6 +16,8 @@ class AppUser {
     this.avatarUrl,
     this.colorHex,
     this.bio,
+    this.isNutritionist = false,
+    this.staffKind,
   });
 
   final String id;
@@ -30,6 +32,8 @@ class AppUser {
   final String? avatarUrl;
   final String? colorHex;
   final String? bio;
+  final bool isNutritionist;
+  final String? staffKind;
 
   bool get isStaff => role == UserRole.staff;
   bool get isAdmin => role == UserRole.admin;
@@ -54,6 +58,8 @@ class AppUser {
         avatarUrl: json['avatar_url'] as String?,
         colorHex: json['color_hex'] as String?,
         bio: json['bio'] as String?,
+        isNutritionist: json['is_nutritionist'] == true || json['is_nutritionist'] == 1,
+        staffKind: json['staff_kind'] as String?,
       );
 
   factory AppUser.fromAdminJson(Map<String, dynamic> json) {

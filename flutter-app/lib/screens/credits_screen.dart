@@ -11,8 +11,8 @@ import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import 'add_service_screen.dart';
 import '../widgets/payment_sheet.dart';
-import 'gym_profile_screen.dart';
 import 'nutrition_consultation_booking_screen.dart';
 
 class CreditsScreen extends StatefulWidget {
@@ -207,18 +207,18 @@ class _CreditsScreenState extends State<CreditsScreen> {
     }
 
     if (_credits.isEmpty) {
-      final config = context.read<TenantConfig>();
       return EmptyState(
         icon: Icons.card_membership_outlined,
         title: AppStrings.of(context).creditsNoPackages,
-        subtitle: 'Μπορείς να δεις τα πακέτα του γυμναστηρίου και να αγοράσεις.',
+        subtitle: 'Πρόσθεσε άλλη υπηρεσία του γυμναστηρίου και πάρε πακέτο.',
         action: ElevatedButton(
-          onPressed: () {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => GymProfileScreen(slug: config.slug, initialTab: 2),
+          onPressed: () async {
+            final added = await Navigator.push<bool>(context, MaterialPageRoute(
+              builder: (_) => const AddServiceScreen(),
             ));
+            if (added == true) _load();
           },
-          child: const Text('Δες πακέτα'),
+          child: const Text('Πρόσθεσε υπηρεσία'),
         ),
       );
     }
@@ -230,9 +230,22 @@ class _CreditsScreenState extends State<CreditsScreen> {
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        itemCount: _credits.length + (hasPendingBalance ? 1 : 0),
+        itemCount: _credits.length + (hasPendingBalance ? 1 : 0) + 1,
         separatorBuilder: (_, __) => const SizedBox(height: 14),
         itemBuilder: (context, index) {
+          final extraIndex = _credits.length + (hasPendingBalance ? 1 : 0);
+          if (index == extraIndex) {
+            return OutlinedButton.icon(
+              onPressed: () async {
+                final added = await Navigator.push<bool>(context, MaterialPageRoute(
+                  builder: (_) => const AddServiceScreen(),
+                ));
+                if (added == true) _load();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Πρόσθεσε άλλη υπηρεσία και πάρε πακέτο'),
+            );
+          }
           if (hasPendingBalance && index == 0) {
             return _PaymentBanner(
               totalCents: _totalBalanceCents,
@@ -242,21 +255,18 @@ class _CreditsScreenState extends State<CreditsScreen> {
             );
           }
           final creditIndex = hasPendingBalance ? index - 1 : index;
-          return _buildCreditCard(context, _credits[creditIndex], creditIndex);
+          return _buildCreditCard(context, _credits[creditIndex]);
         },
       ),
     );
   }
 
-  Widget _buildCreditCard(BuildContext context, MembershipCredit credit, int index) {
+  Widget _buildCreditCard(BuildContext context, MembershipCredit credit) {
     final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
     final renewal = DateFormat('d MMMM yyyy', locale).format(credit.validUntil);
     final started = DateFormat('d MMM yyyy', locale).format(credit.validFrom);
     final title = credit.planName ?? credit.serviceName ?? AppStrings.of(context).creditsGenericPackage;
-    final isNutrition = credit.isNutritionProgram || credit.isNutritionConsultation;
-    final accent = isNutrition
-        ? const Color(0xFF0f766e)
-        : AppColors.cardGradient(index).first;
+    final accent = context.tenantPrimary;
     final features = credit.isNutritionProgram ? _nutritionFeatures(credit) : const <String>[];
 
     return SurfaceCard(

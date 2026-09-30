@@ -14,6 +14,9 @@ const STATUS_BG = { pending: '#FEF3C7', approved: '#DCFCE7', rejected: '#FEE2E2'
 
 export default function StaffLeaves() {
   const [leaves, setLeaves] = useState([]);
+  const [balances, setBalances] = useState([]);
+  const [allowanceDraft, setAllowanceDraft] = useState({});
+  const [savingAllowance, setSavingAllowance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [annualDays, setAnnualDays] = useState('');
   const [savingDays, setSavingDays] = useState(false);
@@ -30,8 +33,11 @@ export default function StaffLeaves() {
         api.get('/client-admin/staff-leaves', { params: statusFilter ? { status: statusFilter } : {} }),
         api.get('/client-admin/settings/annual-leave-days').catch(() => ({ data: { annual_leave_days: 20 } })),
       ]);
-      setLeaves(leavesRes.data.leaves || leavesRes.data);
-      setAnnualDays(settingsRes.data.annual_leave_days ?? 20);
+      const nextBalances = leavesRes.data.balances || [];
+      setLeaves(leavesRes.data.leaves || []);
+      setBalances(nextBalances);
+      setAllowanceDraft(Object.fromEntries(nextBalances.map((b) => [b.staff_id, String(b.annual_leave_days)])));
+      setAnnualDays(settingsRes.data.annual_leave_days ?? leavesRes.data.annual_leave_days ?? 20);
     } catch (e) {
       setError(e?.response?.data?.error || e?.message || 'Σφάλμα φόρτωσης');
     }
@@ -45,8 +51,28 @@ export default function StaffLeaves() {
     try {
       await api.patch(`/client-admin/staff-leaves/${leaveId}`, { status: action, admin_note: actionNote[leaveId] || '' });
       await load();
-    } catch { /* silent */ }
+    } catch (e) {
+      setError(e?.response?.data?.error || 'Η ενέργεια απέτυχε');
+    }
     finally { setActing(null); }
+  };
+
+  const saveAllowance = async (staffId) => {
+    const days = Number(allowanceDraft[staffId]);
+    if (!Number.isInteger(days) || days < 0) {
+      setError('Βάλε ακέραιες ημέρες άδειας');
+      return;
+    }
+    setSavingAllowance(staffId);
+    setError('');
+    try {
+      await api.patch(`/client-admin/staff/${staffId}`, { annual_leave_days: days });
+      await load();
+    } catch (e) {
+      setError(e?.response?.data?.error || 'Δεν αποθηκεύτηκε το δικαίωμα άδειας');
+    } finally {
+      setSavingAllowance(null);
+    }
   };
 
   const saveAnnualDays = async () => {
@@ -73,7 +99,7 @@ export default function StaffLeaves() {
         {/* Annual leave setting */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Settings size={15} style={{ color: '#94a3b8' }} />
-          <span style={{ fontSize: 13, color: '#64748b' }}>Ετήσιες ημέρες:</span>
+          <span style={{ fontSize: 13, color: '#64748b' }}>Προεπιλογή γυμναστηρίου:</span>
           <input
             type="number"
             className="form-input"
@@ -87,6 +113,49 @@ export default function StaffLeaves() {
           </button>
         </div>
       </div>
+
+      {balances.length > 0 && (
+        <div className="card" style={{ marginBottom: 18, padding: 16 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Ημέρες που δικαιούται ο καθένας</div>
+          <div className="text-muted" style={{ fontSize: 13, marginBottom: 14 }}>
+            Αφαιρούνται οι άδειες που περνάς εσύ και όσες ζητάει το προσωπικό και τις εγκρίνεις. Οι εκκρεμείς δεν μετράνε ακόμα.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {balances.map((b) => {
+              const draft = Number(allowanceDraft[b.staff_id]);
+              const remaining = Number.isInteger(draft) ? draft - b.days_used : b.days_remaining;
+              return (
+                <div key={b.staff_id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 180, fontWeight: 600 }}>{b.full_name}</div>
+                  <label style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Δικαιούται
+                    <input
+                      type="number"
+                      min={0}
+                      className="form-input"
+                      style={{ width: 72, padding: '4px 8px' }}
+                      value={allowanceDraft[b.staff_id] ?? ''}
+                      onChange={(e) => setAllowanceDraft((prev) => ({ ...prev, [b.staff_id]: e.target.value }))}
+                    />
+                  </label>
+                  <span style={{ fontSize: 13, color: '#475569' }}>
+                    Χρησιμοποιήθηκαν <strong>{b.days_used}</strong>
+                    {' · '}
+                    Απομένουν <strong>{remaining}</strong>
+                  </span>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    disabled={savingAllowance === b.staff_id}
+                    onClick={() => saveAllowance(b.staff_id)}
+                  >
+                    {savingAllowance === b.staff_id ? '…' : 'Αποθήκευση'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filter */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>

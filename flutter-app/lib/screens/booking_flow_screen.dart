@@ -34,6 +34,8 @@ enum _BulkPeriod { specificMonth, nextFourWeeks }
 const _minLeadMinutes = 15;
 
 class _BookingFlowScreenState extends State<BookingFlowScreen> {
+  Color get _brand => context.tenantPrimary;
+
   DateTime _selectedDate = DateTime.now();
   String? _selectedTime;
   StaffMember? _selectedStaff;
@@ -384,10 +386,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                         monthFmt.format(month),
                         style: TextStyle(
                           fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          color: selected ? AppColors.lime : AppColors.textPrimary,
+                          color: selected ? _brand : AppColors.textPrimary,
                         ),
                       ),
-                      trailing: selected ? const Icon(Icons.check, color: AppColors.lime) : null,
+                      trailing: selected ? Icon(Icons.check, color: _brand) : null,
                       onTap: () => Navigator.pop(ctx, month),
                     );
                   },
@@ -569,7 +571,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           if (next != null)
             TextButton(
               onPressed: () => Navigator.pop(ctx, 'book'),
-              child: Text(AppStrings.of(context).bookingFlowBookNext(next.time), style: const TextStyle(color: AppColors.lime)),
+              child: Text(AppStrings.of(context).bookingFlowBookNext(next.time), style: TextStyle(color: _brand)),
             ),
         ],
       ),
@@ -767,7 +769,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               if (next != null)
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, 'book'),
-                  child: Text(AppStrings.of(context).bookingFlowBookNext(next.time), style: const TextStyle(color: AppColors.lime)),
+                  child: Text(AppStrings.of(context).bookingFlowBookNext(next.time), style: TextStyle(color: _brand)),
                 ),
             ],
           ),
@@ -844,7 +846,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
                       return CheckboxListTile(
                         value: selectedKeys.contains(key),
-                        activeColor: AppColors.lime,
+                        activeColor: _brand,
                         title: Text(
                           '${dateFmt.format(date)} ${f['time']} → $altTime',
                           style: const TextStyle(fontSize: 14),
@@ -1029,14 +1031,14 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: selected
-                ? (isWaitlist ? AppColors.orange.withValues(alpha: 0.12) : AppColors.lime.withValues(alpha: 0.12))
+                ? (isWaitlist ? AppColors.orange.withValues(alpha: 0.12) : _brand.withValues(alpha: 0.12))
                 : (isUserConflict
                     ? AppColors.surface.withValues(alpha: 0.45)
                     : (isWaitlist ? AppColors.surface.withValues(alpha: 0.6) : AppColors.surface)),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: selected
-                  ? (isWaitlist ? AppColors.orange : AppColors.lime)
+                  ? (isWaitlist ? AppColors.orange : _brand)
                   : (isUserConflict
                       ? AppColors.border
                       : (isWaitlist ? AppColors.orange.withValues(alpha: 0.4) : AppColors.border)),
@@ -1057,7 +1059,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
-                          color: selected ? AppColors.lime : AppColors.textPrimary,
+                          color: selected ? _brand : AppColors.textPrimary,
                         ),
                       )
                     else
@@ -1066,7 +1068,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
-                          color: selected ? AppColors.lime : AppColors.textPrimary,
+                          color: selected ? _brand : AppColors.textPrimary,
                         ),
                       ),
                     if (showTimeProminent && title != slot.time) ...[
@@ -1112,7 +1114,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 color: isUserConflict
                     ? AppColors.textSecondary
                     : (selected
-                        ? (isWaitlist ? AppColors.orange : AppColors.lime)
+                        ? (isWaitlist ? AppColors.orange : _brand)
                         : AppColors.border),
               ),
             ],
@@ -1164,7 +1166,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.check_circle, color: AppColors.lime, size: 26),
+            Icon(Icons.check_circle, color: _brand, size: 26),
             if (onChange != null) ...[
               const SizedBox(width: 4),
               TextButton(onPressed: onChange, child: Text(AppStrings.of(context).bookingFlowChange)),
@@ -1222,11 +1224,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 width: 148,
                 decoration: BoxDecoration(
                   color: selected
-                      ? AppColors.lime.withValues(alpha: 0.1)
+                      ? _brand.withValues(alpha: 0.1)
                       : AppColors.surface,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: selected ? AppColors.lime : AppColors.border,
+                    color: selected ? _brand : AppColors.border,
                     width: 2,
                   ),
                 ),
@@ -1285,7 +1287,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       bottom: 8,
                       child: Material(
                         color: selected
-                            ? AppColors.lime.withValues(alpha: 0.18)
+                            ? _brand.withValues(alpha: 0.18)
                             : AppColors.bg.withValues(alpha: 0.9),
                         shape: const CircleBorder(),
                         child: InkWell(
@@ -1295,7 +1297,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                             padding: const EdgeInsets.all(6),
                             child: Icon(
                               selected ? Icons.check_circle : Icons.add_circle_outline,
-                              color: selected ? AppColors.lime : AppColors.textSecondary,
+                              color: selected ? _brand : AppColors.textSecondary,
                               size: 22,
                             ),
                           ),
@@ -1410,19 +1412,19 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.lime.withValues(alpha: 0.12),
+                      color: _brand.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.lime.withValues(alpha: 0.35)),
+                      border: Border.all(color: _brand.withValues(alpha: 0.35)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.schedule, size: 16, color: AppColors.lime),
+                        Icon(Icons.schedule, size: 16, color: _brand),
                         const SizedBox(width: 6),
                         Text(
                           _selectedTime!,
-                          style: const TextStyle(
-                            color: AppColors.lime,
+                          style: TextStyle(
+                            color: _brand,
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
                           ),
@@ -1487,7 +1489,6 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   Widget build(BuildContext context) {
     final staffForTime = _staffForSelectedTime;
     final needsChoice = _needsStaffChoice;
-    final colors = AppColors.cardGradient(widget.service.name.hashCode);
 
     return Scaffold(
       appBar: AppBar(
@@ -1505,24 +1506,27 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               children: [
           ServiceImage(config: _config, imageUrl: widget.service.imageUrl, height: 160, borderRadius: 24),
           const SizedBox(height: 14),
-          GradientCard(
-            colors: colors,
+          SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.service.name,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                 ),
                 if (widget.service.description != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     widget.service.description!,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.85), height: 1.4),
+                    style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
                   ),
                 ],
                 const SizedBox(height: 12),
-                PillChip(label: '${widget.service.durationMins} λεπτά'),
+                PillChip(
+                  label: '${widget.service.durationMins} λεπτά',
+                  color: AppColors.surfaceLight,
+                  textColor: AppColors.textPrimary,
+                ),
               ],
             ),
           ),
@@ -1533,7 +1537,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: widget.service.canBook
-                    ? AppColors.lime.withValues(alpha: 0.10)
+                    ? _brand.withValues(alpha: 0.10)
                     : Colors.orange.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -1542,7 +1546,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   Icon(
                     widget.service.isUnlimited ? Icons.all_inclusive : Icons.confirmation_number_outlined,
                     size: 18,
-                    color: widget.service.canBook ? AppColors.lime : Colors.orange,
+                    color: widget.service.canBook ? _brand : Colors.orange,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -1554,7 +1558,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                               : AppStrings.of(context).bookingFlowNoSessionsAvailable,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: widget.service.canBook ? AppColors.lime : Colors.orange,
+                        color: widget.service.canBook ? _brand : Colors.orange,
                       ),
                     ),
                   ),
@@ -1563,10 +1567,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             ),
           const SizedBox(height: 20),
           if (_loadingLocations)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: const CircularProgressIndicator(color: AppColors.lime),
+                padding: const EdgeInsets.all(16),
+                child: CircularProgressIndicator(color: _brand),
               ),
             )
           else if (_needsLocationChoice) ...[
@@ -1584,13 +1588,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       height: 40,
                       decoration: BoxDecoration(
                         color: selected
-                            ? AppColors.lime.withValues(alpha: 0.15)
+                            ? _brand.withValues(alpha: 0.15)
                             : AppColors.purple.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         Icons.location_on_outlined,
-                        color: selected ? AppColors.lime : AppColors.purple,
+                        color: selected ? _brand : AppColors.purple,
                         size: 20,
                       ),
                     ),
@@ -1598,12 +1602,12 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       loc.name,
                       style: TextStyle(
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                        color: selected ? AppColors.lime : AppColors.textPrimary,
+                        color: selected ? _brand : AppColors.textPrimary,
                       ),
                     ),
                     subtitle: loc.displayLine.isNotEmpty ? Text(loc.displayLine) : null,
                     trailing: selected
-                        ? const Icon(Icons.check_circle, color: AppColors.lime)
+                        ? Icon(Icons.check_circle, color: _brand)
                         : const Icon(Icons.chevron_right, color: AppColors.textSecondary),
                     onTap: () => _selectLocation(loc),
                   ),
@@ -1632,11 +1636,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             onSelectionChanged: (s) => _setBulkMode(s.first),
             style: ButtonStyle(
               foregroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) return AppColors.bg;
+                if (states.contains(WidgetState.selected)) return AppColors.onFill(context.tenantPrimary);
                 return AppColors.textPrimary;
               }),
               backgroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) return AppColors.lime;
+                if (states.contains(WidgetState.selected)) return context.tenantPrimary;
                 return AppColors.surface;
               }),
             ),
@@ -1676,13 +1680,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   label: Text(e.value),
                   selected: selected,
                   onSelected: gymClosed ? null : (_) => _toggleWeekday(e.key),
-                  selectedColor: AppColors.lime.withValues(alpha: 0.2),
-                  checkmarkColor: AppColors.lime,
+                  selectedColor: _brand.withValues(alpha: 0.2),
+                  checkmarkColor: _brand,
                   disabledColor: AppColors.surface,
                   labelStyle: TextStyle(
                     color: gymClosed
                         ? AppColors.textSecondary.withValues(alpha: 0.5)
-                        : (selected ? AppColors.lime : AppColors.textPrimary),
+                        : (selected ? _brand : AppColors.textPrimary),
                   ),
                 );
               }).toList(),
@@ -1766,10 +1770,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           Text(AppStrings.of(context).bookingFlowAvailableTimes, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           if (_loadingSlots)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: const CircularProgressIndicator(color: AppColors.lime),
+                padding: const EdgeInsets.all(24),
+                child: CircularProgressIndicator(color: _brand),
               ),
             )
           else if (_slots.isEmpty)
@@ -1804,7 +1808,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       },
                       child: Text(
                         AppStrings.of(context).bookingFlowBookNextAlt(_nextAvailableSlotAfter(_selectedTime!)!.time),
-                        style: const TextStyle(color: AppColors.lime),
+                        style: TextStyle(color: _brand),
                       ),
                     ),
                   ],

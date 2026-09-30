@@ -20,6 +20,7 @@ class GlobalGym {
   final String userStatus;
   final String userType; // 'member' | 'staff'
   final String? staffId;
+  final String? staffKind; // trainer | nutritionist | physiotherapist
 
   const GlobalGym({
     required this.userId,
@@ -33,9 +34,11 @@ class GlobalGym {
     required this.userStatus,
     this.userType = 'member',
     this.staffId,
+    this.staffKind,
   });
 
   bool get isStaff => userType == 'staff';
+  bool get isNutritionist => staffKind == 'nutritionist';
 
   factory GlobalGym.fromJson(Map<String, dynamic> j) => GlobalGym(
     userId:       j['user_id'] as String? ?? '',
@@ -49,6 +52,7 @@ class GlobalGym {
     userStatus:   j['user_status'] as String? ?? 'active',
     userType:     j['user_type'] as String? ?? 'member',
     staffId:      j['staff_id'] as String?,
+    staffKind:    j['staff_kind'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -63,6 +67,7 @@ class GlobalGym {
     'user_status':   userStatus,
     'user_type':     userType,
     'staff_id':      staffId,
+    'staff_kind':    staffKind,
   };
 }
 

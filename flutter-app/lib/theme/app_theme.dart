@@ -48,16 +48,8 @@ class AppTheme {
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.lime,
-          foregroundColor: AppColors.bg,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-        ),
-      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(style: _primaryButtonStyle(primary)),
+      filledButtonTheme: FilledButtonThemeData(style: _primaryButtonStyle(primary)),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
       ),
@@ -74,6 +66,24 @@ class AppTheme {
         actionTextColor: AppColors.lime,
         elevation: 6,
       ),
+    );
+  }
+
+  static ButtonStyle _primaryButtonStyle(Color primary) {
+    final label = AppColors.onFill(primary);
+    return ButtonStyle(
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) return AppColors.surfaceLight;
+        return primary;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) return AppColors.textSecondary;
+        return label;
+      }),
+      elevation: const WidgetStatePropertyAll(0),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 28, vertical: 16)),
+      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(28))),
+      textStyle: const WidgetStatePropertyAll(TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
     );
   }
 

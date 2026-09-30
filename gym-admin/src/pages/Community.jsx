@@ -194,7 +194,10 @@ function PostCard({ post, onDelete, onDeleteComment, onPinChange, mentionables }
             {authorName}
             {isStaff && <span style={{ marginLeft: 6, fontSize: '0.7rem', background: '#dbeafe', color: '#1d4ed8', padding: '1px 7px', borderRadius: 20, fontWeight: 600 }}>Staff</span>}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{fmtDate(post.created_at)}</div>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+            {fmtDate(post.created_at)}
+            {post.service_name ? ` · ${post.service_name}` : ''}
+          </div>
         </div>
         <button title={pinned ? 'Ξεκαρφίτσωμα' : 'Καρφίτσωμα'} disabled={pinning}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: pinned ? '#f59e0b' : '#94a3b8', padding: 4 }}
@@ -294,9 +297,19 @@ function NewPostForm({ onPosted, mentionables }) {
   const [body, setBody] = useState('');
   const [media, setMedia] = useState([]);
   const [mentions, setMentions] = useState([]);
+  const [services, setServices] = useState([]);
+  const [serviceId, setServiceId] = useState('');
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef();
+
+  useEffect(() => {
+    api.get('/client-admin/services').then((r) => {
+      const list = (r.data || []).filter((s) => s.is_active !== 0);
+      setServices(list);
+      if (list[0]) setServiceId(list[0].id);
+    }).catch(() => {});
+  }, []);
 
   async function uploadFiles(files) {
     setUploading(true);
@@ -314,11 +327,13 @@ function NewPostForm({ onPosted, mentionables }) {
 
   async function submit(e) {
     e.preventDefault();
+    if (!serviceId) { toast.error('Επίλεξε την υπηρεσία'); return; }
     if (!body.trim() && !media.length) { toast.error('Γράψε κάτι ή πρόσθεσε εικόνα'); return; }
     setSubmitting(true);
     try {
       await api.post('/client-admin/community/admin/posts', {
         body: body.trim() || null,
+        service_id: serviceId,
         media,
         mentions: mentions.length ? mentions : undefined,
       });
@@ -338,6 +353,16 @@ function NewPostForm({ onPosted, mentionables }) {
         <Plus size={15} style={{ marginRight: 6 }} />Νέα ανάρτηση
       </div>
       <form onSubmit={submit}>
+        <div className="form-group">
+          <label className="form-label">Υπηρεσία</label>
+          <select className="form-input" value={serviceId} onChange={(e) => setServiceId(e.target.value)} required>
+            <option value="">Επίλεξε υπηρεσία</option>
+            {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <div className="text-muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
+            Την βλέπουν μόνο όσοι έχουν αυτή την υπηρεσία, και οι γυμναστές της.
+          </div>
+        </div>
         <MentionTextarea
           value={body}
           onChange={setBody}
@@ -426,7 +451,7 @@ export default function Community() {
       <div className="page-header">
         <h1 className="page-title">Κοινότητα</h1>
         <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: 4 }}>
-          Κοινός χώρος αναρτήσεων για τα μέλη σου
+          Κάθε ανάρτηση φαίνεται μόνο στην υπηρεσία που διαλέγεις
         </p>
       </div>
 

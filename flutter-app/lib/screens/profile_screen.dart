@@ -215,7 +215,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _MenuTile(
                 icon: Icons.fitness_center,
                 title: config.appName,
-                subtitle: isStaff ? 'Trainer' : AppStrings.of(context).activeMember,
+                subtitle: user.isNutritionist
+                    ? 'Διατροφολόγος'
+                    : user.staffKind == 'physiotherapist'
+                        ? 'Φυσιοθεραπευτής'
+                        : isStaff
+                            ? (user.staffRole ?? 'Trainer')
+                            : AppStrings.of(context).activeMember,
               ),
             ],
           ),

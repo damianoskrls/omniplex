@@ -144,7 +144,6 @@ class _CompletedBookingsScreenState extends State<CompletedBookingsScreen> {
                             padding: EdgeInsets.only(bottom: index < _completed.length - 1 ? 12 : 0),
                             child: _CompletedCard(
                               booking: booking,
-                              index: index,
                               onOpenTips: () => _openWorkoutComplete(booking),
                             ),
                           );
@@ -316,19 +315,17 @@ class _PendingConfirmCard extends StatelessWidget {
 class _CompletedCard extends StatelessWidget {
   const _CompletedCard({
     required this.booking,
-    required this.index,
     this.onOpenTips,
   });
 
   final Booking booking;
-  final int index;
   final VoidCallback? onOpenTips;
 
   @override
   Widget build(BuildContext context) {
     final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
     final dateFmt = DateFormat('EEE d MMM, HH:mm', locale);
-    final accent = AppColors.cardGradient(index).first;
+    final accent = context.tenantPrimary;
 
     return SurfaceCard(
       child: Row(

@@ -31,6 +31,11 @@ class AppColors {
     return pair;
   }
 
+  /// Dark text on light fills (π.χ. lime πράσινο), λευκό σε σκούρα.
+  static Color onFill(Color fill) {
+    return fill.computeLuminance() > 0.62 ? const Color(0xFF111111) : Colors.white;
+  }
+
   static Color fromHex(String hex) {
     final h = hex.trim().replaceFirst('#', '');
     if (h.length == 6) return Color(int.parse('FF$h', radix: 16));

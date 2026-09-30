@@ -13,6 +13,7 @@ import '../services/language_service.dart';
 import '../services/push_service.dart';
 import '../config/tenant_config.dart';
 import 'discovery_landing_screen.dart';
+import 'gym_entry_splash.dart';
 import 'gym_profile_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
@@ -160,6 +161,13 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
         apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
       );
       debugPrint('[MemberHome._enterGym] Config loaded: slug=${config.slug} bizId=${config.businessId}');
+      if (!mounted) return;
+      await showGymEntrySplash(
+        context,
+        name: gym.appName,
+        slug: gym.slug,
+        logoUrl: gym.logoUrl,
+      );
       if (!mounted) return;
       debugPrint('[MemberHome._enterGym] Calling onEnterGym...');
       widget.onEnterGym(config);
@@ -1992,7 +2000,9 @@ class _PendingRequestCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               [
-                request['role'] == 'staff' ? 'Ως trainer' : 'Ως ασκούμενος',
+                request['role'] == 'staff'
+                    ? 'Ως ${request['specialty'] ?? 'προσωπικό'}'
+                    : 'Ως ασκούμενος',
                 if ((request['location_name'] as String?)?.isNotEmpty == true) request['location_name'],
                 'εκκρεμεί έγκριση',
               ].join(' · '),
@@ -2031,6 +2041,8 @@ class _MyGymCard extends StatelessWidget {
   final VoidCallback onRemove;
 
   String get _statusLabel {
+    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
+    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
     if (gym.isStaff) return 'Trainer';
     switch (gym.userStatus) {
       case 'active': return 'Ενεργή Συνδρομή';

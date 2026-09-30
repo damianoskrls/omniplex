@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
+import '../theme/brand.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -145,12 +146,13 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                       duration: const Duration(milliseconds: 200),
                       height: 56,
                       decoration: BoxDecoration(
-                        color: _selected != null ? _kLime : _kCard,
+                        gradient: _selected != null ? kBrandGradient : null,
+                        color: _selected != null ? null : _kCard,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _selected != null ? _kLime : _kBorder),
+                        border: Border.all(color: _selected != null ? Colors.transparent : _kBorder),
                         boxShadow: _selected != null ? [
                           BoxShadow(
-                            color: _kLime.withValues(alpha: 0.28),
+                            color: kBrandShadow.withValues(alpha: 0.35),
                             blurRadius: 16, offset: const Offset(0, 6)),
                         ] : null,
                       ),
@@ -158,7 +160,7 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                       child: Text('Συνέχεια',
                         style: GoogleFonts.manrope(
                           fontSize: 15, fontWeight: FontWeight.w700,
-                          color: _selected != null ? _kBg : _kGray)),
+                          color: _selected != null ? Colors.white : _kGray)),
                     ),
                   ),
 

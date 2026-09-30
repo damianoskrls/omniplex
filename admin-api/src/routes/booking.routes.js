@@ -283,6 +283,139 @@ router.get('/:bizId/services', softAuth, async (req, res) => {
   }
 });
 
+const {
+  listExtraServices,
+  loadPlanForBusiness,
+  grantPlanMembership,
+  memberCoveredServiceIds,
+} = require('../lib/member_plan_purchase');
+
+function requireCustomer(req, res) {
+  if (!req.user?.userId || req.user.role === 'trainer') {
+    res.status(401).json({ error: 'Συνδέσου ως μέλος για να προσθέσεις υπηρεσία' });
+    return false;
+  }
+  if (req.user.businessId && req.user.businessId !== req.params.bizId) {
+    res.status(403).json({ error: 'Λάθος γυμναστήριο' });
+    return false;
+  }
+  return true;
+}
+
+// Services the member does not already have, with packages they can buy.
+router.get('/:bizId/extra-services', softAuth, async (req, res) => {
+  if (!requireCustomer(req, res)) return;
+  try {
+    const services = await listExtraServices(db, req.params.bizId, req.user.userId);
+    return res.json({ services });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/:bizId/buy-plan', softAuth, async (req, res) => {
+  if (!requireCustomer(req, res)) return;
+  const { plan_id } = req.body || {};
+  if (!plan_id) return res.status(400).json({ error: 'Διάλεξε πακέτο' });
+  const bizId = req.params.bizId;
+  const userId = req.user.userId;
+  try {
+    const plan = await loadPlanForBusiness(db, bizId, plan_id);
+    if (!plan) return res.status(404).json({ error: 'Το πακέτο δεν βρέθηκε' });
+    if (!plan.service_ids.length) {
+      return res.status(400).json({ error: 'Το πακέτο δεν είναι συνδεδεμένο με υπηρεσία' });
+    }
+    const covered = await memberCoveredServiceIds(db, bizId, userId);
+    const fresh = plan.service_ids.filter((id) => !covered.has(id));
+    if (!fresh.length) {
+      return res.status(400).json({ error: 'Έχεις ήδη αυτή την υπηρεσία' });
+    }
+
+    const [[provRow]] = await db.query(
+      'SELECT * FROM payment_providers WHERE business_id = ? AND is_active = 1 LIMIT 1',
+      [bizId],
+    );
+    if (provRow && Number(plan.price_cents) > 0) {
+      const cfg = typeof provRow.config === 'string' ? JSON.parse(provRow.config) : (provRow.config || {});
+      if (cfg.secret_key && cfg.publishable_key) {
+        const stripe = require('stripe')(cfg.secret_key);
+        const intent = await stripe.paymentIntents.create({
+          amount: Number(plan.price_cents),
+          currency: 'eur',
+          metadata: { type: 'member_extra_plan', biz_id: bizId, plan_id: plan.id, user_id: userId },
+          automatic_payment_methods: { enabled: true },
+        });
+        return res.json({
+          mode: 'stripe',
+          client_secret: intent.client_secret,
+          intent_id: intent.id,
+          publishable_key: cfg.publishable_key,
+          plan_name: plan.name,
+        });
+      }
+    }
+
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+      const granted = await grantPlanMembership(conn, { bizId, userId, plan, paid: false });
+      await conn.commit();
+      return res.json({
+        mode: 'granted',
+        ...granted,
+        message: 'Η υπηρεσία προστέθηκε. Η πληρωμή του πακέτου εκκρεμεί στο γυμναστήριο.',
+      });
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/:bizId/buy-plan/confirm', softAuth, async (req, res) => {
+  if (!requireCustomer(req, res)) return;
+  const { plan_id, intent_id } = req.body || {};
+  if (!plan_id || !intent_id) return res.status(400).json({ error: 'Απαιτούνται πακέτο και πληρωμή' });
+  const bizId = req.params.bizId;
+  const userId = req.user.userId;
+  const conn = await db.getConnection();
+  try {
+    const [[provRow]] = await conn.query(
+      'SELECT * FROM payment_providers WHERE business_id = ? AND is_active = 1 LIMIT 1',
+      [bizId],
+    );
+    const cfg = typeof provRow?.config === 'string' ? JSON.parse(provRow.config) : (provRow?.config || {});
+    if (!cfg.secret_key) return res.status(400).json({ error: 'Οι online πληρωμές δεν είναι διαθέσιμες' });
+    const stripe = require('stripe')(cfg.secret_key);
+    const intent = await stripe.paymentIntents.retrieve(intent_id);
+    if (intent.status !== 'succeeded') return res.status(402).json({ error: 'Η πληρωμή δεν ολοκληρώθηκε' });
+    if (intent.metadata?.plan_id !== plan_id || intent.metadata?.user_id !== userId) {
+      return res.status(400).json({ error: 'Η πληρωμή δεν ταιριάζει με το πακέτο' });
+    }
+    const [existing] = await conn.query(
+      'SELECT id FROM payments WHERE business_id = ? AND user_id = ? AND notes = ? LIMIT 1',
+      [bizId, userId, `stripe:${intent_id}`],
+    );
+    if (existing.length) return res.json({ ok: true, already: true });
+
+    const plan = await loadPlanForBusiness(conn, bizId, plan_id);
+    if (!plan) return res.status(404).json({ error: 'Το πακέτο δεν βρέθηκε' });
+    await conn.beginTransaction();
+    const granted = await grantPlanMembership(conn, { bizId, userId, plan, paid: true, intentId: intent_id });
+    await conn.commit();
+    return res.json({ mode: 'granted', ...granted, message: 'Το πακέτο αγοράστηκε.' });
+  } catch (err) {
+    try { await conn.rollback(); } catch (_) {}
+    return res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
 // ============================================================
 // GET /api/booking/:bizId/opening-hours
 // Weekly gym schedule (0=Mon … 6=Sun)

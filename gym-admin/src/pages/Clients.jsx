@@ -45,6 +45,8 @@ export default function Clients() {
   const [joinRequests, setJoinRequests] = useState([]);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
+  const [locations, setLocations] = useState([]);
+  const [locationFilter, setLocationFilter] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -62,9 +64,11 @@ export default function Clients() {
   const nameTimer = useRef(null);
 
   const inTrash = statusFilter === 'trash';
+  const visibleJoinRequests = joinRequests.filter((r) => !locationFilter || r.location_id === locationFilter);
 
   const load = async () => {
     const params = inTrash ? { view: 'trash' } : (statusFilter ? { status: statusFilter } : {});
+    if (locationFilter) params.location_id = locationFilter;
     try {
       const [clientsRes, dashRes, jrRes] = await Promise.all([
         api.get('/client-admin/clients', { params }),
@@ -81,7 +85,13 @@ export default function Clients() {
     }
   };
 
-  useEffect(() => { load(); }, [statusFilter]);
+  useEffect(() => { load(); }, [statusFilter, locationFilter]);
+
+  useEffect(() => {
+    api.get('/client-admin/locations')
+      .then((r) => setLocations(Array.isArray(r.data) ? r.data : []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const f = searchParams.get('status');
@@ -158,11 +168,13 @@ export default function Clients() {
     }
   };
 
-  const decideJoinRequest = async (id, status, name) => {
-    if (status === 'rejected' && !window.confirm(`Απόρριψη αίτησης του ${name};`)) return;
+  const decideJoinRequest = async (id, status, name, locationName) => {
+    const place = locationName ? ` για το κατάστημα «${locationName}»` : ' (χωρίς συγκεκριμένο κατάστημα)';
+    if (status === 'approved' && !window.confirm(`Έγκριση του ${name}${place};`)) return;
+    if (status === 'rejected' && !window.confirm(`Απόρριψη αίτησης του ${name}${place};`)) return;
     try {
       const { data } = await api.patch(`/client-admin/join-requests/${id}`, { status });
-      toast.success(status === 'approved' ? `✓ ${name} εγκρίθηκε` : `Απορρίφθηκε`);
+      toast.success(status === 'approved' ? `✓ ${name} εγκρίθηκε${place}` : `Απορρίφθηκε`);
       if (status === 'approved' && data.record_id) {
         navigate(`/clients/${data.record_id}`);
       } else {
@@ -321,6 +333,28 @@ export default function Clients() {
         ))}
       </div>
 
+      {locations.length > 0 && (
+        <div className="bk-group-tabs" style={{ marginBottom: 16 }}>
+          <button
+            type="button"
+            className={`bk-group-tab ${locationFilter === '' ? 'active' : ''}`}
+            onClick={() => setLocationFilter('')}
+          >
+            Όλα
+          </button>
+          {locations.map((loc) => (
+            <button
+              key={loc.id}
+              type="button"
+              className={`bk-group-tab ${locationFilter === loc.id ? 'active' : ''}`}
+              onClick={() => setLocationFilter(loc.id)}
+            >
+              {loc.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {inTrash && (
         <div className="card" style={{ marginBottom: 16 }}>
           <strong>Κάδος πελατών</strong>
@@ -330,11 +364,11 @@ export default function Clients() {
         </div>
       )}
 
-      {!inTrash && joinRequests.length > 0 && (statusFilter === '' || statusFilter === 'pending') && (
+      {!inTrash && visibleJoinRequests.length > 0 && (statusFilter === '' || statusFilter === 'pending') && (
         <div className="card" style={{ marginBottom: 16, background: 'rgba(255,178,36,0.06)', borderColor: 'rgba(255,178,36,0.25)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
             <UserPlus size={16} style={{ color: '#f59e0b' }} />
-            {joinRequests.length} νέα αιτήματα εγγραφής μέσω OmniPlex
+            {visibleJoinRequests.length} νέα αιτήματα εγγραφής μέσω OmniPlex
           </div>
           <div className="text-muted" style={{ marginTop: 4, fontSize: '0.85rem' }}>
             Εμφανίζονται παρακάτω με πορτοκαλί ένδειξη. Έγκριση ή απόρριψη αμέσως.
@@ -350,6 +384,7 @@ export default function Clients() {
                 <th>Όνομα</th>
                 <th>Email</th>
                 <th>Τηλέφωνο</th>
+                <th>Κατάστημα</th>
                 <th>Κατάσταση</th>
                 {!inTrash && <th>Στόχος</th>}
                 {inTrash && <th>Διαγράφηκε</th>}
@@ -358,7 +393,7 @@ export default function Clients() {
               </tr>
             </thead>
             <tbody>
-              {!inTrash && (statusFilter === '' || statusFilter === 'pending') && joinRequests.map(r => (
+              {!inTrash && (statusFilter === '' || statusFilter === 'pending') && visibleJoinRequests.map(r => (
                 <tr key={`jr-${r.id}`} style={{ borderLeft: '3px solid #f59e0b', background: 'rgba(255,178,36,0.04)' }}>
                   <td>
                     <div style={{ fontWeight: 600 }}>{r.full_name}</div>
@@ -371,16 +406,21 @@ export default function Clients() {
                   <td>{r.email || '—'}</td>
                   <td>{r.phone || '—'}</td>
                   <td>
+                    <span className={`badge ${r.location_name ? 'badge-blue' : 'badge-yellow'}`} style={{ fontWeight: 700 }}>
+                      {r.location_name || 'Δεν δηλώθηκε'}
+                    </span>
+                  </td>
+                  <td>
                     <span className="badge badge-yellow">Αναμονή</span>
                   </td>
                   <td>{r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString('el-GR') : '—'}</td>
                   <td>—</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-primary btn-sm" onClick={() => decideJoinRequest(r.id, 'approved', r.full_name)}>
+                      <button className="btn btn-primary btn-sm" onClick={() => decideJoinRequest(r.id, 'approved', r.full_name, r.location_name)}>
                         <Check size={13} /> Έγκριση
                       </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => decideJoinRequest(r.id, 'rejected', r.full_name)}>
+                      <button className="btn btn-danger btn-sm" onClick={() => decideJoinRequest(r.id, 'rejected', r.full_name, r.location_name)}>
                         <Ban size={13} /> Απόρριψη
                       </button>
                     </div>
@@ -404,6 +444,7 @@ export default function Clients() {
                     </td>
                     <td>{c.email}</td>
                     <td>{c.phone || '—'}</td>
+                    <td>{c.location_names || 'Όλα τα καταστήματα'}</td>
                     <td>
                       <span className={`badge ${STATUS_BADGE[st] || 'badge-gray'}`}>
                         {c.account_status_label || st}
@@ -493,8 +534,8 @@ export default function Clients() {
                   </tr>
                 );
               })}
-              {!clients.length && (!joinRequests.length || inTrash || (statusFilter !== '' && statusFilter !== 'pending')) && (
-                <tr><td colSpan={7} className="loading">{inTrash ? 'Ο κάδος είναι άδειος' : 'Δεν υπάρχουν πελάτες'}</td></tr>
+              {!clients.length && (!visibleJoinRequests.length || inTrash || (statusFilter !== '' && statusFilter !== 'pending')) && (
+                <tr><td colSpan={8} className="loading">{inTrash ? 'Ο κάδος είναι άδειος' : 'Δεν υπάρχουν πελάτες'}</td></tr>
               )}
             </tbody>
           </table>

@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import StaffDeleteModal from '../components/StaffDeleteModal';
 import { Plus, Settings, Trash2, UserCheck, UserX, Clock } from 'lucide-react';
 
-const EMPTY = { full_name: '', role: 'Trainer', bio: '', color_hex: '#607D8B' };
+const EMPTY = { full_name: '', role: 'Trainer', phone: '', bio: '', color_hex: '#607D8B' };
 
 export default function Staff() {
   const [staff, setStaff] = useState([]);
@@ -27,11 +27,13 @@ export default function Staff() {
     } catch { /* ignore */ }
   };
 
-  const decideJoinRequest = async (id, status, name) => {
-    if (status === 'rejected' && !window.confirm(`Απόρριψη αίτησης του ${name};`)) return;
+  const decideJoinRequest = async (id, status, name, locationName) => {
+    const place = locationName ? ` για το κατάστημα «${locationName}»` : '';
+    if (status === 'approved' && !window.confirm(`Έγκριση του ${name}${place};`)) return;
+    if (status === 'rejected' && !window.confirm(`Απόρριψη αίτησης του ${name}${place};`)) return;
     try {
       const { data } = await api.patch(`/client-admin/join-requests/${id}`, { status });
-      toast.success(status === 'approved' ? `✓ ${name} προστέθηκε ως trainer` : 'Απορρίφθηκε');
+      toast.success(status === 'approved' ? `✓ ${name} προστέθηκε${place}` : 'Απορρίφθηκε');
       if (status === 'approved' && data.record_id) {
         navigate(`/staff/${data.record_id}`);
       } else {
@@ -77,14 +79,15 @@ export default function Staff() {
                   <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: 2 }}>
                     {r.phone && <span>{r.phone}</span>}
                     {r.specialty && <span> · {r.specialty}</span>}
+                    <span> · {r.location_name || 'Χωρίς κατάστημα'}</span>
                     {r.email && <span> · {r.email}</span>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <button className="btn btn-primary btn-sm" onClick={() => decideJoinRequest(r.id, 'approved', r.full_name)}>
+                  <button className="btn btn-primary btn-sm" onClick={() => decideJoinRequest(r.id, 'approved', r.full_name, r.location_name)}>
                     <UserCheck size={13} /> Έγκριση
                   </button>
-                  <button className="btn btn-secondary btn-sm" style={{ color: '#ef4444' }} onClick={() => decideJoinRequest(r.id, 'rejected', r.full_name)}>
+                  <button className="btn btn-secondary btn-sm" style={{ color: '#ef4444' }} onClick={() => decideJoinRequest(r.id, 'rejected', r.full_name, r.location_name)}>
                     <UserX size={13} /> Απόρριψη
                   </button>
                 </div>
@@ -111,16 +114,12 @@ export default function Staff() {
               Υπηρεσίες: {s.services?.map(x => x.service_name).join(', ') || '—'}
             </div>
             <div style={{ marginTop: 8 }}>
-              {s.portal_enabled ? (
+              {s.phone ? (
                 <span className="badge badge-green" style={{ fontSize: '0.75rem' }}>
-                  Portal: {s.portal_email}
-                </span>
-              ) : s.portal_email ? (
-                <span className="badge badge-yellow" style={{ fontSize: '0.75rem' }}>
-                  Portal χωρίς κωδικό
+                  Κινητό: {s.phone}
                 </span>
               ) : (
-                <span className="text-muted" style={{ fontSize: '0.75rem' }}>Χωρίς portal</span>
+                <span className="text-muted" style={{ fontSize: '0.75rem' }}>Χωρίς κινητό — δεν φαίνεται στο app</span>
               )}
               {Number(s.pending_availability_requests) > 0 && (
                 <span className="badge badge-yellow" style={{ fontSize: '0.75rem', marginLeft: 6 }}>
@@ -152,6 +151,13 @@ export default function Staff() {
               <div className="form-group">
                 <label className="form-label">Ρόλος *</label>
                 <input className="form-input" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Κινητό *</label>
+                <input className="form-input" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="69XXXXXXXX" inputMode="tel" required />
+                <div className="text-muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
+                  Με αυτό μπαίνει στο app και βλέπει το γυμναστήριο ως trainer.
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Χρώμα</label>

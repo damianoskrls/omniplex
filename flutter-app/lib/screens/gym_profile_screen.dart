@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../config/tenant_config.dart';
+import 'gym_entry_splash.dart';
 import 'phone_otp_login_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
@@ -141,8 +142,17 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       locationId = locations.first['id'] as String?;
     }
 
-    final role = await _showRolePicker();
-    if (role == null || !mounted) return;
+    final picked = await _showRolePicker();
+    if (picked == null || !mounted) return;
+    final parts = picked.split(':');
+    final role = parts.first;
+    final specialty = parts.length > 1
+        ? (parts[1] == 'nutritionist'
+            ? 'Διατροφολόγος'
+            : parts[1] == 'physiotherapist'
+                ? 'Φυσιοθεραπευτής'
+                : 'Trainer')
+        : null;
 
     final user = widget.globalAuth!.user;
     await _submitJoinRequest(bizId, role, {
@@ -150,6 +160,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       'phone': user?.phone,
       if ((user?.email ?? '').isNotEmpty) 'email': user!.email,
       if (locationId != null) 'location_id': locationId,
+      if (specialty != null) 'specialty': specialty,
     });
   }
 
@@ -243,14 +254,31 @@ class _GymProfileScreenState extends State<GymProfileScreen>
               ),
             if (!_memberLinked && !_memberPending && !_staffLinked && !_staffPending)
               const SizedBox(height: 10),
-            if (!_staffLinked && !_staffPending)
+            if (!_staffLinked && !_staffPending) ...[
               _RoleOption(
                 icon: Icons.sports_rounded,
                 color: const Color(0xFF3EE6FF),
                 title: 'Trainer',
-                subtitle: 'Εργάζομαι σε αυτό το γυμναστήριο',
-                onTap: () => Navigator.pop(sheetCtx, 'staff'),
+                subtitle: 'Εργάζομαι ως γυμναστής',
+                onTap: () => Navigator.pop(sheetCtx, 'staff:trainer'),
               ),
+              const SizedBox(height: 10),
+              _RoleOption(
+                icon: Icons.restaurant_menu_rounded,
+                color: const Color(0xFF34D399),
+                title: 'Διατροφολόγος',
+                subtitle: 'Θέλω πρόσβαση στους πελάτες διατροφής',
+                onTap: () => Navigator.pop(sheetCtx, 'staff:nutritionist'),
+              ),
+              const SizedBox(height: 10),
+              _RoleOption(
+                icon: Icons.healing_rounded,
+                color: const Color(0xFFF59E0B),
+                title: 'Φυσιοθεραπευτής',
+                subtitle: 'Ζητάω σύνδεση ως φυσιοθεραπευτής',
+                onTap: () => Navigator.pop(sheetCtx, 'staff:physiotherapist'),
+              ),
+            ],
             const SizedBox(height: 20),
           ],
         ),
@@ -355,6 +383,14 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
       );
       if (!mounted) return;
+      await showGymEntrySplash(
+        context,
+        name: _gym?['app_name'] as String? ?? _gym?['name'] as String? ?? 'Γυμναστήριο',
+        slug: _slug ?? '',
+        logoUrl: _gym?['logo_url'] as String?,
+        coverUrl: _gym?['cover_url'] as String?,
+      );
+      if (!mounted) return;
       if (widget.onEnterGym != null) {
         widget.onEnterGym!(config);
       } else {
@@ -399,6 +435,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           'user_info': {
             'full_name': user.fullName,
             'email':     user.email,
+            'phone':     user.phone,
           },
         }),
       );
@@ -453,7 +490,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         body: jsonEncode({
           'intent_id': intentId,
           'plan_id':   planId,
-          'user_info': {'full_name': user.fullName, 'email': user.email},
+          'user_info': {'full_name': user.fullName, 'email': user.email, 'phone': user.phone},
         }),
       );
 
@@ -1252,24 +1289,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
             const SizedBox(height: 14),
 
-            _memberLinked
-              ? Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
-                    const SizedBox(width: 6),
-                    Text('Είσαι ήδη μέλος',
-                      style: GoogleFonts.manrope(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                  ]),
-                )
-              : GestureDetector(
+            GestureDetector(
                   onTap: () => _purchasePlan(plan),
                   child: Container(
                     width: double.infinity,
@@ -1279,7 +1299,8 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
-                    child: Text('Αγορά πακέτου – €$euros',
+                    child: Text(
+                      _memberLinked ? 'Πάρε και αυτό το πακέτο – €$euros' : 'Αγορά πακέτου – €$euros',
                       style: GoogleFonts.manrope(
                         fontSize: 13, fontWeight: FontWeight.w700, color: _kBg, letterSpacing: 0.3)),
                   ),

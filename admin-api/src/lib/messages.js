@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const { memberServices, memberSharesServiceWithStaff } = require('./community_scope');
 const { createAdminNotification } = require('./notifications');
 const { validateAttachmentUrl } = require('./message_upload');
 const { assertImageUploadAllowed } = require('./message_attachments');
@@ -37,9 +38,22 @@ function mapMessageRow(m, { viewerRole, viewerId } = {}) {
 
 const TRAINER_CLIENT_EXISTS_SQL = `
   EXISTS (
-    SELECT 1 FROM bookings b
-    WHERE b.user_id = t.client_user_id AND b.business_id = t.business_id
-      AND b.staff_id = ? AND b.status IN ('confirmed', 'completed')
+    SELECT 1
+    FROM user_memberships um
+    LEFT JOIN business_plans bp ON bp.id = um.plan_id
+    LEFT JOIN plan_service_items psi ON psi.plan_id = um.plan_id
+    LEFT JOIN service_plan_assignments spa ON spa.plan_id = um.plan_id
+    JOIN services s ON s.business_id = um.business_id AND s.is_active = 1
+    JOIN staff_services ss ON ss.staff_id = ? AND ss.service_id = s.id
+    WHERE um.user_id = t.client_user_id AND um.business_id = t.business_id
+      AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
+      AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
+      AND (
+        um.service_id = s.id
+        OR bp.service_id = s.id
+        OR psi.service_id = s.id
+        OR spa.service_id = s.id
+      )
   )
 `;
 
@@ -402,15 +416,15 @@ async function canStaffAccessClient(conn, actor, clientUserId) {
   }
 
   if (actor.role === 'trainer') {
+    const allowed = await memberSharesServiceWithStaff(conn, actor.businessId, clientUserId, actor.staffId);
+    if (!allowed) return null;
     const [rows] = await conn.execute(
-      `SELECT DISTINCT u.id, u.full_name, u.email, u.phone
+      `SELECT u.id, u.full_name, u.email, u.phone
        FROM users u
-       INNER JOIN bookings b ON b.user_id = u.id AND b.business_id = ?
-       WHERE u.id = ? AND b.staff_id = ?
-         AND b.status IN ('confirmed', 'completed')
+       WHERE u.id = ? AND u.business_id = ?
          AND (u.account_status IS NULL OR u.account_status = 'active') AND (u.deleted_at IS NULL)
        LIMIT 1`,
-      [actor.businessId, clientUserId, actor.staffId]
+      [clientUserId, actor.businessId]
     );
     if (!rows[0]) return null;
     const name = (rows[0].full_name || '').trim() || rows[0].email;
@@ -495,9 +509,24 @@ async function listStaffContacts(dbOrConn, actor, { q = '', limit = 30 } = {}) {
     const [rows] = await conn.execute(
       `SELECT DISTINCT u.id AS client_user_id, u.full_name, u.email, u.phone
        FROM users u
-       INNER JOIN bookings b ON b.user_id = u.id AND b.business_id = ?
-       WHERE b.staff_id = ? AND b.status IN ('confirmed', 'completed')
+       WHERE u.business_id = ?
          AND COALESCE(u.account_status, 'active') = 'active' AND (u.deleted_at IS NULL)
+         AND EXISTS (
+           SELECT 1
+           FROM user_memberships um
+           LEFT JOIN business_plans bp ON bp.id = um.plan_id
+           LEFT JOIN plan_service_items psi ON psi.plan_id = um.plan_id
+           LEFT JOIN service_plan_assignments spa ON spa.plan_id = um.plan_id
+           JOIN services s ON s.business_id = um.business_id AND s.is_active = 1
+           JOIN staff_services ss ON ss.staff_id = ? AND ss.service_id = s.id
+           WHERE um.user_id = u.id AND um.business_id = u.business_id
+             AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
+             AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
+             AND (
+               um.service_id = s.id OR bp.service_id = s.id
+               OR psi.service_id = s.id OR spa.service_id = s.id
+             )
+         )
          ${search}
        ORDER BY u.full_name
        LIMIT ${lim}`,
@@ -755,13 +784,7 @@ async function validateClientCanMessagePeer(conn, bizId, userId, peer) {
   if (peer.peer_role === 'admin') return true;
 
   if (peer.peer_role === 'trainer') {
-    const [rows] = await conn.execute(
-      `SELECT 1 FROM bookings b
-       WHERE b.user_id = ? AND b.business_id = ? AND b.staff_id = ?
-         AND b.status IN ('confirmed', 'completed') LIMIT 1`,
-      [userId, bizId, peer.peer_staff_id]
-    );
-    return rows.length > 0;
+    return memberSharesServiceWithStaff(conn, bizId, userId, peer.peer_staff_id);
   }
 
   const [rows] = await conn.execute(
@@ -803,20 +826,24 @@ async function listClientPeers(dbOrConn, bizId, userId) {
     peer_subtitle: 'Διαχείριση γυμναστηρίου',
   });
 
-  const [trainers] = await conn.execute(
-    `SELECT DISTINCT s.id, s.full_name
-     FROM bookings b
-     INNER JOIN staff s ON s.id = b.staff_id
-     WHERE b.user_id = ? AND b.business_id = ?
-       AND b.status IN ('confirmed', 'completed')
-       AND COALESCE(s.is_nutritionist, 0) = 0
-       AND NOT EXISTS (
-         SELECT 1 FROM nutritionists n
-         WHERE n.business_id = ? AND n.staff_id = s.id AND n.is_active = 1
-       )
-     ORDER BY s.full_name`,
-    [userId, bizId, bizId]
-  );
+  const myServices = await memberServices(conn, bizId, userId);
+  const serviceIds = myServices.map((s) => s.id);
+  const trainers = serviceIds.length
+    ? (await conn.query(
+      `SELECT DISTINCT s.id, s.full_name
+       FROM staff s
+       JOIN staff_services ss ON ss.staff_id = s.id
+       WHERE s.business_id = ? AND s.is_active = 1
+         AND ss.service_id IN (?)
+         AND COALESCE(s.is_nutritionist, 0) = 0
+         AND NOT EXISTS (
+           SELECT 1 FROM nutritionists n
+           WHERE n.business_id = ? AND n.staff_id = s.id AND n.is_active = 1
+         )
+       ORDER BY s.full_name`,
+      [bizId, serviceIds, bizId],
+    ))[0]
+    : [];
   for (const s of trainers) {
     if (nutritionistStaffIds.has(s.id)) continue;
     const name = (s.full_name || '').trim() || 'Γυμναστής';

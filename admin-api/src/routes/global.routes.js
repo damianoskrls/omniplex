@@ -8,7 +8,7 @@ const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../db');
-const { phoneDigitsLike } = require('../lib/phone_sql');
+const { phoneDigitsLike, phoneLast10Eq } = require('../lib/phone_sql');
 
 const router = express.Router();
 
@@ -36,6 +36,12 @@ function makeGlobalToken(user) {
 
 // ── Helpers ──────────────────────────────────────────────────
 async function getGymsForGlobalUser(globalUserId) {
+  const [[gu]] = await db.query('SELECT phone, email FROM global_users WHERE id = ?', [globalUserId]);
+  if (gu) {
+    try { await autoLinkGlobalUser(globalUserId, gu.phone, gu.email); }
+    catch (err) { console.warn('auto-link skipped:', err.message); }
+  }
+
   const [memberRows] = await db.query(`
     SELECT u.id AS user_id, u.business_id, u.full_name, u.account_status AS status,
            b.slug, b.name, b.business_type,
@@ -51,7 +57,8 @@ async function getGymsForGlobalUser(globalUserId) {
     SELECT s.id AS user_id, s.business_id, s.full_name, 'active' AS status,
            b.slug, b.name, b.business_type,
            c.app_name, c.primary_color, c.logo_url,
-           'staff' AS user_type, s.id AS staff_id
+           'staff' AS user_type, s.id AS staff_id, s.role AS staff_role,
+           COALESCE(s.is_nutritionist, 0) AS is_nutritionist
     FROM staff s
     JOIN businesses b ON b.id = s.business_id AND b.is_active = 1
     LEFT JOIN business_configs c ON c.business_id = s.business_id
@@ -78,7 +85,22 @@ async function getGymsForGlobalUser(globalUserId) {
     user_status:   r.status,
     user_type:     r.user_type,
     staff_id:      r.staff_id || null,
+    staff_kind:    r.user_type === 'staff' ? staffKindFromRow(r) : null,
   }));
+}
+
+function staffKindFromRow(row) {
+  const role = String(row.staff_role || row.role || row.specialty || '');
+  if (Number(row.is_nutritionist) === 1 || /διατροφ|nutri/i.test(role)) return 'nutritionist';
+  if (/φυσιο|physio/i.test(role)) return 'physiotherapist';
+  return 'trainer';
+}
+
+function staffKindLabel(specialty) {
+  const kind = staffKindFromRow({ specialty });
+  if (kind === 'nutritionist') return 'διατροφολόγος';
+  if (kind === 'physiotherapist') return 'φυσιοθεραπευτής';
+  return 'trainer';
 }
 
 // ── Debug: outbound IP (temporary) ──────────────────────────
@@ -594,7 +616,7 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
         [globalUserId, business_id],
       );
       if (linkedStaff.length) {
-        return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη συνδεδεμένος ως trainer σε αυτό το γυμναστήριο' });
+        return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη συνδεδεμένος στο προσωπικό αυτού του γυμναστηρίου' });
       }
     } else {
       const [linked] = await db.query(
@@ -606,16 +628,23 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
       }
     }
 
+    let locationName = null;
+    if (locationId) {
+      const [[locRow]] = await db.query('SELECT name FROM locations WHERE id = ?', [locationId]);
+      locationName = locRow?.name || null;
+    }
+    const place = locationName ? ` στο κατάστημα ${locationName}` : '';
+
     const notifyAdmin = async (reqId) => {
       try {
         const { createAdminNotification } = require('../lib/notifications');
         await createAdminNotification(db, {
           businessId: business_id,
           type: 'join_request',
-          title: isStaff ? 'Αίτημα Trainer' : 'Αίτημα εγγραφής',
+          title: isStaff ? 'Αίτημα προσωπικού' : 'Αίτημα εγγραφής',
           body: isStaff
-            ? `${name} ζητά να συνδεθεί ως trainer.`
-            : `${name} ζητά να γίνει μέλος.`,
+            ? `${name} ζητά να συνδεθεί ως ${staffKindLabel(specialty)}${place}.`
+            : `${name} ζητά να γίνει μέλος${place}.`,
           payload: {
             join_request_id: reqId,
             global_user_id: globalUserId,
@@ -623,6 +652,8 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
             email: email || '',
             phone: phone || '',
             role: isStaff ? 'staff' : 'member',
+            location_id: locationId,
+            location_name: locationName || '',
           },
         });
       } catch (_) {}
@@ -681,7 +712,7 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
 router.get('/join-requests', requireGlobal, async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT jr.id, jr.business_id, jr.status, jr.role, jr.location_id, jr.created_at, jr.admin_note,
+      SELECT jr.id, jr.business_id, jr.status, jr.role, jr.specialty, jr.location_id, jr.created_at, jr.admin_note,
              b.name AS business_name, bc.app_name, bc.logo_url, bc.primary_color,
              loc.name AS location_name
       FROM gym_join_requests jr
@@ -724,19 +755,36 @@ router.post('/trainer-token', requireGlobal, async (req, res) => {
   if (!business_id) return res.status(400).json({ error: 'business_id required' });
   try {
     const [rows] = await db.query(
-      `SELECT s.id, s.full_name, s.role FROM staff s
+      `SELECT s.id, s.full_name, s.role, COALESCE(s.is_nutritionist, 0) AS is_nutritionist
+       FROM staff s
        WHERE s.global_user_id = ? AND s.business_id = ? AND s.is_active = 1`,
       [req.globalUser.globalUserId, business_id],
     );
     if (!rows.length) return res.status(404).json({ error: 'Staff record not found' });
     const s = rows[0];
+    const kind = staffKindFromRow(s);
+    let nutritionistId = null;
+    if (kind === 'nutritionist') {
+      const [[nut]] = await db.query(
+        'SELECT id FROM nutritionists WHERE business_id = ? AND staff_id = ? AND is_active = 1 LIMIT 1',
+        [business_id, s.id],
+      );
+      nutritionistId = nut?.id || null;
+    }
     const token = jwt.sign(
-      { businessId: business_id, email: req.globalUser.email || '', role: 'trainer',
-        name: s.full_name, staffId: s.id },
+      {
+        businessId: business_id,
+        email: req.globalUser.email || '',
+        role: kind === 'nutritionist' ? 'nutritionist' : 'trainer',
+        name: s.full_name,
+        staffId: s.id,
+        nutritionistId,
+        staffKind: kind,
+      },
       process.env.JWT_SECRET,
       { expiresIn: '7d' },
     );
-    return res.json({ token });
+    return res.json({ token, staff_kind: kind });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -1047,12 +1095,17 @@ router.post('/purchase/:slug/intent', async (req, res) => {
     );
     if (!biz) return res.status(404).json({ error: 'Γυμναστήριο δεν βρέθηκε' });
 
-    const [[plan]] = await conn.query(
-      `SELECT p.*, s.name AS service_name FROM service_plans p
-       JOIN services s ON s.id = p.service_id
-       WHERE p.id = ? AND s.business_id = ? AND p.is_active = 1`,
-      [plan_id, biz.id],
-    );
+    const { loadPlanForBusiness } = require('../lib/member_plan_purchase');
+    let plan = await loadPlanForBusiness(conn, biz.id, plan_id);
+    if (!plan) {
+      const [[legacy]] = await conn.query(
+        `SELECT p.*, s.name AS service_name FROM service_plans p
+         JOIN services s ON s.id = p.service_id
+         WHERE p.id = ? AND s.business_id = ? AND p.is_active = 1`,
+        [plan_id, biz.id],
+      );
+      plan = legacy || null;
+    }
     if (!plan) return res.status(404).json({ error: 'Πακέτο δεν βρέθηκε' });
 
     // Get Stripe config for this gym
@@ -1128,14 +1181,20 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
       return res.status(402).json({ error: 'Η πληρωμή δεν ολοκληρώθηκε' });
     }
 
-    // Get plan
-    const [[plan]] = await conn.query(
-      `SELECT p.*, s.name AS service_name, s.id AS service_id FROM service_plans p
-       JOIN services s ON s.id = p.service_id
-       WHERE p.id = ? AND s.business_id = ?`,
-      [plan_id, biz.id],
-    );
-    if (!plan) return res.status(404).json({ error: 'Πακέτο δεν βρέθηκε' });
+    const { loadPlanForBusiness, grantPlanMembership } = require('../lib/member_plan_purchase');
+    const businessPlan = await loadPlanForBusiness(conn, biz.id, plan_id);
+
+    let plan = null;
+    if (!businessPlan) {
+      const [[legacy]] = await conn.query(
+        `SELECT p.*, s.name AS service_name, s.id AS service_id FROM service_plans p
+         JOIN services s ON s.id = p.service_id
+         WHERE p.id = ? AND s.business_id = ?`,
+        [plan_id, biz.id],
+      );
+      plan = legacy || null;
+      if (!plan) return res.status(404).json({ error: 'Πακέτο δεν βρέθηκε' });
+    }
 
     // Find or create global_user
     let globalUser;
@@ -1159,8 +1218,10 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
     // Find or create gym user
     let gymUserId;
     const [existingUser] = await conn.query(
-      'SELECT id FROM users WHERE business_id = ? AND phone = ? AND deleted_at IS NULL',
-      [biz.id, phone],
+      `SELECT id FROM users WHERE business_id = ? AND deleted_at IS NULL
+         AND (phone = ? OR ${phoneLast10Eq('phone')})
+       LIMIT 1`,
+      [biz.id, phone, phone],
     );
     if (existingUser.length) {
       gymUserId = existingUser[0].id;
@@ -1178,18 +1239,29 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
       );
     }
 
-    // Create membership
-    const membershipId = require('uuid').v4();
-    const expiresAt = plan.validity_days
-      ? new Date(Date.now() + plan.validity_days * 86400000).toISOString().slice(0, 10)
-      : null;
-    await conn.query(
-      `INSERT INTO user_memberships
-        (id, business_id, user_id, plan_id, service_id, total_sessions, used_sessions, expires_at, purchase_date, provider_intent_id)
-       VALUES (?,?,?,?,?,?,0,?,NOW(),?)`,
-      [membershipId, biz.id, gymUserId, plan.id, plan.service_id,
-       plan.sessions_included ?? 9999, expiresAt, intent_id],
-    );
+    if (businessPlan) {
+      await conn.beginTransaction();
+      await grantPlanMembership(conn, {
+        bizId: biz.id,
+        userId: gymUserId,
+        plan: businessPlan,
+        paid: true,
+        intentId: intent_id,
+      });
+      await conn.commit();
+    } else {
+      const membershipId = require('uuid').v4();
+      const expiresAt = plan.validity_days
+        ? new Date(Date.now() + plan.validity_days * 86400000).toISOString().slice(0, 10)
+        : null;
+      await conn.query(
+        `INSERT INTO user_memberships
+          (id, business_id, user_id, plan_id, service_id, total_sessions, used_sessions, expires_at, purchase_date, provider_intent_id)
+         VALUES (?,?,?,?,?,?,0,?,NOW(),?)`,
+        [membershipId, biz.id, gymUserId, plan.id, plan.service_id,
+         plan.sessions_included ?? 9999, expiresAt, intent_id],
+      );
+    }
 
     // Approve/upsert join request
     const [existJR] = await conn.query(
@@ -1236,14 +1308,22 @@ async function autoLinkGlobalUser(globalUserId, phone, email) {
   const normalizePhone = (p) => (p || '').replace(/\D/g, '');
   const phoneDigits = normalizePhone(phone);
 
-  if (phoneDigits) {
+  if (phoneDigits.length >= 10) {
     await db.query(
       `UPDATE users
        SET global_user_id = ?
        WHERE global_user_id IS NULL
          AND deleted_at IS NULL
-         AND REGEXP_REPLACE(COALESCE(phone, ''), '[^0-9]', '') = ?`,
+         AND ${phoneLast10Eq('phone')}`,
       [globalUserId, phoneDigits],
+    );
+    await db.query(
+      `UPDATE staff
+       SET global_user_id = ?
+       WHERE is_active = 1
+         AND (global_user_id IS NULL OR global_user_id = ?)
+         AND ${phoneLast10Eq('phone')}`,
+      [globalUserId, globalUserId, phoneDigits],
     );
   }
   if (email) {

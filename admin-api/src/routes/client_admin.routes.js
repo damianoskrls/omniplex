@@ -12,7 +12,7 @@ const fs      = require('fs');
 const multer  = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../db');
-const { phoneDigitsLike } = require('../lib/phone_sql');
+const { phoneDigitsLike, phoneLast10Eq } = require('../lib/phone_sql');
 const {
   computeAvailableSlots,
   buildSlotsPayload,
@@ -1023,13 +1023,16 @@ router.get('/clients', requireClientAdmin, async (req, res) => {
         u.fitness_goal, u.trainer_notes,
         ref.full_name AS referred_by_name,
         COUNT(DISTINCT b.id)  AS total_bookings,
-        COUNT(DISTINCT m.id)  AS active_packages
+        COUNT(DISTINCT m.id)  AS active_packages,
+        GROUP_CONCAT(DISTINCT loc.name ORDER BY loc.name SEPARATOR ', ') AS location_names
       FROM users u
       LEFT JOIN users ref ON ref.id = u.referred_by_user_id
       LEFT JOIN bookings b ON b.user_id = u.id AND b.business_id = u.business_id
       LEFT JOIN user_memberships m ON m.user_id = u.id AND m.business_id = u.business_id
                                    AND m.valid_until >= CURDATE()
                                    AND ${sqlActiveMembershipCredit('m')}
+      LEFT JOIN user_locations ul ON ul.user_id = u.id
+      LEFT JOIN locations loc ON loc.id = ul.location_id AND loc.business_id = u.business_id
       WHERE u.business_id = ?
         AND ${inTrash ? sqlTrashClients('u') : sqlActiveClients('u')}
     `;
@@ -1037,6 +1040,10 @@ router.get('/clients', requireClientAdmin, async (req, res) => {
     if (status && !inTrash) {
       q += ' AND u.account_status = ?';
       params.push(status);
+    }
+    if (req.query.location_id) {
+      q += ' AND EXISTS (SELECT 1 FROM user_locations ulf WHERE ulf.user_id = u.id AND ulf.location_id = ?)';
+      params.push(req.query.location_id);
     }
     q += `
       GROUP BY u.id, u.account_status, u.deleted_at, u.notes, u.referred_by_user_id, u.date_of_birth, u.weight_kg,
@@ -4464,19 +4471,72 @@ router.get('/staff', requireClientAdmin, async (req, res) => {
   return res.json(staff);
 });
 
+async function linkStaffPhone(staffId, businessId, phoneRaw) {
+  const trimmed = String(phoneRaw || '').trim();
+  const digits = trimmed.replace(/\D/g, '');
+  await db.query(
+    'UPDATE staff SET phone = ? WHERE id = ? AND business_id = ?',
+    [trimmed || null, staffId, businessId],
+  );
+  if (digits.length < 10) {
+    await db.query(
+      'UPDATE staff SET global_user_id = NULL WHERE id = ? AND business_id = ?',
+      [staffId, businessId],
+    );
+    return;
+  }
+  const [users] = await db.query(
+    `SELECT id FROM global_users WHERE ${phoneLast10Eq('phone')} LIMIT 1`,
+    [digits],
+  );
+  if (users.length) {
+    await db.query(
+      'UPDATE staff SET global_user_id = ? WHERE id = ? AND business_id = ?',
+      [users[0].id, staffId, businessId],
+    );
+    return;
+  }
+  const [[current]] = await db.query(
+    'SELECT global_user_id FROM staff WHERE id = ? AND business_id = ?',
+    [staffId, businessId],
+  );
+  if (!current?.global_user_id) return;
+  const [still] = await db.query(
+    `SELECT id FROM global_users WHERE id = ? AND ${phoneLast10Eq('phone')}`,
+    [current.global_user_id, digits],
+  );
+  if (!still.length) {
+    await db.query(
+      'UPDATE staff SET global_user_id = NULL WHERE id = ? AND business_id = ?',
+      [staffId, businessId],
+    );
+  }
+}
+
 router.post('/staff', requireClientAdmin, async (req, res) => {
-  const { full_name, role, bio, color_hex, avatar_url } = req.body;
+  const { full_name, role, bio, color_hex, avatar_url, phone } = req.body;
   if (!full_name || !role) return res.status(400).json({ error: 'Απαιτούνται όνομα και ρόλος' });
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length < 10) {
+    return res.status(400).json({ error: 'Βάλε το κινητό του γυμναστή, για να δει το γυμναστήριο στην εφαρμογή' });
+  }
   const id = uuidv4();
   await db.query(
-    'INSERT INTO staff (id, business_id, full_name, role, bio, color_hex, avatar_url) VALUES (?,?,?,?,?,?,?)',
-    [id, req.admin.businessId, full_name, role, bio || null, color_hex || '#607D8B', avatar_url || null]
+    'INSERT INTO staff (id, business_id, full_name, role, bio, color_hex, avatar_url, phone) VALUES (?,?,?,?,?,?,?,?)',
+    [id, req.admin.businessId, full_name, role, bio || null, color_hex || '#607D8B', avatar_url || null, String(phone).trim()]
   );
+  await linkStaffPhone(id, req.admin.businessId, phone);
   return res.status(201).json({ id });
 });
 
 router.patch('/staff/:id', requireClientAdmin, async (req, res) => {
-  const { full_name, role, bio, color_hex, is_active, avatar_url } = req.body;
+  const { full_name, role, bio, color_hex, is_active, avatar_url, phone } = req.body;
+  if (Object.prototype.hasOwnProperty.call(req.body, 'phone')) {
+    const digits = String(phone || '').replace(/\D/g, '');
+    if (digits.length < 10) {
+      return res.status(400).json({ error: 'Βάλε έγκυρο κινητό (τουλάχιστον 10 ψηφία)' });
+    }
+  }
   await db.query(
     `UPDATE staff SET full_name=COALESCE(?,full_name), role=COALESCE(?,role),
      bio=COALESCE(?,bio), color_hex=COALESCE(?,color_hex), is_active=COALESCE(?,is_active),
@@ -4484,6 +4544,20 @@ router.patch('/staff/:id', requireClientAdmin, async (req, res) => {
      WHERE id=? AND business_id=?`,
     [full_name, role, bio, color_hex, is_active, avatar_url, req.params.id, req.admin.businessId]
   );
+  if (Object.prototype.hasOwnProperty.call(req.body, 'phone')) {
+    await linkStaffPhone(req.params.id, req.admin.businessId, phone);
+  }
+  if (Object.prototype.hasOwnProperty.call(req.body, 'annual_leave_days')) {
+    const raw = req.body.annual_leave_days;
+    const days = raw === '' || raw === null ? null : Number(raw);
+    if (days !== null && (!Number.isInteger(days) || days < 0 || days > 366)) {
+      return res.status(400).json({ error: 'Μη έγκυρες ημέρες άδειας' });
+    }
+    await db.query(
+      'UPDATE staff SET annual_leave_days = ? WHERE id = ? AND business_id = ?',
+      [days, req.params.id, req.admin.businessId],
+    );
+  }
   return res.json({ ok: true });
 });
 
@@ -5260,8 +5334,83 @@ router.patch('/dropin-bookings/:id', requireClientAdmin, async (req, res) => {
     await db.query(`ALTER TABLE staff_leaves ADD COLUMN IF NOT EXISTS admin_note TEXT`);
     await db.query(`ALTER TABLE staff_leaves ADD COLUMN IF NOT EXISTS reviewed_at DATETIME`);
     await db.query(`ALTER TABLE business_configs ADD COLUMN IF NOT EXISTS annual_leave_days INT NOT NULL DEFAULT 20`);
+    await db.query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS annual_leave_days INT NULL`);
   } catch (_) {}
 })();
+
+function leaveYmd(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const text = String(value || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
+}
+
+function leaveSpanDays(dateFrom, dateTo) {
+  const from = leaveYmd(dateFrom);
+  const to = leaveYmd(dateTo);
+  if (!from || !to || to < from) return null;
+  const start = new Date(`${from}T00:00:00`);
+  const end = new Date(`${to}T00:00:00`);
+  return Math.round((end - start) / 86400000) + 1;
+}
+
+async function gymLeaveDefault(bizId) {
+  const [[cfg]] = await db.query(
+    'SELECT annual_leave_days FROM business_configs WHERE business_id=?',
+    [bizId],
+  );
+  return cfg?.annual_leave_days ?? 20;
+}
+
+async function staffLeaveBalance(bizId, staffId) {
+  const [[staff]] = await db.query(
+    'SELECT id, full_name, annual_leave_days FROM staff WHERE id=? AND business_id=?',
+    [staffId, bizId],
+  );
+  if (!staff) return null;
+  const gymDefault = await gymLeaveDefault(bizId);
+  const entitlement = staff.annual_leave_days == null ? gymDefault : Number(staff.annual_leave_days);
+  const [[used]] = await db.query(
+    `SELECT COALESCE(SUM(DATEDIFF(date_to, date_from) + 1), 0) AS days_used
+     FROM staff_leaves
+     WHERE staff_id=? AND business_id=? AND status='approved' AND YEAR(date_from)=YEAR(CURDATE())`,
+    [staffId, bizId],
+  );
+  const daysUsed = Number(used.days_used) || 0;
+  return {
+    staff_id: staffId,
+    full_name: staff.full_name,
+    annual_leave_days: entitlement,
+    personal: staff.annual_leave_days != null,
+    days_used: daysUsed,
+    days_remaining: entitlement - daysUsed,
+  };
+}
+
+async function assertLeaveFits(bizId, staffId, dateFrom, dateTo) {
+  const days = leaveSpanDays(dateFrom, dateTo);
+  if (!days) {
+    const err = new Error('Μη έγκυρες ημερομηνίες');
+    err.status = 400;
+    throw err;
+  }
+  const balance = await staffLeaveBalance(bizId, staffId);
+  if (!balance) {
+    const err = new Error('Το μέλος προσωπικού δεν βρέθηκε');
+    err.status = 404;
+    throw err;
+  }
+  if (days > balance.days_remaining) {
+    const err = new Error(`Δεν φτάνουν οι ημέρες άδειας. Απομένουν ${balance.days_remaining}, ζητήθηκαν ${days}.`);
+    err.status = 400;
+    throw err;
+  }
+  return days;
+}
 
 // GET all leave requests across all staff (admin overview)
 router.get('/staff-leaves', requireClientAdmin, async (req, res) => {
@@ -5278,9 +5427,33 @@ router.get('/staff-leaves', requireClientAdmin, async (req, res) => {
     WHERE ${where}
     ORDER BY sl.date_from DESC
   `, params);
-  const [[cfg]] = await db.query(
-    'SELECT annual_leave_days FROM business_configs WHERE business_id=?', [bizId]);
-  return res.json({ leaves: rows, annual_leave_days: cfg?.annual_leave_days ?? 20 });
+  const gymDefault = await gymLeaveDefault(bizId);
+  const [people] = await db.query(
+    `SELECT s.id, s.full_name, s.role, s.annual_leave_days,
+            COALESCE(SUM(CASE
+              WHEN sl.status = 'approved' AND YEAR(sl.date_from) = YEAR(CURDATE())
+              THEN DATEDIFF(sl.date_to, sl.date_from) + 1 ELSE 0 END), 0) AS days_used
+     FROM staff s
+     LEFT JOIN staff_leaves sl ON sl.staff_id = s.id AND sl.business_id = s.business_id
+     WHERE ${GYM_STAFF_WHERE_ALIAS}
+     GROUP BY s.id, s.full_name, s.role, s.annual_leave_days
+     ORDER BY s.full_name`,
+    [bizId],
+  );
+  const balances = people.map((p) => {
+    const entitlement = p.annual_leave_days == null ? gymDefault : Number(p.annual_leave_days);
+    const daysUsed = Number(p.days_used) || 0;
+    return {
+      staff_id: p.id,
+      full_name: p.full_name,
+      role: p.role,
+      annual_leave_days: entitlement,
+      personal: p.annual_leave_days != null,
+      days_used: daysUsed,
+      days_remaining: entitlement - daysUsed,
+    };
+  });
+  return res.json({ leaves: rows, annual_leave_days: gymDefault, balances });
 });
 
 router.get('/staff/:id/leaves', requireClientAdmin, async (req, res) => {
@@ -5289,18 +5462,24 @@ router.get('/staff/:id/leaves', requireClientAdmin, async (req, res) => {
      FROM staff_leaves WHERE staff_id=? AND business_id=? ORDER BY date_from DESC`,
     [req.params.id, req.admin.businessId]
   );
-  const [[used]] = await db.query(
-    `SELECT COALESCE(SUM(DATEDIFF(date_to, date_from) + 1), 0) AS days_used
-     FROM staff_leaves WHERE staff_id=? AND business_id=? AND status='approved'
-     AND YEAR(date_from)=YEAR(CURDATE())`, [req.params.id, req.admin.businessId]);
-  const [[cfg]] = await db.query(
-    'SELECT annual_leave_days FROM business_configs WHERE business_id=?', [req.admin.businessId]);
-  return res.json({ leaves: rows, days_used: used.days_used, annual_leave_days: cfg?.annual_leave_days ?? 20 });
+  const balance = await staffLeaveBalance(req.admin.businessId, req.params.id);
+  return res.json({
+    leaves: rows,
+    days_used: balance?.days_used ?? 0,
+    annual_leave_days: balance?.annual_leave_days ?? 20,
+    days_remaining: balance?.days_remaining ?? 0,
+    personal: !!balance?.personal,
+  });
 });
 
 router.post('/staff/:id/leaves', requireClientAdmin, async (req, res) => {
   const { date_from, date_to, reason } = req.body;
   if (!date_from || !date_to) return res.status(400).json({ error: 'Απαιτούνται ημερομηνίες' });
+  try {
+    await assertLeaveFits(req.admin.businessId, req.params.id, date_from, date_to);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
   const id = uuidv4();
   await db.query(
     `INSERT INTO staff_leaves (id, staff_id, business_id, date_from, date_to, reason, status)
@@ -5314,6 +5493,18 @@ router.post('/staff/:id/leaves', requireClientAdmin, async (req, res) => {
 router.patch('/staff-leaves/:leaveId', requireClientAdmin, async (req, res) => {
   const { status, admin_note } = req.body;
   if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  const [[leave]] = await db.query(
+    'SELECT id, staff_id, date_from, date_to, status FROM staff_leaves WHERE id=? AND business_id=?',
+    [req.params.leaveId, req.admin.businessId],
+  );
+  if (!leave) return res.status(404).json({ error: 'Η άδεια δεν βρέθηκε' });
+  if (status === 'approved' && leave.status !== 'approved') {
+    try {
+      await assertLeaveFits(req.admin.businessId, leave.staff_id, leave.date_from, leave.date_to);
+    } catch (err) {
+      return res.status(err.status || 400).json({ error: err.message });
+    }
+  }
   await db.query(
     `UPDATE staff_leaves SET status=?, admin_note=?, reviewed_at=NOW()
      WHERE id=? AND business_id=?`,
@@ -7524,6 +7715,49 @@ router.patch('/gym-capacity', requireClientAdmin, async (req, res) => {
   }
 });
 
+function staffSpecialtyKind(specialty) {
+  const value = String(specialty || '');
+  if (/διατροφ|nutri/i.test(value)) return 'nutritionist';
+  if (/φυσιο|physio/i.test(value)) return 'physiotherapist';
+  return 'trainer';
+}
+
+async function ensureJoinedNutritionist(dbConn, { bizId, staffId, fullName, email, phone, locationId }) {
+  const safeEmail = (email && String(email).includes('@')) ? email : `nutrition-${staffId.slice(0, 8)}@omniplex.local`;
+  const [[existing]] = await dbConn.query(
+    `SELECT id FROM nutritionists
+     WHERE business_id = ? AND (staff_id = ? OR email = ?)
+     LIMIT 1`,
+    [bizId, staffId, safeEmail],
+  );
+  let nutritionistId = existing?.id;
+  if (!nutritionistId) {
+    nutritionistId = uuidv4();
+    await dbConn.query(
+      `INSERT INTO nutritionists (id, business_id, location_id, full_name, email, is_active, phone, staff_id)
+       VALUES (?,?,?,?,?,1,?,?)`,
+      [nutritionistId, bizId, locationId || null, fullName || 'Διατροφολόγος', safeEmail, phone || null, staffId],
+    );
+  } else {
+    await dbConn.query(
+      `UPDATE nutritionists SET staff_id = ?, is_active = 1, phone = COALESCE(NULLIF(phone,''), ?), full_name = COALESCE(NULLIF(full_name,''), ?)
+       WHERE id = ?`,
+      [staffId, phone || null, fullName || null, nutritionistId],
+    );
+  }
+  const [[row]] = await dbConn.query('SELECT * FROM nutritionists WHERE id = ?', [nutritionistId]);
+  try {
+    const { ensureNutritionConsultationSetup } = require('../lib/nutrition_consultation');
+    await ensureNutritionConsultationSetup(dbConn, bizId, row);
+  } catch (err) {
+    console.warn('nutritionist setup skipped:', err.message);
+  }
+  await dbConn.query(
+    `UPDATE staff SET is_nutritionist = 1, phone = COALESCE(NULLIF(phone, ''), ?) WHERE id = ? AND business_id = ?`,
+    [phone || null, staffId, bizId],
+  );
+}
+
 // ============================================================
 // Join Requests
 // ============================================================
@@ -7532,8 +7766,10 @@ router.get('/join-requests', requireClientAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT jr.id, jr.global_user_id, jr.full_name, jr.email, jr.phone,
-             jr.status, jr.role, jr.date_of_birth, jr.specialty, jr.admin_note, jr.created_at
+             jr.status, jr.role, jr.date_of_birth, jr.specialty, jr.admin_note, jr.created_at,
+             jr.location_id, l.name AS location_name
       FROM gym_join_requests jr
+      LEFT JOIN locations l ON l.id = jr.location_id AND l.business_id = jr.business_id
       WHERE jr.business_id = ? ${status !== 'all' ? 'AND jr.status = ?' : ''}
       ORDER BY jr.created_at DESC
     `, status !== 'all' ? [req.admin.businessId, status] : [req.admin.businessId]);
@@ -7568,20 +7804,36 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
           `SELECT id FROM staff WHERE business_id = ? AND (phone = ? OR global_user_id = ?) AND is_active = 1 LIMIT 1`,
           [req.admin.businessId, jr.phone || '', jr.global_user_id],
         );
+        const kind = staffSpecialtyKind(jr.specialty);
+        const roleLabel = kind === 'nutritionist' ? 'Διατροφολόγος'
+          : kind === 'physiotherapist' ? 'Φυσιοθεραπευτής'
+          : (jr.specialty || 'Trainer');
         if (existingStaff) {
           await db.query(
-            `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?) WHERE id = ?`,
-            [jr.global_user_id, jr.phone || '', existingStaff.id],
+            `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?),
+             role = ?, is_nutritionist = ?
+             WHERE id = ?`,
+            [jr.global_user_id, jr.phone || '', roleLabel, kind === 'nutritionist' ? 1 : 0, existingStaff.id],
           );
           recordId = existingStaff.id;
         } else {
           const staffId = uuidv4();
           await db.query(
-            `INSERT INTO staff (id, business_id, full_name, portal_email, phone, global_user_id, role, is_active)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-            [staffId, req.admin.businessId, jr.full_name, jr.email || '', jr.phone || '', jr.global_user_id, jr.specialty || 'trainer'],
+            `INSERT INTO staff (id, business_id, full_name, portal_email, phone, global_user_id, role, is_active, is_nutritionist)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+            [staffId, req.admin.businessId, jr.full_name, jr.email || '', jr.phone || '', jr.global_user_id, roleLabel, kind === 'nutritionist' ? 1 : 0],
           );
           recordId = staffId;
+        }
+        if (kind === 'nutritionist') {
+          await ensureJoinedNutritionist(db, {
+            bizId: req.admin.businessId,
+            staffId: recordId,
+            fullName: jr.full_name,
+            email: jr.email,
+            phone: jr.phone,
+            locationId: jr.location_id,
+          });
         }
       } else {
         // Find existing user record in this gym (by global_user_id, phone, or email)
@@ -7621,10 +7873,13 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
         if (tokens.length) {
           const isStaff = jr.role === 'staff';
           const approved = status === 'approved';
+          const staffLabel = staffSpecialtyKind(jr.specialty) === 'nutritionist' ? 'διατροφολόγος'
+            : staffSpecialtyKind(jr.specialty) === 'physiotherapist' ? 'φυσιοθεραπευτής'
+            : 'trainer';
           await sendFcm(tokens, {
             title: approved
-              ? (isStaff ? `Εγκρίθηκες ως trainer στο ${gymName}` : `Εγκρίθηκες στο ${gymName}`)
-              : (isStaff ? `Το αίτημα trainer απορρίφθηκε` : `Το αίτημα απορρίφθηκε`),
+              ? (isStaff ? `Εγκρίθηκες ως ${staffLabel} στο ${gymName}` : `Εγκρίθηκες στο ${gymName}`)
+              : (isStaff ? `Το αίτημα προσωπικού απορρίφθηκε` : `Το αίτημα απορρίφθηκε`),
             body: approved
               ? `Άνοιξε το OmniPlex για να μπεις στο ${gymName}.`
               : `Ο διαχειριστής του ${gymName} δεν ενέκρινε το αίτημά σου.`,

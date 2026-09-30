@@ -626,6 +626,20 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('staff_availability_requests skipped:', err.message);
   }
 
+  try {
+    await db.query('ALTER TABLE staff ADD COLUMN is_nutritionist TINYINT(1) NOT NULL DEFAULT 0');
+    console.log('✓ Schema: staff.is_nutritionist added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('staff.is_nutritionist skipped:', err.message);
+  }
+
+  try {
+    await db.query('ALTER TABLE staff ADD COLUMN annual_leave_days INT NULL');
+    console.log('✓ Schema: staff.annual_leave_days added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('staff.annual_leave_days skipped:', err.message);
+  }
+
   // ── staff.phone ──────────────────────────────────────────────
   try {
     await db.query('ALTER TABLE staff ADD COLUMN phone VARCHAR(50) NULL');
@@ -798,6 +812,18 @@ async function bootstrapSchema() {
   } catch (err) {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('global_device_tokens skipped:', err.message);
   }
+
+  await db.query('ALTER TABLE community_posts ADD COLUMN service_id VARCHAR(36) NULL').catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('community_posts.service_id skipped:', err.message);
+  });
+  await db.query('ALTER TABLE community_comments ADD COLUMN staff_id VARCHAR(36) NULL').catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('community_comments.staff_id skipped:', err.message);
+  });
+  await db.query('ALTER TABLE community_reactions ADD COLUMN staff_id VARCHAR(36) NULL').catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('community_reactions.staff_id skipped:', err.message);
+  });
+  await db.query('ALTER TABLE community_comments MODIFY COLUMN user_id VARCHAR(36) NULL').catch(() => {});
+  await db.query('ALTER TABLE community_reactions MODIFY COLUMN user_id VARCHAR(36) NULL').catch(() => {});
 }
 
 module.exports = { bootstrapSchema };

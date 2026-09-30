@@ -3,100 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Save, Upload, Plus, X, CalendarOff, KeyRound, Clock, Check, Trash2, Copy } from 'lucide-react';
+import { ArrowLeft, Save, Upload, Plus, X, CalendarOff, Clock, Check, Trash2, Copy } from 'lucide-react';
 import StaffDeleteModal from '../components/StaffDeleteModal';
 import { mediaUrl, API_BASE } from '../utils/media';
 import AvailabilityEditor from '../components/AvailabilityEditor';
-
-function StaffPortalSection({ staffId }) {
-  const [portal, setPortal] = useState({ portal_email: '', portal_enabled: false, has_password: false });
-  const [password, setPassword] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    api.get(`/client-admin/staff/${staffId}/portal`)
-      .then(r => setPortal({
-        portal_email: r.data.portal_email || '',
-        portal_enabled: r.data.portal_enabled,
-        has_password: r.data.has_password,
-      }))
-      .catch(() => {});
-  }, [staffId]);
-
-  const savePortal = async (enabled) => {
-    if (enabled && !portal.portal_email.trim()) {
-      toast.error('Συμπληρώστε email σύνδεσης');
-      return;
-    }
-    if (enabled && !portal.has_password && !password.trim()) {
-      toast.error('Ορίστε κωδικό για την πρώτη ενεργοποίηση');
-      return;
-    }
-    setSaving(true);
-    try {
-      await api.put(`/client-admin/staff/${staffId}/portal`, {
-        portal_email: portal.portal_email,
-        password: password || undefined,
-        enabled,
-      });
-      toast.success(enabled ? 'Portal ενεργοποιήθηκε' : 'Portal απενεργοποιήθηκε');
-      setPassword('');
-      const r = await api.get(`/client-admin/staff/${staffId}/portal`);
-      setPortal({
-        portal_email: r.data.portal_email || '',
-        portal_enabled: r.data.portal_enabled,
-        has_password: r.data.has_password,
-      });
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Σφάλμα');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div className="card-header">
-        <span className="card-title"><KeyRound size={16} style={{ verticalAlign: -3, marginRight: 6 }} />Portal γυμναστή</span>
-      </div>
-      <p className="text-muted" style={{ marginBottom: 14, fontSize: '0.88rem' }}>
-        Κάθε γυμναστής έχει δικό του email/κωδικό. Βλέπει μόνο το πρόγραμμα και τους πελάτες των υπηρεσιών που του έχεις αναθέσει.
-      </p>
-      <div className="form-grid-2" style={{ maxWidth: 520 }}>
-        <div className="form-group">
-          <label className="form-label">Email σύνδεσης</label>
-          <input
-            className="form-input"
-            type="email"
-            value={portal.portal_email}
-            onChange={e => setPortal(p => ({ ...p, portal_email: e.target.value }))}
-            placeholder="trainer@gym.com"
-          />
-        </div>
-        <div className="form-group">
-          <label className="form-label">{portal.has_password ? 'Νέος κωδικός (προαιρ.)' : 'Κωδικός'}</label>
-          <input
-            className="form-input"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-        <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={() => savePortal(true)}>
-          {portal.portal_enabled ? 'Ενημέρωση portal' : 'Ενεργοποίηση portal'}
-        </button>
-        {portal.portal_enabled && (
-          <button type="button" className="btn btn-secondary btn-sm" disabled={saving} onClick={() => savePortal(false)}>
-            Απενεργοποίηση
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function PendingAvailabilityRequests({ staffId, onResolved }) {
   const [requests, setRequests] = useState([]);
@@ -191,13 +101,34 @@ async function slotsFromServices(locationId, serviceIds, services) {
 
 function LeavesSection({ staffId }) {
   const [leaves, setLeaves] = useState([]);
+  const [balance, setBalance] = useState(null);
+  const [allowance, setAllowance] = useState('');
   const [form, setForm] = useState({ date_from: '', date_to: '', reason: '' });
   const [saving, setSaving] = useState(false);
 
   const load = () => api.get(`/client-admin/staff/${staffId}/leaves`)
-    .then(r => setLeaves(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    .then(r => {
+      const data = r.data || {};
+      setLeaves(Array.isArray(data) ? data : (data.leaves || []));
+      if (!Array.isArray(data)) {
+        setBalance(data);
+        setAllowance(data.annual_leave_days != null ? String(data.annual_leave_days) : '');
+      }
+    }).catch(() => {});
 
   useEffect(() => { load(); }, [staffId]);
+
+  const saveAllowance = async () => {
+    const days = Number(allowance);
+    if (!Number.isInteger(days) || days < 0) return toast.error('Βάλε ακέραιες ημέρες άδειας');
+    setSaving(true);
+    try {
+      await api.patch(`/client-admin/staff/${staffId}`, { annual_leave_days: days });
+      toast.success('Αποθηκεύτηκαν οι ημέρες που δικαιούται');
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Σφάλμα'); }
+    finally { setSaving(false); }
+  };
 
   const add = async (e) => {
     e.preventDefault();
@@ -223,6 +154,22 @@ function LeavesSection({ staffId }) {
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="card-header">
         <span className="card-title"><CalendarOff size={16} style={{ marginRight: 6 }} />Άδειες / Απουσίες</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Ημέρες που δικαιούται</label>
+          <input type="number" min="0" className="form-input" style={{ width: 90 }} value={allowance} onChange={e => setAllowance(e.target.value)} />
+        </div>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={saveAllowance} disabled={saving}>Αποθήκευση</button>
+        {balance && (
+          <div className="text-muted" style={{ fontSize: '0.85rem', paddingBottom: 8 }}>
+            Χρησιμοποιήθηκαν <strong>{balance.days_used ?? 0}</strong>
+            {' · '}
+            Απομένουν <strong>{balance.days_remaining ?? 0}</strong>
+            {balance.personal ? '' : ' · από την προεπιλογή του γυμναστηρίου'}
+          </div>
+        )}
       </div>
 
       <form onSubmit={add} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16, alignItems: 'flex-end' }}>
@@ -253,6 +200,8 @@ function LeavesSection({ staffId }) {
               <div style={{ flex: 1 }}>
                 <span style={{ fontWeight: 600 }}>{fmt(l.date_from)}</span>
                 {l.date_from !== l.date_to && <span> — <span style={{ fontWeight: 600 }}>{fmt(l.date_to)}</span></span>}
+                {l.days_count != null && <span style={{ color: '#92400e', marginLeft: 8, fontSize: '0.85rem' }}>· {l.days_count} ημ.</span>}
+                {l.status && l.status !== 'approved' && <span style={{ color: '#64748b', marginLeft: 8, fontSize: '0.85rem' }}>· {l.status === 'pending' ? 'αναμονή' : 'απορρίφθηκε'}</span>}
                 {l.reason && <span style={{ color: '#64748b', marginLeft: 8, fontSize: '0.85rem' }}>· {l.reason}</span>}
               </div>
               <button onClick={() => remove(l.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444' }}>
@@ -270,7 +219,7 @@ export default function StaffDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [profile, setProfile] = useState({ full_name: '', role: '', bio: '', color_hex: '#607D8B', avatar_url: null });
+  const [profile, setProfile] = useState({ full_name: '', role: '', bio: '', phone: '', color_hex: '#607D8B', avatar_url: null });
   const [services, setServices] = useState([]);
   const [places, setPlaces] = useState([]);
   const [activePlaceId, setActivePlaceId] = useState('');
@@ -290,7 +239,7 @@ export default function StaffDetail() {
     const member = staffRes.data.find(s => s.id === id);
     if (!member) { navigate('/staff'); return; }
 
-    setProfile({ full_name: member.full_name, role: member.role, bio: member.bio || '', color_hex: member.color_hex || '#607D8B', avatar_url: member.avatar_url });
+    setProfile({ full_name: member.full_name, role: member.role, bio: member.bio || '', phone: member.phone || '', color_hex: member.color_hex || '#607D8B', avatar_url: member.avatar_url });
     setServices(placesRes.data.services || []);
     const nextPlaces = placesRes.data.places || [];
     setPlaces(nextPlaces);
@@ -415,10 +364,19 @@ export default function StaffDetail() {
                 <input className="form-input" value={profile.role} onChange={e => setProfile({ ...profile, role: e.target.value })} placeholder="π.χ. Personal Trainer" />
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Bio</label>
-              <textarea className="form-input" rows={2} value={profile.bio} onChange={e => setProfile({ ...profile, bio: e.target.value })} />
+            <div className="form-grid-2">
+              <div className="form-group">
+                <label className="form-label">Κινητό</label>
+                <input className="form-input" value={profile.phone} onChange={e => setProfile({ ...profile, phone: e.target.value })} placeholder="69XXXXXXXX" inputMode="tel" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Bio</label>
+                <textarea className="form-input" rows={2} value={profile.bio} onChange={e => setProfile({ ...profile, bio: e.target.value })} />
+              </div>
             </div>
+            <p className="text-muted" style={{ fontSize: '0.82rem', marginTop: -4 }}>
+              Με αυτό το κινητό μπαίνει στο app και βλέπει το γυμναστήριο ως trainer.
+            </p>
             <div className="form-group">
               <label className="form-label">Χρώμα</label>
               <input type="color" className="form-input" value={profile.color_hex} onChange={e => setProfile({ ...profile, color_hex: e.target.value })} style={{ width: 80 }} />
@@ -526,8 +484,6 @@ export default function StaffDetail() {
 
       {/* Leaves */}
       <LeavesSection staffId={id} />
-
-      <StaffPortalSection staffId={id} />
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
         <button className="btn btn-primary" onClick={save} disabled={saving}>

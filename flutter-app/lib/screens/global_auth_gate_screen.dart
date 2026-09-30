@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
+import '../theme/brand.dart';
 import 'phone_otp_login_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
 const _kBorder = Color(0xFF2A2B30);
 const _kGray   = Color(0xFF9A9CA3);
-const _kLime   = Color(0xFFC6FF3D);
 
 class GlobalAuthGateScreen extends StatelessWidget {
   const GlobalAuthGateScreen({
@@ -54,8 +54,8 @@ class GlobalAuthGateScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _kLime.withValues(alpha: 0.08),
-                      _kLime.withValues(alpha: 0.0),
+                      const Color(0xFF7B3EAD).withValues(alpha: 0.22),
+                      const Color(0xFF7B3EAD).withValues(alpha: 0.0),
                     ],
                     stops: const [0.0, 0.75],
                   ),
@@ -138,18 +138,18 @@ class _PrimaryButton extends StatelessWidget {
       child: Container(
         height: 64,
         decoration: BoxDecoration(
-          color: Colors.white,
+          gradient: kBrandGradient,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.white.withValues(alpha: 0.15),
+              color: kBrandShadow.withValues(alpha: 0.4),
               blurRadius: 20, offset: const Offset(0, 8)),
           ],
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Row(
           children: [
-            Icon(icon, color: _kBg, size: 20),
+            Icon(icon, color: Colors.white, size: 20),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -159,16 +159,16 @@ class _PrimaryButton extends StatelessWidget {
                   Text(label,
                     style: GoogleFonts.manrope(
                       fontSize: 15, fontWeight: FontWeight.w700,
-                      color: _kBg, letterSpacing: 0.1)),
+                      color: Colors.white, letterSpacing: 0.1)),
                   const SizedBox(height: 1),
                   Text(subtitle,
                     style: GoogleFonts.manrope(
                       fontSize: 11, fontWeight: FontWeight.w500,
-                      color: _kBg.withValues(alpha: 0.55))),
+                      color: Colors.white70)),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios_rounded, color: _kBg.withValues(alpha: 0.4), size: 14),
+            Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 14),
           ],
         ),
       ),

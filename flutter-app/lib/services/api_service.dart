@@ -476,6 +476,85 @@ class ApiService {
     return NutritionGoals.fromJson(_decode(res) as Map<String, dynamic>);
   }
 
+  Future<List<Map<String, dynamic>>> fetchExtraServices() async {
+    final res = await _get('/api/booking/$bizId/extra-services');
+    final data = _decode(res);
+    final list = data is Map ? (data['services'] as List? ?? []) : <dynamic>[];
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> buyExtraPlan(String planId) async {
+    final res = await _post('/api/booking/$bizId/buy-plan', {'plan_id': planId});
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<Map<String, dynamic>> confirmExtraPlan({
+    required String planId,
+    required String intentId,
+  }) async {
+    final res = await _post('/api/booking/$bizId/buy-plan/confirm', {
+      'plan_id': planId,
+      'intent_id': intentId,
+    });
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchNutritionClients() async {
+    final res = await _get('/api/client-admin/nutrition/clients');
+    final data = _decode(res);
+    return (data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> fetchNutritionClientDay(String userId, String date) async {
+    final res = await _get('/api/client-admin/nutrition/clients/$userId/day', query: {'date': date});
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<Map<String, dynamic>> fetchNutritionGoalsAdmin(String userId) async {
+    final res = await _get('/api/client-admin/nutrition/clients/$userId/goals');
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<Map<String, dynamic>> saveNutritionGoalsAdmin(String userId, Map<String, dynamic> body) async {
+    final res = await _put('/api/client-admin/nutrition/clients/$userId/goals', body);
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<Map<String, dynamic>> fetchNutritionMeasurementsAdmin(String userId) async {
+    final res = await _get('/api/client-admin/nutrition/clients/$userId/measurements');
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<void> addNutritionMeasurement(String userId, Map<String, dynamic> body) async {
+    final res = await _post('/api/client-admin/nutrition/clients/$userId/measurements', body);
+    _decode(res);
+  }
+
+  Future<Map<String, dynamic>> fetchNutritionMealPlan(String userId) async {
+    final res = await _get('/api/client-admin/nutrition/clients/$userId/meal-plan');
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchNutritionTemplates() async {
+    final res = await _get('/api/client-admin/nutrition/templates');
+    final data = _decode(res);
+    final list = data is Map ? (data['templates'] as List? ?? []) : <dynamic>[];
+    return list.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> applyNutritionTemplate(String userId, String templateId) async {
+    final res = await _post('/api/client-admin/nutrition/clients/$userId/meal-plan/apply-template', {
+      'template_id': templateId,
+    });
+    _decode(res);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchNutritionBookings() async {
+    final res = await _get('/api/client-admin/nutrition/bookings');
+    final data = _decode(res);
+    return (data as List).cast<Map<String, dynamic>>();
+  }
+
   Future<List<BookService>> fetchServices() async {
     final res = await _get('/api/booking/$bizId/services');
     final data = _decode(res) as List;
@@ -1110,17 +1189,20 @@ class ApiService {
     _decode(res);
   }
 
-  Future<List<Map<String, dynamic>>> fetchCommunityMentionables() async {
-    final res = await _get('/api/community/mobile/$bizId/mentionables');
+  Future<List<Map<String, dynamic>>> fetchCommunityMentionables({String? serviceId}) async {
+    final qs = serviceId == null ? '' : '?service_id=${Uri.encodeQueryComponent(serviceId)}';
+    final res = await _get('/api/community/mobile/$bizId/mentionables$qs');
     final data = _decode(res) as Map<String, dynamic>;
     return (data['mentionables'] as List? ?? []).cast<Map<String, dynamic>>();
   }
 
   Future<Map<String, dynamic>> createCommunityPostWithMentions({
     String? body, List<Map<String, dynamic>>? media, List<Map<String, dynamic>>? mentions,
+    String? serviceId,
   }) async {
     final res = await _post('/api/community/mobile/$bizId/posts', {
       if (body != null) 'body': body,
+      if (serviceId != null) 'service_id': serviceId,
       if (media != null && media.isNotEmpty) 'media': media,
       if (mentions != null && mentions.isNotEmpty) 'mentions': mentions,
     });
@@ -1137,9 +1219,10 @@ class ApiService {
     return Map<String, dynamic>.from(_decode(res) as Map);
   }
 
-  Future<Map<String, dynamic>> getCommunityPosts({String? cursor, int limit = 20}) async {
+  Future<Map<String, dynamic>> getCommunityPosts({String? cursor, int limit = 20, String? serviceId}) async {
     final query = <String, String>{'limit': '$limit'};
     if (cursor != null) query['cursor'] = cursor;
+    if (serviceId != null) query['service_id'] = serviceId;
     final qs = query.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&');
     final res = await _get('/api/community/mobile/$bizId/posts?$qs');
     return Map<String, dynamic>.from(_decode(res) as Map);

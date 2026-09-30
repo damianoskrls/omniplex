@@ -23,6 +23,7 @@ import 'qr_checkin_screen.dart';
 import 'my_qr_screen.dart';
 import 'dropin_screen.dart';
 import 'nutrition_screen.dart';
+import 'nutritionist_portal_screen.dart';
 import 'marketplace_screen.dart';
 import 'goals_screen.dart';
 import 'payments_screen.dart';
@@ -52,16 +53,6 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
-
-const _kBrandAccent = Color(0xFF7B3EAD);
-const _kBrandNavGradient = LinearGradient(
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-  colors: [
-    Color(0xFF4452D8), Color(0xFF5D49C5), Color(0xFF7B3EAD),
-    Color(0xFFA4308D), Color(0xFFC52473),
-  ],
-);
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static _HomeScreenState? _active;
@@ -116,13 +107,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   List<_TabItem> get _tabItems {
     final config = context.read<TenantConfig>();
-    if (context.read<AuthService>().user?.isStaff == true) {
+    final user = context.read<AuthService>().user;
+    if (user?.isNutritionist == true) {
+      return [
+        _TabItem(
+          key: 'nutrition_clients',
+          icon: Icons.people_outline_rounded,
+          label: 'Πελάτες',
+          screen: const NutritionistClientsScreen(),
+        ),
+        _TabItem(
+          key: 'nutrition_bookings',
+          icon: Icons.calendar_today_outlined,
+          label: 'Ραντεβού',
+          screen: const NutritionistBookingsScreen(),
+        ),
+        _TabItem(
+          key: 'nutrition_templates',
+          icon: Icons.menu_book_outlined,
+          label: 'Προγράμματα',
+          screen: const NutritionistTemplatesScreen(),
+        ),
+      ];
+    }
+    if (user?.isStaff == true) {
       return [
         _TabItem(
           key: 'schedule',
           icon: Icons.calendar_today_outlined,
           label: 'Πρόγραμμα',
           screen: const StaffScheduleScreen(),
+        ),
+        _TabItem(
+          key: 'messages',
+          icon: Icons.chat_bubble_outline_rounded,
+          label: 'Μηνύματα',
+          screen: const StaffMessagesScreen(),
+        ),
+        _TabItem(
+          key: 'community',
+          icon: Icons.people_outline_rounded,
+          label: 'Κοινότητα',
+          screen: const CommunityScreen(),
         ),
         _TabItem(
           key: 'clients',
@@ -135,12 +161,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           icon: Icons.flight_takeoff_outlined,
           label: 'Άδειες',
           screen: const StaffLeavesScreen(),
-        ),
-        _TabItem(
-          key: 'messages',
-          icon: Icons.chat_bubble_outline_rounded,
-          label: 'Μηνύματα',
-          screen: const StaffMessagesScreen(),
         ),
       ];
     }
@@ -408,21 +428,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: Container(
           width: 56, height: 56,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF7C5CFC), Color(0xFFE040FB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: context.tenantPrimary,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF7C5CFC).withValues(alpha: 0.45),
+                color: context.tenantPrimary.withValues(alpha: 0.4),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
             ],
           ),
-          child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 24),
+          child: Icon(Icons.auto_awesome_rounded, color: AppColors.onFill(context.tenantPrimary), size: 24),
         ),
       ),
       bottomNavigationBar: FloatingNavBar(
@@ -447,8 +463,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           MaterialPageRoute(builder: (_) => const MyQrScreen()),
         ),
         centerIcon: Icons.qr_code_2_rounded,
-        centerGradient: _kBrandNavGradient,
-        activeColor: _kBrandAccent,
+        activeColor: context.tenantPrimary,
       ),
     );
   }

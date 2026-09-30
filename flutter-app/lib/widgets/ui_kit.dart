@@ -80,7 +80,7 @@ class GreetingHeader extends StatelessWidget {
               // Gym logo — tappable
               GestureDetector(
                 onTap: onLogoTap,
-                child: const TenantLogo(size: 40, borderRadius: 12, showShadow: false),
+                child: const TenantLogo(size: 64, borderRadius: 16, showShadow: false),
               ),
               const Spacer(),
               // Action icons row
@@ -112,18 +112,14 @@ class GreetingHeader extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.purple, AppColors.pink],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: context.tenantPrimary,
                       borderRadius: BorderRadius.circular(13),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       avatarLetter!.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppColors.onFill(context.tenantPrimary),
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
                       ),
@@ -296,14 +292,15 @@ class GradientCard extends StatelessWidget {
 }
 
 class SurfaceCard extends StatelessWidget {
-  const SurfaceCard({super.key, required this.child, this.padding = const EdgeInsets.all(20)});
+  const SurfaceCard({super.key, required this.child, this.padding = const EdgeInsets.all(20), this.onTap});
 
   final Widget child;
   final EdgeInsets padding;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final card = Material(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(20),
       child: Container(
@@ -315,6 +312,8 @@ class SurfaceCard extends StatelessWidget {
         child: child,
       ),
     );
+    if (onTap == null) return card;
+    return GestureDetector(onTap: onTap, child: card);
   }
 }
 
@@ -374,10 +373,10 @@ class FloatingNavBar extends StatelessWidget {
                         child: Text(
                           item.badgeCount > 9 ? '9+' : '${item.badgeCount}',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 8,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: AppColors.onFill(primary),
                             height: 1.1,
                           ),
                         ),
@@ -452,7 +451,7 @@ class FloatingNavBar extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(centerIcon, color: Colors.white, size: 28),
+                  child: Icon(centerIcon, color: AppColors.onFill(accentColor), size: 28),
                 ),
               ),
               ...rightItems.asMap().entries.map((e) => _buildTab(context, rightOffset + e.key, e.value)),

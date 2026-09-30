@@ -221,25 +221,25 @@ class _DropinScreenState extends State<DropinScreen> {
                         duration: const Duration(milliseconds: 150),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: selected ? AppColors.lime : AppColors.surfaceLight,
+                          color: selected ? context.tenantPrimary.withValues(alpha: 0.18) : AppColors.surfaceLight,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: selected ? AppColors.lime : AppColors.border),
+                          border: Border.all(color: selected ? context.tenantPrimary : AppColors.border),
                         ),
                         child: Row(
                           children: [
                             Text(
                               s['name'] as String? ?? '',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: selected ? Colors.black : AppColors.textPrimary,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: selected ? Colors.black.withValues(alpha: 0.15) : AppColors.border,
+                                color: selected ? context.tenantPrimary.withValues(alpha: 0.35) : AppColors.border,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
@@ -247,7 +247,7 @@ class _DropinScreenState extends State<DropinScreen> {
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: selected ? Colors.black : AppColors.lime,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ),
@@ -280,24 +280,24 @@ class _DropinScreenState extends State<DropinScreen> {
                         duration: const Duration(milliseconds: 150),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: selected ? AppColors.lime : AppColors.surfaceLight,
+                          color: selected ? context.tenantPrimary.withValues(alpha: 0.18) : AppColors.surfaceLight,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: selected ? AppColors.lime : AppColors.border),
+                          border: Border.all(color: selected ? context.tenantPrimary : AppColors.border),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               '${d.day}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                color: selected ? Colors.black : AppColors.textPrimary,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             Text(
                               _fmtDate(d).split(' ').first.length <= 4 ? _fmtDate(d).split(' ').first : _fmtDate(d).substring(0, 3),
-                              style: TextStyle(fontSize: 10, color: selected ? Colors.black87 : AppColors.textSecondary),
+                              style: TextStyle(fontSize: 10, color: selected ? Colors.white : AppColors.textSecondary),
                             ),
                           ],
                         ),
@@ -463,7 +463,7 @@ class _SlotCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isFull ? AppColors.border : AppColors.lime,
+                      color: isFull ? AppColors.border : AppColors.surfaceLight,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -471,7 +471,7 @@ class _SlotCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: isFull ? AppColors.textSecondary : Colors.black,
+                        color: isFull ? AppColors.textSecondary : AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -603,8 +603,12 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(color: AppColors.lime, borderRadius: BorderRadius.circular(12)),
-                  child: Text(_priceStr, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black)),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(_priceStr, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                 ),
               ],
             ),
@@ -662,13 +666,8 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
               height: 52,
               child: ElevatedButton(
                 onPressed: _loading ? null : _book,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.lime,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
                 child: _loading
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Text('Κράτηση · $_priceStr', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               ),
             ),

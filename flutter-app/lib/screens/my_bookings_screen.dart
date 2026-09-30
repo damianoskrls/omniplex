@@ -288,13 +288,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     );
   }
 
-  Widget _bookingCard(Booking booking, {required int index, required bool isFirstUpcoming}) {
+  Widget _bookingCard(Booking booking, {required bool isFirstUpcoming}) {
     final s = AppStrings.of(context);
     final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
     final dateFmt = DateFormat('EEE d MMM, HH:mm', locale);
-    final accent = booking.isNutritionConsultation
-        ? AppColors.pink
-        : AppColors.cardGradient(index).first;
+    final accent = context.tenantPrimary;
     final isNext = isFirstUpcoming && booking.isUpcoming;
     final nextLabel = isNext
         ? (_isToday(booking.startsAt) ? s.today : s.next)
@@ -462,7 +460,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         final booking = bookings[index];
         return _bookingCard(
           booking,
-          index: index,
           isFirstUpcoming: isFirstSection && booking.id == firstUpcomingId,
         );
       }),
@@ -518,9 +515,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               color: AppColors.orange,
               count: pendingApproval.length,
             ),
-            ...pendingApproval.asMap().entries.map((e) => _bookingCard(
-              e.value,
-              index: e.key,
+            ...pendingApproval.map((b) => _bookingCard(
+              b,
               isFirstUpcoming: false,
             )),
             const SizedBox(height: 8),

@@ -12,6 +12,7 @@ import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/slot_visual.dart';
 import '../widgets/ui_kit.dart';
+import 'add_service_screen.dart';
 import 'booking_flow_screen.dart';
 import 'nutrition_consultation_booking_screen.dart';
 import 'dropin_screen.dart';
@@ -155,6 +156,14 @@ class _ServicesScreenState extends State<ServicesScreen> {
     }
   }
 
+  Future<void> _openAddService() async {
+    final added = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const AddServiceScreen()),
+    );
+    if (added == true) _load();
+  }
+
   String _creditsLabel(BookService service) {
     final s = AppStrings.of(context);
     if (service.isUnlimited) return s.servicesUnlimited;
@@ -185,7 +194,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
       return EmptyState(
         icon: Icons.card_membership_outlined,
         title: AppStrings.of(context).servicesNoPackages,
-        subtitle: 'Πάρε ένα πακέτο από την καρτέλα Πακέτα, ή ζήτα drop-in αν το κατάστημά σου το δέχεται.',
+        subtitle: 'Μπορείς να προσθέσεις άλλη υπηρεσία του γυμναστηρίου και να πάρεις πακέτο.',
+        action: ElevatedButton(
+          onPressed: _openAddService,
+          child: const Text('Πρόσθεσε υπηρεσία'),
+        ),
       );
     }
 
@@ -230,27 +243,27 @@ class _ServicesScreenState extends State<ServicesScreen> {
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E2A1A), Color(0xFF2A3A1A)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.lime.withValues(alpha: 0.3)),
+                border: Border.all(color: AppColors.border),
               ),
               child: Row(
                 children: [
                   Container(
                     width: 40, height: 40,
-                    decoration: BoxDecoration(color: AppColors.lime, borderRadius: BorderRadius.circular(12)),
-                    child: const Icon(Icons.bolt_rounded, color: Colors.black, size: 22),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
                   ),
                   const SizedBox(width: 14),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Drop-in', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.lime)),
+                        Text('Drop-in', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                         Text('Κλείσε μία συνεδρία χωρίς συνδρομή', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
@@ -261,8 +274,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
             ),
           ),
           if (_showNutritionCard) ...[
-            GradientCard(
-              colors: const [Color(0xFF0f766e), Color(0xFF134e4a)],
+            SurfaceCard(
               onTap: (_nutritionConsultCanBook || _nutritionPendingBooking != null || _nutritionUpcomingBooking != null)
                   ? () async {
                       final booked = await Navigator.push<bool>(
@@ -283,7 +295,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   : null,
               child: Row(
                 children: [
-                  const Icon(Icons.monitor_heart_outlined, color: Colors.white, size: 28),
+                  const Icon(Icons.monitor_heart_outlined, color: AppColors.textPrimary, size: 28),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -291,7 +303,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       children: [
                         Text(
                           _nutritionConsultService!.name,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+                          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 18),
                         ),
                         Text(
                           _nutritionPendingBooking != null
@@ -305,13 +317,13 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                   : _nutritionCredits['has_access'] == true
                                       ? AppStrings.of(context).servicesNoNutritionist
                                       : AppStrings.of(context).servicesContactForVisits,
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                         ),
                       ],
                     ),
                   ),
                   if (_nutritionConsultCanBook || _nutritionPendingBooking != null || _nutritionUpcomingBooking != null)
-                    const Icon(Icons.chevron_right, color: Colors.white70),
+                    const Icon(Icons.chevron_right, color: AppColors.textSecondary),
                 ],
               ),
             ),
@@ -322,13 +334,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
             final renewal = service.creditsValidUntil != null
                 ? DateFormat('d MMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US').format(service.creditsValidUntil!)
                 : null;
-            final colors = AppColors.cardGradient(index);
-
             return Padding(
               padding: EdgeInsets.only(bottom: index < _services.length - 1 ? 14 : 0),
-              child: GradientCard(
-                colors: service.canBook ? colors : [AppColors.surfaceLight, AppColors.surface],
-                onTap: null,
+              child: SurfaceCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -349,21 +357,21 @@ class _ServicesScreenState extends State<ServicesScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 20,
-                              color: service.canBook ? Colors.white : AppColors.textSecondary,
+                              color: service.canBook ? AppColors.textPrimary : AppColors.textSecondary,
                             ),
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: service.canBook ? 0.2 : 0.08),
+                            color: AppColors.surfaceLight,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '${service.durationMins}\'',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              color: service.canBook ? Colors.white : AppColors.textSecondary,
+                              color: service.canBook ? AppColors.textPrimary : AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -376,7 +384,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: service.canBook ? Colors.white.withValues(alpha: 0.85) : AppColors.textSecondary,
+                          color: service.canBook ? AppColors.textSecondary : AppColors.textSecondary,
                           height: 1.4,
                         ),
                       ),
@@ -386,13 +394,16 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        if (service.category != null) PillChip(label: service.category!),
+                        if (service.category != null)
+                          PillChip(
+                            label: service.category!,
+                            color: AppColors.surfaceLight,
+                            textColor: AppColors.textSecondary,
+                          ),
                         PillChip(
                           label: _creditsLabel(service),
-                          color: service.canBook
-                              ? AppColors.lime.withValues(alpha: 0.25)
-                              : Colors.white.withValues(alpha: 0.08),
-                          textColor: service.canBook ? AppColors.lime : AppColors.textSecondary,
+                          color: AppColors.surfaceLight,
+                          textColor: service.canBook ? AppColors.textPrimary : AppColors.textSecondary,
                         ),
                       ],
                     ),
@@ -403,14 +414,14 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           Icon(
                             Icons.autorenew,
                             size: 14,
-                            color: service.canBook ? Colors.white70 : AppColors.textSecondary,
+                            color: AppColors.textSecondary,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             AppStrings.of(context).servicesRenewal(renewal),
                             style: TextStyle(
                               fontSize: 12,
-                              color: service.canBook ? Colors.white70 : AppColors.textSecondary,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -436,16 +447,16 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(vertical: 11),
                                     decoration: BoxDecoration(
-                                      color: AppColors.lime,
+                                      color: context.tenantPrimary,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
                                       AppStrings.of(context).servicesBook,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 13,
-                                        color: Colors.black,
+                                        color: AppColors.onFill(context.tenantPrimary),
                                       ),
                                     ),
                                   ),
@@ -467,9 +478,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(vertical: 11),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.15),
+                                      color: AppColors.surfaceLight,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                                      border: Border.all(color: AppColors.border),
                                     ),
                                     alignment: Alignment.center,
                                     child: const Text(
@@ -492,6 +503,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
               ),
             );
           }),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: _openAddService,
+            icon: const Icon(Icons.add),
+            label: const Text('Πρόσθεσε άλλη υπηρεσία και πάρε πακέτο'),
+          ),
         ],
       ),
     );

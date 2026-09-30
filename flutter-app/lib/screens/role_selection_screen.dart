@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../theme/brand.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -181,7 +182,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     child: Container(
                       height: 56,
                       decoration: BoxDecoration(
-                        color: _kLime,
+                        gradient: kBrandGradient,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       alignment: Alignment.center,
@@ -189,9 +190,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         Text('Συνέχεια',
                           style: GoogleFonts.manrope(
                             fontSize: 15, fontWeight: FontWeight.w700,
-                            color: _kBg, letterSpacing: 0.3)),
+                            color: Colors.white, letterSpacing: 0.3)),
                         const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward_rounded, color: _kBg, size: 18),
+                        const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
                       ]),
                     ),
                   ),

@@ -569,14 +569,17 @@ router.get('/staff/me', async (req, res) => {
   let decoded;
   try { decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret'); }
   catch { return res.status(401).json({ error: 'Λήξη ή μη έγκυρο token' }); }
-  if (!['staff', 'trainer'].includes(decoded.role)) return res.status(403).json({ error: 'Απαγορεύεται' });
+  if (!['staff', 'trainer', 'nutritionist'].includes(decoded.role)) return res.status(403).json({ error: 'Απαγορεύεται' });
 
   try {
     const [[s]] = await db.query(
-      'SELECT id, full_name, portal_email, role, avatar_url, color_hex, bio, business_id FROM staff WHERE id = ? AND is_active = 1',
+      `SELECT id, full_name, portal_email, role, avatar_url, color_hex, bio, business_id,
+              COALESCE(is_nutritionist, 0) AS is_nutritionist
+       FROM staff WHERE id = ? AND is_active = 1`,
       [decoded.staffId],
     );
     if (!s) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    const isNutritionist = Number(s.is_nutritionist) === 1 || decoded.role === 'nutritionist';
     return res.json({
       id:          s.id,
       full_name:   s.full_name,
@@ -586,6 +589,8 @@ router.get('/staff/me', async (req, res) => {
       color_hex:   s.color_hex,
       bio:         s.bio,
       business_id: s.business_id,
+      is_nutritionist: isNutritionist,
+      staff_kind: isNutritionist ? 'nutritionist' : (/φυσιο|physio/i.test(s.role || '') ? 'physiotherapist' : 'trainer'),
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -742,12 +747,22 @@ router.get('/staff/leaves', requireMobileStaff, async (req, res) => {
        AND YEAR(date_from)=YEAR(CURDATE())`,
       [req.staffId, req.businessId],
     );
+    const [[staffRow]] = await db.query(
+      'SELECT annual_leave_days FROM staff WHERE id=? AND business_id=?',
+      [req.staffId, req.businessId],
+    );
     const [[cfg]] = await db.query(
       'SELECT annual_leave_days FROM business_configs WHERE business_id=?', [req.businessId]);
+    const entitlement = staffRow?.annual_leave_days == null
+      ? (cfg?.annual_leave_days ?? 20)
+      : Number(staffRow.annual_leave_days);
+    const daysUsed = Number(used.days_used) || 0;
     return res.json({
       leaves,
-      days_used: used.days_used,
-      annual_leave_days: cfg?.annual_leave_days ?? 20,
+      days_used: daysUsed,
+      used_days: daysUsed,
+      annual_leave_days: entitlement,
+      days_remaining: entitlement - daysUsed,
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -759,6 +774,33 @@ router.post('/staff/leaves', requireMobileStaff, async (req, res) => {
   const { date_from, date_to, reason } = req.body;
   if (!date_from || !date_to) return res.status(400).json({ error: 'Απαιτούνται ημερομηνίες' });
   try {
+    const from = new Date(`${date_from}T00:00:00`);
+    const to = new Date(`${date_to}T00:00:00`);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from) {
+      return res.status(400).json({ error: 'Μη έγκυρες ημερομηνίες' });
+    }
+    const requested = Math.round((to - from) / 86400000) + 1;
+    const [[used]] = await db.query(
+      `SELECT COALESCE(SUM(DATEDIFF(date_to, date_from) + 1), 0) AS days_used
+       FROM staff_leaves WHERE staff_id=? AND business_id=? AND status='approved'
+       AND YEAR(date_from)=YEAR(CURDATE())`,
+      [req.staffId, req.businessId],
+    );
+    const [[staffRow]] = await db.query(
+      'SELECT annual_leave_days FROM staff WHERE id=? AND business_id=?',
+      [req.staffId, req.businessId],
+    );
+    const [[cfg]] = await db.query(
+      'SELECT annual_leave_days FROM business_configs WHERE business_id=?', [req.businessId]);
+    const entitlement = staffRow?.annual_leave_days == null
+      ? (cfg?.annual_leave_days ?? 20)
+      : Number(staffRow.annual_leave_days);
+    const remaining = entitlement - (Number(used.days_used) || 0);
+    if (requested > remaining) {
+      return res.status(400).json({
+        error: `Δεν φτάνουν οι ημέρες άδειας. Απομένουν ${remaining}, ζητήθηκαν ${requested}.`,
+      });
+    }
     const id = uuidv4();
     await db.query(
       `INSERT INTO staff_leaves (id, staff_id, business_id, date_from, date_to, reason, status)

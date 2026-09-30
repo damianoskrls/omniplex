@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
+import '../theme/brand.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -182,12 +183,13 @@ class _GlobalProfileDetailsScreenState
                   duration: const Duration(milliseconds: 200),
                   height: 56,
                   decoration: BoxDecoration(
-                    color: _valid ? _kLime : _kCard,
+                    gradient: _valid ? kBrandGradient : null,
+                    color: _valid ? null : _kCard,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _valid ? _kLime : _kBorder),
+                    border: Border.all(color: _valid ? Colors.transparent : _kBorder),
                     boxShadow: _valid ? [
                       BoxShadow(
-                        color: _kLime.withValues(alpha: 0.28),
+                        color: kBrandShadow.withValues(alpha: 0.35),
                         blurRadius: 16, offset: const Offset(0, 6)),
                     ] : null,
                   ),
@@ -196,11 +198,11 @@ class _GlobalProfileDetailsScreenState
                     ? const SizedBox(
                         width: 22, height: 22,
                         child: CircularProgressIndicator(
-                          color: Color(0xFF0A0A0A), strokeWidth: 2.5))
+                          color: Colors.white, strokeWidth: 2.5))
                     : Text('Συνέχεια',
                         style: GoogleFonts.manrope(
                           fontSize: 14, fontWeight: FontWeight.w700,
-                          color: _valid ? _kBg : _kGray)),
+                          color: _valid ? Colors.white : _kGray)),
                 ),
               ),
             ],

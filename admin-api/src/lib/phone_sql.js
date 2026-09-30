@@ -30,4 +30,10 @@ function phoneDigitsEq(column) {
   return `${phoneDigitsExpr(column)} = CONVERT(? USING utf8mb4) COLLATE ${PHONE_COLLATE}`;
 }
 
-module.exports = { phoneDigitsExpr, phoneDigitsLike, phoneDigitsEq };
+// Greek mobiles are 10 digits. Match 6912345678 with +30 6912345678.
+function phoneLast10Eq(column) {
+  const digits = phoneDigitsExpr(column);
+  return `CHAR_LENGTH(${digits}) >= 10 AND RIGHT(${digits}, 10) = RIGHT(CONVERT(? USING utf8mb4) COLLATE ${PHONE_COLLATE}, 10)`;
+}
+
+module.exports = { phoneDigitsExpr, phoneDigitsLike, phoneDigitsEq, phoneLast10Eq };
