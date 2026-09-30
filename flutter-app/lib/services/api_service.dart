@@ -1408,6 +1408,37 @@ class ApiService {
     return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  Map<String, String> _programHeaders(String userId) => {
+        ..._headers,
+        'x-business-id': bizId,
+        'x-user-id': userId,
+      };
+
+  Future<void> checkProgramExercise(String userId, String programId, String exerciseRowId) async {
+    final res = await _withTimeout(http.post(
+      Uri.parse('$_base/api/client-admin/my-programs/$programId/check'),
+      headers: _programHeaders(userId),
+      body: jsonEncode({'exercise_row_id': exerciseRowId}),
+    ));
+    _decode(res);
+  }
+
+  Future<void> undoProgramExercise(String userId, String programId, String exerciseRowId) async {
+    final res = await _withTimeout(http.delete(
+      Uri.parse('$_base/api/client-admin/my-programs/$programId/check/$exerciseRowId'),
+      headers: _programHeaders(userId),
+    ));
+    _decode(res);
+  }
+
+  Future<void> resetProgramSession(String userId, String programId) async {
+    final res = await _withTimeout(http.delete(
+      Uri.parse('$_base/api/client-admin/my-programs/$programId/session'),
+      headers: _programHeaders(userId),
+    ));
+    _decode(res);
+  }
+
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) async {
     final res = await _post(path, body);
     return Map<String, dynamic>.from(_decode(res) as Map);

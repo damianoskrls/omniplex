@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
@@ -185,11 +187,78 @@ bool _programMatchesService(Map<String, dynamic> program, String? serviceId) {
   return false;
 }
 
+List<Map<String, dynamic>> _mergePrograms(List<Map<String, dynamic>> rows) {
+  final byId = <String, Map<String, dynamic>>{};
+  final order = <String>[];
+  for (final row in rows) {
+    final id = row['program_id']?.toString() ?? '';
+    if (id.isEmpty) continue;
+    final name = row['service_name']?.toString();
+    final existing = byId[id];
+    if (existing == null) {
+      final copy = Map<String, dynamic>.from(row);
+      copy['service_names'] = name == null || name.isEmpty ? <String>[] : <String>[name];
+      byId[id] = copy;
+      order.add(id);
+    } else if (name != null && name.isNotEmpty) {
+      final names = (existing['service_names'] as List).cast<String>();
+      if (!names.contains(name)) names.add(name);
+    }
+  }
+  return order.map((id) => byId[id]!).toList();
+}
+
+Set<String> _doneIds(Map<String, dynamic> program) {
+  final raw = program['done_exercise_ids'];
+  if (raw is! List) return {};
+  return raw.map((e) => e.toString()).toSet();
+}
+
+List<Map<String, dynamic>> _exercisesOf(Map<String, dynamic> program) {
+  return (program['exercises'] as List?)
+          ?.map((e) => Map<String, dynamic>.from(e as Map))
+          .toList() ??
+      [];
+}
+
+int? _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value == null) return null;
+  return int.tryParse(value.toString());
+}
+
+String _formatSecs(int s) {
+  if (s >= 60) {
+    final m = s ~/ 60;
+    final rem = s % 60;
+    return rem == 0 ? '${m}λ' : '${m}λ${rem}δ';
+  }
+  return '${s}δ';
+}
+
+String _clock(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+  if (h > 0) return '$h:$m:$s';
+  return '$m:$s';
+}
+
+/// Indicative kcal for moderate weight training, 70 kg, MET 4.5–6.5.
+(int, int) _kcalRange(Duration d) {
+  final hours = d.inSeconds / 3600;
+  const kg = 70.0;
+  final low = (4.5 * kg * hours).round();
+  final high = (6.5 * kg * hours).round();
+  if (high <= 0) return (low, low < 1 ? 1 : low);
+  return (low, high < low ? low : high);
+}
+
 class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _programs = [];
-  final Set<String> _expanded = {};
 
   @override
   void initState() {
@@ -206,10 +275,10 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
     }
     try {
       final all = await auth.api.fetchMyPrograms(userId);
-      final data = widget.serviceId != null
+      final filtered = widget.serviceId != null
           ? all.where((p) => _programMatchesService(p, widget.serviceId)).toList()
           : all;
-      if (mounted) setState(() { _programs = data; _loading = false; });
+      if (mounted) setState(() { _programs = _mergePrograms(filtered); _loading = false; });
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
     }
@@ -257,374 +326,97 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
                   ? _EmptyView()
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                      itemCount: _programs.length,
-                      itemBuilder: (context, i) => _ProgramCard(
-                        program: _programs[i],
-                        expanded: _expanded.contains(_programs[i]['assignment_id'] as String? ?? '$i'),
-                        onToggle: () {
-                          final key = _programs[i]['assignment_id'] as String? ?? '$i';
-                          setState(() {
-                            if (_expanded.contains(key)) {
-                              _expanded.remove(key);
-                            } else {
-                              _expanded.add(key);
+                      itemCount: _programs.length + 1,
+                      itemBuilder: (context, i) {
+                        if (i == 0) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: Text(
+                              widget.serviceTitle == null
+                                  ? 'Διάλεξε πρόγραμμα από τις υπηρεσίες σου'
+                                  : 'Προγράμματα για ${widget.serviceTitle}',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            ),
+                          );
+                        }
+                        final program = _programs[i - 1];
+                        return _ProgramPickCard(
+                          program: program,
+                          onOpen: () async {
+                            final changed = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(builder: (_) => WorkoutSessionScreen(program: program)),
+                            );
+                            if (changed == true && mounted) {
+                              setState(() { _loading = true; _error = null; });
+                              await _load();
                             }
-                          });
-                        },
-                      ),
+                          },
+                        );
+                      },
                     ),
     );
   }
 }
 
-class _ProgramCard extends StatelessWidget {
-  const _ProgramCard({
-    required this.program,
-    required this.expanded,
-    required this.onToggle,
-  });
-
+class _ProgramPickCard extends StatelessWidget {
+  const _ProgramPickCard({required this.program, required this.onOpen});
   final Map<String, dynamic> program;
-  final bool expanded;
-  final VoidCallback onToggle;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
     final name = program['program_name'] as String? ?? s.programsDefaultName;
-    final desc = program['program_description'] as String?;
-    final exercises = (program['exercises'] as List?)
-        ?.map((e) => Map<String, dynamic>.from(e as Map))
-        .toList() ?? [];
-    final assignedAt = program['assigned_at'] as String?;
+    final exercises = _exercisesOf(program);
+    final done = _doneIds(program).length;
+    final total = exercises.length;
+    final finished = total > 0 && done >= total;
+    final names = (program['service_names'] as List?)?.map((e) => e.toString()).where((e) => e.isNotEmpty).toList() ?? [];
+    final primary = context.tenantPrimary;
+    final label = finished ? 'Ολοκληρώθηκε' : (done > 0 ? 'Συνέχισε' : 'Ξεκίνα');
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: onToggle,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF5B4FCF), Color(0xFF7C5CFC)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.fitness_center, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            const Icon(Icons.layers_outlined, size: 12, color: AppColors.textSecondary),
-                            const SizedBox(width: 4),
-                            Text(
-                              s.exerciseCount(exercises.length),
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                            ),
-                            if (assignedAt != null) ...[
-                              const SizedBox(width: 8),
-                              const Icon(Icons.calendar_today_outlined, size: 12, color: AppColors.textSecondary),
-                              const SizedBox(width: 4),
-                              Text(
-                                _fmtDate(assignedAt),
-                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    expanded ? Icons.expand_less : Icons.expand_more,
-                    color: AppColors.textSecondary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (desc != null && desc.isNotEmpty && expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                desc,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
-              ),
-            ),
-          if (expanded && exercises.isNotEmpty) ...[
-            const Divider(height: 1, color: AppColors.border),
-            ...exercises.asMap().entries.map((entry) =>
-              _ExerciseRow(exercise: entry.value, index: entry.key)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _fmtDate(String iso) {
-    final parts = iso.split('T').first.split('-');
-    if (parts.length != 3) return iso;
-    return '${parts[2]}/${parts[1]}/${parts[0].substring(2)}';
-  }
-}
-
-class _ExerciseRow extends StatelessWidget {
-  const _ExerciseRow({required this.exercise, required this.index});
-
-  final Map<String, dynamic> exercise;
-  final int index;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
-    final name = exercise['exercise_name'] as String? ?? s.exerciseDefaultName;
-    final muscle = exercise['muscle_group'] as String?;
-    final rawAnimUrl = exercise['animation_url'] as String?;
-    final apiBase = context.read<AuthService>().api.config.apiBaseUrl;
-    final animUrl = rawAnimUrl != null ? _resolveMediaUrl(rawAnimUrl, apiBase) : null;
-    final sets = exercise['exercise_sets'] as int?;
-    final reps = exercise['exercise_reps'] as int?;
-    final durSecs = exercise['duration_secs'] as int?;
-    final restSecs = exercise['rest_secs'] as int?;
-    final desc = exercise['exercise_description'] as String?;
-
-    return InkWell(
-      onTap: animUrl != null && animUrl.isNotEmpty
-          ? () => _showExerciseDetail(context, animUrl)
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Row(
-          children: [
-            // animation thumbnail or placeholder
-            GestureDetector(
-              onTap: animUrl != null && animUrl.isNotEmpty
-                  ? () => _showExerciseDetail(context, animUrl)
-                  : null,
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border),
-                ),
-                clipBehavior: Clip.hardEdge,
-                child: animUrl != null && animUrl.isNotEmpty
-                    ? _MediaThumb(url: animUrl, size: 56)
-                    : const Icon(
-                        Icons.fitness_center,
-                        color: AppColors.textSecondary,
-                        size: 28,
-                      ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (muscle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      muscle,
-                      style: const TextStyle(color: AppColors.purple, fontSize: 11),
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      if (sets != null && reps != null)
-                        _Chip(label: s.exerciseSetsReps(sets, reps), color: AppColors.lime),
-                      if (sets != null && reps == null && durSecs != null)
-                        _Chip(label: s.exerciseSetsDuration(sets, _formatSecs(durSecs)), color: AppColors.teal),
-                      if (sets != null && reps != null && durSecs != null)
-                        _Chip(label: _formatSecs(durSecs), color: AppColors.teal),
-                      if (restSecs != null)
-                        _Chip(label: s.exerciseRestLabel(_formatSecs(restSecs)), color: AppColors.orange),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (animUrl != null && animUrl.isNotEmpty)
-              const Icon(Icons.play_circle_outline, color: AppColors.lime, size: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatSecs(int s) {
-    if (s >= 60) {
-      final m = s ~/ 60;
-      final rem = s % 60;
-      return rem == 0 ? '${m}λ' : '${m}λ${rem}δ';
-    }
-    return '${s}δ';
-  }
-
-  void _showExerciseDetail(BuildContext context, String? animUrl) {
-    final s = AppStrings.of(context);
-    final name = exercise['exercise_name'] as String? ?? s.exerciseDefaultName;
-    final desc = exercise['exercise_description'] as String?;
-    final muscle = exercise['muscle_group'] as String?;
-    final sets = exercise['exercise_sets'] as int?;
-    final reps = exercise['exercise_reps'] as int?;
-    final durSecs = exercise['duration_secs'] as int?;
-    final restSecs = exercise['rest_secs'] as int?;
-    final notes = exercise['notes'] as String?;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      isScrollControlled: true,
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.75,
-        maxChildSize: 0.95,
-        minChildSize: 0.4,
-        builder: (_, controller) => SingleChildScrollView(
-          controller: controller,
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+              if (names.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(names.join(' · '), style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
+              Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: total == 0 ? 0 : done / total,
+                  minHeight: 6,
+                  backgroundColor: AppColors.border,
+                  color: primary,
                 ),
               ),
-              if (animUrl != null && animUrl.isNotEmpty)
-                _MediaFull(url: animUrl),
-              const SizedBox(height: 16),
-              Text(
-                name,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (muscle != null) ...[
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.purple.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    muscle,
-                    style: const TextStyle(color: AppColors.purple, fontSize: 12, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              // Stats row
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  if (sets != null)
-                    _StatBox(label: s.exerciseSets, value: '$sets'),
-                  if (reps != null) ...[
-                    const SizedBox(width: 10),
-                    _StatBox(label: s.exerciseReps, value: '$reps'),
-                  ],
-                  if (durSecs != null) ...[
-                    const SizedBox(width: 10),
-                    _StatBox(label: s.exerciseDuration, value: _formatSecs(durSecs)),
-                  ],
-                  if (restSecs != null) ...[
-                    const SizedBox(width: 10),
-                    _StatBox(label: s.exerciseRest, value: _formatSecs(restSecs)),
-                  ],
+                  Text(total == 0 ? 'Χωρίς ασκήσεις' : '$done από $total',
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  const Spacer(),
+                  Text(label, style: TextStyle(color: primary, fontWeight: FontWeight.w800, fontSize: 13)),
+                  Icon(Icons.chevron_right_rounded, color: primary, size: 18),
                 ],
               ),
-              if (desc != null && desc.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                Text(
-                  s.exerciseInstructions,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  desc,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
-                ),
-              ],
-              if (notes != null && notes.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        s.exerciseTrainerNotes,
-                        style: const TextStyle(color: AppColors.lime, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        notes,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -633,39 +425,391 @@ class _ExerciseRow extends StatelessWidget {
   }
 }
 
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value});
+class WorkoutSessionScreen extends StatefulWidget {
+  const WorkoutSessionScreen({super.key, required this.program});
+  final Map<String, dynamic> program;
+
+  @override
+  State<WorkoutSessionScreen> createState() => _WorkoutSessionScreenState();
+}
+
+class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
+  late final List<Map<String, dynamic>> _exercises;
+  late final Set<String> _done;
+  bool _busy = false;
+  bool _changed = false;
+  DateTime? _startedAt;
+  DateTime? _endedAt;
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _exercises = _exercisesOf(widget.program);
+    _done = _doneIds(widget.program);
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  void _begin() {
+    _ticker?.cancel();
+    setState(() {
+      _startedAt = DateTime.now();
+      _endedAt = null;
+    });
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _endedAt == null) setState(() {});
+    });
+  }
+
+  void _stopClock() {
+    _endedAt ??= DateTime.now();
+    _ticker?.cancel();
+  }
+
+  Duration get _elapsed {
+    final start = _startedAt;
+    if (start == null) return Duration.zero;
+    return (_endedAt ?? DateTime.now()).difference(start);
+  }
+
+  String? get _programId => widget.program['program_id']?.toString();
+
+  int get _currentIndex {
+    for (var i = 0; i < _exercises.length; i++) {
+      final id = _exercises[i]['id']?.toString();
+      if (id != null && !_done.contains(id)) return i;
+    }
+    return _exercises.length;
+  }
+
+  Future<void> _markDone() async {
+    final index = _currentIndex;
+    if (index >= _exercises.length || _busy) return;
+    final id = _exercises[index]['id']?.toString();
+    final programId = _programId;
+    final userId = context.read<AuthService>().user?.id;
+    if (id == null || programId == null || userId == null) return;
+    setState(() => _busy = true);
+    try {
+      await context.read<AuthService>().api.checkProgramExercise(userId, programId, id);
+      if (!mounted) return;
+      final finishedNow = _done.length + 1 >= _exercises.length;
+      if (finishedNow) _stopClock();
+      setState(() {
+        _done.add(id);
+        _changed = true;
+        _busy = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> _undo() async {
+    if (_busy) return;
+    final previous = _exercises.lastWhere(
+      (ex) => _done.contains(ex['id']?.toString()),
+      orElse: () => {},
+    );
+    final id = previous['id']?.toString();
+    final programId = _programId;
+    final userId = context.read<AuthService>().user?.id;
+    if (id == null || programId == null || userId == null) return;
+    setState(() => _busy = true);
+    try {
+      await context.read<AuthService>().api.undoProgramExercise(userId, programId, id);
+      if (!mounted) return;
+      setState(() {
+        _done.remove(id);
+        _changed = true;
+        _busy = false;
+        if (_startedAt != null && _endedAt != null) {
+          final elapsed = _endedAt!.difference(_startedAt!);
+          _endedAt = null;
+          _startedAt = DateTime.now().subtract(elapsed);
+        }
+      });
+      if (_startedAt != null && _endedAt == null) {
+        _ticker?.cancel();
+        _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (mounted && _endedAt == null) setState(() {});
+        });
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> _restart() async {
+    final programId = _programId;
+    final userId = context.read<AuthService>().user?.id;
+    if (programId == null || userId == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      await context.read<AuthService>().api.resetProgramSession(userId, programId);
+      if (!mounted) return;
+      _ticker?.cancel();
+      setState(() {
+        _done.clear();
+        _startedAt = null;
+        _endedAt = null;
+        _changed = true;
+        _busy = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    final name = widget.program['program_name'] as String? ?? s.programsDefaultName;
+    final primary = context.tenantPrimary;
+    final index = _currentIndex;
+    final finished = _exercises.isNotEmpty && index >= _exercises.length;
+    final onFill = AppColors.onFill(primary);
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) Navigator.pop(context, _changed);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0D0D14),
+        appBar: AppBar(
+          backgroundColor: AppColors.surface,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => Navigator.pop(context, _changed),
+          ),
+        ),
+        body: _exercises.isEmpty
+            ? const Center(child: Text('Αυτό το πρόγραμμα δεν έχει ασκήσεις', style: TextStyle(color: AppColors.textSecondary)))
+            : finished
+                ? _doneView(primary, onFill)
+                : _startedAt == null
+                    ? _startView(name, primary, onFill)
+                    : _exerciseView(index, primary, onFill),
+      ),
+    );
+  }
+
+  Widget _startView(String name, Color primary, Color onFill) {
+    final continuing = _done.isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.timer_outlined, color: primary, size: 64),
+          const SizedBox(height: 16),
+          Text(name, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          Text(
+            continuing ? 'Συνεχίζεις τώρα;' : 'Αρχίζεις τώρα;',
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Με το ναι ξεκινάει ο χρόνος. Οι ασκήσεις περνάνε μία-μία και στο τέλος βλέπεις ενδεικτικές θερμίδες.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _begin,
+              style: FilledButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: onFill,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text(continuing ? 'Ναι, συνεχίζω' : 'Ναι, ξεκινάω', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _exerciseView(int index, Color primary, Color onFill) {
+    final exercise = _exercises[index];
+    final title = exercise['exercise_name']?.toString() ?? 'Άσκηση';
+    final muscle = exercise['muscle_group']?.toString();
+    final notes = exercise['notes']?.toString();
+    final desc = exercise['exercise_description']?.toString();
+    final rawUrl = exercise['animation_url']?.toString();
+    final apiBase = context.read<AuthService>().api.config.apiBaseUrl;
+    final media = rawUrl == null || rawUrl.isEmpty ? null : _resolveMediaUrl(rawUrl, apiBase);
+    final sets = _asInt(exercise['exercise_sets']);
+    final reps = exercise['exercise_reps'];
+    final dur = _asInt(exercise['duration_secs']);
+    final rest = _asInt(exercise['rest_secs']);
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_clock(_elapsed), style: TextStyle(color: primary, fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: 1)),
+              const SizedBox(height: 4),
+              Text('${index + 1} από ${_exercises.length}',
+                  style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: index / _exercises.length,
+                  minHeight: 6,
+                  backgroundColor: AppColors.border,
+                  color: primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+            children: [
+              if (media != null) _MediaFull(url: media),
+              if (media != null) const SizedBox(height: 16),
+              Text(title, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),
+              if (muscle != null && muscle.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(muscle, style: TextStyle(color: primary, fontWeight: FontWeight.w600)),
+              ],
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (sets != null && reps != null) _Chip(label: '$sets × $reps', color: primary),
+                  if (dur != null) _Chip(label: _formatSecs(dur), color: AppColors.teal),
+                  if (rest != null) _Chip(label: 'ξεκούραση ${_formatSecs(rest)}', color: AppColors.orange),
+                ],
+              ),
+              if (desc != null && desc.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(desc, style: const TextStyle(color: AppColors.textSecondary, height: 1.4)),
+              ],
+              if (notes != null && notes.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(notes, style: const TextStyle(color: Colors.white70, height: 1.4)),
+              ],
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _busy ? null : _markDone,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: primary,
+                    foregroundColor: onFill,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text(_busy ? 'Αποθήκευση...' : 'Την έκανα',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                ),
+              ),
+              if (_done.isNotEmpty)
+                TextButton(onPressed: _busy ? null : _undo, child: const Text('Αναίρεση προηγούμενης')),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _doneView(Color primary, Color onFill) {
+    final timed = _startedAt != null;
+    final elapsed = _elapsed;
+    final kcal = _kcalRange(elapsed);
+    return Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle_rounded, color: primary, size: 72),
+          const SizedBox(height: 16),
+          const Text('Τελείωσες το πρόγραμμα',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 16),
+          if (timed) ...[
+            _SummaryRow(label: 'Χρόνος', value: _clock(elapsed)),
+            _SummaryRow(label: 'Ασκήσεις', value: '${_done.length}'),
+            _SummaryRow(label: 'Θερμίδες', value: 'περίπου ${kcal.$1}–${kcal.$2} kcal'),
+            const SizedBox(height: 10),
+            const Text(
+              'Ενδεικτική εκτίμηση για μέτρια προπόνηση με βάρη. Δεν είναι μέτρηση από ρολόι.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary, height: 1.4, fontSize: 13),
+            ),
+          ] else
+            const Text('Οι ασκήσεις σημειώθηκαν για σήμερα. Αύριο ξεκινάς ξανά από την αρχή.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, height: 1.4)),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _busy ? null : _restart,
+              style: FilledButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: onFill,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('Ξανά από την αρχή', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({required this.label, required this.value});
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: AppColors.lime,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+          const Spacer(),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+        ],
       ),
     );
   }

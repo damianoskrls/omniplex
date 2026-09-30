@@ -371,7 +371,7 @@ class AppStrings {
 
   // ── Workout programs ──────────────────────────────────────────────────────
   String get programsNoProgram     => _isEl ? 'Κανένα πρόγραμμα ακόμα'    : 'No program yet';
-  String get programsNoAssigned    => _isEl ? 'Ο γυμναστής σου δεν έχει αναθέσει κάποιο\nπρόγραμμα άσκησης ακόμα.' : 'Your trainer has not assigned a workout program yet.';
+  String get programsNoAssigned    => _isEl ? 'Τα προγράμματα εμφανίζονται εδώ όταν ο διαχειριστής\nτα συνδέσει με τις υπηρεσίες που έχεις.' : 'Programs show up here when the gym links them to services you have.';
   String exerciseCount(int n)      => _isEl ? '$n ασκήσεις'                : '$n exercises';
   String get exerciseSets          => _isEl ? 'Σετ'                        : 'Sets';
   String get exerciseReps          => _isEl ? 'Επαναλήψεις'                : 'Reps';

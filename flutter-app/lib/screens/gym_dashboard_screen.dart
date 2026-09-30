@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import 'workout_programs_screen.dart';
 
 const _kAccent = Color(0xFF7B3EAD);
 const _kBrandGradient = LinearGradient(
@@ -126,6 +127,39 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
           _GymHeroCard(config: config),
           const SizedBox(height: 16),
           _NextWorkoutCard(booking: _nextBooking),
+          const SizedBox(height: 16),
+          SurfaceCard(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WorkoutProgramsScreen(serviceTitle: 'Προπόνηση')),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: context.tenantPrimary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(Icons.playlist_play_rounded, color: context.tenantPrimary, size: 24),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Προγράμματα γυμναστικής',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                      SizedBox(height: 3),
+                      Text('Διάλεξε πρόγραμμα και σημείωσε κάθε άσκηση',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [

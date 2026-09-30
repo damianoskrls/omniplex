@@ -7365,6 +7365,77 @@ ${exerciseList || '(Δεν υπάρχουν ασκήσεις στη βιβλιο
   }
 });
 
+function athensToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Athens',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+async function memberFromWorkoutHeaders(req, res) {
+  const bizId = req.headers['x-business-id'];
+  const userId = req.headers['x-user-id'];
+  if (!bizId || !userId) {
+    res.status(400).json({ error: 'Missing headers' });
+    return null;
+  }
+  const [[user]] = await db.query(
+    'SELECT id FROM users WHERE id = ? AND business_id = ?',
+    [userId, bizId],
+  );
+  if (!user) {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+  return { bizId, userId };
+}
+
+async function memberOwnsProgram(bizId, userId, programId) {
+  const [[row]] = await db.query(
+    `SELECT wp.id
+     FROM workout_programs wp
+     WHERE wp.id = ? AND wp.business_id = ? AND wp.is_active = 1
+       AND (
+         EXISTS (
+           SELECT 1 FROM client_programs cp
+           WHERE cp.program_id = wp.id AND cp.user_id = ? AND cp.business_id = ? AND cp.is_active = 1
+         )
+         OR EXISTS (
+           SELECT 1
+           FROM (
+             SELECT program_id, service_id FROM workout_program_services
+             UNION
+             SELECT id AS program_id, service_id FROM workout_programs
+             WHERE service_id IS NOT NULL
+               AND id NOT IN (SELECT program_id FROM workout_program_services)
+           ) links
+           WHERE links.program_id = wp.id
+             AND EXISTS (
+               SELECT 1
+               FROM user_memberships um
+               LEFT JOIN business_plans bp ON bp.id = um.plan_id
+               LEFT JOIN plan_service_items psi ON psi.plan_id = um.plan_id
+               LEFT JOIN service_plan_assignments spa ON spa.plan_id = um.plan_id
+               WHERE um.user_id = ? AND um.business_id = ?
+                 AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
+                 AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
+                 AND (
+                   um.service_id = links.service_id
+                   OR bp.service_id = links.service_id
+                   OR psi.service_id = links.service_id
+                   OR spa.service_id = links.service_id
+                 )
+             )
+         )
+       )
+     LIMIT 1`,
+    [programId, bizId, userId, bizId, userId, bizId],
+  );
+  return !!row;
+}
+
 // Mobile API: client sees their own programs (used by app)
 router.get('/my-programs', async (req, res) => {
   const bizId = req.headers['x-business-id'];
@@ -7450,6 +7521,31 @@ router.get('/my-programs', async (req, res) => {
     }
   }
 
+  const serviceIds = [...new Set(combined.map(r => r.service_id).filter(Boolean))];
+  const serviceNames = new Map();
+  if (serviceIds.length) {
+    const [svcs] = await db.query('SELECT id, name FROM services WHERE id IN (?)', [serviceIds]);
+    for (const svc of svcs) serviceNames.set(svc.id, svc.name);
+  }
+  const allProgramIds = [...new Set(combined.map(r => r.program_id))];
+  const doneMap = new Map();
+  if (allProgramIds.length) {
+    try {
+      const [checks] = await db.query(
+        `SELECT program_id, exercise_row_id
+         FROM member_workout_checks
+         WHERE business_id = ? AND user_id = ? AND session_date = ? AND program_id IN (?)`,
+        [bizId, userId, athensToday(), allProgramIds],
+      );
+      for (const check of checks) {
+        if (!doneMap.has(check.program_id)) doneMap.set(check.program_id, []);
+        doneMap.get(check.program_id).push(check.exercise_row_id);
+      }
+    } catch (err) {
+      if (err.code !== 'ER_NO_SUCH_TABLE') throw err;
+    }
+  }
+
   const result = [];
   for (const a of combined) {
     const [exs] = await db.query(
@@ -7459,9 +7555,70 @@ router.get('/my-programs', async (req, res) => {
        WHERE pe.program_id=? ORDER BY pe.sort_order`,
       [a.program_id]
     );
-    result.push({ ...a, exercises: exs });
+    result.push({
+      ...a,
+      service_name: serviceNames.get(a.service_id) || null,
+      done_exercise_ids: doneMap.get(a.program_id) || [],
+      exercises: exs,
+    });
   }
   res.json(result);
+});
+
+router.post('/my-programs/:programId/check', async (req, res) => {
+  try {
+    const member = await memberFromWorkoutHeaders(req, res);
+    if (!member) return;
+    const exerciseRowId = String(req.body?.exercise_row_id || '');
+    if (!exerciseRowId) return res.status(400).json({ error: 'Διάλεξε άσκηση' });
+    if (!(await memberOwnsProgram(member.bizId, member.userId, req.params.programId))) {
+      return res.status(404).json({ error: 'Το πρόγραμμα δεν είναι διαθέσιμο' });
+    }
+    const [[exercise]] = await db.query(
+      'SELECT id FROM program_exercises WHERE id = ? AND program_id = ?',
+      [exerciseRowId, req.params.programId],
+    );
+    if (!exercise) return res.status(404).json({ error: 'Η άσκηση δεν βρέθηκε' });
+    await db.query(
+      `INSERT IGNORE INTO member_workout_checks
+        (business_id, user_id, program_id, exercise_row_id, session_date)
+       VALUES (?, ?, ?, ?, ?)`,
+      [member.bizId, member.userId, req.params.programId, exerciseRowId, athensToday()],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/my-programs/:programId/check/:exerciseRowId', async (req, res) => {
+  try {
+    const member = await memberFromWorkoutHeaders(req, res);
+    if (!member) return;
+    await db.query(
+      `DELETE FROM member_workout_checks
+       WHERE business_id = ? AND user_id = ? AND program_id = ? AND exercise_row_id = ? AND session_date = ?`,
+      [member.bizId, member.userId, req.params.programId, req.params.exerciseRowId, athensToday()],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/my-programs/:programId/session', async (req, res) => {
+  try {
+    const member = await memberFromWorkoutHeaders(req, res);
+    if (!member) return;
+    await db.query(
+      `DELETE FROM member_workout_checks
+       WHERE business_id = ? AND user_id = ? AND program_id = ? AND session_date = ?`,
+      [member.bizId, member.userId, req.params.programId, athensToday()],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ============================================================

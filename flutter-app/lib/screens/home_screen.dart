@@ -29,6 +29,7 @@ import 'marketplace_screen.dart';
 import 'goals_screen.dart';
 import 'payments_screen.dart';
 import 'gym_dashboard_screen.dart';
+import 'workout_programs_screen.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/qr_checkin_sheet.dart';
@@ -187,6 +188,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         icon: Icons.fitness_center_outlined,
         label: config.label('book_cta', 'Κράτηση'),
         screen: const ServicesScreen(),
+      ),
+      _TabItem(
+        key: 'workout',
+        icon: Icons.fitness_center_rounded,
+        label: 'Προπόνηση',
+        screen: const WorkoutProgramsScreen(),
       ),
       // ── Primary (visible, 1 right of QR before overflow) ────
       _TabItem(

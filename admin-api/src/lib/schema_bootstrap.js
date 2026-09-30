@@ -1000,6 +1000,24 @@ async function bootstrapSchema() {
   ).catch((err) => {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('feature_qr_checkin skipped:', err.message);
   });
+
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS member_workout_checks (
+        business_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        program_id VARCHAR(36) NOT NULL,
+        exercise_row_id VARCHAR(36) NOT NULL,
+        session_date DATE NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (business_id, user_id, program_id, exercise_row_id, session_date),
+        INDEX idx_mwc_session (business_id, user_id, session_date)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: member_workout_checks ready');
+  } catch (err) {
+    console.warn('member_workout_checks skipped:', err.message);
+  }
 }
 
 module.exports = { bootstrapSchema };
