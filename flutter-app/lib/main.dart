@@ -16,6 +16,7 @@ import 'screens/global_dashboard_screen.dart';
 import 'screens/global_member_home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
+import 'services/biometric_auth_service.dart';
 import 'services/global_auth_service.dart';
 import 'services/language_service.dart';
 import 'services/notification_service.dart';
@@ -226,6 +227,19 @@ class _AppBootstrapState extends State<AppBootstrap> {
     });
   }
 
+  Future<void> _enterAsRole(GlobalGym gym) async {
+    final gymToken = gym.isStaff
+        ? await _globalAuth.getTrainerToken(gym.businessId, asKind: gym.staffKind)
+        : await _globalAuth.getGymToken(gym.businessId);
+    await BiometricAuthService.instance.setBiometricEnabled(gym.businessId, false);
+    await BiometricAuthService.instance.saveToken(gym.businessId, gymToken);
+    final config = await TenantConfig.loadFromApi(
+      slug: gym.slug,
+      apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
+    );
+    _onTenantConfigLoaded(config);
+  }
+
   void _onTenantConfigLoaded(TenantConfig config) {
     debugPrint('[TenantLoaded] slug=${config.slug} bizId=${config.businessId}');
     setState(() {
@@ -382,6 +396,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
           auth: _auth!,
           globalAuth: _globalAuth,
           onEnterGym: _onTenantConfigLoaded,
+          onEnterAsRole: _globalAuth.isLoggedIn ? _enterAsRole : null,
           onSwitchGym: _globalAuth.isLoggedIn ? _resetToSelector : null,
           onRemoveGym: _globalAuth.isLoggedIn
               ? () async {

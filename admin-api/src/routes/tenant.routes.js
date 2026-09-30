@@ -351,7 +351,7 @@ router.get('/public/:slug', async (req, res) => {
         c.logo_url, c.icon_url, c.label_overrides,
         c.feature_online_booking, c.feature_loyalty_points,
         c.feature_memberships, c.feature_nutrition,
-        c.feature_waitlist, c.feature_marketplace,
+        c.feature_waitlist, c.feature_qr_checkin, c.feature_marketplace,
         c.feature_online_payments
       FROM businesses b
       LEFT JOIN business_configs c ON c.business_id = b.id
@@ -387,6 +387,7 @@ router.get('/public/:slug', async (req, res) => {
       feature_memberships:     !!r.feature_memberships,
       feature_nutrition:       !!r.feature_nutrition,
       feature_waitlist:        !!r.feature_waitlist,
+      feature_qr_checkin:      !!r.feature_qr_checkin,
       feature_marketplace:     !!r.feature_marketplace,
       feature_online_payments: !!r.feature_online_payments,
     });

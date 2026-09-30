@@ -308,13 +308,30 @@ export default function Clients() {
     }
   };
 
+  async function remindMissingHealth() {
+    if (!window.confirm('Να σταλεί ειδοποίηση σε όσους δεν έχουν υπογράψει την κάρτα υγείας;')) return;
+    try {
+      const r = await api.post('/member/admin/remind-missing');
+      toast.success(r.data.sent ? `Στάλθηκε σε ${r.data.sent}` : 'Όλοι έχουν κάρτα υγείας');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα');
+    }
+  }
+
   return (
     <Layout title="Πελάτες">
       <div className="page-header">
         <h1 className="page-title">Πελάτες ({clients.length})</h1>
-        <button className="btn btn-primary" onClick={openModal}>
-          <Plus size={16} /> Νέος πελάτης
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {!inTrash && (
+            <button className="btn btn-secondary" onClick={remindMissingHealth}>
+              Υπενθύμιση κάρτας υγείας
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={openModal}>
+            <Plus size={16} /> Νέος πελάτης
+          </button>
+        </div>
       </div>
 
       <div className="bk-group-tabs" style={{ marginBottom: 16 }}>
@@ -388,6 +405,7 @@ export default function Clients() {
                 <th>Κατάσταση</th>
                 {!inTrash && <th>Στόχος</th>}
                 {inTrash && <th>Διαγράφηκε</th>}
+                <th>Κάρτα υγείας</th>
                 <th>Κρατήσεις</th>
                 <th></th>
               </tr>
@@ -414,6 +432,7 @@ export default function Clients() {
                     <span className="badge badge-yellow">Αναμονή</span>
                   </td>
                   <td>{r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString('el-GR') : '—'}</td>
+                  <td>—</td>
                   <td>—</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
@@ -452,6 +471,13 @@ export default function Clients() {
                     </td>
                     {!inTrash && <td>{c.fitness_goal_label || '—'}</td>}
                     {inTrash && <td className="text-muted" style={{ fontSize: '0.85rem' }}>{deletedAt}</td>}
+                    <td>
+                      {c.health_signed_at ? (
+                        <span className="badge badge-green">Έγινε</span>
+                      ) : (
+                        <span className="badge badge-yellow">Εκκρεμεί</span>
+                      )}
+                    </td>
                     <td>{c.total_bookings}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -535,7 +561,7 @@ export default function Clients() {
                 );
               })}
               {!clients.length && (!visibleJoinRequests.length || inTrash || (statusFilter !== '' && statusFilter !== 'pending')) && (
-                <tr><td colSpan={8} className="loading">{inTrash ? 'Ο κάδος είναι άδειος' : 'Δεν υπάρχουν πελάτες'}</td></tr>
+                <tr><td colSpan={9} className="loading">{inTrash ? 'Ο κάδος είναι άδειος' : 'Δεν υπάρχουν πελάτες'}</td></tr>
               )}
             </tbody>
           </table>

@@ -288,14 +288,32 @@ async function bootstrapSchema() {
         medication_text   TEXT         NULL,
         document_url      VARCHAR(500) NULL,
         document_name     VARCHAR(255) NULL,
+        photo_url         VARCHAR(500) NULL,
+        signature_data    MEDIUMTEXT   NULL,
+        signed_at         DATETIME     NULL,
+        signed_ip         VARCHAR(45)  NULL,
         updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY uq_member_health (business_id, user_id)
-      )
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     console.log('✓ Schema: member intake and health card ready');
   } catch (err) {
     console.warn('member intake skipped:', err.message);
   }
+
+  for (const [sql, label] of [
+    ['ALTER TABLE member_health_cards ADD COLUMN photo_url VARCHAR(500) NULL', 'photo_url'],
+    ['ALTER TABLE member_health_cards ADD COLUMN signature_data MEDIUMTEXT NULL', 'signature_data'],
+    ['ALTER TABLE member_health_cards ADD COLUMN signed_at DATETIME NULL', 'signed_at'],
+    ['ALTER TABLE member_health_cards ADD COLUMN signed_ip VARCHAR(45) NULL', 'signed_ip'],
+  ]) {
+    await db.query(sql).catch((err) => {
+      if (err.code !== 'ER_DUP_FIELDNAME') console.warn(`member_health_cards.${label} skipped:`, err.message);
+    });
+  }
+  await db.query('ALTER TABLE member_health_cards CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci').catch((err) => {
+    console.warn('member_health_cards collation skipped:', err.message);
+  });
 
   try {
     await db.query(`
@@ -306,6 +324,8 @@ async function bootstrapSchema() {
         plan_id      VARCHAR(36) NOT NULL,
         service_id   VARCHAR(36) NULL,
         kind         VARCHAR(16) NOT NULL,
+        trial_date   VARCHAR(10) NULL,
+        trial_time   VARCHAR(5)  NULL,
         status       VARCHAR(16) NOT NULL DEFAULT 'pending',
         created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
         resolved_at  DATETIME    NULL,
@@ -314,6 +334,14 @@ async function bootstrapSchema() {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     await db.query('ALTER TABLE plan_purchase_requests CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+    for (const col of [
+      'ALTER TABLE plan_purchase_requests ADD COLUMN trial_date VARCHAR(10) NULL',
+      'ALTER TABLE plan_purchase_requests ADD COLUMN trial_time VARCHAR(5) NULL',
+    ]) {
+      try { await db.query(col); } catch (err) {
+        if (err.code !== 'ER_DUP_FIELDNAME') console.warn('plan request slot column skipped:', err.message);
+      }
+    }
     console.log('✓ Schema: plan purchase requests ready');
   } catch (err) {
     console.warn('plan purchase requests skipped:', err.message);
@@ -967,6 +995,11 @@ async function bootstrapSchema() {
   });
   await db.query('ALTER TABLE community_comments MODIFY COLUMN user_id VARCHAR(36) NULL').catch(() => {});
   await db.query('ALTER TABLE community_reactions MODIFY COLUMN user_id VARCHAR(36) NULL').catch(() => {});
+  await db.query(
+    'ALTER TABLE business_configs ADD COLUMN feature_qr_checkin TINYINT(1) NOT NULL DEFAULT 0',
+  ).catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('feature_qr_checkin skipped:', err.message);
+  });
 }
 
 module.exports = { bootstrapSchema };

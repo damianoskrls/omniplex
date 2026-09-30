@@ -25,6 +25,7 @@ router.get('/', requireAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT r.id, r.kind, r.status, r.created_at, r.resolved_at, r.user_id, r.plan_id, r.service_id,
+              r.trial_date, r.trial_time,
               u.full_name, u.phone, bp.name AS plan_name, bp.price_cents, s.name AS service_name
        FROM plan_purchase_requests r
        JOIN users u ON u.id = (r.user_id COLLATE utf8mb4_unicode_ci)
@@ -81,7 +82,8 @@ router.post('/:id/accept', requireAdmin, async (req, res) => {
 
     await conn.beginTransaction();
     if (row.kind === 'trial') {
-      const { trial_date, trial_time } = req.body || {};
+      const trial_date = req.body?.trial_date || row.trial_date;
+      const trial_time = req.body?.trial_time || row.trial_time;
       if (!trial_date || !trial_time) {
         await conn.rollback();
         return res.status(400).json({ error: 'Βάλε ημερομηνία και ώρα δοκιμαστικού' });

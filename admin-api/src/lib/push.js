@@ -137,6 +137,19 @@ async function getUserFcmTokens(dbConn, userId) {
     [userId],
   );
   globalUserId = member?.global_user_id || null;
+  if (!globalUserId && member) {
+    const [[withPhone]] = await dbConn.query('SELECT phone FROM users WHERE id = ?', [userId]);
+    const digits = String(withPhone?.phone || '').replace(/\D/g, '').slice(-10);
+    if (digits.length >= 10) {
+      const [[gu]] = await dbConn.query(
+        `SELECT id FROM global_users
+         WHERE REPLACE(REPLACE(REPLACE(IFNULL(phone,''), ' ', ''), '+', ''), '-', '') LIKE ?
+         LIMIT 1`,
+        [`%${digits}`],
+      );
+      globalUserId = gu?.id || null;
+    }
+  }
   if (!globalUserId) {
     const [[staff]] = await dbConn.query(
       'SELECT global_user_id FROM staff WHERE id = ?',

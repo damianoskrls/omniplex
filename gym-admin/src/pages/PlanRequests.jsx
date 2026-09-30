@@ -83,10 +83,11 @@ export default function PlanRequests() {
             {' · '}{row.plan_name}
             {row.service_name ? ` · ${row.service_name}` : ''}
             {row.phone ? ` · ${row.phone}` : ''}
+            {row.kind === 'trial' && row.trial_date ? ` · προτεινόμενη ώρα ${row.trial_date} ${row.trial_time || ''}` : ''}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {row.kind === 'trial' ? (
-              <button className="btn btn-primary btn-sm" onClick={() => { setTrialFor(row); setWhen({ date: '', time: '18:00' }); }}>
+              <button className="btn btn-primary btn-sm" onClick={() => { setTrialFor(row); setWhen({ date: row.trial_date || '', time: (row.trial_time || '18:00').slice(0, 5) }); }}>
                 Κλείσε δοκιμαστικό
               </button>
             ) : (

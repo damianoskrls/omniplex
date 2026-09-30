@@ -10,6 +10,7 @@ class Booking {
     this.durationMins,
     this.staffId,
     this.locationId,
+    this.locationName,
     this.preparationTips = const [],
     this.postWorkoutTips = const [],
     this.scheduleLabel,
@@ -33,6 +34,7 @@ class Booking {
   final int? durationMins;
   final String? staffId;
   final String? locationId;
+  final String? locationName;
   final List<String> preparationTips;
   final List<String> postWorkoutTips;
   final String? scheduleLabel;
@@ -89,6 +91,7 @@ class Booking {
         durationMins: json['duration_mins'] as int?,
         staffId: json['staff_id'] as String?,
         locationId: json['location_id'] as String?,
+        locationName: json['location_name'] as String?,
         preparationTips: _tipsFromJson(json['preparation_tips']),
         postWorkoutTips: _tipsFromJson(json['post_workout_tips']),
         scheduleLabel: json['schedule_label'] as String?,

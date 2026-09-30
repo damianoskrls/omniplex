@@ -112,6 +112,9 @@ router.post('/', requireClientAdmin, async (req, res) => {
   const { channel, subject, body, filter_type = 'all', filter_value } = req.body;
   if (!channel || !body) return res.status(400).json({ error: 'channel and body required' });
   if (channel === 'email' && !subject) return res.status(400).json({ error: 'subject required for email' });
+  if (channel !== 'email' && !process.env.BREVO_API_KEY) {
+    return res.status(400).json({ error: 'Τα SMS δεν είναι ρυθμισμένα στον server (λείπει το κλειδί αποστολής).' });
+  }
 
   const id = uuidv4();
   try {

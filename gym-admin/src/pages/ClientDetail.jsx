@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import SubscriptionModal from '../components/SubscriptionModal';
@@ -16,6 +16,7 @@ import ServiceIcon from '../components/ui/ServiceIcon';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { mediaUrl } from '../utils/media';
+import { printHealthCard } from '../utils/healthCardPrint';
 import {
   eur,
   paymentStatusLabel,
@@ -656,7 +657,39 @@ export default function ClientDetail() {
 
       {memberFile && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ fontWeight: 800, marginBottom: 12 }}>Κάρτα υγείας & πρώτη εγγραφή</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+            <div style={{ fontWeight: 800 }}>Κάρτα υγείας & πρώτη εγγραφή</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  if (!printHealthCard({ client, file: memberFile })) toast.error('Ο browser μπλόκαρε το παράθυρο του PDF');
+                }}
+              >
+                Έκδοση PDF
+              </button>
+              {!memberFile.health?.signed_at && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={async () => {
+                    try {
+                      await api.post(`/member/admin/${id}/remind`);
+                      toast.success('Στάλθηκε ειδοποίηση');
+                    } catch (err) {
+                      toast.error(err.response?.data?.error || 'Σφάλμα');
+                    }
+                  }}
+                >
+                  Υπενθύμιση
+                </button>
+              )}
+            </div>
+          </div>
+          {memberFile.health?.photo_url && (
+            <img src={mediaUrl(memberFile.health.photo_url)} alt="" style={{ width: 96, height: 120, objectFit: 'cover', borderRadius: 10, marginBottom: 12 }} />
+          )}
           {!memberFile.intake_completed ? (
             <div className="text-muted">Ο πελάτης δεν έχει συμπληρώσει ακόμα το ερωτηματολόγιο εγγραφής.</div>
           ) : (
@@ -676,7 +709,20 @@ export default function ClientDetail() {
                 Έγγραφο γιατρού{memberFile.health.document_name ? `: ${memberFile.health.document_name}` : ''}
               </a>
             )}
+            <div>
+              Υπογραφή: {memberFile.health?.signed_at
+                ? `Ναι, ${new Date(memberFile.health.signed_at).toLocaleString('el-GR')}`
+                : 'Όχι'}
+            </div>
+            {memberFile.health?.signature_data && (
+              <img src={memberFile.health.signature_data} alt="Υπογραφή" style={{ height: 64, background: '#fff', borderRadius: 8, border: '1px solid var(--border)' }} />
+            )}
           </div>
+          <HealthCardDeskForm
+            clientId={id}
+            file={memberFile}
+            onSaved={setMemberFile}
+          />
         </div>
       )}
 
@@ -1284,5 +1330,204 @@ export default function ClientDetail() {
         </div>
       )}
     </Layout>
+  );
+}
+
+function HealthCardDeskForm({ clientId, file, onSaved }) {
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    fitness_goal: 'general',
+    motivation: '',
+    goal_text: '',
+    experience: 'beginner',
+    visits_per_week: '3',
+    has_conditions: false,
+    conditions_text: '',
+    takes_medication: false,
+    medication_text: '',
+  });
+
+  useEffect(() => {
+    const intake = file?.intake || {};
+    const health = file?.health || {};
+    setForm({
+      fitness_goal: intake.fitness_goal || 'general',
+      motivation: intake.motivation || '',
+      goal_text: intake.goal_text || '',
+      experience: intake.experience || 'beginner',
+      visits_per_week: String(intake.visits_per_week || 3),
+      has_conditions: !!health.has_conditions,
+      conditions_text: health.conditions_text || '',
+      takes_medication: !!health.takes_medication,
+      medication_text: health.medication_text || '',
+    });
+  }, [file]);
+
+  const point = (event) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const src = event.touches ? event.touches[0] : event;
+    return {
+      x: (src.clientX - rect.left) * (canvas.width / rect.width),
+      y: (src.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  };
+
+  const startDraw = (event) => {
+    drawing.current = true;
+    const ctx = canvasRef.current.getContext('2d');
+    const p = point(event);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+
+  const moveDraw = (event) => {
+    if (!drawing.current) return;
+    event.preventDefault();
+    const ctx = canvasRef.current.getContext('2d');
+    const p = point(event);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  };
+
+  const upload = async (kind, blobFile) => {
+    const data = new FormData();
+    data.append(kind, blobFile);
+    try {
+      const res = await api.post(`/member/admin/${clientId}/health/${kind === 'photo' ? 'photo' : 'document'}`, data);
+      onSaved(res.data);
+      toast.success(kind === 'photo' ? 'Η φωτογραφία αποθηκεύτηκε' : 'Το έγγραφο αποθηκεύτηκε');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα ανεβάσματος');
+    }
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await api.put(`/member/admin/${clientId}`, {
+        intake: {
+          fitness_goal: form.fitness_goal,
+          motivation: form.motivation,
+          goal_text: form.goal_text,
+          experience: form.experience,
+          visits_per_week: Number(form.visits_per_week) || 3,
+        },
+        health: {
+          has_conditions: form.has_conditions,
+          conditions_text: form.conditions_text,
+          takes_medication: form.takes_medication,
+          medication_text: form.medication_text,
+        },
+      });
+      onSaved(res.data);
+      toast.success('Η κάρτα υγείας αποθηκεύτηκε');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα αποθήκευσης');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sign = async () => {
+    const data = canvasRef.current.toDataURL('image/png');
+    if (data.length < 2500) {
+      toast.error('Υπόγραψε στο πλαίσιο');
+      return;
+    }
+    try {
+      const res = await api.post(`/member/admin/${clientId}/health/sign`, { signature_data: data });
+      onSaved(res.data);
+      toast.success('Η υπογραφή αποθηκεύτηκε');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα υπογραφής');
+    }
+  };
+
+  const goals = file?.goals?.length ? file.goals : FITNESS_GOALS.filter(g => g.id);
+
+  return (
+    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>Συμπλήρωση από το γυμναστήριο</div>
+      <p className="text-muted" style={{ fontSize: '0.82rem', marginTop: 0 }}>
+        Αν ο πελάτης δεν έχει κινητό, πέρασε εδώ την κάρτα υγείας και την πρώτη εγγραφή.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Στόχος</label>
+          <select className="form-select" value={form.fitness_goal} onChange={e => setForm({ ...form, fitness_goal: e.target.value })}>
+            {goals.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+          </select>
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Εμπειρία</label>
+          <select className="form-select" value={form.experience} onChange={e => setForm({ ...form, experience: e.target.value })}>
+            <option value="beginner">Αρχάριος</option>
+            <option value="some">Κάποια εμπειρία</option>
+            <option value="regular">Τακτικά</option>
+          </select>
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Φορές / εβδομάδα</label>
+          <input className="form-input" type="number" min="1" max="14" value={form.visits_per_week} onChange={e => setForm({ ...form, visits_per_week: e.target.value })} />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Γιατί έρχεται</label>
+        <textarea className="form-input" rows={2} value={form.motivation} onChange={e => setForm({ ...form, motivation: e.target.value })} />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Τι θέλει να πετύχει</label>
+        <textarea className="form-input" rows={2} value={form.goal_text} onChange={e => setForm({ ...form, goal_text: e.target.value })} />
+      </div>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+        <input type="checkbox" checked={form.has_conditions} onChange={e => setForm({ ...form, has_conditions: e.target.checked })} />
+        Πρόβλημα υγείας
+      </label>
+      {form.has_conditions && (
+        <textarea className="form-input" rows={2} placeholder="Περιγραφή" value={form.conditions_text} onChange={e => setForm({ ...form, conditions_text: e.target.value })} />
+      )}
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
+        <input type="checkbox" checked={form.takes_medication} onChange={e => setForm({ ...form, takes_medication: e.target.checked })} />
+        Φάρμακα
+      </label>
+      {form.takes_medication && (
+        <textarea className="form-input" rows={2} placeholder="Φάρμακα" value={form.medication_text} onChange={e => setForm({ ...form, medication_text: e.target.value })} />
+      )}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '12px 0' }}>
+        <label className="btn btn-secondary btn-sm">
+          Φωτογραφία πελάτη
+          <input type="file" accept="image/*" hidden onChange={e => e.target.files?.[0] && upload('photo', e.target.files[0])} />
+        </label>
+        <label className="btn btn-secondary btn-sm">
+          Έγγραφο γιατρού
+          <input type="file" accept="image/*,application/pdf" hidden onChange={e => e.target.files?.[0] && upload('document', e.target.files[0])} />
+        </label>
+      </div>
+      <div className="form-label">Υπογραφή πελάτη</div>
+      <canvas
+        ref={canvasRef}
+        width={480}
+        height={140}
+        style={{ width: '100%', maxWidth: 480, height: 140, background: '#fff', borderRadius: 8, border: '1px solid var(--border)', touchAction: 'none' }}
+        onMouseDown={startDraw}
+        onMouseMove={moveDraw}
+        onMouseUp={() => { drawing.current = false; }}
+        onMouseLeave={() => { drawing.current = false; }}
+        onTouchStart={startDraw}
+        onTouchMove={moveDraw}
+        onTouchEnd={() => { drawing.current = false; }}
+      />
+      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => canvasRef.current?.getContext('2d').clearRect(0, 0, 480, 140)}>Καθαρισμός υπογραφής</button>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={sign}>Αποθήκευση υπογραφής</button>
+        <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={saving}>{saving ? 'Αποθήκευση...' : 'Αποθήκευση κάρτας'}</button>
+      </div>
+    </div>
   );
 }

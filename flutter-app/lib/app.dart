@@ -23,12 +23,13 @@ import 'widgets/splash_screen.dart' show SplashScreen, GymSplashScreen;
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 class BookUpApp extends StatefulWidget {
-  const BookUpApp({super.key, required this.config, required this.auth, this.globalAuth, this.onEnterGym, this.onSwitchGym, this.onRemoveGym});
+  const BookUpApp({super.key, required this.config, required this.auth, this.globalAuth, this.onEnterGym, this.onEnterAsRole, this.onSwitchGym, this.onRemoveGym});
 
   final TenantConfig config;
   final AuthService auth;
   final GlobalAuthService? globalAuth;
   final void Function(TenantConfig)? onEnterGym;
+  final Future<void> Function(GlobalGym)? onEnterAsRole;
   final VoidCallback? onSwitchGym;
   final Future<void> Function()? onRemoveGym;
 
@@ -202,6 +203,8 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                     return HomeScreen(
                       onSwitchGym: widget.onSwitchGym,
                       onRemoveGym: widget.onRemoveGym,
+                      globalAuth: widget.globalAuth,
+                      onEnterAsRole: widget.onEnterAsRole,
                     );
                   }
                   // Not logged in to tenant — check global auth

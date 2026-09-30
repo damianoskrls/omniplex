@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import '../models/booking.dart';
 import '../models/location.dart';
@@ -51,7 +52,7 @@ class _DropinScreenState extends State<DropinScreen> {
         _selectedService = shown.isNotEmpty ? shown.first : null;
         _selectedServiceId = shown.isNotEmpty ? shown.first['id'] as String : null;
       });
-      if (_selectedServiceId != null) await _loadSlots();
+      if (_selectedServiceId != null) await _loadSlots(seekNext: true);
     } catch (e) {
       if (mounted) _showError('$e');
     } finally {
@@ -76,7 +77,7 @@ class _DropinScreenState extends State<DropinScreen> {
         _selectedService = shown.isNotEmpty ? shown.first : null;
         _selectedServiceId = shown.isNotEmpty ? shown.first['id'] as String : null;
       });
-      if (_selectedServiceId != null) await _loadSlots();
+      if (_selectedServiceId != null) await _loadSlots(seekNext: true);
     } catch (e) {
       if (mounted) _showError('$e');
     } finally {
@@ -84,7 +85,7 @@ class _DropinScreenState extends State<DropinScreen> {
     }
   }
 
-  Future<void> _loadSlots() async {
+  Future<void> _loadSlots({bool seekNext = false}) async {
     if (_selectedServiceId == null) return;
     setState(() { _loadingSlots = true; _slots = []; _slotsMessage = null; });
     try {
@@ -96,6 +97,22 @@ class _DropinScreenState extends State<DropinScreen> {
         locationId: _locationId,
         dropin: true,
       );
+      if (seekNext && result.slots.isEmpty && _selectedServiceId != null) {
+        final next = await api.fetchNextSlot(
+          serviceId: _selectedServiceId!,
+          locationId: _locationId,
+          dropin: true,
+        );
+        final nextDate = next?['date']?.toString();
+        if (nextDate != null && nextDate != dateStr && mounted) {
+          final parsed = DateTime.tryParse(nextDate);
+          if (parsed != null) {
+            setState(() => _selectedDate = parsed);
+            await _loadSlots();
+            return;
+          }
+        }
+      }
       setState(() {
         _slots = result.slots;
         _slotsMessage = result.message;
@@ -220,7 +237,7 @@ class _DropinScreenState extends State<DropinScreen> {
                           _selectedService = s;
                           _selectedServiceId = s['id'] as String;
                         });
-                        _loadSlots();
+                        _loadSlots(seekNext: true);
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
@@ -271,7 +288,7 @@ class _DropinScreenState extends State<DropinScreen> {
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   scrollDirection: Axis.horizontal,
-                  itemCount: 8,
+                  itemCount: 14,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (_, i) {
                     final d = DateTime.now().add(Duration(days: i));
@@ -518,7 +535,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
   final _nameCtrl  = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  String _payMethod = 'venue';
+  String _payMethod = 'card';
   bool _loading = false;
   String? _error;
 
@@ -546,19 +563,47 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
       final api  = auth.api;
       final dateStr = '${widget.date.year}-${widget.date.month.toString().padLeft(2,'0')}-${widget.date.day.toString().padLeft(2,'0')}';
       final staffId = widget.slot.availableStaff.isNotEmpty ? widget.slot.availableStaff.first.id : null;
+      final serviceId = widget.service['id'] as String;
+      String? intentId;
+      if (_payMethod == 'card' && _priceCents > 0) {
+        final intent = await api.createDropinPaymentIntent(
+          serviceId: serviceId,
+          guestName: _isLoggedIn ? null : _nameCtrl.text.trim(),
+        );
+        final secret = intent['client_secret'] as String?;
+        final key = intent['publishable_key'] as String?;
+        final id = intent['intent_id'] as String?;
+        if (secret == null || key == null || id == null) {
+          throw ApiException('Η πληρωμή με κάρτα δεν είναι διαθέσιμη');
+        }
+        Stripe.publishableKey = key;
+        await Stripe.instance.initPaymentSheet(
+          paymentSheetParameters: SetupPaymentSheetParameters(
+            paymentIntentClientSecret: secret,
+            merchantDisplayName: 'OmniPlex',
+            style: ThemeMode.dark,
+          ),
+        );
+        await Stripe.instance.presentPaymentSheet();
+        intentId = id;
+      }
 
       final booking = await api.createDropinBooking(
-        serviceId: widget.service['id'] as String,
+        serviceId: serviceId,
         date: dateStr,
         time: widget.slot.time,
-        paymentMethod: _payMethod,
+        paymentMethod: intentId != null ? 'card' : _payMethod,
         staffId: staffId,
         locationId: widget.locationId,
         guestName: _isLoggedIn ? null : _nameCtrl.text.trim(),
         guestEmail: _isLoggedIn ? null : (_emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim()),
         guestPhone: _isLoggedIn ? null : (_phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim()),
+        paymentIntentId: intentId,
       );
       widget.onBooked(booking);
+    } on StripeException catch (e) {
+      if (e.error.code == FailureCode.Canceled) return;
+      setState(() => _error = e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε');
     } catch (e) {
       setState(() => _error = e is ApiException ? e.message : '$e');
     } finally {

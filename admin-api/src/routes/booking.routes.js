@@ -335,9 +335,73 @@ router.get('/:bizId/extra-services', softAuth, async (req, res) => {
   }
 });
 
+function athensParts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Athens',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(now);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '00';
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    minutes: Number(get('hour')) * 60 + Number(get('minute')),
+  };
+}
+
+function addYmd(ymd, days) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return dt.toISOString().slice(0, 10);
+}
+
+router.get('/:bizId/next-slot', softAuth, async (req, res) => {
+  const serviceId = req.query.service_id;
+  if (!serviceId) return res.status(400).json({ error: 'Λείπει η υπηρεσία' });
+  const bizId = req.params.bizId;
+  const dropin = req.query.dropin === '1';
+  try {
+    let locationId = req.query.location_id || null;
+    try {
+      locationId = await resolveLocationId(db, bizId, locationId, {
+        userId: req.user?.userId || null,
+        requireExplicit: false,
+      });
+    } catch (_) {}
+    const today = athensParts();
+    for (let i = 0; i < 14; i++) {
+      const date = addYmd(today.date, i);
+      const computed = await computeAvailableSlots(db, bizId, serviceId, date, null, locationId);
+      if (!computed || computed.closedReason) continue;
+      if (dropin) {
+        const offer = await loadActiveOffer(db, bizId, serviceId, locationId);
+        if (!offer) return res.status(404).json({ error: 'Δεν υπάρχει διαθέσιμο drop-in' });
+        computed.slotMap = await buildDropinSlotMap(db, bizId, offer, date, computed.duration);
+      }
+      const times = Object.keys(computed.slotMap || {})
+        .filter((t) => (computed.slotMap[t] || []).length)
+        .sort();
+      const open = times.find((t) => {
+        if (date !== today.date) return true;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + (m || 0) > today.minutes + 20;
+      });
+      if (!open) continue;
+      const staff = computed.slotMap[open][0];
+      return res.json({
+        date,
+        time: String(open).slice(0, 5),
+        staff_name: staff?.full_name || null,
+      });
+    }
+    return res.status(404).json({ error: 'Δεν βρέθηκε διαθέσιμο ραντεβού τις επόμενες 2 εβδομάδες' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/:bizId/plan-request', softAuth, async (req, res) => {
   if (!requireCustomer(req, res)) return;
-  const { plan_id, kind, service_id } = req.body || {};
+  const { plan_id, kind, service_id, trial_date, trial_time } = req.body || {};
   if (!plan_id) return res.status(400).json({ error: 'Διάλεξε πακέτο' });
   if (kind !== 'trial' && kind !== 'enroll') {
     return res.status(400).json({ error: 'Διάλεξε δοκιμαστικό ή εγγραφή στο πακέτο' });
@@ -354,20 +418,24 @@ router.post('/:bizId/plan-request', softAuth, async (req, res) => {
     );
     if (existing) return res.status(400).json({ error: 'Υπάρχει ήδη εκκρεμές αίτημα για αυτό το πακέτο' });
     const id = uuidv4();
+    const proposedDate = kind === 'trial' && trial_date ? String(trial_date).slice(0, 10) : null;
+    const proposedTime = kind === 'trial' && trial_time ? String(trial_time).slice(0, 5) : null;
     await db.query(
-      `INSERT INTO plan_purchase_requests (id, business_id, user_id, plan_id, service_id, kind)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, bizId, userId, plan_id, service_id || plan.service_ids?.[0] || null, kind],
+      `INSERT INTO plan_purchase_requests
+        (id, business_id, user_id, plan_id, service_id, kind, trial_date, trial_time)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, bizId, userId, plan_id, service_id || plan.service_ids?.[0] || null, kind, proposedDate, proposedTime],
     );
     const [[user]] = await db.query('SELECT full_name FROM users WHERE id = ?', [userId]);
     const label = kind === 'trial' ? 'δοκιμαστικό' : 'εγγραφή στο πακέτο';
+    const when = proposedDate ? ` στις ${proposedDate} ${proposedTime || ''}`.trimEnd() : '';
     try {
       const { createAdminNotification } = require('../lib/notifications');
       await createAdminNotification(db, {
         businessId: bizId,
         type: 'plan_request',
         title: kind === 'trial' ? 'Αίτημα δοκιμαστικού' : 'Αίτημα πακέτου',
-        body: `${user?.full_name || 'Πελάτης'} ζήτησε ${label}: ${plan.name}.`,
+        body: `${user?.full_name || 'Πελάτης'} ζήτησε ${label}: ${plan.name}${when}.`,
         payload: { request_id: id, user_id: userId, plan_id, kind },
       });
     } catch (_) {}
@@ -375,7 +443,7 @@ router.post('/:bizId/plan-request', softAuth, async (req, res) => {
       ok: true,
       id,
       message: kind === 'trial'
-        ? 'Το αίτημα δοκιμαστικού στάλθηκε στο γυμναστήριο.'
+        ? 'Το αίτημα στάλθηκε. Θα λάβεις ειδοποίηση έγκρισης πριν κλειστεί το ραντεβού.'
         : 'Το αίτημα εγγραφής στάλθηκε. Το γυμναστήριο θα το δει και θα περάσει την πληρωμή.',
     });
   } catch (err) {
@@ -908,10 +976,12 @@ router.get('/:bizId/my-bookings', softAuth, requireActiveCustomer, async (req, r
         b.id, b.service_id, b.staff_id, b.location_id, b.starts_at, b.ends_at, b.status,
         b.feedback_rating, b.feedback_note, b.attendance_confirmed,
         sv.name  AS service_name, sv.duration_mins, sv.category AS service_category,
-        st.full_name AS staff_name, st.color_hex, st.avatar_url
+        st.full_name AS staff_name, st.color_hex, st.avatar_url,
+        loc.name AS location_name
       FROM bookings b
       JOIN services sv ON sv.id = b.service_id
       LEFT JOIN staff st ON st.id = b.staff_id
+      LEFT JOIN locations loc ON loc.id = b.location_id
       WHERE b.user_id = ? AND b.business_id = ?
       ORDER BY b.starts_at DESC
       LIMIT 30
@@ -2051,12 +2121,16 @@ router.post('/:bizId/dropin/payment-intent', softAuth, async (req, res) => {
   const conn = await db.getConnection();
   try {
     const [[svc]] = await conn.query(
-      'SELECT id, name, drop_in_price_cents FROM services WHERE id = ? AND business_id = ? AND drop_in_price_cents > 0',
+      'SELECT id, name, drop_in_price_cents FROM services WHERE id = ? AND business_id = ? AND is_active = 1',
       [service_id, req.params.bizId],
     );
     if (!svc) return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε ή δεν έχει drop-in τιμή' });
 
-    const priced = await previewRewardPrice(conn, req.user?.userId, req.params.bizId, svc.drop_in_price_cents);
+    const offer = await loadActiveOffer(conn, req.params.bizId, service_id, req.body.location_id || null);
+    const amountCents = offer?.price_cents || svc.drop_in_price_cents;
+    if (!(amountCents > 0)) return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε ή δεν έχει drop-in τιμή' });
+
+    const priced = await previewRewardPrice(conn, req.user?.userId, req.params.bizId, amountCents);
     const { createPaymentIntent } = require('../lib/online_payments');
     const intent = await createPaymentIntent(conn, req.params.bizId, {
       amountCents: priced.priceCents,
@@ -2143,21 +2217,19 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
       return res.status(409).json({ error: 'Η κλάση είναι πλήρης', code: 'SLOT_FULL' });
     }
 
-    // Verify payment if card
-    let paymentStatus = payment_method === 'venue' ? 'pending' : 'pending';
-    if (payment_method === 'card' && payment_intent_id) {
-      try {
-        const { confirmPayment } = require('../lib/online_payments');
-        const result = await confirmPayment(conn, bizId, payment_intent_id);
-        if (result.status === 'succeeded') {
-          paymentStatus = 'paid';
-        } else {
-          await conn.rollback();
-          return res.status(402).json({ error: 'Η πληρωμή δεν ολοκληρώθηκε' });
-        }
-      } catch (e) {
-        // Payment provider not configured — accept booking, mark pending
+    let paymentStatus = 'pending';
+    if (payment_method === 'card') {
+      if (!payment_intent_id) {
+        await conn.rollback();
+        return res.status(402).json({ error: 'Η πληρωμή με κάρτα δεν ολοκληρώθηκε' });
       }
+      const { confirmPayment } = require('../lib/online_payments');
+      const result = await confirmPayment(conn, bizId, payment_intent_id);
+      if (result.status !== 'succeeded') {
+        await conn.rollback();
+        return res.status(402).json({ error: 'Η πληρωμή δεν ολοκληρώθηκε' });
+      }
+      paymentStatus = 'paid';
     }
 
     // Find staff name for this slot

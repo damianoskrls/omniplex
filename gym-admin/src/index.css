@@ -1668,6 +1668,49 @@ button.badge { cursor: pointer; }
   border-radius: var(--radius);
 }
 
+.store-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.store-filter-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.store-filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.store-filter-chip {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.store-filter-chip.is-on {
+  background: var(--accent, #76C043);
+  border-color: transparent;
+  color: var(--accent-text, #111);
+}
+
 /* Location filters */
 .bk-location-filter {
   display: inline-flex;

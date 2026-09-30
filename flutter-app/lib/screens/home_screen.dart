@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
 import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
+import '../services/global_auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/gym_info_sheet.dart';
 import '../widgets/ui_kit.dart';
@@ -35,11 +36,13 @@ import 'ai_agent_screen.dart';
 import 'member_intake_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.initialTab = 0, this.onSwitchGym, this.onRemoveGym});
+  const HomeScreen({super.key, this.initialTab = 0, this.onSwitchGym, this.onRemoveGym, this.globalAuth, this.onEnterAsRole});
 
   final int initialTab;
   final VoidCallback? onSwitchGym;
   final Future<void> Function()? onRemoveGym;
+  final GlobalAuthService? globalAuth;
+  final Future<void> Function(GlobalGym)? onEnterAsRole;
 
   static void selectTab(int index) => _HomeScreenState.selectTab(index);
 
@@ -129,6 +132,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           label: 'Προγράμματα',
           screen: const NutritionistTemplatesScreen(),
         ),
+        _TabItem(
+          key: 'nutrition_schedule',
+          icon: Icons.schedule_rounded,
+          label: 'Ωράριο',
+          screen: const NutritionistScheduleScreen(),
+        ),
       ];
     }
     if (user?.isStaff == true) {
@@ -205,6 +214,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         label: 'Πακέτα',
         screen: const CreditsScreen(),
       ),
+      if (config.featureQrCheckin)
+        _TabItem(
+          key: 'qr',
+          icon: Icons.qr_code_2_rounded,
+          label: 'QR',
+          screen: const MyQrScreen(),
+        ),
       if (config.featureNutrition && _hasNutritionAccess)
         _TabItem(
           key: 'nutrition',
@@ -376,7 +392,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       MaterialPageRoute(
         builder: (_) => Scaffold(
           appBar: AppBar(title: Text(AppStrings.of(context).profile)),
-          body: ProfileScreen(onRemoveGym: widget.onRemoveGym),
+          body: ProfileScreen(
+            onRemoveGym: widget.onRemoveGym,
+            onEnterAsRole: widget.onEnterAsRole,
+          ),
         ),
       ),
     );
@@ -412,13 +431,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               avatarLetter: user.fullName.isNotEmpty ? user.fullName[0] : '?',
               onLogoTap: _openGymInfo,
               onAvatarTap: _openProfile,
-              onCheckinTap: _openCheckin,
+              onCheckinTap: config.featureQrCheckin ? _openCheckin : null,
               onMessagesTap: _showMessages,
               onNotificationsTap: _showNotifications,
               onSwitchGym: widget.onSwitchGym,
               notificationCount: _unreadCount,
               messageCount: _messageUnreadCount,
             ),
+            if (widget.globalAuth != null && widget.onEnterAsRole != null)
+              _InGymRoleBar(
+                roles: (widget.globalAuth!.gyms.where((g) => g.businessId == config.businessId).toList()
+                  ..sort((a, b) {
+                    int rank(GlobalGym g) {
+                      if (g.staffKind == 'nutritionist') return 0;
+                      if (g.staffKind == 'physiotherapist') return 1;
+                      if (!g.isStaff) return 2;
+                      return 3;
+                    }
+                    return rank(a).compareTo(rank(b));
+                  })),
+                currentIsStaff: user.isStaff,
+                currentKind: user.isNutritionist ? 'nutritionist' : user.staffKind,
+                onEnter: widget.onEnterAsRole!,
+                onRequest: () => _openProfile(),
+              ),
             Expanded(child: tabs[_index].screen),
           ],
         ),
@@ -460,11 +496,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (hasOverflow)
             FloatingNavItem(icon: Icons.grid_view_rounded, label: AppStrings.of(context).more),
         ],
-        centerAction: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const MyQrScreen()),
-        ),
-        centerIcon: Icons.qr_code_2_rounded,
+        centerAction: user.isStaff
+            ? (config.featureQrCheckin
+                ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyQrScreen()))
+                : null)
+            : () {
+                final idx = tabs.indexWhere((t) => t.key == 'booking');
+                if (idx >= 0) setState(() => _index = idx);
+              },
+        centerIcon: user.isStaff ? Icons.qr_code_2_rounded : Icons.event_available_rounded,
         activeColor: context.tenantPrimary,
       ),
     );
@@ -529,6 +569,80 @@ class _MoreSheet extends StatelessWidget {
           }),
           const SizedBox(height: 8),
         ],
+      ),
+    );
+  }
+}
+
+class _InGymRoleBar extends StatelessWidget {
+  const _InGymRoleBar({
+    required this.roles,
+    required this.currentIsStaff,
+    required this.currentKind,
+    required this.onEnter,
+    required this.onRequest,
+  });
+
+  final List<GlobalGym> roles;
+  final bool currentIsStaff;
+  final String? currentKind;
+  final Future<void> Function(GlobalGym) onEnter;
+  final VoidCallback onRequest;
+
+  bool _isCurrent(GlobalGym gym) {
+    if (gym.isStaff != currentIsStaff) return false;
+    if (!gym.isStaff) return true;
+    return (gym.staffKind ?? 'trainer') == (currentKind ?? 'trainer');
+  }
+
+  String _label(GlobalGym gym) {
+    if (!gym.isStaff) return 'Ασκούμενος';
+    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
+    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    return 'Trainer';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (roles.isEmpty) return const SizedBox.shrink();
+    final primary = context.tenantPrimary;
+    return Container(
+      color: AppColors.surface,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          for (final role in roles)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: _isCurrent(role) ? null : () => onEnter(role),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: _isCurrent(role) ? primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: _isCurrent(role) ? primary : AppColors.border),
+                  ),
+                  child: Text(_label(role), style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700,
+                    color: _isCurrent(role) ? AppColors.onFill(primary) : AppColors.textPrimary,
+                  )),
+                ),
+              ),
+            ),
+          GestureDetector(
+            onTap: onRequest,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Text('Νέος ρόλος', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ]),
       ),
     );
   }

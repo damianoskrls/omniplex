@@ -24,6 +24,7 @@ class TenantConfig {
     required this.featureNutrition,
     this.featureMarketplace = false,
     this.featureOnlinePayments = false,
+    this.featureQrCheckin = false,
     required this.labels,
   });
 
@@ -42,6 +43,7 @@ class TenantConfig {
   final bool featureNutrition;
   final bool featureMarketplace;
   final bool featureOnlinePayments;
+  final bool featureQrCheckin;
   final Map<String, String> labels;
 
   String label(String key, String fallback) => labels[key] ?? fallback;
@@ -202,6 +204,7 @@ class TenantConfig {
       featureNutrition: _flag(json['feature_nutrition']),
       featureMarketplace: _flag(json['feature_marketplace']),
       featureOnlinePayments: _flag(json['feature_online_payments']),
+      featureQrCheckin: _flag(json['feature_qr_checkin']),
       labels: overrides is Map
           ? overrides.map((k, v) => MapEntry(k.toString(), v.toString()))
           : {},

@@ -21,9 +21,10 @@ import 'payments_screen.dart';
 import 'workout_metrics_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.onRemoveGym});
+  const ProfileScreen({super.key, this.onRemoveGym, this.onEnterAsRole});
 
   final Future<void> Function()? onRemoveGym;
+  final Future<void> Function(GlobalGym)? onEnterAsRole;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -190,13 +191,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: EdgeInsets.zero,
           child: Column(
             children: [
-              _MenuTile(
-                icon: Icons.qr_code_2_outlined,
-                title: AppStrings.of(context).profileQrTitle,
-                subtitle: AppStrings.of(context).profileQrSubtitle,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyQrScreen())),
-              ),
-              const Divider(height: 1, indent: 56),
+              if (config.featureQrCheckin) ...[
+                _MenuTile(
+                  icon: Icons.qr_code_2_outlined,
+                  title: AppStrings.of(context).profileQrTitle,
+                  subtitle: AppStrings.of(context).profileQrSubtitle,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyQrScreen())),
+                ),
+                const Divider(height: 1, indent: 56),
+              ],
               if (!isStaff) ...[
                 _MenuTile(
                   icon: Icons.track_changes_outlined,
@@ -331,24 +334,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (user.phone != null)
                 _MenuTile(icon: Icons.phone_outlined, title: AppStrings.of(context).profilePhone, subtitle: user.phone!),
               if (user.phone != null) const Divider(height: 1, indent: 56),
-              if (isStaff && !user.isNutritionist) ...[
-                _MenuTile(
-                  icon: Icons.restaurant_menu_rounded,
-                  title: 'Αίτημα διατροφολόγου',
-                  subtitle: 'Ζήτα να γίνεις και διατροφολόγος σε αυτό το γυμναστήριο',
-                  onTap: () => _requestExtraRole(context, role: 'staff', specialty: 'Διατροφολόγος'),
-                ),
-                const Divider(height: 1, indent: 56),
-              ],
-              if (isStaff) ...[
-                _MenuTile(
-                  icon: Icons.fitness_center_rounded,
-                  title: 'Αίτημα ασκούμενου',
-                  subtitle: 'Ζήτα να γίνεις και πελάτης στο ίδιο γυμναστήριο',
-                  onTap: () => _requestExtraRole(context, role: 'member'),
-                ),
-                const Divider(height: 1, indent: 56),
-              ],
+              _RoleSwitcher(
+                businessId: config.businessId,
+                currentIsStaff: isStaff,
+                currentKind: user.isNutritionist ? 'nutritionist' : user.staffKind,
+                onEnterAsRole: widget.onEnterAsRole,
+                onRequest: (role, specialty) => _requestExtraRole(context, role: role, specialty: specialty),
+              ),
               _MenuTile(
                 icon: Icons.fitness_center,
                 title: config.appName,
@@ -524,5 +516,101 @@ class _LangChip extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _RoleSwitcher extends StatefulWidget {
+  const _RoleSwitcher({
+    required this.businessId,
+    required this.currentIsStaff,
+    required this.currentKind,
+    required this.onEnterAsRole,
+    required this.onRequest,
+  });
+
+  final String businessId;
+  final bool currentIsStaff;
+  final String? currentKind;
+  final Future<void> Function(GlobalGym)? onEnterAsRole;
+  final void Function(String role, String? specialty) onRequest;
+
+  @override
+  State<_RoleSwitcher> createState() => _RoleSwitcherState();
+}
+
+class _RoleSwitcherState extends State<_RoleSwitcher> {
+  List<GlobalGym> _roles = [];
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final global = GlobalAuthService();
+    await global.init();
+    if (!mounted) return;
+    setState(() {
+      _roles = global.gyms.where((g) => g.businessId == widget.businessId).toList();
+      _ready = true;
+    });
+  }
+
+  String _label(GlobalGym gym) {
+    if (!gym.isStaff) return 'Ασκούμενος';
+    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
+    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    return 'Trainer';
+  }
+
+  bool _isCurrent(GlobalGym gym) {
+    if (gym.isStaff != widget.currentIsStaff) return false;
+    if (!gym.isStaff) return true;
+    return (gym.staffKind ?? 'trainer') == (widget.currentKind ?? 'trainer');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) return const SizedBox.shrink();
+    final have = _roles.map(_label).toSet();
+    if (widget.currentIsStaff) {
+      have.add(widget.currentKind == 'nutritionist'
+          ? 'Διατροφολόγος'
+          : widget.currentKind == 'physiotherapist'
+              ? 'Φυσιοθεραπευτής'
+              : 'Trainer');
+    } else {
+      have.add('Ασκούμενος');
+    }
+    final missing = <(String, String?, String, String)>[
+      if (!have.contains('Ασκούμενος')) ('member', null, 'Αίτημα ασκούμενου', 'Γίνε και πελάτης στο ίδιο γυμναστήριο'),
+      if (!have.contains('Trainer')) ('staff', 'Trainer', 'Αίτημα trainer', 'Γίνε και trainer στο ίδιο γυμναστήριο'),
+      if (!have.contains('Διατροφολόγος')) ('staff', 'Διατροφολόγος', 'Αίτημα διατροφολόγου', 'Γίνε και διατροφολόγος στο ίδιο γυμναστήριο'),
+      if (!have.contains('Φυσιοθεραπευτής')) ('staff', 'Φυσιοθεραπευτής', 'Αίτημα φυσιοθεραπευτή', 'Γίνε και φυσιοθεραπευτής στο ίδιο γυμναστήριο'),
+    ];
+    if (_roles.length < 2 && missing.isEmpty) return const SizedBox.shrink();
+    return Column(children: [
+      if (_roles.length > 1)
+        for (final role in _roles.where((g) => !_isCurrent(g))) ...[
+          _MenuTile(
+            icon: Icons.swap_horiz_rounded,
+            title: 'Μπες ως ${_label(role)}',
+            subtitle: 'Αλλαγή ρόλου χωρίς να ξαναβρείς το γυμναστήριο',
+            onTap: widget.onEnterAsRole == null ? null : () => widget.onEnterAsRole!(role),
+          ),
+          const Divider(height: 1, indent: 56),
+        ],
+      for (final ask in missing) ...[
+        _MenuTile(
+          icon: Icons.add_circle_outline,
+          title: ask.$3,
+          subtitle: ask.$4,
+          onTap: () => widget.onRequest(ask.$1, ask.$2),
+        ),
+        const Divider(height: 1, indent: 56),
+      ],
+    ]);
   }
 }

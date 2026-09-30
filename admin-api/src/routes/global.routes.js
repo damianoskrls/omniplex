@@ -90,28 +90,28 @@ async function getGymsForGlobalUser(globalUserId) {
   }));
 }
 
-function staffKindFromRow(row) {
-  const role = String(row.staff_role || row.role || row.specialty || '');
+function staffKindsFromRow(row) {
+  const role = String(row.staff_role || row.role || row.specialty || '').trim();
   const nutrition = Number(row.is_nutritionist) === 1 || /διατροφ|nutri/i.test(role);
   const physio = /φυσιο|physio/i.test(role);
-  const trainer = /trainer|γυμναστ|coach|personal/i.test(role);
-  if (nutrition && trainer) return 'trainer';
-  if (nutrition) return 'nutritionist';
-  if (physio) return 'physiotherapist';
-  return 'trainer';
+  const genericTrainer = /^(trainer|γυμναστής|γυμναστης)$/i.test(role);
+  const kinds = [];
+  if (nutrition) kinds.push('nutritionist');
+  if (physio) kinds.push('physiotherapist');
+  // "Trainer" is the default staff title. It must not cover a nutritionist.
+  if (/trainer|γυμναστ|coach|personal/i.test(role) && !(nutrition && genericTrainer)) {
+    kinds.push('trainer');
+  }
+  if (!kinds.length) kinds.push('trainer');
+  return kinds;
+}
+
+function staffKindFromRow(row) {
+  return staffKindsFromRow(row)[0];
 }
 
 function expandStaffGyms(row) {
-  const role = String(row.staff_role || '');
-  const nutrition = Number(row.is_nutritionist) === 1 || /διατροφ|nutri/i.test(role);
-  const trainer = /trainer|γυμναστ|coach|personal/i.test(role);
-  if (nutrition && trainer) {
-    return [
-      { ...row, staff_kind: 'trainer' },
-      { ...row, staff_kind: 'nutritionist' },
-    ];
-  }
-  return [{ ...row, staff_kind: staffKindFromRow(row) }];
+  return staffKindsFromRow(row).map((kind) => ({ ...row, staff_kind: kind }));
 }
 
 function staffKindLabel(specialty) {
@@ -226,6 +226,7 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
              st.full_name AS staff_name,
              u.full_name AS client_name,
              biz.id AS business_id, biz.name AS business_name,
+             b.location_id, loc.name AS location_name,
              COALESCE(bc.app_name, biz.name) AS app_name, bc.primary_color, bc.logo_url`;
     const fromSql = `
       FROM bookings b
@@ -233,6 +234,7 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
       LEFT JOIN staff st ON st.id = b.staff_id
       LEFT JOIN users u ON u.id = b.user_id
       JOIN businesses biz ON biz.id = b.business_id
+      LEFT JOIN locations loc ON loc.id = b.location_id
       LEFT JOIN business_configs bc ON bc.business_id = b.business_id`;
     const windowSql = `
         AND b.starts_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
@@ -257,7 +259,16 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
       params,
     );
 
-    return res.json({ gyms, upcoming_bookings: bookings });
+    const bizIds = [...new Set(gyms.map((g) => g.business_id).filter(Boolean))];
+    const [locations] = bizIds.length
+      ? await db.query(
+          `SELECT id, business_id, name FROM locations
+           WHERE business_id IN (?) AND is_active = 1
+           ORDER BY name`,
+          [bizIds],
+        )
+      : [[]];
+    return res.json({ gyms, upcoming_bookings: bookings, locations });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
@@ -347,12 +358,12 @@ router.get('/me/notifications', requireGlobal, async (req, res) => {
     const userIds = [...new Set(gyms.map((g) => g.user_id).filter(Boolean))];
     const [rows] = userIds.length
       ? await db.query(
-        `SELECT n.id, n.type, n.title, n.body, n.is_read, n.created_at, n.business_id,
+        `SELECT n.id, n.type, n.title, n.body, n.payload, n.is_read, n.created_at, n.business_id,
                 COALESCE(bc.app_name, biz.name) AS gym_name
          FROM user_notifications n
-         JOIN businesses biz ON biz.id = n.business_id
-         LEFT JOIN business_configs bc ON bc.business_id = n.business_id
-         WHERE n.user_id IN (?)
+         JOIN businesses biz ON (biz.id COLLATE utf8mb4_unicode_ci) = (n.business_id COLLATE utf8mb4_unicode_ci)
+         LEFT JOIN business_configs bc ON (bc.business_id COLLATE utf8mb4_unicode_ci) = (n.business_id COLLATE utf8mb4_unicode_ci)
+         WHERE (n.user_id COLLATE utf8mb4_unicode_ci) IN (?)
          ORDER BY n.created_at DESC
          LIMIT 80`,
         [userIds],
@@ -515,6 +526,7 @@ router.get('/discovery/gyms', async (req, res) => {
         SELECT DISTINCT b.id, b.slug, b.name, b.business_type, b.city, b.description,
                b.latitude, b.longitude,
                c.app_name, c.primary_color, c.logo_url,
+               (SELECT url FROM gym_photos WHERE business_id = b.id ORDER BY is_cover DESC, display_order ASC, created_at ASC LIMIT 1) AS cover_url,
                (b.accepts_drop_in = 1
                  OR EXISTS (SELECT 1 FROM locations dl WHERE dl.business_id = b.id AND dl.is_active = 1 AND dl.accepts_drop_in = 1)
                  OR EXISTS (SELECT 1 FROM dropin_offers dof WHERE dof.business_id = b.id AND dof.is_active = 1)
@@ -533,6 +545,7 @@ router.get('/discovery/gyms', async (req, res) => {
         SELECT b.id, b.slug, b.name, b.business_type, b.city, b.description,
                b.latitude, b.longitude,
                c.app_name, c.primary_color, c.logo_url,
+               (SELECT url FROM gym_photos WHERE business_id = b.id ORDER BY is_cover DESC, display_order ASC, created_at ASC LIMIT 1) AS cover_url,
                (b.accepts_drop_in = 1
                  OR EXISTS (SELECT 1 FROM locations dl WHERE dl.business_id = b.id AND dl.is_active = 1 AND dl.accepts_drop_in = 1)
                  OR EXISTS (SELECT 1 FROM dropin_offers dof WHERE dof.business_id = b.id AND dof.is_active = 1)
@@ -572,6 +585,7 @@ router.get('/discovery/gyms', async (req, res) => {
       description:   r.description || null,
       primary_color: r.primary_color || '#B8F55E',
       logo_url:      r.logo_url || null,
+      cover_url:     r.cover_url || null,
       services:      serviceMap[r.id] || [],
       latitude:      r.latitude  != null ? parseFloat(r.latitude)  : null,
       longitude:     r.longitude != null ? parseFloat(r.longitude) : null,
@@ -759,18 +773,16 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
 
     if (isStaff) {
       const [linkedStaff] = await db.query(
-        'SELECT id, role, COALESCE(is_nutritionist, 0) AS is_nutritionist FROM staff WHERE global_user_id = ? AND business_id = ? AND is_active = 1',
+        'SELECT id, role AS staff_role, COALESCE(is_nutritionist, 0) AS is_nutritionist FROM staff WHERE global_user_id = ? AND business_id = ? AND is_active = 1',
         [globalUserId, business_id],
       );
       if (linkedStaff.length) {
         const kind = staffKindFromRow({ specialty, is_nutritionist: 0 });
-        const alreadyNutritionist = Number(linkedStaff[0].is_nutritionist) === 1
-          || /διατροφ|nutri/i.test(linkedStaff[0].role || '');
-        if (kind === 'nutritionist' && alreadyNutritionist) {
-          return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη διατροφολόγος σε αυτό το γυμναστήριο' });
-        }
-        if (kind !== 'nutritionist') {
-          return res.status(409).json({ error: 'already_linked', message: 'Είσαι ήδη συνδεδεμένος στο προσωπικό αυτού του γυμναστηρίου' });
+        const have = staffKindsFromRow(linkedStaff[0]);
+        if (have.includes(kind)) {
+          const label = kind === 'nutritionist' ? 'διατροφολόγος'
+            : kind === 'physiotherapist' ? 'φυσιοθεραπευτής' : 'trainer';
+          return res.status(409).json({ error: 'already_linked', message: `Είσαι ήδη ${label} σε αυτό το γυμναστήριο` });
         }
       }
     } else {

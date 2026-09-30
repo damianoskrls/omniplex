@@ -580,9 +580,10 @@ router.get('/staff/me', async (req, res) => {
     );
     if (!s) return res.status(404).json({ error: 'Δεν βρέθηκε' });
     const nutritionByRole = /διατροφ|nutri/i.test(s.role || '');
-    const trainerByRole = /trainer|γυμναστ|coach|personal/i.test(s.role || '');
+    const genericTrainer = /^(trainer|γυμναστής|γυμναστης)$/i.test(String(s.role || '').trim());
     const isNutritionist = Number(s.is_nutritionist) === 1 || nutritionByRole || decoded.role === 'nutritionist';
-    const staffKind = (isNutritionist && !trainerByRole) || decoded.role === 'nutritionist'
+    const trainerByRole = /trainer|γυμναστ|coach|personal/i.test(s.role || '') && !(isNutritionist && genericTrainer);
+    const staffKind = decoded.role === 'nutritionist' || (isNutritionist && !trainerByRole)
       ? 'nutritionist'
       : (/φυσιο|physio/i.test(s.role || '') ? 'physiotherapist' : 'trainer');
     return res.json({

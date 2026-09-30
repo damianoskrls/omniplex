@@ -65,14 +65,15 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       _slug != null &&
       widget.globalAuth!.gyms.any((g) => g.slug == _slug && g.isStaff);
   bool get _canEnter => _memberLinked || _staffLinked;
-  bool get _nutritionistHere => widget.globalAuth?.gyms.any(
-        (g) => g.slug == _slug && g.staffKind == 'nutritionist',
+  bool _hasStaffKind(String kind) => widget.globalAuth?.gyms.any(
+        (g) => g.slug == _slug && g.isStaff && (g.staffKind ?? 'trainer') == kind,
       ) ?? false;
   bool get _canAskMember => !_memberLinked && !_memberPending;
-  bool get _canAskNutritionist => !_nutritionistHere && !_staffPending;
-  bool get _canAskOtherStaff => !_staffLinked && !_staffPending;
+  bool get _canAskTrainer => !_hasStaffKind('trainer') && !_staffPending;
+  bool get _canAskNutritionist => !_hasStaffKind('nutritionist') && !_staffPending;
+  bool get _canAskPhysio => !_hasStaffKind('physiotherapist') && !_staffPending;
   bool get _canRequest => widget.globalAuth?.isLoggedIn == true &&
-      (_canAskMember || _canAskNutritionist || _canAskOtherStaff);
+      (_canAskMember || _canAskTrainer || _canAskNutritionist || _canAskPhysio);
   bool get _dropInOn => _gym?['accepts_drop_in'] == true || _dropins.isNotEmpty;
   List<Map<String, dynamic>> get _dropins {
     final raw = _gym?['dropin_services'];
@@ -253,7 +254,8 @@ class _GymProfileScreenState extends State<GymProfileScreen>
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text('Επέλεξε τον ρόλο σου σε αυτό το γυμναστήριο',
+              child: Text(
+                _canEnter ? 'Φαίνονται μόνο ρόλοι που δεν έχεις ήδη' : 'Επέλεξε τον ρόλο σου σε αυτό το γυμναστήριο',
                 style: const TextStyle(fontSize: 13, color: Color(0xFF9A9CA3))),
             ),
             const SizedBox(height: 20),
@@ -267,28 +269,30 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                     : 'Θέλω να κάνω κρατήσεις ως πελάτης',
                 onTap: () => Navigator.pop(sheetCtx, 'member'),
               ),
-            if (_canAskMember && (_canAskNutritionist || _canAskOtherStaff))
-              const SizedBox(height: 10),
-            if (_canAskNutritionist)
+            if (_canAskTrainer) ...[
+              if (_canAskMember) const SizedBox(height: 10),
+              _RoleOption(
+                icon: Icons.sports_rounded,
+                color: const Color(0xFF3EE6FF),
+                title: 'Trainer',
+                subtitle: _canEnter ? 'Θέλω και ρόλο trainer στο ίδιο γυμναστήριο' : 'Εργάζομαι ως γυμναστής',
+                onTap: () => Navigator.pop(sheetCtx, 'staff:trainer'),
+              ),
+            ],
+            if (_canAskNutritionist) ...[
+              if (_canAskMember || _canAskTrainer) const SizedBox(height: 10),
               _RoleOption(
                 icon: Icons.restaurant_menu_rounded,
                 color: const Color(0xFF34D399),
                 title: 'Διατροφολόγος',
                 subtitle: _staffLinked
-                    ? 'Είμαι ήδη trainer και θέλω να γίνω και διατροφολόγος'
+                    ? 'Θέλω να γίνω και διατροφολόγος'
                     : 'Θέλω πρόσβαση στους πελάτες διατροφής',
                 onTap: () => Navigator.pop(sheetCtx, 'staff:nutritionist'),
               ),
-            if (_canAskOtherStaff) ...[
-              if (_canAskNutritionist) const SizedBox(height: 10),
-              _RoleOption(
-                icon: Icons.sports_rounded,
-                color: const Color(0xFF3EE6FF),
-                title: 'Trainer',
-                subtitle: 'Εργάζομαι ως γυμναστής',
-                onTap: () => Navigator.pop(sheetCtx, 'staff:trainer'),
-              ),
-              const SizedBox(height: 10),
+            ],
+            if (_canAskPhysio) ...[
+              if (_canAskMember || _canAskTrainer || _canAskNutritionist) const SizedBox(height: 10),
               _RoleOption(
                 icon: Icons.healing_rounded,
                 color: const Color(0xFFF59E0B),
@@ -1695,17 +1699,18 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
   bool _loading = true;
   bool _booking = false;
   String? _message;
+  bool _sought = false;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _load(seek: true);
   }
 
   String _ymd(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  Future<void> _load() async {
+  Future<void> _load({bool seek = false}) async {
     setState(() { _loading = true; _message = null; _slots = []; });
     try {
       final uri = Uri.parse('${widget.apiBase}/booking/${widget.bizId}/slots').replace(
@@ -1730,6 +1735,28 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
               return !full;
             }).toList()
           : <Map<String, dynamic>>[];
+      if (seek && !_sought && slots.isEmpty) {
+        _sought = true;
+        final nextUri = Uri.parse('${widget.apiBase}/booking/${widget.bizId}/next-slot').replace(
+          queryParameters: {
+            'service_id': widget.serviceId,
+            'dropin': '1',
+            if (widget.locationId != null) 'location_id': widget.locationId!,
+          },
+        );
+        final nextRes = await http.get(nextUri);
+        if (!mounted) return;
+        if (nextRes.statusCode == 200) {
+          final next = jsonDecode(nextRes.body);
+          final nextDate = next is Map ? next['date']?.toString() : null;
+          final parsed = nextDate == null ? null : DateTime.tryParse(nextDate);
+          if (parsed != null && _ymd(parsed) != _ymd(_date)) {
+            setState(() => _date = parsed);
+            await _load();
+            return;
+          }
+        }
+      }
       setState(() {
         _slots = slots;
         _message = slots.isEmpty ? (body['message'] as String? ?? 'Δεν υπάρχουν ώρες αυτή την ημέρα') : null;
@@ -1758,6 +1785,37 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
           : slot['time'];
       final staff = slot['available_staff'];
       final staffId = staff is List && staff.isNotEmpty ? staff.first['id'] : null;
+      String? intentId;
+      if (widget.priceCents > 0) {
+        final intentRes = await http.post(
+          Uri.parse('${widget.apiBase}/booking/${widget.bizId}/dropin/payment-intent'),
+          headers: headers,
+          body: jsonEncode({
+            'service_id': widget.serviceId,
+            if (gymToken == null) 'guest_name': user?.fullName,
+          }),
+        );
+        final intentBody = jsonDecode(intentRes.body);
+        if (intentRes.statusCode != 200 || intentBody is! Map) {
+          final err = intentBody is Map ? (intentBody['error'] ?? 'Η πληρωμή με κάρτα δεν είναι διαθέσιμη') : 'Η πληρωμή με κάρτα δεν είναι διαθέσιμη';
+          throw Exception(err.toString());
+        }
+        final secret = intentBody['client_secret'] as String?;
+        final key = intentBody['publishable_key'] as String?;
+        intentId = intentBody['intent_id'] as String?;
+        if (secret == null || key == null || intentId == null) {
+          throw Exception('Η πληρωμή με κάρτα δεν είναι διαθέσιμη');
+        }
+        Stripe.publishableKey = key;
+        await Stripe.instance.initPaymentSheet(
+          paymentSheetParameters: SetupPaymentSheetParameters(
+            paymentIntentClientSecret: secret,
+            merchantDisplayName: 'OmniPlex',
+            style: ThemeMode.dark,
+          ),
+        );
+        await Stripe.instance.presentPaymentSheet();
+      }
       final res = await http.post(
         Uri.parse('${widget.apiBase}/booking/${widget.bizId}/dropin/book'),
         headers: headers,
@@ -1767,7 +1825,8 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
           'time': time,
           'location_id': widget.locationId,
           'staff_id': staffId,
-          'payment_method': 'venue',
+          'payment_method': intentId != null ? 'card' : 'venue',
+          if (intentId != null) 'payment_intent_id': intentId,
           if (gymToken == null) 'guest_name': user?.fullName,
           if (gymToken == null) 'guest_email': user?.email,
           if (gymToken == null) 'guest_phone': user?.phone,
@@ -1783,10 +1842,16 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(err.toString()), backgroundColor: Colors.red.shade700),
       );
+    } on StripeException catch (e) {
+      if (!mounted || e.error.code == FailureCode.Canceled) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε'), backgroundColor: Colors.red.shade700),
+      );
     } catch (e) {
       if (!mounted) return;
+      final text = e.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red.shade700),
+        SnackBar(content: Text(text), backgroundColor: Colors.red.shade700),
       );
     } finally {
       if (mounted) setState(() => _booking = false);
@@ -1796,7 +1861,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
   @override
   Widget build(BuildContext context) {
     final euros = (widget.priceCents / 100).toStringAsFixed(widget.priceCents % 100 == 0 ? 0 : 2);
-    final days = List.generate(7, (i) => DateTime.now().add(Duration(days: i)));
+    final days = List.generate(14, (i) => DateTime.now().add(Duration(days: i)));
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -1811,7 +1876,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
         const SizedBox(height: 14),
         Text(widget.serviceName, style: GoogleFonts.manrope(
           fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-        Text('€$euros · πληρωμή στο γυμναστήριο', style: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFF9A9CA3))),
+        Text('€$euros · πληρωμή με κάρτα', style: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFF9A9CA3))),
         const SizedBox(height: 12),
         SizedBox(
           height: 36,

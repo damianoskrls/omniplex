@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { Pencil, ChevronLeft, ChevronRight, Plus, CalendarOff, Trash2, MapPin, Search, X, FlaskConical, Zap, AlertCircle } from 'lucide-react';
 import { groupBookingsBySlot, slotKey } from '../utils/groupBookingsBySlot';
 import ClientBookingsSection from '../components/ClientBookingsSection';
+import StoreFilter from '../components/StoreFilter';
 
 const STATUSES = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'];
 const STATUS_LABELS = {
@@ -265,12 +266,14 @@ export default function Bookings() {
     const bookingId = searchParams.get('id');
 
     const statusParam = searchParams.get('status');
+    const locationParam = searchParams.get('location_id');
     if (modeParam) setMode(modeParam);
     if (dateParam) setDate(dateParam);
     if (statusParam) setStatusFilter(statusParam);
+    if (locationParam) setLocationId(locationParam);
 
     if (!bookingId) {
-      if (modeParam || dateParam || statusParam) setSearchParams({}, { replace: true });
+      if (modeParam || dateParam || statusParam || locationParam) setSearchParams({}, { replace: true });
       return;
     }
 
@@ -622,22 +625,6 @@ export default function Bookings() {
             : `Κρατήσεις (${bookings.length})`}
         </h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {locationOptions.length > 1 && (
-            <label className="bk-location-filter">
-              <MapPin size={16} aria-hidden />
-              <span className="bk-location-filter-label">Φίλτρο:</span>
-              <select
-                className="form-select bk-location-filter-select"
-                value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
-              >
-                <option value="">Όλες οι τοποθεσίες</option>
-                {locationOptions.map((loc) => (
-                  <option key={loc.id} value={loc.id}>{loc.name}</option>
-                ))}
-              </select>
-            </label>
-          )}
           <button type="button" className="btn btn-secondary" onClick={openClosures}>
             <CalendarOff size={16} /> Κλειστές ημέρες
           </button>
@@ -673,6 +660,8 @@ export default function Bookings() {
           )}
         </div>
       </div>
+
+      <StoreFilter locations={locationOptions} value={locationId} onChange={setLocationId} />
 
       {statusFilter && (
         <div className="dash-alert" style={{ marginBottom: 16, borderColor: '#fbbf24', background: '#fffbeb' }}>
@@ -751,13 +740,6 @@ export default function Bookings() {
 
       {!clientSearchActive && mode === 'grouped' && (
         <div className="card" style={{ marginBottom: 16 }}>
-          {locationId && (
-            <div className="bk-active-filter">
-              <MapPin size={14} />
-              Εμφανίζονται κρατήσεις: <strong>{locationOptions.find(l => String(l.id) === String(locationId))?.name || '—'}</strong>
-              <button type="button" className="cb-text-btn" onClick={() => setLocationId('')}>Καθαρισμός</button>
-            </div>
-          )}
           <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
             <div>
               <div className="text-muted" style={{ fontSize: '0.8rem' }}>Κρατήσεις</div>

@@ -71,6 +71,7 @@ export default function Settings() {
     feature_memberships: 1,
     feature_waitlist: 0,
     feature_nutrition: 0,
+    feature_qr_checkin: 0,
   });
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -92,6 +93,7 @@ export default function Settings() {
         feature_memberships: d.feature_memberships ?? 1,
         feature_waitlist: d.feature_waitlist ?? 0,
         feature_nutrition: d.feature_nutrition ?? 0,
+        feature_qr_checkin: d.feature_qr_checkin ?? 0,
       });
     }).catch(() => toast.error('Σφάλμα φόρτωσης ρυθμίσεων'));
   }, []);
@@ -225,6 +227,7 @@ export default function Settings() {
               { key: 'feature_memberships', label: 'Συνδρομές / Πακέτα' },
               { key: 'feature_waitlist', label: 'Λίστα αναμονής' },
               { key: 'feature_nutrition', label: 'Διατροφή (module)' },
+              { key: 'feature_qr_checkin', label: 'QR check-in (κωδικός μέλους ή σκανάρισμα στο app)' },
             ].map(f => (
               <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, cursor: 'pointer' }}>
                 <div

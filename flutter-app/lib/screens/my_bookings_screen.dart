@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_strings.dart';
 import '../models/booking.dart';
+import '../models/location.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
@@ -23,6 +24,8 @@ class MyBookingsScreen extends StatefulWidget {
 class _MyBookingsScreenState extends State<MyBookingsScreen> {
   List<Booking> _bookings = [];
   List<WaitlistEntry> _waitlist = [];
+  List<GymLocation> _locations = [];
+  String? _locationId;
   bool _loading = true;
   String? _error;
   final Set<String> _expandedTips = {};
@@ -43,12 +46,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       final results = await Future.wait([
         api.fetchMyBookings(),
         api.fetchMyWaitlist(),
+        api.fetchLocations(),
       ]);
       final bookings = results[0] as List<Booking>;
       final waitlistRaw = results[1] as List<Map<String, dynamic>>;
+      final locs = results[2] as ({bool multiLocation, List<GymLocation> locations});
       setState(() {
         _bookings = bookings;
         _waitlist = waitlistRaw.map(WaitlistEntry.fromJson).toList();
+        _locations = locs.locations;
+        if (_locationId != null && !_locations.any((l) => l.id == _locationId)) {
+          _locationId = null;
+        }
       });
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -71,17 +80,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   List<Booking> get _pendingApproval {
     final now = DateTime.now();
     final list = _bookings
-        .where((b) => b.status == 'pending' && b.startsAt.isAfter(now))
+        .where((b) => b.status == 'pending' && b.startsAt.isAfter(now) && _inStore(b))
         .toList();
     list.sort((a, b) => a.startsAt.compareTo(b.startsAt));
     return list;
   }
 
+  bool _inStore(Booking b) => _locationId == null || b.locationId == _locationId;
+
   List<Booking> get _gymBookings =>
-      _sortedActive(_bookings.where((b) => !b.isNutritionConsultation && b.status != 'pending').toList());
+      _sortedActive(_bookings.where((b) => !b.isNutritionConsultation && b.status != 'pending' && _inStore(b)).toList());
 
   List<Booking> get _nutritionBookings =>
-      _sortedActive(_bookings.where((b) => b.isNutritionConsultation && b.status != 'pending').toList());
+      _sortedActive(_bookings.where((b) => b.isNutritionConsultation && b.status != 'pending' && _inStore(b)).toList());
 
   int get _completedCount => _bookings.where((b) => b.isCompleted).length;
 
@@ -90,7 +101,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       _nutritionBookings.where((b) => b.isUpcoming).length;
 
   List<Booking> get _pendingAttendance {
-    final pending = _bookings.where((b) => b.needsCheckIn).toList();
+    final pending = _bookings.where((b) => b.needsCheckIn && _inStore(b)).toList();
     pending.sort((a, b) => b.startsAt.compareTo(a.startsAt));
     return pending;
   }
@@ -330,6 +341,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     const SizedBox(height: 8),
                   ],
                   Text(booking.serviceName, style: Theme.of(context).textTheme.titleMedium),
+                  if (_locations.length > 1 && (booking.locationName ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.storefront_outlined, size: 14, color: accent),
+                        const SizedBox(width: 6),
+                        Text(booking.locationName!, style: Theme.of(context).textTheme.bodyMedium),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -493,7 +514,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final hasActive = gym.isNotEmpty || nutrition.isNotEmpty || _waitlist.isNotEmpty || pendingApproval.isNotEmpty;
     final upcoming = _upcomingCount;
 
-    if (!hasActive && _completedCount == 0) {
+    final showStores = _locations.length > 1;
+    if (!hasActive && _completedCount == 0 && !showStores) {
       final s2 = AppStrings.of(context);
       return EmptyState(
         icon: Icons.calendar_today_outlined,
@@ -508,6 +530,50 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
+          if (showStores) ...[
+            Text('Κατάστημα', style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 36,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _locations.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final id = i == 0 ? null : _locations[i - 1].id;
+                  final name = i == 0 ? 'Συνολικά' : _locations[i - 1].name;
+                  final on = _locationId == id;
+                  final accent = context.tenantPrimary;
+                  return GestureDetector(
+                    onTap: () => setState(() => _locationId = id),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: on ? accent : AppColors.surface,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: on ? accent : AppColors.border),
+                      ),
+                      child: Text(name, style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: on ? AppColors.onFill(accent) : AppColors.textSecondary,
+                      )),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (!hasActive)
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: Text(
+                  'Δεν έχεις κρατήσεις σε αυτό το κατάστημα',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+          ],
           if (pendingApproval.isNotEmpty) ...[
             _sectionHeader(
               title: AppStrings.of(context).bookingPendingConfirm,

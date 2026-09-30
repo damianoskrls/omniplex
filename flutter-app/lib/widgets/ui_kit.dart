@@ -80,7 +80,7 @@ class GreetingHeader extends StatelessWidget {
               // Gym logo — tappable
               GestureDetector(
                 onTap: onLogoTap,
-                child: const TenantLogo(size: 64, borderRadius: 16, showShadow: false),
+                child: const TenantLogo(size: 104, borderRadius: 18, showShadow: false),
               ),
               const Spacer(),
               // Action icons row

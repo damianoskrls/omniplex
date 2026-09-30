@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import 'nutritionist_client_screen.dart';
 
 class NutritionistClientsScreen extends StatefulWidget {
   const NutritionistClientsScreen({super.key});
@@ -99,14 +100,143 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
     }
   }
 
+  String _statusLabel(String? status) {
+    switch (status) {
+      case 'pending': return 'Αναμονή';
+      case 'confirmed': return 'Επιβεβαιωμένη';
+      case 'cancelled': return 'Ακυρωμένη';
+      case 'completed': return 'Ολοκληρωμένη';
+      case 'no_show': return 'Δεν προσήλθε';
+      default: return status ?? '';
+    }
+  }
+
+  String _when(dynamic value) {
+    final raw = value?.toString() ?? '';
+    if (raw.length < 16) return raw;
+    return raw.substring(0, 16).replaceFirst('T', ' ');
+  }
+
+  Future<void> _act(String id, String value) async {
+    final api = context.read<AuthService>().api;
+    try {
+      if (value == 'delete') {
+        await api.deleteNutritionBooking(id);
+      } else {
+        await api.updateNutritionBookingStatus(id, value);
+      }
+      await _load();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Future<void> _create() async {
+    final api = context.read<AuthService>().api;
+    try {
+      final clients = await api.fetchBookableNutritionClients();
+      if (!mounted) return;
+      if (clients.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Κανένας πελάτης δεν έχει διαθέσιμες επισκέψεις.')),
+        );
+        return;
+      }
+      String? userId;
+      var date = DateTime.now();
+      String? time;
+      final done = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setSheet) => Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Νέα κράτηση', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: userId,
+                  decoration: const InputDecoration(labelText: 'Πελάτης'),
+                  items: clients.map((c) => DropdownMenuItem(
+                    value: c['id'].toString(),
+                    child: Text(c['full_name']?.toString() ?? ''),
+                  )).toList(),
+                  onChanged: (v) => setSheet(() => userId = v),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('${date.day}/${date.month}/${date.year}'),
+                  trailing: const Icon(Icons.calendar_today_outlined),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: date,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 60)),
+                    );
+                    if (picked != null) setSheet(() => date = picked);
+                  },
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final slots = await api.fetchNutritionBookingSlots(date.toIso8601String().substring(0, 10));
+                    if (!ctx.mounted) return;
+                    final picked = await showModalBottomSheet<String>(
+                      context: ctx,
+                      builder: (sheetCtx) => ListView(
+                        children: [
+                          if (slots.isEmpty) const ListTile(title: Text('Δεν υπάρχουν ελεύθερες ώρες')),
+                          ...slots.where((s) => (s['available_count'] as num?) == null || (s['available_count'] as num) > 0).map((s) {
+                            final t = (s['time'] ?? '').toString();
+                            final label = t.length >= 5 ? t.substring(0, 5) : t;
+                            return ListTile(title: Text(label), onTap: () => Navigator.pop(sheetCtx, label));
+                          }),
+                        ],
+                      ),
+                    );
+                    if (picked != null) setSheet(() => time = picked);
+                  },
+                  child: Text(time == null ? 'Επίλεξε ώρα' : 'Ώρα $time'),
+                ),
+                FilledButton(
+                  onPressed: userId == null || time == null ? null : () => Navigator.pop(ctx, true),
+                  child: const Text('Κράτηση'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (done == true && userId != null && time != null) {
+        await api.createNutritionBooking(
+          userId: userId!,
+          date: date.toIso8601String().substring(0, 10),
+          time: time!,
+        );
+        await _load();
+      }
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.lime));
     if (_error != null) return Center(child: Text(_error!));
-    if (_rows.isEmpty) {
-      return const Center(child: Text('Δεν υπάρχουν ραντεβού διατροφής.', style: TextStyle(color: AppColors.textSecondary)));
-    }
-    return RefreshIndicator(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _create,
+        icon: const Icon(Icons.add),
+        label: const Text('Νέα κράτηση'),
+      ),
+      body: _rows.isEmpty
+          ? const Center(child: Text('Δεν υπάρχουν ραντεβού διατροφής.', style: TextStyle(color: AppColors.textSecondary)))
+          : RefreshIndicator(
       color: AppColors.lime,
       onRefresh: _load,
       child: ListView.separated(
@@ -119,10 +249,21 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
             tileColor: AppColors.surface,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             title: Text(b['client_name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text('${b['starts_at'] ?? ''} · ${b['status'] ?? ''}'),
+            subtitle: Text('${_when(b['starts_at'])} · ${_statusLabel(b['status']?.toString())}'),
+            trailing: PopupMenuButton<String>(
+              onSelected: (value) => _act(b['id'].toString(), value),
+              itemBuilder: (_) => [
+                if (b['status'] == 'pending') const PopupMenuItem(value: 'confirmed', child: Text('Επιβεβαίωση')),
+                if (b['status'] == 'pending') const PopupMenuItem(value: 'cancelled', child: Text('Ακύρωση')),
+                if (b['status'] == 'confirmed') const PopupMenuItem(value: 'completed', child: Text('Ολοκληρώθηκε')),
+                if (b['status'] == 'confirmed') const PopupMenuItem(value: 'no_show', child: Text('Δεν προσήλθε')),
+                const PopupMenuItem(value: 'delete', child: Text('Διαγραφή')),
+              ],
+            ),
           );
         },
       ),
+    ),
     );
   }
 }
@@ -194,29 +335,22 @@ class _NutritionistTemplatesScreenState extends State<NutritionistTemplatesScree
   }
 }
 
-class NutritionistClientScreen extends StatefulWidget {
-  const NutritionistClientScreen({super.key, required this.userId, required this.name});
-  final String userId;
-  final String name;
+
+class NutritionistScheduleScreen extends StatefulWidget {
+  const NutritionistScheduleScreen({super.key});
 
   @override
-  State<NutritionistClientScreen> createState() => _NutritionistClientScreenState();
+  State<NutritionistScheduleScreen> createState() => _NutritionistScheduleScreenState();
 }
 
-class _NutritionistClientScreenState extends State<NutritionistClientScreen> {
-  Map<String, dynamic> _goals = {};
-  Map<String, dynamic> _plan = {};
-  List<Map<String, dynamic>> _measurements = [];
-  List<Map<String, dynamic>> _logs = [];
-  List<Map<String, dynamic>> _templates = [];
+class _NutritionistScheduleScreenState extends State<NutritionistScheduleScreen> {
+  static const _days = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ', 'Κυρ'];
+  static const _times = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
+  List<Map<String, dynamic>> _rows = [];
+  final Set<int> _daysPicked = {};
+  final Set<String> _timesPicked = {};
   bool _loading = true;
   String? _error;
-  final _targetWeight = TextEditingController();
-  final _targetFat = TextEditingController();
-  final _height = TextEditingController();
-  final _visitWeight = TextEditingController();
-  final _visitFat = TextEditingController();
-  final _visitNotes = TextEditingController();
 
   @override
   void initState() {
@@ -224,43 +358,11 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen> {
     _load();
   }
 
-  @override
-  void dispose() {
-    _targetWeight.dispose();
-    _targetFat.dispose();
-    _height.dispose();
-    _visitWeight.dispose();
-    _visitFat.dispose();
-    _visitNotes.dispose();
-    super.dispose();
-  }
-
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final api = context.read<AuthService>().api;
-      final today = DateTime.now().toIso8601String().substring(0, 10);
-      final results = await Future.wait([
-        api.fetchNutritionGoalsAdmin(widget.userId),
-        api.fetchNutritionMealPlanAdmin(widget.userId),
-        api.fetchNutritionMeasurementsAdmin(widget.userId),
-        api.fetchNutritionClientDay(widget.userId, today),
-        api.fetchNutritionTemplates(),
-      ]);
-      if (!mounted) return;
-      final goals = results[0] as Map<String, dynamic>;
-      final measurements = results[2] as Map<String, dynamic>;
-      final day = results[3] as Map<String, dynamic>;
-      setState(() {
-        _goals = goals;
-        _plan = results[1] as Map<String, dynamic>;
-        _measurements = ((measurements['measurements'] as List?) ?? []).cast<Map<String, dynamic>>();
-        _logs = ((day['food_logs'] as List?) ?? []).cast<Map<String, dynamic>>();
-        _templates = results[4] as List<Map<String, dynamic>>;
-        _targetWeight.text = goals['target_weight_kg']?.toString() ?? '';
-        _targetFat.text = goals['target_body_fat_pct']?.toString() ?? '';
-        _height.text = goals['height_cm']?.toString() ?? '';
-      });
+      final rows = await context.read<AuthService>().api.fetchNutritionSchedules();
+      if (mounted) setState(() => _rows = rows);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
@@ -268,44 +370,18 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen> {
     }
   }
 
-  Future<void> _saveGoals() async {
-    try {
-      await context.read<AuthService>().api.saveNutritionGoalsAdmin(widget.userId, {
-        'target_weight_kg': _targetWeight.text.trim(),
-        'target_body_fat_pct': _targetFat.text.trim(),
-        'height_cm': _height.text.trim(),
-      });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Οι στόχοι αποθηκεύτηκαν')));
-    } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+  Future<void> _add() async {
+    if (_daysPicked.isEmpty || _timesPicked.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Επίλεξε ημέρες και ώρες')));
+      return;
     }
-  }
-
-  Future<void> _saveVisit() async {
     try {
-      final today = DateTime.now().toIso8601String().substring(0, 10);
-      await context.read<AuthService>().api.addNutritionMeasurement(widget.userId, {
-        'measured_on': today,
-        'time_of_day': 'morning',
-        'weight_kg': _visitWeight.text.trim(),
-        'body_fat_pct': _visitFat.text.trim(),
-        'notes': _visitNotes.text.trim(),
-      });
-      _visitWeight.clear();
-      _visitFat.clear();
-      _visitNotes.clear();
+      await context.read<AuthService>().api.addNutritionSchedules(
+        weekdays: _daysPicked.toList(),
+        startTimes: _timesPicked.toList(),
+      );
+      setState(() { _daysPicked.clear(); _timesPicked.clear(); });
       await _load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Η μέτρηση καταχωρήθηκε')));
-    } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-    }
-  }
-
-  Future<void> _applyTemplate(String id) async {
-    try {
-      await context.read<AuthService>().api.applyNutritionTemplate(widget.userId, id);
-      await _load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Το πρόγραμμα εφαρμόστηκε')));
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -313,89 +389,52 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final meals = ((_plan['meals'] as List?) ?? []).cast<Map<String, dynamic>>();
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(backgroundColor: AppColors.bg, title: Text(widget.name)),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
-          : _error != null
-              ? Center(child: Text(_error!))
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                  children: [
-                    _section('Στόχοι ασκουμένου', [
-                      Text('Τρέχον βάρος: ${_goals['weight_kg'] ?? '—'} kg · λίπος: ${_goals['body_fat_pct'] ?? '—'}%'),
-                      const SizedBox(height: 8),
-                      TextField(controller: _targetWeight, decoration: const InputDecoration(labelText: 'Στόχος βάρους (kg)'), keyboardType: TextInputType.number),
-                      TextField(controller: _targetFat, decoration: const InputDecoration(labelText: 'Στόχος λίπους (%)'), keyboardType: TextInputType.number),
-                      TextField(controller: _height, decoration: const InputDecoration(labelText: 'Ύψος (cm)'), keyboardType: TextInputType.number),
-                      const SizedBox(height: 8),
-                      FilledButton(onPressed: _saveGoals, child: const Text('Αποθήκευση στόχων')),
-                    ]),
-                    _section('Νέα μέτρηση επίσκεψης', [
-                      TextField(controller: _visitWeight, decoration: const InputDecoration(labelText: 'Βάρος (kg)'), keyboardType: TextInputType.number),
-                      TextField(controller: _visitFat, decoration: const InputDecoration(labelText: 'Λίπος (%)'), keyboardType: TextInputType.number),
-                      TextField(controller: _visitNotes, decoration: const InputDecoration(labelText: 'Σημειώσεις')),
-                      const SizedBox(height: 8),
-                      FilledButton(onPressed: _saveVisit, child: const Text('Καταχώριση μέτρησης')),
-                    ]),
-                    _section('Μετρήσεις σώματος', [
-                      if (_measurements.isEmpty) const Text('Δεν υπάρχουν μετρήσεις.'),
-                      ..._measurements.take(8).map((m) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text('${m['measured_on'] ?? ''} · ${m['weight_kg'] ?? '—'} kg · λίπος ${m['body_fat_pct'] ?? '—'}%'),
-                      )),
-                    ]),
-                    _section('Ημερολόγιο διατροφής (σήμερα)', [
-                      if (_logs.isEmpty) const Text('Δεν έχει καταγραφές σήμερα.'),
-                      ..._logs.map((log) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text('${log['meal_type'] ?? ''} · ${log['description'] ?? log['title'] ?? ''}'),
-                      )),
-                    ]),
-                    _section('Επαναλαμβανόμενο εβδομαδιαίο πρόγραμμα', [
-                      Text(_plan['effective_from'] != null ? 'Ισχύει από ${_plan['effective_from']}' : 'Δεν υπάρχει ενεργό πρόγραμμα.'),
-                      const SizedBox(height: 8),
-                      if (meals.isEmpty) const Text('Δεν έχουν περαστεί γεύματα.'),
-                      ...meals.take(20).map((meal) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text('Ημ. ${meal['day_of_week'] ?? ''} · ${meal['meal_type'] ?? ''} · ${meal['description'] ?? meal['title'] ?? ''}'),
-                      )),
-                    ]),
-                    _section('Έτοιμα και αποθηκευμένα προγράμματα', [
-                      if (_templates.isEmpty) const Text('Δεν υπάρχουν πρότυπα.'),
-                      ..._templates.map((t) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(t['name']?.toString() ?? 'Πρόγραμμα'),
-                        trailing: TextButton(
-                          onPressed: () => _applyTemplate(t['id'].toString()),
-                          child: const Text('Εφαρμογή'),
-                        ),
-                      )),
-                    ]),
-                  ],
-                ),
-    );
-  }
-
-  Widget _section(String title, List<Widget> children) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-          const SizedBox(height: 10),
-          ...children,
-        ],
-      ),
+    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.lime));
+    if (_error != null) return Center(child: Text(_error!));
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        const Text('Ώρες συνεδριών', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 6, children: [
+          for (var i = 0; i < _days.length; i++)
+            FilterChip(
+              label: Text(_days[i]),
+              selected: _daysPicked.contains(i),
+              onSelected: (on) => setState(() => on ? _daysPicked.add(i) : _daysPicked.remove(i)),
+            ),
+        ]),
+        const SizedBox(height: 8),
+        Wrap(spacing: 6, children: [
+          for (final t in _times)
+            FilterChip(
+              label: Text(t),
+              selected: _timesPicked.contains(t),
+              onSelected: (on) => setState(() => on ? _timesPicked.add(t) : _timesPicked.remove(t)),
+            ),
+        ]),
+        const SizedBox(height: 10),
+        FilledButton(onPressed: _add, child: const Text('Προσθήκη ωρών')),
+        const SizedBox(height: 16),
+        if (_rows.isEmpty) const Text('Δεν έχεις ορίσει ώρες ακόμα.', style: TextStyle(color: AppColors.textSecondary)),
+        ..._rows.map((s) {
+          final day = (s['weekday'] as num?)?.toInt() ?? 0;
+          final time = (s['start_time']?.toString() ?? '').length >= 5
+              ? s['start_time'].toString().substring(0, 5)
+              : s['start_time']?.toString() ?? '';
+          return ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text('${day >= 0 && day < 7 ? _days[day] : day} · $time'),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () async {
+                await context.read<AuthService>().api.deleteNutritionSchedule(s['id'].toString());
+                await _load();
+              },
+            ),
+          );
+        }),
+      ],
     );
   }
 }

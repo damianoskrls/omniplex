@@ -107,7 +107,7 @@ class _GymEntrySplashState extends State<_GymEntrySplash> {
               children: [
                 if (logo != null && logo.isNotEmpty)
                   Container(
-                    constraints: const BoxConstraints(maxWidth: 240, minHeight: 72, maxHeight: 120),
+                    constraints: const BoxConstraints(maxWidth: 320, minHeight: 96, maxHeight: 180),
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -117,8 +117,8 @@ class _GymEntrySplashState extends State<_GymEntrySplash> {
                     child: Image.network(
                       logo,
                       fit: BoxFit.contain,
-                      width: 200,
-                      height: 88,
+                      width: 280,
+                      height: 140,
                       errorBuilder: (_, _, _) => _mark(),
                     ),
                   )

@@ -970,8 +970,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
 
   Widget _nearbyGymTile(Map<String, dynamic> gym) {
     final name     = gym['app_name'] as String? ?? gym['name'] as String? ?? '';
-    final coverUrl = gym['cover_url'] as String? ?? gym['cover_image_url'] as String?;
-    final rating   = (gym['rating'] as num?)?.toStringAsFixed(1) ?? '4.8';
+    final coverUrl = _mediaUrl(gym['cover_url'] as String? ?? gym['cover_image_url'] as String?);
+    final rating   = (gym['rating'] as num?)?.toStringAsFixed(1);
     final color    = _parseColor(gym['primary_color'] as String?);
     return GestureDetector(
       onTap: () => _openGym(gym),
@@ -1001,16 +1001,18 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                     style: GoogleFonts.manrope(
                       fontSize: 11, fontWeight: FontWeight.w700,
                       color: Colors.white)),
-                  const SizedBox(height: 2),
-                  Row(children: [
-                    SvgPicture.asset('assets/icons/discovery_star.svg',
-                      width: 9, height: 9),
-                    const SizedBox(width: 3),
-                    Text(rating,
-                      style: GoogleFonts.manrope(
-                        fontSize: 10, fontWeight: FontWeight.w600,
-                        color: Colors.white)),
-                  ]),
+                  if (rating != null) ...[
+                    const SizedBox(height: 2),
+                    Row(children: [
+                      SvgPicture.asset('assets/icons/discovery_star.svg',
+                        width: 9, height: 9),
+                      const SizedBox(width: 3),
+                      Text(rating,
+                        style: GoogleFonts.manrope(
+                          fontSize: 10, fontWeight: FontWeight.w600,
+                          color: Colors.white)),
+                    ]),
+                  ],
                 ],
               ),
             ),
@@ -1147,13 +1149,13 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   Widget _buildGymCard(Map<String, dynamic> gym, {required bool showLogoBadge}) {
     final name     = gym['app_name'] as String? ?? gym['name'] as String? ?? '';
     final logoUrl  = gym['logo_url'] as String?;
-    final coverUrl = gym['cover_url'] as String? ?? gym['cover_image_url'] as String?;
+    final coverUrl = _mediaUrl(gym['cover_url'] as String? ?? gym['cover_image_url'] as String?);
     final city     = gym['city'] as String? ?? '';
     final distKm   = (gym['distance_km'] as num?);
     final distLabel = distKm != null
         ? (distKm < 1 ? '${(distKm * 1000).round()} m' : '${distKm.toStringAsFixed(1)} km')
         : null;
-    final rating   = (gym['rating'] as num?)?.toStringAsFixed(1) ?? '4.8';
+    final rating   = (gym['rating'] as num?)?.toStringAsFixed(1);
     final services = (gym['services'] as List?)?.cast<String>() ??
                      (gym['service_types'] as String?)?.split(',').map((s) => s.trim()).toList() ?? [];
     final color    = _parseColor(gym['primary_color'] as String?);
@@ -1260,31 +1262,36 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                       color: Colors.white)),
                   const SizedBox(height: 5),
 
-                  // Rating + city
                   Row(children: [
-                    SvgPicture.asset('assets/icons/discovery_star.svg',
-                      width: 11, height: 10),
-                    const SizedBox(width: 4),
-                    Text(rating,
-                      style: GoogleFonts.manrope(
-                        fontSize: 12, fontWeight: FontWeight.w600,
-                        color: Colors.white)),
+                    if (rating != null) ...[
+                      SvgPicture.asset('assets/icons/discovery_star.svg',
+                        width: 11, height: 10),
+                      const SizedBox(width: 4),
+                      Text(rating,
+                        style: GoogleFonts.manrope(
+                          fontSize: 12, fontWeight: FontWeight.w600,
+                          color: Colors.white)),
+                    ],
                     if (distLabel != null) ...[
-                      const SizedBox(width: 8),
-                      Container(width: 4, height: 4,
-                        decoration: const BoxDecoration(
-                          color: _kDot, shape: BoxShape.circle)),
-                      const SizedBox(width: 8),
+                      if (rating != null) ...[
+                        const SizedBox(width: 8),
+                        Container(width: 4, height: 4,
+                          decoration: const BoxDecoration(
+                            color: _kDot, shape: BoxShape.circle)),
+                        const SizedBox(width: 8),
+                      ],
                       const Icon(Icons.location_on_rounded, size: 10, color: _kLime),
                       const SizedBox(width: 2),
                       Text(distLabel,
                         style: GoogleFonts.manrope(fontSize: 12, color: _kLime, fontWeight: FontWeight.w600)),
                     ] else if (city.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Container(width: 4, height: 4,
-                        decoration: const BoxDecoration(
-                          color: _kDot, shape: BoxShape.circle)),
-                      const SizedBox(width: 8),
+                      if (rating != null) ...[
+                        const SizedBox(width: 8),
+                        Container(width: 4, height: 4,
+                          decoration: const BoxDecoration(
+                            color: _kDot, shape: BoxShape.circle)),
+                        const SizedBox(width: 8),
+                      ],
                       Text(city,
                         style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
                     ],
@@ -1372,6 +1379,13 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         ),
       ),
     );
+  }
+
+  String? _mediaUrl(String? url) {
+    if (url == null || url.isEmpty) return null;
+    if (url.startsWith('http')) return url;
+    const host = 'https://passionate-grace-production-98ad.up.railway.app';
+    return url.startsWith('/') ? '$host$url' : '$host/$url';
   }
 
   Widget _gymPlaceholder(Color color, String name) {
@@ -1533,6 +1547,7 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                 Text('Φίλτρα',
                   style: GoogleFonts.manrope(
                     fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                const Spacer(),
                 if (_hasAny)
                   GestureDetector(
                     onTap: _clearAll,
@@ -1540,6 +1555,20 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                       style: GoogleFonts.manrope(
                         fontSize: 13, fontWeight: FontWeight.w600, color: _kLime)),
                   ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: _kBg,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _kBorder),
+                    ),
+                    child: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                  ),
+                ),
               ],
             ),
           ),

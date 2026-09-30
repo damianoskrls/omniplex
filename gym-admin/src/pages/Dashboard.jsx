@@ -14,6 +14,7 @@ import Avatar from '../components/ui/Avatar';
 import TrialBookingModal from '../components/TrialBookingModal';
 import CreateBookingModal from '../components/CreateBookingModal';
 import ExpiringMembershipsModal from '../components/ExpiringMembershipsModal';
+import StoreFilter from '../components/StoreFilter';
 
 const KPI_STYLES = [
   { glow: '#76C043', icon: Calendar },
@@ -177,6 +178,8 @@ export default function Dashboard() {
   const [expiringMemberships, setExpiringMemberships] = useState([]);
   const [expiringModalOpen, setExpiringModalOpen] = useState(false);
   const [extras, setExtras] = useState(null);
+  const [locations, setLocations] = useState([]);
+  const [locationId, setLocationId] = useState('');
   const [editingTrial, setEditingTrial] = useState(null);
   const [noteTrialId, setNoteTrialId] = useState(null);
   const [noteText, setNoteText] = useState('');
@@ -204,6 +207,12 @@ export default function Dashboard() {
       loadTrials();
     } catch { /* ignore */ } finally { setSavingNote(false); }
   }
+
+  useEffect(() => {
+    api.get('/client-admin/locations')
+      .then((r) => setLocations((r.data || []).filter((l) => l.is_active !== 0 && l.is_active !== false)))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     api.get('/client-admin/dashboard')
@@ -251,6 +260,9 @@ export default function Dashboard() {
   ] : [];
 
   const now = new Date();
+  const todaySessions = (stats?.today_sessions || []).filter(
+    (s) => !locationId || String(s.location_id) === String(locationId),
+  );
 
   return (
     <Layout title="Dashboard" headerActions={
@@ -408,18 +420,19 @@ export default function Dashboard() {
               <div className="dash-widget__head">
                 <div>
                   <h2 className="dash-widget__title"><Calendar size={18} /> Κρατήσεις σήμερα</h2>
-                  <p className="dash-widget__sub">{stats?.today_sessions?.length || 0} ραντεβού στο πρόγραμμα</p>
+                  <p className="dash-widget__sub">{todaySessions.length} ραντεβού στο πρόγραμμα</p>
                 </div>
-                <Link to="/bookings" className="btn btn-secondary btn-sm">Όλες οι κρατήσεις</Link>
+                <Link to={locationId ? `/bookings?location_id=${locationId}` : '/bookings'} className="btn btn-secondary btn-sm">Όλες οι κρατήσεις</Link>
               </div>
-              {!stats?.today_sessions?.length ? (
+              <StoreFilter locations={locations} value={locationId} onChange={setLocationId} />
+              {!todaySessions.length ? (
                 <div className="dash-empty">
                   <Calendar size={32} style={{ color: '#94a3b8', marginBottom: 8 }} />
                   <p>Δεν υπάρχουν κρατήσεις σήμερα</p>
                 </div>
               ) : (
                 <div className="dash-timeline">
-                  {groupBookingsBySlot(stats.today_sessions).map((slot, i) => {
+                  {groupBookingsBySlot(todaySessions).map((slot, i) => {
                     const isPast = new Date(slot.ends_at) < now;
                     const isNow = new Date(slot.starts_at) <= now && new Date(slot.ends_at) >= now;
                     return (

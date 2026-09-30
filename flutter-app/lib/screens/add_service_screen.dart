@@ -56,6 +56,15 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     return n == 1 ? '1 συνεδρία' : '$n συνεδρίες';
   }
 
+  String _fmtSlot(String? date, String? time) {
+    if (date == null || date.length < 10) return time ?? '';
+    const days = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
+    const months = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
+    final d = DateTime.tryParse(date);
+    if (d == null) return '$date ${time ?? ''}'.trim();
+    return '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]}, ${time ?? ''}'.trim();
+  }
+
   Future<void> _request(Map<String, dynamic> plan, String serviceId) async {
     final planId = plan['id']?.toString();
     if (planId == null) return;
@@ -82,12 +91,55 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       ),
     );
     if (kind == null || !mounted) return;
+    String? trialDate;
+    String? trialTime;
+    if (kind == 'trial') {
+      setState(() => _buyingId = planId);
+      Map<String, dynamic>? slot;
+      try {
+        slot = await context.read<AuthService>().api.fetchNextSlot(serviceId: serviceId);
+      } on ApiException catch (e) {
+        if (mounted) {
+          setState(() => _buyingId = null);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        }
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _buyingId = null);
+      if (slot == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Δεν βρέθηκε διαθέσιμο ραντεβού τις επόμενες 2 εβδομάδες')),
+        );
+        return;
+      }
+      trialDate = slot['date']?.toString();
+      trialTime = slot['time']?.toString();
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('Επόμενο διαθέσιμο', style: TextStyle(color: Colors.white)),
+          content: Text(
+            '${_fmtSlot(trialDate, trialTime)}\n\nΘα λάβεις ειδοποίηση έγκρισης πριν κλειστεί το ραντεβού.',
+            style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Άκυρο')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Στείλε αίτημα')),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+    }
     setState(() => _buyingId = planId);
     try {
       final result = await context.read<AuthService>().api.requestExtraPlan(
         planId: planId,
         kind: kind,
         serviceId: serviceId,
+        trialDate: trialDate,
+        trialTime: trialTime,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

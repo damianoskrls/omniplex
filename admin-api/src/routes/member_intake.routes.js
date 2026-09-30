@@ -6,6 +6,8 @@ const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { FITNESS_GOAL_LABELS, normalizeFitnessGoal } = require('../lib/client_profile');
+const { createUserNotification } = require('../lib/user_notifications');
+const { sqlActiveClients } = require('../lib/client_soft_delete');
 
 const router = express.Router();
 const GOALS = Object.keys(FITNESS_GOAL_LABELS);
@@ -59,8 +61,128 @@ async function loadPair(bizId, userId) {
   };
 }
 
+const HEALTH_REMINDER = {
+  type: 'health_card',
+  title: 'Κάρτα υγείας',
+  body: 'Συμπλήρωσε την κάρτα υγείας σου: φωτογραφία και ηλεκτρονική υπογραφή.',
+};
+
+router.post('/admin/remind-missing', requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT u.id FROM users u
+       WHERE u.business_id = ? AND ${sqlActiveClients('u')}
+         AND NOT EXISTS (
+           SELECT 1 FROM member_health_cards hc
+           WHERE (hc.user_id COLLATE utf8mb4_unicode_ci) = (u.id COLLATE utf8mb4_unicode_ci)
+             AND (hc.business_id COLLATE utf8mb4_unicode_ci) = (u.business_id COLLATE utf8mb4_unicode_ci)
+             AND hc.signed_at IS NOT NULL
+         )
+       LIMIT 300`,
+      [req.bizId],
+    );
+    let sent = 0;
+    for (const row of rows) {
+      try {
+        await createUserNotification(db, {
+          businessId: req.bizId,
+          userId: row.id,
+          ...HEALTH_REMINDER,
+          payload: { action: 'open_health_card' },
+        });
+        sent += 1;
+      } catch (_) {}
+    }
+    res.json({ sent });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/admin/:userId/remind', requireAdmin, async (req, res) => {
+  try {
+    const [[user]] = await db.query(
+      'SELECT id, full_name FROM users WHERE id = ? AND business_id = ?',
+      [req.params.userId, req.bizId],
+    );
+    if (!user) return res.status(404).json({ error: 'Ο πελάτης δεν βρέθηκε' });
+    await createUserNotification(db, {
+      businessId: req.bizId,
+      userId: user.id,
+      ...HEALTH_REMINDER,
+      payload: { action: 'open_health_card' },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+async function ownsUser(bizId, userId) {
+  const [[user]] = await db.query(
+    'SELECT id FROM users WHERE id = ? AND business_id = ?',
+    [userId, bizId],
+  );
+  return !!user;
+}
+
+async function saveIntake(bizId, userId, body) {
+  const goal = GOALS.includes(body?.fitness_goal) ? body.fitness_goal : 'general';
+  const experience = EXPERIENCE.has(body?.experience) ? body.experience : 'beginner';
+  const visits = Math.min(14, Math.max(1, Number(body?.visits_per_week) || 3));
+  const motivation = String(body?.motivation || '').trim().slice(0, 2000);
+  const goalText = String(body?.goal_text || '').trim().slice(0, 2000);
+  await db.query(
+    `INSERT INTO member_intakes
+      (id, business_id, user_id, fitness_goal, motivation, goal_text, experience, visits_per_week, completed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE
+      fitness_goal = VALUES(fitness_goal),
+      motivation = VALUES(motivation),
+      goal_text = VALUES(goal_text),
+      experience = VALUES(experience),
+      visits_per_week = VALUES(visits_per_week),
+      completed_at = NOW()`,
+    [uuidv4(), bizId, userId, goal, motivation || null, goalText || null, experience, visits],
+  );
+  await db.query('UPDATE users SET fitness_goal = ? WHERE id = ? AND business_id = ?', [
+    normalizeFitnessGoal(goal), userId, bizId,
+  ]);
+}
+
+async function saveHealth(bizId, userId, body) {
+  const hasConditions = body?.has_conditions ? 1 : 0;
+  const takesMedication = body?.takes_medication ? 1 : 0;
+  const conditions = String(body?.conditions_text || '').trim().slice(0, 4000);
+  const medication = String(body?.medication_text || '').trim().slice(0, 4000);
+  await db.query(
+    `INSERT INTO member_health_cards
+      (id, business_id, user_id, has_conditions, conditions_text, takes_medication, medication_text)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+      has_conditions = VALUES(has_conditions),
+      conditions_text = VALUES(conditions_text),
+      takes_medication = VALUES(takes_medication),
+      medication_text = VALUES(medication_text)`,
+    [uuidv4(), bizId, userId, hasConditions, hasConditions ? conditions || null : null, takesMedication, takesMedication ? medication || null : null],
+  );
+}
+
 router.get('/admin/:userId', requireAdmin, async (req, res) => {
   try {
+    res.json(await loadPair(req.bizId, req.params.userId));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/admin/:userId', requireAdmin, async (req, res) => {
+  try {
+    if (!(await ownsUser(req.bizId, req.params.userId))) {
+      return res.status(404).json({ error: 'Ο πελάτης δεν βρέθηκε' });
+    }
+    await saveIntake(req.bizId, req.params.userId, req.body?.intake || req.body);
+    await saveHealth(req.bizId, req.params.userId, req.body?.health || req.body);
     res.json(await loadPair(req.bizId, req.params.userId));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -76,57 +198,18 @@ router.get('/:bizId', requireMember, async (req, res) => {
 });
 
 router.put('/:bizId/intake', requireMember, async (req, res) => {
-  const userId = req.member.userId;
-  const bizId = req.params.bizId;
-  const goal = GOALS.includes(req.body?.fitness_goal) ? req.body.fitness_goal : 'general';
-  const experience = EXPERIENCE.has(req.body?.experience) ? req.body.experience : 'beginner';
-  const visits = Math.min(14, Math.max(1, Number(req.body?.visits_per_week) || 3));
-  const motivation = String(req.body?.motivation || '').trim().slice(0, 2000);
-  const goalText = String(req.body?.goal_text || '').trim().slice(0, 2000);
   try {
-    const id = uuidv4();
-    await db.query(
-      `INSERT INTO member_intakes
-        (id, business_id, user_id, fitness_goal, motivation, goal_text, experience, visits_per_week, completed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-       ON DUPLICATE KEY UPDATE
-        fitness_goal = VALUES(fitness_goal),
-        motivation = VALUES(motivation),
-        goal_text = VALUES(goal_text),
-        experience = VALUES(experience),
-        visits_per_week = VALUES(visits_per_week),
-        completed_at = NOW()`,
-      [id, bizId, userId, goal, motivation || null, goalText || null, experience, visits],
-    );
-    await db.query('UPDATE users SET fitness_goal = ? WHERE id = ? AND business_id = ?', [
-      normalizeFitnessGoal(goal), userId, bizId,
-    ]);
-    res.json(await loadPair(bizId, userId));
+    await saveIntake(req.params.bizId, req.member.userId, req.body);
+    res.json(await loadPair(req.params.bizId, req.member.userId));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 router.put('/:bizId/health', requireMember, async (req, res) => {
-  const userId = req.member.userId;
-  const bizId = req.params.bizId;
-  const hasConditions = req.body?.has_conditions ? 1 : 0;
-  const takesMedication = req.body?.takes_medication ? 1 : 0;
-  const conditions = String(req.body?.conditions_text || '').trim().slice(0, 4000);
-  const medication = String(req.body?.medication_text || '').trim().slice(0, 4000);
   try {
-    await db.query(
-      `INSERT INTO member_health_cards
-        (id, business_id, user_id, has_conditions, conditions_text, takes_medication, medication_text)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-        has_conditions = VALUES(has_conditions),
-        conditions_text = VALUES(conditions_text),
-        takes_medication = VALUES(takes_medication),
-        medication_text = VALUES(medication_text)`,
-      [uuidv4(), bizId, userId, hasConditions, hasConditions ? conditions || null : null, takesMedication, takesMedication ? medication || null : null],
-    );
-    res.json(await loadPair(bizId, userId));
+    await saveHealth(req.params.bizId, req.member.userId, req.body);
+    res.json(await loadPair(req.params.bizId, req.member.userId));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -135,7 +218,9 @@ router.put('/:bizId/health', requireMember, async (req, res) => {
 const upload = multer({
   storage: multer.diskStorage({
     destination(req, _file, cb) {
-      const dir = path.join(process.env.UPLOAD_DIR || './uploads', req.params.bizId, 'health', req.member.userId);
+      const bizId = req.params.bizId || req.bizId;
+      const userId = req.member?.userId || req.params.userId;
+      const dir = path.join(process.env.UPLOAD_DIR || './uploads', bizId, 'health', userId);
       fs.mkdirSync(dir, { recursive: true });
       cb(null, dir);
     },
@@ -151,23 +236,92 @@ const upload = multer({
   },
 });
 
-router.post('/:bizId/health/document', requireMember, (req, res) => {
-  upload.single('document')(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message || 'Αποτυχία ανεβάσματος' });
-    if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε αρχείο' });
-    const url = `/uploads/${req.params.bizId}/health/${req.member.userId}/${req.file.filename}`;
-    try {
-      await db.query(
-        `INSERT INTO member_health_cards (id, business_id, user_id, document_url, document_name)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE document_url = VALUES(document_url), document_name = VALUES(document_name)`,
-        [uuidv4(), req.params.bizId, req.member.userId, url, req.file.originalname || req.file.filename],
-      );
-      res.json(await loadPair(req.params.bizId, req.member.userId));
-    } catch (e) {
-      res.status(500).json({ error: e.message });
+function storeHealthUpload(field, urlCol, nameCol) {
+  const allowed = new Set(['document_url', 'document_name', 'photo_url']);
+  if (!allowed.has(urlCol) || (nameCol && !allowed.has(nameCol))) {
+    throw new Error('Invalid health upload column');
+  }
+  return (req, res) => {
+    upload.single(field)(req, res, async (err) => {
+      if (err) return res.status(400).json({ error: err.message || 'Αποτυχία ανεβάσματος' });
+      if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε αρχείο' });
+      if (req.bizId && !(await ownsUser(req.bizId, req.params.userId))) {
+        return res.status(404).json({ error: 'Ο πελάτης δεν βρέθηκε' });
+      }
+      const bizId = req.params.bizId || req.bizId;
+      const userId = req.member?.userId || req.params.userId;
+      const url = `/uploads/${bizId}/health/${userId}/${req.file.filename}`;
+      const name = req.file.originalname || req.file.filename;
+      const cols = nameCol ? `${urlCol}, ${nameCol}` : urlCol;
+      const marks = nameCol ? '?, ?' : '?';
+      const update = nameCol
+        ? `${urlCol} = VALUES(${urlCol}), ${nameCol} = VALUES(${nameCol})`
+        : `${urlCol} = VALUES(${urlCol})`;
+      try {
+        await db.query(
+          `INSERT INTO member_health_cards (id, business_id, user_id, ${cols})
+           VALUES (?, ?, ?, ${marks})
+           ON DUPLICATE KEY UPDATE ${update}`,
+          [uuidv4(), bizId, userId, url, ...(nameCol ? [name] : [])],
+        );
+        res.json(await loadPair(bizId, userId));
+      } catch (e) {
+        res.status(500).json({ error: e.message });
+      }
+    });
+  };
+}
+
+router.post('/:bizId/health/document', requireMember, storeHealthUpload('document', 'document_url', 'document_name'));
+router.post('/:bizId/health/photo', requireMember, storeHealthUpload('photo', 'photo_url'));
+router.post('/admin/:userId/health/document', requireAdmin, storeHealthUpload('document', 'document_url', 'document_name'));
+router.post('/admin/:userId/health/photo', requireAdmin, storeHealthUpload('photo', 'photo_url'));
+
+router.post('/admin/:userId/health/sign', requireAdmin, async (req, res) => {
+  const signature = String(req.body?.signature_data || '');
+  if (!signature.startsWith('data:image/png;base64,') || signature.length < 80 || signature.length > 1500000) {
+    return res.status(400).json({ error: 'Υπόγραψε στο πλαίσιο' });
+  }
+  try {
+    if (!(await ownsUser(req.bizId, req.params.userId))) {
+      return res.status(404).json({ error: 'Ο πελάτης δεν βρέθηκε' });
     }
-  });
+    await db.query(
+      `INSERT INTO member_health_cards (id, business_id, user_id, signature_data, signed_at, signed_ip)
+       VALUES (?, ?, ?, ?, NOW(), 'admin')
+       ON DUPLICATE KEY UPDATE signature_data = VALUES(signature_data), signed_at = NOW(), signed_ip = 'admin'`,
+      [uuidv4(), req.bizId, req.params.userId, signature],
+    );
+    res.json(await loadPair(req.bizId, req.params.userId));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/:bizId/health/sign', requireMember, async (req, res) => {
+  const signature = String(req.body?.signature_data || '');
+  if (!signature.startsWith('data:image/png;base64,') || signature.length < 80 || signature.length > 1500000) {
+    return res.status(400).json({ error: 'Υπόγραψε στο πλαίσιο' });
+  }
+  const userId = req.member.userId;
+  const bizId = req.params.bizId;
+  try {
+    const [[card]] = await db.query(
+      'SELECT photo_url FROM member_health_cards WHERE business_id = ? AND user_id = ?',
+      [bizId, userId],
+    );
+    if (!card?.photo_url) return res.status(400).json({ error: 'Βάλε πρώτα μια φωτογραφία σου' });
+    const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim().slice(0, 45);
+    await db.query(
+      `UPDATE member_health_cards
+       SET signature_data = ?, signed_at = NOW(), signed_ip = ?
+       WHERE business_id = ? AND user_id = ?`,
+      [signature, ip || null, bizId, userId],
+    );
+    res.json(await loadPair(bizId, userId));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

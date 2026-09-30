@@ -486,15 +486,33 @@ class ApiService {
     );
   }
 
+  Future<Map<String, dynamic>?> fetchNextSlot({
+    required String serviceId,
+    String? locationId,
+    bool dropin = false,
+  }) async {
+    final res = await _get('/api/booking/$bizId/next-slot', query: {
+      'service_id': serviceId,
+      if (locationId != null) 'location_id': locationId,
+      if (dropin) 'dropin': '1',
+    });
+    if (res.statusCode == 404) return null;
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
   Future<Map<String, dynamic>> requestExtraPlan({
     required String planId,
     required String kind,
     String? serviceId,
+    String? trialDate,
+    String? trialTime,
   }) async {
     final res = await _post('/api/booking/$bizId/plan-request', {
       'plan_id': planId,
       'kind': kind,
       if (serviceId != null) 'service_id': serviceId,
+      if (trialDate != null) 'trial_date': trialDate,
+      if (trialTime != null) 'trial_time': trialTime,
     });
     return Map<String, dynamic>.from(_decode(res) as Map);
   }
@@ -546,9 +564,48 @@ class ApiService {
     _decode(res);
   }
 
-  Future<Map<String, dynamic>> fetchNutritionMealPlanAdmin(String userId) async {
-    final res = await _get('/api/client-admin/nutrition/clients/$userId/meal-plan');
+  Future<Map<String, dynamic>> fetchNutritionMealPlanAdmin(String userId, {String? date}) async {
+    final res = await _get(
+      '/api/client-admin/nutrition/clients/$userId/meal-plan',
+      query: date == null ? null : {'date': date},
+    );
     return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<Map<String, dynamic>> saveNutritionMealPlan(String userId, Map<String, dynamic> body) async {
+    final res = await _put('/api/client-admin/nutrition/clients/$userId/meal-plan', body);
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchNutritionPlanVersions(String userId) async {
+    final res = await _get('/api/client-admin/nutrition/clients/$userId/meal-plan/versions');
+    final data = _decode(res) as Map<String, dynamic>;
+    return ((data['versions'] as List?) ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> fetchNutritionPlanVersion(String userId, String planId) async {
+    final res = await _get('/api/client-admin/nutrition/clients/$userId/meal-plan/versions/$planId');
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
+  Future<void> saveNutritionTemplate(Map<String, dynamic> body) async {
+    final res = await _post('/api/client-admin/nutrition/templates', body);
+    _decode(res);
+  }
+
+  Future<List<Map<String, dynamic>>> smartNutritionShoppingList(List<Map<String, dynamic>> slots) async {
+    final res = await _post('/api/client-admin/nutrition/shopping-list/smart', {'slots': slots});
+    final data = _decode(res) as Map<String, dynamic>;
+    return ((data['items'] as List?) ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> notifyNutritionClient(String userId, {required String title, required String body}) async {
+    final res = await _post('/api/client-admin/nutrition/notify', {
+      'user_ids': [userId],
+      'title': title,
+      'body': body,
+    });
+    _decode(res);
   }
 
   Future<List<Map<String, dynamic>>> fetchNutritionTemplates() async {
@@ -558,17 +615,77 @@ class ApiService {
     return list.cast<Map<String, dynamic>>();
   }
 
-  Future<void> applyNutritionTemplate(String userId, String templateId) async {
+  Future<void> applyNutritionTemplate(String userId, String templateId, {String? effectiveFrom}) async {
     final res = await _post('/api/client-admin/nutrition/clients/$userId/meal-plan/apply-template', {
       'template_id': templateId,
+      if (effectiveFrom != null) 'effective_from': effectiveFrom,
     });
     _decode(res);
   }
 
-  Future<List<Map<String, dynamic>>> fetchNutritionBookings() async {
-    final res = await _get('/api/client-admin/nutrition/bookings');
+  Future<List<Map<String, dynamic>>> fetchNutritionBookings({String? status}) async {
+    final res = await _get(
+      '/api/client-admin/nutrition/bookings',
+      query: (status == null || status.isEmpty) ? null : {'status': status},
+    );
     final data = _decode(res);
     return (data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> updateNutritionBookingStatus(String id, String status) async {
+    final res = await _patch('/api/client-admin/nutrition/bookings/$id/status', {'status': status});
+    _decode(res);
+  }
+
+  Future<void> deleteNutritionBooking(String id) async {
+    final res = await http.delete(
+      Uri.parse('$_base/api/client-admin/nutrition/bookings/$id'),
+      headers: _headers,
+    );
+    _decode(res);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchBookableNutritionClients() async {
+    final res = await _get('/api/client-admin/nutrition/bookings/bookable-clients');
+    final data = _decode(res);
+    return (data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchNutritionBookingSlots(String date) async {
+    final res = await _get('/api/client-admin/nutrition/bookings/slots', query: {'date': date});
+    final data = _decode(res) as Map<String, dynamic>;
+    return ((data['slots'] as List?) ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> createNutritionBooking({required String userId, required String date, required String time}) async {
+    final res = await _post('/api/client-admin/nutrition/bookings', {
+      'user_id': userId,
+      'date': date,
+      'time': time,
+    });
+    _decode(res);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchNutritionSchedules() async {
+    final res = await _get('/api/client-admin/nutrition/consultation/slot-schedules');
+    final data = _decode(res);
+    return (data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> addNutritionSchedules({required List<int> weekdays, required List<String> startTimes}) async {
+    final res = await _post('/api/client-admin/nutrition/consultation/slot-schedules', {
+      'weekdays': weekdays,
+      'start_times': startTimes,
+    });
+    _decode(res);
+  }
+
+  Future<void> deleteNutritionSchedule(String id) async {
+    final res = await http.delete(
+      Uri.parse('$_base/api/client-admin/nutrition/consultation/slot-schedules/$id'),
+      headers: _headers,
+    );
+    _decode(res);
   }
 
   Future<List<BookService>> fetchServices() async {

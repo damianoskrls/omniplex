@@ -308,7 +308,7 @@ async function businessLoginPayload(businessId, fallbackName, slug, type) {
             primary_color, secondary_color, accent_color,
             background_color, surface_color, font_family,
             feature_online_booking, feature_loyalty_points,
-            feature_memberships, feature_waitlist, feature_nutrition
+            feature_memberships, feature_waitlist, feature_nutrition, feature_qr_checkin
      FROM business_configs WHERE business_id = ? LIMIT 1`,
     [businessId],
   );
@@ -333,6 +333,7 @@ async function businessLoginPayload(businessId, fallbackName, slug, type) {
     feature_memberships: cfg?.feature_memberships ?? 1,
     feature_waitlist: cfg?.feature_waitlist ?? 0,
     feature_nutrition: cfg?.feature_nutrition ?? 0,
+    feature_qr_checkin: cfg?.feature_qr_checkin ?? 0,
   };
 }
 
@@ -1021,6 +1022,10 @@ router.get('/clients', requireClientAdmin, async (req, res) => {
         u.id, u.full_name, u.email, u.phone, u.loyalty_points, u.created_at,
         u.account_status, u.deleted_at, u.notes, u.referred_by_user_id, u.date_of_birth, u.weight_kg,
         u.fitness_goal, u.trainer_notes,
+        (SELECT hc.signed_at FROM member_health_cards hc
+          WHERE (hc.user_id COLLATE utf8mb4_unicode_ci) = (u.id COLLATE utf8mb4_unicode_ci)
+            AND (hc.business_id COLLATE utf8mb4_unicode_ci) = (u.business_id COLLATE utf8mb4_unicode_ci)
+          LIMIT 1) AS health_signed_at,
         ref.full_name AS referred_by_name,
         COUNT(DISTINCT b.id)  AS total_bookings,
         COUNT(DISTINCT m.id)  AS active_packages,
@@ -1209,7 +1214,7 @@ router.post('/clients/:userId/approve', requireClientAdmin, async (req, res) => 
       await sendSms(
         user.phone,
         `${gymName}: O logarismos sas egkrthike! Syndethite me: Kinito: ${normalised}, PIN: ${pinHint}. Allaxte to PIN apo tin efarmogi.`
-      );
+      ).catch((err) => console.error('[SMS] approve failed:', err.message));
     }
 
     return res.json({ ok: true });
@@ -1240,7 +1245,7 @@ router.post('/clients/:userId/reject', requireClientAdmin, async (req, res) => {
       await sendSms(
         user.phone,
         `${gymName}: H aitisi egrafis sas den egkrithike. Epikoinwniste me to gymnastirio gia perissoteres plirofories.`
-      );
+      ).catch((err) => console.error('[SMS] reject failed:', err.message));
     }
 
     return res.json({ ok: true });
@@ -2748,10 +2753,11 @@ router.post('/notifications/broadcast', requireClientAdmin, async (req, res) => 
 
   const conn = await db.getConnection();
   let sent = 0;
+  let pushed = 0;
   try {
     await conn.beginTransaction();
     for (const u of users) {
-      await createUserNotification(conn, {
+      const note = await createUserNotification(conn, {
         businessId: bizId,
         userId: u.id,
         type: 'announcement',
@@ -2761,15 +2767,18 @@ router.post('/notifications/broadcast', requireClientAdmin, async (req, res) => 
         payload: { audience },
       });
       sent += 1;
+      pushed += note.sentPush ? 1 : 0;
     }
     await conn.commit();
+    const fcmOn = !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FCM_SERVER_KEY);
     return res.json({
       ok: true,
       sent,
-      message: `Η ανακοίνωση στάλθηκε σε ${sent} πελάτες`,
-      push_note: (process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FCM_SERVER_KEY)
-        ? 'Push εστάλη όπου υπάρχει εγγεγραμμένη συσκευή.'
-        : 'FCM δεν είναι ρυθμισμένο — οι ειδοποιήσεις αποθηκεύτηκαν στην εφαρμογή.',
+      pushed,
+      message: `Η ανακοίνωση γράφτηκε σε ${sent} πελάτες. Push έφτασε σε ${pushed}.`,
+      push_note: fcmOn
+        ? (pushed ? null : 'Καμία συσκευή δεν είναι εγγεγραμμένη για push. Ο πελάτης πρέπει να έχει ανοιχτό το OmniPlex τουλάχιστον μία φορά.')
+        : 'FCM δεν είναι ρυθμισμένο — η ειδοποίηση φαίνεται μέσα στην εφαρμογή, όχι ως push στο κινητό.',
     });
   } catch (err) {
     await conn.rollback();
@@ -5589,6 +5598,7 @@ router.patch('/settings', requireClientAdmin, async (req, res) => {
     app_name, opening_hours, owner_name, owner_phone,
     gym_address, gym_phone, gym_email, logo_url,
     feature_online_booking, feature_loyalty_points, feature_memberships, feature_waitlist, feature_nutrition,
+    feature_qr_checkin,
   } = req.body;
   await db.query(
     `UPDATE business_configs SET
@@ -5604,12 +5614,14 @@ router.patch('/settings', requireClientAdmin, async (req, res) => {
        feature_loyalty_points = COALESCE(?, feature_loyalty_points),
        feature_memberships = COALESCE(?, feature_memberships),
        feature_waitlist = COALESCE(?, feature_waitlist),
-       feature_nutrition = COALESCE(?, feature_nutrition)
+       feature_nutrition = COALESCE(?, feature_nutrition),
+       feature_qr_checkin = COALESCE(?, feature_qr_checkin)
      WHERE business_id=?`,
     [app_name, opening_hours ? JSON.stringify(opening_hours) : null,
      owner_name, owner_phone, gym_address, gym_phone, gym_email, logo_url,
      feature_online_booking ?? null, feature_loyalty_points ?? null,
      feature_memberships ?? null, feature_waitlist ?? null, feature_nutrition ?? null,
+     feature_qr_checkin ?? null,
      req.admin.businessId]
   );
   return res.json({ ok: true });
@@ -7902,20 +7914,27 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
           : kind === 'physiotherapist' ? 'Φυσιοθεραπευτής'
           : (jr.specialty || 'Trainer');
         if (existingStaff) {
-          if (kind === 'nutritionist') {
-            await db.query(
-              `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?), is_nutritionist = 1
-               WHERE id = ?`,
-              [jr.global_user_id, jr.phone || '', existingStaff.id],
-            );
-          } else {
-            await db.query(
-              `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?),
-               role = ?, is_nutritionist = ?
-               WHERE id = ?`,
-              [jr.global_user_id, jr.phone || '', roleLabel, 0, existingStaff.id],
-            );
-          }
+          const [[current]] = await db.query(
+            'SELECT role, COALESCE(is_nutritionist, 0) AS is_nutritionist FROM staff WHERE id = ?',
+            [existingStaff.id],
+          );
+          const have = staffSpecialtyKind(current?.role) === 'nutritionist' || Number(current?.is_nutritionist) === 1
+            ? 'nutritionist'
+            : staffSpecialtyKind(current?.role);
+          const keepNutrition = kind === 'nutritionist' || Number(current?.is_nutritionist) === 1
+            || /διατροφ|nutri/i.test(current?.role || '');
+          const roleText = String(current?.role || '');
+          const alreadyHasLabel = roleText.toLowerCase().includes(String(roleLabel).toLowerCase());
+          const nextRole = kind === 'nutritionist' || alreadyHasLabel || !roleText
+            ? (roleText || roleLabel)
+            : `${roleText} · ${roleLabel}`;
+          await db.query(
+            `UPDATE staff SET global_user_id = ?, phone = COALESCE(NULLIF(phone,''), ?),
+             role = ?, is_nutritionist = ?
+             WHERE id = ?`,
+            [jr.global_user_id, jr.phone || '', nextRole, keepNutrition ? 1 : 0, existingStaff.id],
+          );
+          if (have && have !== kind) recordRole = `${have}+${kind}`;
           recordId = existingStaff.id;
         } else {
           const staffId = uuidv4();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -6,10 +7,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../services/language_service.dart';
+import '../services/notification_service.dart';
 import '../services/push_service.dart';
 import '../config/tenant_config.dart';
 import 'discovery_landing_screen.dart';
@@ -62,12 +65,14 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   bool _loading = true;
   bool _enteringGym = false;
   int _unreadNotifications = 0;
+  Timer? _notifTimer;
+  final Set<String> _shownNotifs = {};
 
   @override
   void initState() {
     super.initState();
     _loadDashboard();
-    _loadNotificationCount();
+    _watchNotifications();
     PushService.instance.onForegroundData = (data) {
       _loadNotificationCount();
       final type = data['type']?.toString() ?? '';
@@ -79,8 +84,20 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
 
   @override
   void dispose() {
+    _notifTimer?.cancel();
     PushService.instance.onForegroundData = null;
     super.dispose();
+  }
+
+  Future<void> _watchNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _shownNotifs.addAll(prefs.getStringList('notif_shown_ids_v2') ?? const []);
+    } catch (_) {}
+    await _loadNotificationCount(announce: true);
+    _notifTimer = Timer.periodic(const Duration(seconds: 45), (_) {
+      _loadNotificationCount(announce: true);
+    });
   }
 
   void _openTab(int t) {
@@ -105,16 +122,37 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _loadNotificationCount() async {
+  Future<void> _loadNotificationCount({bool announce = false}) async {
     try {
       final res = await http.get(
         Uri.parse('$_apiBase/global/me/notifications'),
         headers: {'Authorization': 'Bearer ${widget.globalAuth.token}'},
       );
-      if (res.statusCode == 200 && mounted) {
-        final body = jsonDecode(res.body) as Map<String, dynamic>;
-        setState(() => _unreadNotifications = (body['unread_count'] as num?)?.toInt() ?? 0);
+      if (res.statusCode != 200 || !mounted) return;
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final items = ((body['notifications'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      setState(() => _unreadNotifications = (body['unread_count'] as num?)?.toInt() ?? 0);
+      if (!announce) return;
+      var popped = 0;
+      for (final item in items) {
+        final id = item['id']?.toString() ?? '';
+        if (id.isEmpty || _shownNotifs.contains(id)) continue;
+        final unread = item['is_read'] != 1 && item['is_read'] != true;
+        _shownNotifs.add(id);
+        if (!unread || popped >= 3) continue;
+        popped += 1;
+        await NotificationService.instance.showInstant(
+          title: item['title'] as String? ?? 'Ειδοποίηση',
+          body: item['body'] as String? ?? '',
+          payload: 'notif:$id',
+        );
       }
+      final prefs = await SharedPreferences.getInstance();
+      final ids = _shownNotifs.toList();
+      await prefs.setStringList('notif_shown_ids_v2', ids.length > 200 ? ids.sublist(ids.length - 200) : ids);
     } catch (_) {}
   }
 
@@ -277,11 +315,11 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
 
   Widget _buildNavBar() {
     final items = [
-      ('Αρχική',   'assets/icons/discovery_logo_bolt.svg',  false),
-      ('Αναζήτηση','assets/icons/discovery_search.svg',     false),
-      ('Πρόγραμμα','assets/icons/discovery_clock.svg',      false),
-      ('Γυμναστήρια','assets/icons/discovery_crossfit.svg', false),
-      ('Προφίλ',   'assets/icons/discovery_more.svg',       false),
+      ('Αρχική',   'assets/icons/nav_home.svg',  false),
+      ('Αναζήτηση','assets/icons/nav_search.svg',     false),
+      ('Πρόγραμμα','assets/icons/nav_calendar.svg',      false),
+      ('Γυμναστήρια','assets/icons/nav_gyms.svg', false),
+      ('Προφίλ',   'assets/icons/nav_profile.svg',       false),
     ];
     return Container(
       decoration: const BoxDecoration(
@@ -370,9 +408,14 @@ class _HomeTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final firstName = globalAuth.user?.fullName.split(' ').first ?? '';
     final gyms = globalAuth.gyms;
-    // Prefer member gym for the home card; fall back to staff gym if no member gyms
-    final memberGyms = gyms.where((g) => !g.isStaff).toList();
-    final primaryGym = memberGyms.isNotEmpty ? memberGyms.first : gyms.isNotEmpty ? gyms.first : null;
+    final homeGroups = <List<GlobalGym>>[];
+    final seenBiz = <String>{};
+    for (final gym in gyms) {
+      if (seenBiz.add(gym.businessId)) {
+        homeGroups.add(_rolesFirst(gyms.where((g) => g.businessId == gym.businessId).toList()));
+      }
+    }
+    final primaryGym = gyms.isNotEmpty ? gyms.first : null;
     final upcoming = (dashboard?['upcoming_bookings'] as List?)
         ?.cast<Map<String, dynamic>>() ?? [];
     final nextBooking = upcoming.isNotEmpty ? upcoming.first : null;
@@ -393,17 +436,25 @@ class _HomeTab extends StatelessWidget {
                       const SizedBox(height: 8),
 
                       // My Gym card
-                      if (primaryGym != null) ...[
-                        Text('Το Γυμναστήριό Μου',
+                      if (homeGroups.isNotEmpty) ...[
+                        Text(homeGroups.length > 1 ? 'Τα Γυμναστήριά Μου' : 'Το Γυμναστήριό Μου',
                           style: GoogleFonts.manrope(
                             fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                         const SizedBox(height: 12),
-                        _GymMemberCard(
-                          gym: primaryGym,
-                          nextBooking: nextBooking,
-                          accentColor: parseColor(primaryGym.primaryColor),
-                          onOpenGym: () => onEnterGym(primaryGym),
-                          onBookingTap: nextBooking == null ? null : () => onOpenBooking(nextBooking),
+                        _GymCarousel(
+                          groups: homeGroups,
+                          upcoming: upcoming,
+                          parseColor: parseColor,
+                          onEnterGym: onEnterGym,
+                          onOpenBooking: onOpenBooking,
+                          onAddRole: (gym) {
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => GymProfileScreen(
+                                slug: gym.slug,
+                                globalAuth: globalAuth,
+                              ),
+                            ));
+                          },
                         ),
                         const SizedBox(height: 24),
                       ],
@@ -520,19 +571,164 @@ class _HomeTab extends StatelessWidget {
   }
 }
 
+class _GymCarousel extends StatefulWidget {
+  const _GymCarousel({
+    required this.groups,
+    required this.upcoming,
+    required this.parseColor,
+    required this.onEnterGym,
+    required this.onOpenBooking,
+    required this.onAddRole,
+  });
+
+  final List<List<GlobalGym>> groups;
+  final List<Map<String, dynamic>> upcoming;
+  final Color Function(String?) parseColor;
+  final Future<void> Function(GlobalGym) onEnterGym;
+  final void Function(Map<String, dynamic>) onOpenBooking;
+  final void Function(GlobalGym) onAddRole;
+
+  @override
+  State<_GymCarousel> createState() => _GymCarouselState();
+}
+
+class _GymCarouselState extends State<_GymCarousel> {
+  late final PageController _page;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _page = PageController(viewportFraction: widget.groups.length > 1 ? 0.9 : 1);
+  }
+
+  @override
+  void dispose() {
+    _page.dispose();
+    super.dispose();
+  }
+
+  Map<String, dynamic>? _nextFor(GlobalGym gym) {
+    for (final booking in widget.upcoming) {
+      if (booking['business_id']?.toString() == gym.businessId) return booking;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final many = widget.groups.length > 1;
+    return Column(
+      children: [
+        SizedBox(
+          height: 300,
+          child: PageView.builder(
+            controller: _page,
+            itemCount: widget.groups.length,
+            onPageChanged: (i) => setState(() => _index = i),
+            itemBuilder: (_, i) {
+              final roles = widget.groups[i];
+              final gym = roles.first;
+              final next = _nextFor(gym);
+              return Padding(
+                padding: EdgeInsets.only(right: many ? 10 : 0),
+                child: _GymMemberCard(
+                  gym: gym,
+                  roles: roles,
+                  nextBooking: next,
+                  accentColor: widget.parseColor(gym.primaryColor),
+                  onOpenGym: () => widget.onEnterGym(roles.length == 1 ? gym : roles.first),
+                  onOpenRole: widget.onEnterGym,
+                  onAddRole: () => widget.onAddRole(gym),
+                  onBookingTap: next == null ? null : () => widget.onOpenBooking(next),
+                ),
+              );
+            },
+          ),
+        ),
+        if (many) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.groups.length, (i) => Container(
+              width: i == _index ? 16 : 6,
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: i == _index ? _kAccent : _kGray.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            )),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+String _roleLabel(GlobalGym gym) {
+  if (!gym.isStaff) return 'Ασκούμενος';
+  if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
+  if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+  return 'Trainer';
+}
+
+int _roleRank(GlobalGym gym) {
+  if (gym.staffKind == 'nutritionist') return 0;
+  if (gym.staffKind == 'physiotherapist') return 1;
+  if (!gym.isStaff) return 2;
+  return 3;
+}
+
+List<GlobalGym> _rolesFirst(List<GlobalGym> roles) {
+  final copy = [...roles]..sort((a, b) => _roleRank(a).compareTo(_roleRank(b)));
+  return copy;
+}
+
+class _RoleChip extends StatelessWidget {
+  const _RoleChip({required this.label, required this.onTap, this.outlined = false});
+  final String label;
+  final VoidCallback onTap;
+  final bool outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: outlined ? Colors.transparent : _kAccent.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: outlined ? _kBorder : _kAccent.withValues(alpha: 0.45)),
+        ),
+        child: Text(label, style: GoogleFonts.manrope(
+          fontSize: 12, fontWeight: FontWeight.w700,
+          color: outlined ? Colors.white : _kAccent)),
+      ),
+    );
+  }
+}
+
 class _GymMemberCard extends StatelessWidget {
   const _GymMemberCard({
     required this.gym,
+    required this.roles,
     required this.nextBooking,
     required this.accentColor,
     required this.onOpenGym,
+    required this.onOpenRole,
+    required this.onAddRole,
     this.onBookingTap,
   });
 
   final GlobalGym gym;
+  final List<GlobalGym> roles;
   final Map<String, dynamic>? nextBooking;
   final Color accentColor;
   final VoidCallback onOpenGym;
+  final Future<void> Function(GlobalGym) onOpenRole;
+  final VoidCallback onAddRole;
   final VoidCallback? onBookingTap;
 
   @override
@@ -618,41 +814,45 @@ class _GymMemberCard extends StatelessWidget {
             ),
             ),
 
-          // Actions
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-            child: Row(children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: onOpenGym,
-                  child: Container(
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _kBorder),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final role in roles)
+                      _RoleChip(
+                        label: _roleLabel(role),
+                        onTap: () => onOpenRole(role),
+                      ),
+                    _RoleChip(label: 'Νέος ρόλος', outlined: true, onTap: onAddRole),
+                  ],
+                ),
+                if (roles.length == 1) ...[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: onOpenGym,
+                    child: Container(
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _kBorder),
+                      ),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.open_in_new_rounded, size: 14, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text('Άνοιξε', style: GoogleFonts.manrope(
+                          fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                      ]),
                     ),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      const Icon(Icons.open_in_new_rounded, size: 14, color: Colors.white),
-                      const SizedBox(width: 6),
-                      Text('Άνοιξε', style: GoogleFonts.manrope(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                    ]),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(
-                  color: _kAccent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _kAccent.withValues(alpha: 0.3)),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(Icons.qr_code_2_rounded, color: _kAccent, size: 20),
-              ),
-            ]),
+                ],
+              ],
+            ),
           ),
         ],
       ),
@@ -963,6 +1163,8 @@ class _ScheduleTab extends StatefulWidget {
 class _ScheduleTabState extends State<_ScheduleTab> {
   DateTime _selected = DateTime.now();
   int _weekOffset = 0;
+  String? _gymId;
+  String? _locationId;
 
   @override
   void initState() {
@@ -983,8 +1185,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   }
 
   void _autoSelectFirstBooking() {
-    final all = (widget.dashboard?['upcoming_bookings'] as List?)
-        ?.cast<Map<String, dynamic>>() ?? [];
+    final all = _scoped;
     if (all.isEmpty) return;
     final todayKey = _dateKey(DateTime.now());
     final todayHasBooking = all.any((b) => (b['booking_date'] as String? ?? '') == todayKey);
@@ -1004,14 +1205,39 @@ class _ScheduleTabState extends State<_ScheduleTab> {
       (widget.dashboard?['upcoming_bookings'] as List?)
           ?.cast<Map<String, dynamic>>() ?? [];
 
+  List<Map<String, dynamic>> get _scoped => _all.where((b) {
+    if (_gymId != null && b['business_id']?.toString() != _gymId) return false;
+    if (_locationId != null && b['location_id']?.toString() != _locationId) return false;
+    return true;
+  }).toList();
+
+  List<Map<String, dynamic>> get _stores {
+    final raw = widget.dashboard?['locations'];
+    final fromApi = raw is List
+        ? raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).where((l) {
+            if (_gymId == null) return true;
+            return l['business_id']?.toString() == _gymId;
+          }).toList()
+        : <Map<String, dynamic>>[];
+    if (fromApi.isNotEmpty) return fromApi;
+    final seen = <String, String>{};
+    for (final b in _all) {
+      if (_gymId != null && b['business_id']?.toString() != _gymId) continue;
+      final id = b['location_id']?.toString() ?? '';
+      final name = b['location_name']?.toString() ?? '';
+      if (id.isNotEmpty && name.isNotEmpty) seen[id] = name;
+    }
+    return seen.entries.map((e) => {'id': e.key, 'name': e.value}).toList();
+  }
+
   Set<String> get _bookedDates =>
-      _all.map((b) => (b['booking_date'] as String? ?? '')).toSet();
+      _scoped.map((b) => (b['booking_date'] as String? ?? '')).toSet();
 
   List<Map<String, dynamic>> get _forDay {
     final ds = '${_selected.year.toString().padLeft(4, '0')}-'
         '${_selected.month.toString().padLeft(2, '0')}-'
         '${_selected.day.toString().padLeft(2, '0')}';
-    final list = _all.where((b) => b['booking_date'] == ds).map((b) {
+    final list = _scoped.where((b) => b['booking_date'] == ds).map((b) {
       // Look up display name from the known gyms list (has correct app_name)
       final bizId = b['business_id']?.toString();
       GlobalGym? matched;
@@ -1090,6 +1316,27 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                 ],
               ),
             ),
+            if (widget.gyms.length > 1) ...[
+              const SizedBox(height: 14),
+              _filterRow(
+                label: 'Γυμναστήριο',
+                selected: _gymId,
+                options: widget.gyms.map((g) => (id: g.businessId, name: g.appName)).toList(),
+                onPick: (id) => setState(() {
+                  _gymId = id;
+                  _locationId = null;
+                }),
+              ),
+            ],
+            if (_stores.length > 1) ...[
+              const SizedBox(height: 10),
+              _filterRow(
+                label: 'Κατάστημα',
+                selected: _locationId,
+                options: _stores.map((l) => (id: l['id']?.toString() ?? '', name: l['name']?.toString() ?? '')).toList(),
+                onPick: (id) => setState(() => _locationId = id),
+              ),
+            ],
             const SizedBox(height: 16),
 
             // Week strip
@@ -1212,8 +1459,59 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     );
   }
 
+  Widget _filterRow({
+    required String label,
+    required String? selected,
+    required List<({String id, String name})> options,
+    required ValueChanged<String?> onPick,
+  }) {
+    final chips = <({String? id, String name})>[
+      (id: null, name: 'Συνολικά'),
+      ...options.where((o) => o.id.isNotEmpty && o.name.isNotEmpty).map((o) => (id: o.id, name: o.name)),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: Text(label, style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700, color: _kGray)),
+        ),
+        SizedBox(
+          height: 36,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: chips.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              final chip = chips[i];
+              final on = selected == chip.id;
+              return GestureDetector(
+                onTap: () => onPick(chip.id),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: on ? _kBrandGradient : null,
+                    color: on ? null : _kCard,
+                    borderRadius: BorderRadius.circular(999),
+                    border: on ? null : Border.all(color: _kBorder),
+                  ),
+                  child: Text(chip.name, style: GoogleFonts.manrope(
+                    fontSize: 13, fontWeight: FontWeight.w700,
+                    color: on ? Colors.white : _kGray,
+                  )),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _syncGoogleCalendar() async {
-    final bookings = _all.where((b) {
+    final bookings = _scoped.where((b) {
       final status = (b['status'] as String?) ?? 'confirmed';
       return status != 'cancelled';
     }).toList();
@@ -1461,7 +1759,12 @@ class _ScheduleBookingCard extends StatelessWidget {
           Row(children: [
             const Icon(Icons.fitness_center_rounded, size: 11, color: _kGray),
             const SizedBox(width: 4),
-            Flexible(child: Text(gym, overflow: TextOverflow.ellipsis,
+            Flexible(child: Text(
+              [
+                gym,
+                if ((booking['location_name'] as String?)?.isNotEmpty == true) booking['location_name'],
+              ].join(' · '),
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.manrope(fontSize: 11, color: _kGray))),
             if (who != null && who.isNotEmpty) ...[
               Text(' · ', style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
@@ -1832,8 +2135,6 @@ class _MyGymsTabState extends State<_MyGymsTab> {
   @override
   Widget build(BuildContext context) {
     final gyms = widget.globalAuth.gyms;
-    final trainerGyms = gyms.where((g) => g.isStaff).toList();
-    final memberGyms  = gyms.where((g) => !g.isStaff).toList();
     final staffPending = _pendingRequests.where((r) => r['role'] == 'staff').toList();
     final memberPending = _pendingRequests.where((r) => r['role'] != 'staff').toList();
     final totalCount  = gyms.length + _pendingRequests.length;
@@ -1895,28 +2196,39 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                   ),
                   const SizedBox(height: 20),
 
-                  if (trainerGyms.isNotEmpty || staffPending.isNotEmpty) ...[
-                    _sectionLabel('Ως Trainer · ${trainerGyms.length + staffPending.length}'),
-                    ...trainerGyms.map((gym) => _MyGymCard(
-                      gym: gym,
-                      accentColor: widget.parseColor(gym.primaryColor),
-                      onOpen: () => widget.onEnterGym(gym),
-                      onRemove: () => widget.onRemoveGym(gym),
-                    )),
+                  if (gyms.isNotEmpty) ...[
+                    _sectionLabel('Τα γυμναστήριά σου'),
+                    ...() {
+                      final seen = <String>{};
+                      final cards = <Widget>[];
+                      for (final gym in gyms) {
+                        if (!seen.add(gym.businessId)) continue;
+                        final roles = _rolesFirst(gyms.where((g) => g.businessId == gym.businessId).toList());
+                        cards.add(_MyGymCard(
+                          gym: roles.first,
+                          roles: roles,
+                          accentColor: widget.parseColor(roles.first.primaryColor),
+                          onOpen: () => widget.onEnterGym(roles.first),
+                          onOpenRole: widget.onEnterGym,
+                          onAddRole: () {
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => GymProfileScreen(
+                                slug: gym.slug,
+                                globalAuth: widget.globalAuth,
+                              ),
+                            ));
+                          },
+                          onRemove: () => widget.onRemoveGym(gym),
+                        ));
+                      }
+                      return cards;
+                    }(),
+                  ],
+                  if (staffPending.isNotEmpty || memberPending.isNotEmpty) ...[
+                    _sectionLabel('Εκκρεμή αιτήματα'),
                     ...staffPending.map((req) => _PendingRequestCard(
                       request: req,
                       onCancel: () => _cancelRequest(req['id'] as String),
-                    )),
-                    const SizedBox(height: 8),
-                  ],
-
-                  if (memberGyms.isNotEmpty || memberPending.isNotEmpty) ...[
-                    _sectionLabel('Ως Ασκούμενος · ${memberGyms.length + memberPending.length}'),
-                    ...memberGyms.map((gym) => _MyGymCard(
-                      gym: gym,
-                      accentColor: widget.parseColor(gym.primaryColor),
-                      onOpen: () => widget.onEnterGym(gym),
-                      onRemove: () => widget.onRemoveGym(gym),
                     )),
                     ...memberPending.map((req) => _PendingRequestCard(
                       request: req,
@@ -2032,25 +2344,32 @@ class _PendingRequestCard extends StatelessWidget {
 class _MyGymCard extends StatelessWidget {
   const _MyGymCard({
     required this.gym,
+    required this.roles,
     required this.accentColor,
     required this.onOpen,
+    required this.onOpenRole,
+    required this.onAddRole,
     required this.onRemove,
   });
 
   final GlobalGym gym;
+  final List<GlobalGym> roles;
   final Color accentColor;
   final VoidCallback onOpen;
+  final Future<void> Function(GlobalGym) onOpenRole;
+  final VoidCallback onAddRole;
   final VoidCallback onRemove;
 
   String get _statusLabel {
-    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
-    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
-    if (gym.isStaff) return 'Trainer';
+    final labels = roles.map(_roleLabel).toSet().toList();
+    if (labels.isNotEmpty && roles.any((g) => g.isStaff || g.staffKind != null)) {
+      return labels.join(' · ');
+    }
     switch (gym.userStatus) {
       case 'active': return 'Ενεργή Συνδρομή';
       case 'pending': return 'Σε Αναμονή';
       case 'inactive': return 'Ανενεργό';
-      default: return gym.userStatus;
+      default: return labels.isEmpty ? gym.userStatus : labels.join(' · ');
     }
   }
 
@@ -2188,38 +2507,17 @@ class _MyGymCard extends StatelessWidget {
             const Divider(color: _kBorder, height: 1),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-              child: Row(children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: onOpen,
-                    child: Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: _kBorder),
-                      ),
-                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        const Icon(Icons.open_in_new_rounded, size: 14, color: Colors.white),
-                        const SizedBox(width: 6),
-                        Text('Άνοιξε το Γυμναστήριο', style: GoogleFonts.manrope(
-                          fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
-                      ]),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: _kAccent.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _kAccent.withValues(alpha: 0.3)),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.qr_code_2_rounded, color: _kAccent, size: 18),
-                ),
-              ]),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final role in roles)
+                    _RoleChip(label: _roleLabel(role), onTap: () => onOpenRole(role)),
+                  _RoleChip(label: 'Νέος ρόλος', outlined: true, onTap: onAddRole),
+                  if (roles.length == 1)
+                    _RoleChip(label: 'Άνοιξε', outlined: true, onTap: onOpen),
+                ],
+              ),
             ),
           ],
         ],

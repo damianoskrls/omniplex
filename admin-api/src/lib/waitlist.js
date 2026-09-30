@@ -68,7 +68,7 @@ async function notifyUserWaitlistOffered(conn, {
     if (phone) {
       await sendSms(phone,
         `Άνοιξε θέση για ${serviceName} ${dateStr} ${timeStr}. Άνοιξε το app για να κλείσεις!`,
-      );
+      ).catch((err) => console.error('[SMS] waitlist failed:', err.message));
     }
   }
 }

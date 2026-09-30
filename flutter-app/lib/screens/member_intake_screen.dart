@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
@@ -28,7 +30,8 @@ class MemberIntakeScreen extends StatefulWidget {
       );
       if (!context.mounted || res.statusCode != 200) return;
       final body = jsonDecode(res.body);
-      if (body is Map && body['intake_completed'] == true) return;
+      final signed = body is Map && body['health'] is Map && body['health']['signed_at'] != null;
+      if (body is Map && body['intake_completed'] == true && signed) return;
       await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => MemberIntakeScreen(
           apiBase: '$base/api',
@@ -63,6 +66,11 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
   final _conditions = TextEditingController();
   final _medication = TextEditingController();
   String? _documentName;
+  String? _photoUrl;
+  String? _signedAt;
+  bool _agreed = false;
+  final _points = <Offset?>[];
+  final _padKey = GlobalKey();
 
   String get _root => '${widget.apiBase}/member/${widget.bizId}';
 
@@ -113,7 +121,10 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
           _conditions.text = health['conditions_text']?.toString() ?? '';
           _medication.text = health['medication_text']?.toString() ?? '';
           _documentName = health['document_name']?.toString();
+          _photoUrl = health['photo_url']?.toString();
+          _signedAt = health['signed_at']?.toString();
         }
+        if (intake is Map && intake['completed_at'] != null) _step = 1;
       }
     } catch (_) {
       _error = 'Σφάλμα σύνδεσης';
@@ -148,10 +159,44 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
     if (mounted) setState(() => _saving = false);
   }
 
-  Future<void> _saveHealth({bool pop = false}) async {
+  String get _origin => widget.apiBase.replaceAll(RegExp(r'/api$'), '');
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    final file = await ImagePicker().pickImage(source: source, imageQuality: 85, maxWidth: 1200);
+    if (file == null) return;
     setState(() => _saving = true);
     try {
-      final res = await http.put(
+      final request = http.MultipartRequest('POST', Uri.parse('$_root/health/photo'));
+      request.headers['Authorization'] = 'Bearer ${widget.token}';
+      request.files.add(await http.MultipartFile.fromPath(
+        'photo',
+        file.path,
+        contentType: MediaType('image', 'jpeg'),
+        filename: 'photo.jpg',
+      ));
+      final res = await http.Response.fromStream(await request.send());
+      final body = jsonDecode(res.body);
+      if (res.statusCode != 200) throw body['error']?.toString() ?? 'Αποτυχία φωτογραφίας';
+      final url = body['health']?['photo_url']?.toString();
+      if (mounted) setState(() => _photoUrl = url);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+    if (mounted) setState(() => _saving = false);
+  }
+
+  Future<void> _signAndClose() async {
+    if (_photoUrl == null || _photoUrl!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Βάλε πρώτα μια φωτογραφία σου')));
+      return;
+    }
+    if (!_agreed || _points.whereType<Offset>().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Υπόγραψε και αποδέξου την ηλεκτρονική υπογραφή')));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final saved = await http.put(
         Uri.parse('$_root/health'),
         headers: _headers,
         body: jsonEncode({
@@ -161,15 +206,24 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
           'medication_text': _medication.text,
         }),
       );
-      if (res.statusCode != 200) {
-        final body = jsonDecode(res.body);
+      if (saved.statusCode != 200) {
+        final body = jsonDecode(saved.body);
         throw body['error']?.toString() ?? 'Αποτυχία';
       }
-      if (pop && mounted) Navigator.pop(context, true);
+      final boundary = _padKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 2);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      final dataUrl = 'data:image/png;base64,${base64Encode(bytes!.buffer.asUint8List())}';
+      final res = await http.post(
+        Uri.parse('$_root/health/sign'),
+        headers: _headers,
+        body: jsonEncode({'signature_data': dataUrl}),
+      );
+      final body = jsonDecode(res.body);
+      if (res.statusCode != 200) throw body['error']?.toString() ?? 'Αποτυχία υπογραφής';
+      if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -327,16 +381,95 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
           decoration: const InputDecoration(labelText: 'Ποια φάρμακα;'),
         ),
       const SizedBox(height: 12),
+      if (_photoUrl != null && _photoUrl!.isNotEmpty)
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network('$_origin$_photoUrl', height: 160, width: 120, fit: BoxFit.cover),
+        ),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _saving ? null : () => _pickPhoto(ImageSource.camera),
+              icon: const Icon(Icons.photo_camera_outlined),
+              label: const Text('Βγάλε φωτο'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _saving ? null : () => _pickPhoto(ImageSource.gallery),
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('Ανέβασε φωτο'),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
       OutlinedButton.icon(
         onPressed: _saving ? null : _pickDocument,
         icon: const Icon(Icons.upload_file_outlined),
         label: Text(_documentName == null ? 'Φωτογραφία εγγράφου γιατρού' : _documentName!),
       ),
       const SizedBox(height: 16),
+      const Text('Ηλεκτρονική υπογραφή', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      if (_signedAt != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          child: Text('Υπάρχει ήδη υπογραφή. Μπορείς να την ανανεώσεις.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        ),
+      const SizedBox(height: 8),
+      RepaintBoundary(
+        key: _padKey,
+        child: GestureDetector(
+          onPanStart: (d) => setState(() => _points.add(d.localPosition)),
+          onPanUpdate: (d) => setState(() => _points.add(d.localPosition)),
+          onPanEnd: (_) => setState(() => _points.add(null)),
+          child: Container(
+            height: 140,
+            width: double.infinity,
+            color: Colors.white,
+            child: CustomPaint(painter: _SigPainter(_points)),
+          ),
+        ),
+      ),
+      TextButton(onPressed: () => setState(_points.clear), child: const Text('Εκκαθάριση')),
+      CheckboxListTile(
+        value: _agreed,
+        onChanged: (v) => setState(() => _agreed = v ?? false),
+        contentPadding: EdgeInsets.zero,
+        title: const Text(
+          'Δηλώνω ότι τα στοιχεία είναι αληθή και αποδέχομαι την ηλεκτρονική υπογραφή της κάρτας υγείας.',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        controlAffinity: ListTileControlAffinity.leading,
+      ),
       FilledButton(
-        onPressed: _saving ? null : () => _saveHealth(pop: true),
-        child: Text(_saving ? 'Αποθήκευση…' : 'Αποθήκευση'),
+        onPressed: _saving ? null : _signAndClose,
+        child: Text(_saving ? 'Αποθήκευση…' : 'Υπογραφή και αποθήκευση'),
       ),
     ];
   }
+}
+
+class _SigPainter extends CustomPainter {
+  _SigPainter(this.points);
+  final List<Offset?> points;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF111111)
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < points.length - 1; i++) {
+      final a = points[i];
+      final b = points[i + 1];
+      if (a != null && b != null) canvas.drawLine(a, b, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SigPainter oldDelegate) => true;
 }
