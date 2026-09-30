@@ -7118,27 +7118,30 @@ router.get('/my-programs', async (req, res) => {
     [userId, bizId]
   );
 
-  // Service-level programs: any active program linked to a service the user has membership for
+  // Service-level programs: the whole program is visible to anyone with an active package for that service
   const [servicePrograms] = await db.query(
     `SELECT NULL as assignment_id, wp.created_at as assigned_at, NULL as assignment_notes,
             wp.id as program_id, wp.name as program_name, wp.description as program_description,
             wp.service_id
      FROM workout_programs wp
-     WHERE wp.business_id=? AND wp.is_active=1 AND wp.service_id IS NOT NULL
-       AND (
-         wp.service_id IN (
-           SELECT service_id FROM user_memberships
-           WHERE user_id=? AND business_id=?
-             AND valid_until >= CURDATE() AND service_id IS NOT NULL
-         )
-         OR wp.service_id IN (
-           SELECT ps.service_id FROM plan_services ps
-           JOIN user_memberships um ON um.plan_id = ps.plan_id
-           WHERE um.user_id=? AND um.business_id=?
-             AND um.valid_until >= CURDATE() AND um.plan_id IS NOT NULL
-         )
+     WHERE wp.business_id = ? AND wp.is_active = 1 AND wp.service_id IS NOT NULL
+       AND EXISTS (
+         SELECT 1
+         FROM user_memberships um
+         LEFT JOIN business_plans bp ON bp.id = um.plan_id
+         LEFT JOIN plan_service_items psi ON psi.plan_id = um.plan_id
+         LEFT JOIN service_plan_assignments spa ON spa.plan_id = um.plan_id
+         WHERE um.user_id = ? AND um.business_id = ?
+           AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
+           AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
+           AND (
+             um.service_id = wp.service_id
+             OR bp.service_id = wp.service_id
+             OR psi.service_id = wp.service_id
+             OR spa.service_id = wp.service_id
+           )
        )`,
-    [bizId, userId, bizId, userId, bizId]
+    [bizId, userId, bizId]
   );
 
   // Merge: personal assignments first, then service programs not already included

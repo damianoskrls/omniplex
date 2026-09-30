@@ -1,7 +1,7 @@
 import TimeInput from './ui/TimeInput';
 const DAYS_SHORT = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
 
-export default function AvailabilityEditor({ slots, onChange, gymHours, readOnly = false, fillLabel = 'Γέμισε από το ωράριο του καταστήματος' }) {
+export default function AvailabilityEditor({ slots, onChange, gymHours, readOnly = false, fillLabel = 'Γέμισε από το ωράριο του καταστήματος', onFill }) {
   const gymOpen = (wd) => gymHours?.[wd]?.closed ? null : (gymHours?.[wd]?.open || '09:00');
   const gymClose = (wd) => gymHours?.[wd]?.closed ? null : (gymHours?.[wd]?.close || '21:00');
 
@@ -23,6 +23,7 @@ export default function AvailabilityEditor({ slots, onChange, gymHours, readOnly
 
   const fillAllDays = () => {
     if (readOnly) return;
+    if (onFill) { onFill(); return; }
     const all = [0, 1, 2, 3, 4, 5, 6]
       .filter(d => !gymHours?.[d]?.closed)
       .map(d => ({ weekday: d, start_time: gymOpen(d), end_time: gymClose(d) }));

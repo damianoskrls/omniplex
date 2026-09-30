@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import AvailabilityEditor from '../components/AvailabilityEditor';
@@ -9,10 +9,24 @@ import { Zap } from 'lucide-react';
 const DAYS = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
 const EMPTY = { id: null, service_id: '', location_id: '', price: '', staff_ids: [], slots: [] };
 
-function parseHours(raw) {
-  if (!raw) return null;
-  if (typeof raw === 'object') return raw;
-  try { return JSON.parse(raw); } catch { return null; }
+function addMinutes(time, mins) {
+  const [h, m] = String(time).slice(0, 5).split(':').map(Number);
+  const total = (h * 60 + (m || 0) + mins) % (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function slotsFromProgram(schedules, durationMins) {
+  const dur = Number(durationMins) > 0 ? Number(durationMins) : 60;
+  const seen = new Set();
+  return (schedules || []).flatMap((s) => {
+    if (s.is_active === 0 || s.is_active === false) return [];
+    const start = String(s.start_time || '').slice(0, 5);
+    if (!start) return [];
+    const key = `${s.weekday}-${start}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{ weekday: Number(s.weekday), start_time: start, end_time: addMinutes(start, dur) }];
+  });
 }
 
 function hourSummary(slots) {
@@ -29,6 +43,7 @@ export default function DropinSetup() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [programSlots, setProgramSlots] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -44,10 +59,43 @@ export default function DropinSetup() {
 
   useEffect(() => { load(); }, []);
 
-  const location = useMemo(
-    () => data.locations.find((l) => l.id === form?.location_id),
-    [data.locations, form?.location_id],
-  );
+  useEffect(() => {
+    if (!form?.service_id || !form?.location_id) {
+      setProgramSlots([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const serviceId = form.service_id;
+    const locationId = form.location_id;
+    const keepExisting = !!form.id;
+    api.get(`/client-admin/services/${serviceId}/slot-schedules`, { params: { location_id: locationId } })
+      .then((res) => {
+        if (cancelled) return;
+        const rows = res.data || [];
+        setProgramSlots(rows);
+        if (!keepExisting) {
+          const svc = data.services.find((s) => s.id === serviceId);
+          setForm((f) => (f && f.service_id === serviceId && f.location_id === locationId && !f.id
+            ? { ...f, slots: slotsFromProgram(rows, svc?.duration_mins) }
+            : f));
+        }
+      })
+      .catch(() => { if (!cancelled) setProgramSlots([]); });
+    return () => { cancelled = true; };
+  }, [form?.service_id, form?.location_id, form?.id, data.services]);
+
+  const fillFromProgram = () => {
+    if (!form?.service_id || !form?.location_id) {
+      toast.error('Διάλεξε πρώτα υπηρεσία και κατάστημα');
+      return;
+    }
+    if (!programSlots.length) {
+      toast.error('Δεν υπάρχει πρόγραμμα για αυτή την υπηρεσία σε αυτό το κατάστημα');
+      return;
+    }
+    const svc = data.services.find((s) => s.id === form.service_id);
+    setForm((f) => ({ ...f, slots: slotsFromProgram(programSlots, svc?.duration_mins) }));
+  };
 
   const startNew = () => setForm({ ...EMPTY });
 
@@ -174,11 +222,15 @@ export default function DropinSetup() {
           </div>
           <div className="form-group">
             <label className="form-label">Διαθέσιμες ώρες</label>
+            <div className="text-muted" style={{ fontSize: '0.8rem', marginBottom: 8 }}>
+              Από το πρόγραμμα της υπηρεσίας σε αυτό το κατάστημα
+              {form.service_id ? <> · <Link to={`/services/${form.service_id}/schedule`}>Άνοιγμα προγράμματος</Link></> : null}
+            </div>
             <AvailabilityEditor
               slots={form.slots}
               onChange={(slots) => setForm((f) => ({ ...f, slots }))}
-              gymHours={parseHours(location?.opening_hours)}
-              fillLabel="Γέμισε από το ωράριο του καταστήματος"
+              fillLabel="Γέμισε από το πρόγραμμα της υπηρεσίας"
+              onFill={fillFromProgram}
             />
           </div>
           <div style={{ display: 'flex', gap: 8 }}>

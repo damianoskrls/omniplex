@@ -762,6 +762,10 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('gym_trainers skipped:', err.message);
   }
 
+  await db.query('ALTER TABLE workout_programs ADD COLUMN service_id VARCHAR(36) NULL').catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('workout_programs.service_id skipped:', err.message);
+  });
+
   // ── businesses: drop_in_price_cents ──────────────────────────
   try {
     await db.query(`ALTER TABLE businesses ADD COLUMN drop_in_price_cents INT NOT NULL DEFAULT 0`);

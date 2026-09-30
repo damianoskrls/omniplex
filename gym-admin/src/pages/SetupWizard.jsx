@@ -23,6 +23,18 @@ const STEPS = [
   { id: 'programs', title: 'Προγράμματα', required: false, hint: 'Προγράμματα άσκησης' },
 ];
 
+const DAY_SHORT = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ'];
+
+function hourSummary(slots) {
+  if (!slots?.length) return 'χωρίς ώρες';
+  const byDay = {};
+  for (const slot of slots) {
+    const label = `${String(slot.start_time).slice(0, 5)}–${String(slot.end_time).slice(0, 5)}`;
+    byDay[slot.weekday] = byDay[slot.weekday] ? `${byDay[slot.weekday]}, ${label}` : label;
+  }
+  return Object.keys(byDay).sort((a, b) => a - b).map((day) => `${DAY_SHORT[day] || ''} ${byDay[day]}`).join(' · ');
+}
+
 function defaultHours() {
   return Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((d) => [d, { open: '09:00', close: '21:00', closed: d === 6 }]));
 }
@@ -59,6 +71,27 @@ function blockedReason(step, checks) {
 
 function StepNote({ children }) {
   return <p className="text-muted" style={{ fontSize: '0.88rem', lineHeight: 1.55, marginBottom: 14 }}>{children}</p>;
+}
+
+function ExistingItems({ title, items }) {
+  if (!items) return <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 12 }}>Φόρτωση...</div>;
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontWeight: 700, fontSize: '0.82rem', marginBottom: 6 }}>{title} ({items.length})</div>
+      {!items.length ? (
+        <div className="text-muted" style={{ fontSize: '0.82rem' }}>Δεν έχεις περάσει κάτι ακόμα.</div>
+      ) : (
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, maxHeight: 220, overflowY: 'auto' }}>
+          {items.map((item) => (
+            <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 12px', borderBottom: '1px solid #f8fafc' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.86rem' }}>{item.title}</span>
+              {item.meta ? <span className="text-muted" style={{ fontSize: '0.78rem', textAlign: 'right' }}>{item.meta}</span> : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function DetailsStep({ onSaved }) {
@@ -210,9 +243,18 @@ function DescriptionStep({ onSaved }) {
   );
 }
 
-function LocationsStep({ checks, onSaved }) {
+function LocationsStep({ onSaved }) {
+  const [items, setItems] = useState(null);
   const [form, setForm] = useState({ name: '', city: '', address: '', accepts_drop_in: false });
   const [saving, setSaving] = useState(false);
+  const load = () => api.get('/client-admin/locations').then((r) => {
+    setItems((r.data || []).filter((l) => l.is_active !== 0).map((l) => ({
+      key: l.id,
+      title: l.name,
+      meta: [l.city, l.address].filter(Boolean).join(' · ') || 'Χωρίς διεύθυνση',
+    })));
+  }).catch(() => setItems([]));
+  useEffect(() => { load(); }, []);
   const save = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error('Βάλε όνομα καταστήματος');
@@ -225,6 +267,7 @@ function LocationsStep({ checks, onSaved }) {
       });
       toast.success('Προστέθηκε κατάστημα με ωράριο Δευ–Σαβ 09:00–21:00');
       setForm({ name: '', city: '', address: '', accepts_drop_in: false });
+      await load();
       onSaved();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
@@ -234,10 +277,8 @@ function LocationsStep({ checks, onSaved }) {
   };
   return (
     <form onSubmit={save}>
-      <StepNote>
-        Χρειάζεται τουλάχιστον ένα κατάστημα. Ήδη έχεις {checks?.locations || 0}, με δικό τους ωράριο {checks?.locations_with_hours || 0}.
-        Μετά την προσθήκη, στην σελίδα Καταστήματα ορίζεις ποιοι δουλεύουν εκεί και τις ώρες τους.
-      </StepNote>
+      <StepNote>Χρειάζεται τουλάχιστον ένα κατάστημα. Μετά την προσθήκη, στα Καταστήματα ορίζεις ποιοι δουλεύουν εκεί και τις ώρες τους.</StepNote>
+      <ExistingItems title="Καταστήματα που έχεις ήδη" items={items} />
       <div className="form-group"><label className="form-label">Όνομα *</label><input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="π.χ. Κηφισιά" /></div>
       <div className="form-grid-2">
         <div className="form-group"><label className="form-label">Περιοχή</label><input className="form-input" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
@@ -255,11 +296,24 @@ function LocationsStep({ checks, onSaved }) {
 
 function ServicesStep({ onSaved }) {
   const [locations, setLocations] = useState([]);
+  const [items, setItems] = useState(null);
   const [form, setForm] = useState({ name: '', duration_mins: 60, location_ids: [] });
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    api.get('/client-admin/locations').then((r) => setLocations((r.data || []).filter((l) => l.is_active))).catch(() => {});
-  }, []);
+  const load = () => Promise.all([
+    api.get('/client-admin/locations'),
+    api.get('/client-admin/services'),
+  ]).then(([locs, svcs]) => {
+    setLocations((locs.data || []).filter((l) => l.is_active));
+    setItems((svcs.data || []).filter((s) => s.is_active !== 0).map((s) => ({
+      key: s.id,
+      title: s.name,
+      meta: [
+        s.duration_mins ? `${s.duration_mins} λεπτά` : null,
+        s.location_names || 'Όλα τα καταστήματα',
+      ].filter(Boolean).join(' · '),
+    })));
+  }).catch(() => setItems([]));
+  useEffect(() => { load(); }, []);
   const toggleLoc = (id) => {
     setForm((f) => ({
       ...f,
@@ -278,6 +332,7 @@ function ServicesStep({ onSaved }) {
       });
       toast.success('Προστέθηκε υπηρεσία');
       setForm({ name: '', duration_mins: 60, location_ids: [] });
+      await load();
       onSaved();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
@@ -288,6 +343,7 @@ function ServicesStep({ onSaved }) {
   return (
     <form onSubmit={save}>
       <StepNote>Χωρίς υπηρεσία ο πελάτης δεν έχει τι να κλείσει. Αν δεν διαλέξεις κατάστημα, ισχύει σε όλα.</StepNote>
+      <ExistingItems title="Υπηρεσίες που έχεις ήδη" items={items} />
       <div className="form-grid-2">
         <div className="form-group"><label className="form-label">Όνομα *</label><input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="π.χ. Personal training" /></div>
         <div className="form-group"><label className="form-label">Διάρκεια (λεπτά)</label><input className="form-input" type="number" min="15" value={form.duration_mins} onChange={(e) => setForm({ ...form, duration_mins: e.target.value })} /></div>
@@ -311,11 +367,24 @@ function ServicesStep({ onSaved }) {
 
 function PlansStep({ onSaved }) {
   const [services, setServices] = useState([]);
+  const [items, setItems] = useState(null);
   const [form, setForm] = useState({ service_id: '', sessions: 8, price: '' });
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    api.get('/client-admin/services').then((r) => setServices((r.data || []).filter((s) => s.is_active !== 0))).catch(() => {});
-  }, []);
+  const load = () => Promise.all([
+    api.get('/client-admin/services'),
+    api.get('/client-admin/plans'),
+  ]).then(([svcs, plans]) => {
+    setServices((svcs.data || []).filter((s) => s.is_active !== 0));
+    setItems((plans.data || []).map((p) => ({
+      key: p.id,
+      title: p.name || p.service_name || 'Πακέτο',
+      meta: [
+        p.sessions ? `${p.sessions} συνεδρίες` : 'Απεριόριστες',
+        p.price_cents != null ? `${(p.price_cents / 100).toFixed(0)} €` : null,
+      ].filter(Boolean).join(' · '),
+    })));
+  }).catch(() => setItems([]));
+  useEffect(() => { load(); }, []);
   const save = async (e) => {
     e.preventDefault();
     if (!form.service_id || form.price === '') return toast.error('Διάλεξε υπηρεσία και τιμή');
@@ -330,6 +399,7 @@ function PlansStep({ onSaved }) {
       });
       toast.success('Προστέθηκε πακέτο');
       setForm({ service_id: '', sessions: 8, price: '' });
+      await load();
       onSaved();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
@@ -340,6 +410,7 @@ function PlansStep({ onSaved }) {
   return (
     <form onSubmit={save}>
       <StepNote>Τα πακέτα είναι οι συνδρομές που αγοράζει ο πελάτης. Μπορούν να μπουν και μετά τις πρώτες κρατήσεις.</StepNote>
+      <ExistingItems title="Πακέτα που έχεις ήδη" items={items} />
       <div className="form-group">
         <label className="form-label">Υπηρεσία</label>
         <select className="form-input" value={form.service_id} onChange={(e) => setForm({ ...form, service_id: e.target.value })}>
@@ -359,15 +430,24 @@ function PlansStep({ onSaved }) {
 
 function RoomsStep({ onSaved }) {
   const [locations, setLocations] = useState([]);
+  const [items, setItems] = useState(null);
   const [form, setForm] = useState({ name: '', location_id: '', short_info: '' });
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    api.get('/client-admin/locations').then((r) => {
-      const locs = (r.data || []).filter((l) => l.is_active);
-      setLocations(locs);
-      if (locs[0]) setForm((f) => ({ ...f, location_id: f.location_id || locs[0].id }));
-    }).catch(() => {});
-  }, []);
+  const load = () => Promise.all([
+    api.get('/client-admin/locations'),
+    api.get('/client-admin/rooms'),
+  ]).then(([locs, rooms]) => {
+    const list = (locs.data || []).filter((l) => l.is_active);
+    setLocations(list);
+    const names = Object.fromEntries(list.map((l) => [l.id, l.name]));
+    setItems((rooms.data || []).map((r) => ({
+      key: r.id,
+      title: r.name,
+      meta: names[r.location_id] || r.short_info || '',
+    })));
+    if (list[0]) setForm((f) => ({ ...f, location_id: f.location_id || list[0].id }));
+  }).catch(() => setItems([]));
+  useEffect(() => { load(); }, []);
   const save = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error('Βάλε όνομα αίθουσας');
@@ -376,6 +456,7 @@ function RoomsStep({ onSaved }) {
       await api.post('/client-admin/rooms', form);
       toast.success('Προστέθηκε αίθουσα');
       setForm({ ...form, name: '', short_info: '' });
+      await load();
       onSaved();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
@@ -386,6 +467,7 @@ function RoomsStep({ onSaved }) {
   return (
     <form onSubmit={save}>
       <StepNote>Οι αίθουσες χρησιμοποιούνται στο πρόγραμμα των τάξεων. Αν δεν έχεις ξεχωριστούς χώρους, παράλειψέ το.</StepNote>
+      <ExistingItems title="Αίθουσες που έχεις ήδη" items={items} />
       <div className="form-group"><label className="form-label">Όνομα</label><input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="π.χ. Studio 1" /></div>
       <div className="form-group">
         <label className="form-label">Κατάστημα</label>
@@ -401,9 +483,20 @@ function RoomsStep({ onSaved }) {
 }
 
 function DropInStep() {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    api.get('/client-admin/dropin-setup').then((r) => {
+      setItems((r.data?.offers || []).map((o) => ({
+        key: o.id,
+        title: o.service_name,
+        meta: [o.location_name, o.price_cents != null ? `${(o.price_cents / 100).toFixed(0)} €` : null, (o.staff_names || []).join(', ')].filter(Boolean).join(' · '),
+      })));
+    }).catch(() => setItems([]));
+  }, []);
   return (
     <div>
       <StepNote>Το drop-in ρυθμίζεται ξεχωριστά: υπηρεσία, κατάστημα, τιμή, ώρες και ποιος το αναλαμβάνει.</StepNote>
+      <ExistingItems title="Drop-in που έχεις ήδη" items={items} />
       <Link to="/dropin" className="btn btn-primary">Άνοιγμα ρύθμισης drop-in</Link>
     </div>
   );
@@ -411,12 +504,22 @@ function DropInStep() {
 
 function NutritionStep({ checks, onSaved }) {
   const [locations, setLocations] = useState([]);
+  const [items, setItems] = useState(null);
   const [enabled, setEnabled] = useState(!!checks?.nutrition_enabled);
   const [form, setForm] = useState({ full_name: '', email: '', location_id: '' });
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    api.get('/client-admin/locations').then((r) => setLocations((r.data || []).filter((l) => l.is_active))).catch(() => {});
-  }, []);
+  const load = () => Promise.all([
+    api.get('/client-admin/locations'),
+    api.get('/client-admin/nutritionists'),
+  ]).then(([locs, people]) => {
+    setLocations((locs.data || []).filter((l) => l.is_active));
+    setItems((people.data || []).map((n) => ({
+      key: n.id,
+      title: n.full_name,
+      meta: n.location_name || n.email || '',
+    })));
+  }).catch(() => setItems([]));
+  useEffect(() => { load(); }, []);
   const toggle = async (next) => {
     try {
       await api.patch('/client-admin/settings', { feature_nutrition: next ? 1 : 0 });
@@ -433,6 +536,7 @@ function NutritionStep({ checks, onSaved }) {
       await api.post('/client-admin/nutritionists', { ...form, location_id: form.location_id || null });
       toast.success('Προστέθηκε διατροφολόγος');
       setForm({ full_name: '', email: '', location_id: '' });
+      await load();
       onSaved();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
@@ -443,6 +547,7 @@ function NutritionStep({ checks, onSaved }) {
   return (
     <div>
       <StepNote>Αν δεν έχεις διατροφολόγο, παράλειψέ το. Αν έχεις, διάλεξε και το κατάστημα όπου δέχεται.</StepNote>
+      <ExistingItems title="Διατροφολόγοι που έχεις ήδη" items={items} />
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}>
         <input type="checkbox" checked={enabled} onChange={(e) => toggle(e.target.checked)} />
         Ενεργό τμήμα διατροφής ({checks?.nutritionists || 0} διατροφολόγοι)
@@ -468,9 +573,18 @@ function NutritionStep({ checks, onSaved }) {
   );
 }
 
-function StaffStep({ checks, onSaved }) {
+function StaffStep({ onSaved }) {
+  const [items, setItems] = useState(null);
   const [form, setForm] = useState({ full_name: '', role: 'Trainer' });
   const [saving, setSaving] = useState(false);
+  const load = () => api.get('/client-admin/staff').then((r) => {
+    setItems((r.data || []).map((s) => ({
+      key: s.id,
+      title: s.full_name,
+      meta: [s.role, (s.services || []).map((svc) => svc.service_name).join(', ')].filter(Boolean).join(' · '),
+    })));
+  }).catch(() => setItems([]));
+  useEffect(() => { load(); }, []);
   const save = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -478,6 +592,7 @@ function StaffStep({ checks, onSaved }) {
       await api.post('/client-admin/staff', form);
       toast.success('Προστέθηκε. Τις ώρες και τις υπηρεσίες του τις ορίζεις στο επόμενο βήμα ή στην καρτέλα του.');
       setForm({ full_name: '', role: 'Trainer' });
+      await load();
       onSaved();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
@@ -487,10 +602,8 @@ function StaffStep({ checks, onSaved }) {
   };
   return (
     <form onSubmit={save}>
-      <StepNote>
-        Προσωπικό τώρα: {checks?.staff || 0}. Χωρίς γυμναστή, οι προσωπικές υπηρεσίες δεν δείχνουν ώρες.
-        Τάξεις με πρόγραμμα μπορούν να μείνουν χωρίς συγκεκριμένο άτομο.
-      </StepNote>
+      <StepNote>Χωρίς γυμναστή, οι προσωπικές υπηρεσίες δεν δείχνουν ώρες. Τάξεις με πρόγραμμα μπορούν να μείνουν χωρίς συγκεκριμένο άτομο.</StepNote>
+      <ExistingItems title="Προσωπικό που έχεις ήδη" items={items} />
       <div className="form-grid-2">
         <div className="form-group"><label className="form-label">Ονοματεπώνυμο</label><input className="form-input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required /></div>
         <div className="form-group"><label className="form-label">Ρόλος</label><input className="form-input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} required /></div>
@@ -501,13 +614,31 @@ function StaffStep({ checks, onSaved }) {
   );
 }
 
-function HoursStep({ checks }) {
+function HoursStep() {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    api.get('/client-admin/locations').then(async (r) => {
+      const locs = (r.data || []).filter((l) => l.is_active);
+      const teams = await Promise.all(locs.map((l) => api.get(`/client-admin/locations/${l.id}/team`)
+        .then((res) => ({ loc: l, trainers: res.data?.trainers || [] }))
+        .catch(() => ({ loc: l, trainers: [] }))));
+      const rows = [];
+      for (const { loc, trainers } of teams) {
+        for (const trainer of trainers.filter((t) => t.works_here)) {
+          rows.push({
+            key: `${loc.id}-${trainer.id}`,
+            title: trainer.full_name,
+            meta: `${loc.name} · ${hourSummary(trainer.slots)}`,
+          });
+        }
+      }
+      setItems(rows);
+    }).catch(() => setItems([]));
+  }, []);
   return (
     <div>
-      <StepNote>
-        {checks?.staff_with_hours || 0} από {checks?.staff || 0} έχουν ώρες διαθεσιμότητας.
-        Σε κάθε κατάστημα ορίζεις ποιος δουλεύει, ποιες υπηρεσίες κάνει εκεί, και αν το ωράριο ισχύει για έναν ή για όλους.
-      </StepNote>
+      <StepNote>Σε κάθε κατάστημα φαίνεται ποιος δουλεύει και αν έχει ώρες. Τις αλλάζεις από τα Καταστήματα.</StepNote>
+      <ExistingItems title="Ομάδα ανά κατάστημα" items={items} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Link to="/locations" className="btn btn-primary">Καταστήματα και ώρες ομάδας</Link>
         <Link to="/staff" className="btn btn-secondary">Καρτέλες γυμναστών</Link>
@@ -519,7 +650,18 @@ function HoursStep({ checks }) {
 
 function LeaveStep({ checks, onSaved }) {
   const [days, setDays] = useState(checks?.annual_leave_days ?? 20);
+  const [items, setItems] = useState(null);
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    api.get('/client-admin/staff-leaves').then((r) => {
+      if (r.data?.annual_leave_days != null) setDays(r.data.annual_leave_days);
+      setItems((r.data?.leaves || []).map((l) => ({
+        key: l.id,
+        title: l.staff_name || 'Άδεια',
+        meta: [l.date_from?.slice?.(0, 10), l.date_to?.slice?.(0, 10)].filter(Boolean).join(' – '),
+      })));
+    }).catch(() => setItems([]));
+  }, []);
   const save = async () => {
     setSaving(true);
     try {
@@ -534,7 +676,8 @@ function LeaveStep({ checks, onSaved }) {
   };
   return (
     <div>
-      <StepNote>Καταχωρημένες άδειες: {checks?.leaves || 0}. Οι συγκεκριμένες ημερομηνίες μπαίνουν από την σελίδα αδειών.</StepNote>
+      <StepNote>Οι συγκεκριμένες ημερομηνίες μπαίνουν από την σελίδα αδειών.</StepNote>
+      <ExistingItems title="Άδειες που έχουν περαστεί" items={items} />
       <div className="form-group" style={{ maxWidth: 220 }}>
         <label className="form-label">Ημέρες ετήσιας άδειας</label>
         <input className="form-input" type="number" min="1" value={days} onChange={(e) => setDays(e.target.value)} />
@@ -546,9 +689,25 @@ function LeaveStep({ checks, onSaved }) {
 }
 
 function PayrollStep() {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    const biz = JSON.parse(localStorage.getItem('gym_admin_business') || '{}');
+    if (!biz.id) { setItems([]); return; }
+    api.get(`/business/${biz.id}/trainer-fees`).then((r) => {
+      setItems((r.data?.fees || []).map((f) => ({
+        key: f.staff_id,
+        title: f.full_name || f.staff_name || 'Συνεργάτης',
+        meta: [
+          f.monthly_gross != null && f.monthly_gross !== '' ? `Μεικτά ${f.monthly_gross} €` : null,
+          f.fee_per_class != null && f.fee_per_class !== '' ? `Ανά μάθημα ${f.fee_per_class} €` : null,
+        ].filter(Boolean).join(' · ') || 'Χωρίς αμοιβή',
+      })));
+    }).catch(() => setItems([]));
+  }, []);
   return (
     <div>
       <StepNote>Οι αμοιβές συνεργατών και τα έξοδα δεν χρειάζονται για να ανοίξουν οι κρατήσεις.</StepNote>
+      <ExistingItems title="Αμοιβές που έχουν οριστεί" items={items} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Link to="/trainer-fees" className="btn btn-primary">Αμοιβές συνεργατών</Link>
         <Link to="/expenses" className="btn btn-secondary">Γενικά έξοδα</Link>
@@ -557,10 +716,21 @@ function PayrollStep() {
   );
 }
 
-function ProgramsStep({ checks }) {
+function ProgramsStep() {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    api.get('/client-admin/programs').then((r) => {
+      setItems((r.data || []).map((p) => ({
+        key: p.id,
+        title: p.name,
+        meta: p.description || '',
+      })));
+    }).catch(() => setItems([]));
+  }, []);
   return (
     <div>
-      <StepNote>Προγράμματα άσκησης: {checks?.programs || 0}. Τα φτιάχνεις ανά πελάτη όταν ξεκινήσει η προπόνηση.</StepNote>
+      <StepNote>Τα προγράμματα άσκησης που έχεις ήδη. Τα νέα φτιάχνονται όταν ξεκινήσει η προπόνηση ενός πελάτη.</StepNote>
+      <ExistingItems title="Προγράμματα άσκησης" items={items} />
       <Link to="/programs" className="btn btn-primary">Προγράμματα άσκησης</Link>
     </div>
   );

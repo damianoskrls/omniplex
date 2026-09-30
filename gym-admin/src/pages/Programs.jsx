@@ -774,6 +774,9 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
+          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4, lineHeight: 1.35 }}>
+            Όλο το πρόγραμμα φαίνεται στην εφαρμογή σε όποιον έχει αυτή την υπηρεσία.
+          </div>
         </div>
       </div>
 
