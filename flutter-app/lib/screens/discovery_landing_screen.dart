@@ -25,11 +25,13 @@ class DiscoveryLandingScreen extends StatefulWidget {
     required this.globalAuth,
     required this.onLoggedIn,
     this.onEnterGym,
+    this.hideHeader = false,
   });
 
   final GlobalAuthService globalAuth;
   final VoidCallback onLoggedIn;
   final void Function(TenantConfig)? onEnterGym;
+  final bool hideHeader;
 
   @override
   State<DiscoveryLandingScreen> createState() => _DiscoveryLandingScreenState();
@@ -305,8 +307,10 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(),
-                const SizedBox(height: 32),
+                if (!widget.hideHeader) ...[
+                  _buildHeader(),
+                  const SizedBox(height: 32),
+                ],
                 _buildHeroText(),
                 const SizedBox(height: 24),
                 _buildSearchBarHome(),

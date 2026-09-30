@@ -317,6 +317,33 @@ router.get('/:bizId/gym-info', async (req, res) => {
 });
 
 // ============================================================
+// GET /api/booking/:bizId/service-days?service_id=&location_id=
+// Weekdays the service actually runs (Dart: 1=Mon … 7=Sun). Empty = no class program.
+// ============================================================
+router.get('/:bizId/service-days', softAuth, async (req, res) => {
+  const { service_id, location_id } = req.query;
+  if (!service_id) return res.status(400).json({ error: 'Απαιτείται υπηρεσία' });
+  const params = [service_id, req.params.bizId];
+  let locationSql = '';
+  if (location_id) {
+    locationSql = 'AND (location_id IS NULL OR location_id = ?)';
+    params.push(location_id);
+  }
+  try {
+    const [rows] = await db.query(
+      `SELECT DISTINCT weekday
+       FROM service_slot_schedules
+       WHERE service_id = ? AND business_id = ? AND is_active = 1
+         ${locationSql}`,
+      params,
+    );
+    return res.json({ weekdays: rows.map((row) => Number(row.weekday) + 1) });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================
 // GET /api/booking/:bizId/slots?service_id=x&date=YYYY-MM-DD
 // Returns available time slots with available staff per slot
 // ============================================================
@@ -681,7 +708,7 @@ router.get('/:bizId/my-bookings', softAuth, requireActiveCustomer, async (req, r
         st.full_name AS staff_name, st.color_hex, st.avatar_url
       FROM bookings b
       JOIN services sv ON sv.id = b.service_id
-      JOIN staff    st ON st.id = b.staff_id
+      LEFT JOIN staff st ON st.id = b.staff_id
       WHERE b.user_id = ? AND b.business_id = ?
       ORDER BY b.starts_at DESC
       LIMIT 30
@@ -710,7 +737,7 @@ router.get('/:bizId/my-bookings/:bookingId', softAuth, requireActiveCustomer, as
         st.full_name AS staff_name
       FROM bookings b
       JOIN services sv ON sv.id = b.service_id
-      JOIN staff st ON st.id = b.staff_id
+      LEFT JOIN staff st ON st.id = b.staff_id
       WHERE b.id = ? AND b.user_id = ? AND b.business_id = ?
     `, [req.params.bookingId, req.user.userId, req.params.bizId]);
     if (!row) return res.status(404).json({ error: 'Η κράτηση δεν βρέθηκε' });

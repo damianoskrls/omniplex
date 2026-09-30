@@ -522,6 +522,21 @@ class ApiService {
     );
   }
 
+  /// Dart weekdays (1 = Monday … 7 = Sunday) on which the service has a class program.
+  /// Empty means the service has no class schedule, so any open day can be booked.
+  Future<List<int>> fetchServiceDays({
+    required String serviceId,
+    String? locationId,
+  }) async {
+    final res = await _get('/api/booking/$bizId/service-days', query: {
+      'service_id': serviceId,
+      if (locationId != null) 'location_id': locationId,
+    });
+    final data = _decode(res);
+    final raw = data is Map ? data['weekdays'] as List? ?? [] : <dynamic>[];
+    return raw.map((day) => day as int).toList();
+  }
+
   Future<({
     List<TimeSlot> slots,
     bool featureWaitlist,

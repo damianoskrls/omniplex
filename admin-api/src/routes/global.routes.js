@@ -224,6 +224,47 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
   }
 });
 
+router.get('/me/notifications', requireGlobal, async (req, res) => {
+  try {
+    const gyms = await getGymsForGlobalUser(req.globalUser.globalUserId);
+    const userIds = [...new Set(gyms.map((g) => g.user_id).filter(Boolean))];
+    if (!userIds.length) return res.json({ notifications: [], unread_count: 0 });
+    const [rows] = await db.query(
+      `SELECT n.id, n.type, n.title, n.body, n.is_read, n.created_at, n.business_id,
+              COALESCE(bc.app_name, biz.name) AS gym_name
+       FROM user_notifications n
+       JOIN businesses biz ON biz.id = n.business_id
+       LEFT JOIN business_configs bc ON bc.business_id = n.business_id
+       WHERE n.user_id IN (?)
+       ORDER BY n.created_at DESC
+       LIMIT 80`,
+      [userIds],
+    );
+    return res.json({
+      notifications: rows,
+      unread_count: rows.filter((row) => !row.is_read).length,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/me/notifications/:id/read', requireGlobal, async (req, res) => {
+  try {
+    const gyms = await getGymsForGlobalUser(req.globalUser.globalUserId);
+    const userIds = [...new Set(gyms.map((g) => g.user_id).filter(Boolean))];
+    if (!userIds.length) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    await db.query(
+      'UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id IN (?)',
+      [req.params.id, userIds],
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ============================================================
 // POST /api/global/gym-token  (auth)
 // Exchange global token for a per-gym JWT

@@ -89,18 +89,39 @@ app.use((err, req, res, next) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────
-bootstrapSchema()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`\n Handstand Admin API`);
-      console.log(` Running at: http://localhost:${PORT}`);
-      console.log(` Health:     http://localhost:${PORT}/api/health\n`);
+// Listen first so a slow or retrying schema bootstrap cannot take the
+// process offline (Railway then returns 502 with no CORS headers).
+app.listen(PORT, () => {
+  console.log(`\n Handstand Admin API`);
+  console.log(` Running at: http://localhost:${PORT}`);
+  console.log(` Health:     http://localhost:${PORT}/api/health\n`);
+});
+
+function isTransientDbError(err) {
+  const code = String(err.code || '');
+  const msg = String(err.message || '');
+  return ['EAI_AGAIN', 'ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'PROTOCOL_CONNECTION_LOST'].includes(code)
+    || /getaddrinfo|EAI_AGAIN|connect ETIMEDOUT|Connection lost/i.test(msg);
+}
+
+(async function boot() {
+  let attempt = 0;
+  for (;;) {
+    try {
+      await bootstrapSchema();
       startNotificationWorker();
       startMessageAttachmentWorker();
       startReminderWorker();
-    });
-  })
-  .catch((err) => {
-    console.error('Schema bootstrap failed:', err.message);
-    process.exit(1);
-  });
+      return;
+    } catch (err) {
+      attempt += 1;
+      console.error(`Schema bootstrap failed (attempt ${attempt}):`, err.message);
+      if (!isTransientDbError(err) && attempt >= 3) {
+        console.error('Schema bootstrap stopped after a non-connection error. The API stays up.');
+        return;
+      }
+      const delay = Math.min(15000, 2000 * attempt);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+})();

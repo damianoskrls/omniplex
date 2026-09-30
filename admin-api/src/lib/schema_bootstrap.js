@@ -315,6 +315,16 @@ async function bootstrapSchema() {
     console.log('✓ Schema: business_configs.setup_wizard added');
   } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('setup_wizard skipped:', err.message); }
 
+  try {
+    await db.query('ALTER TABLE business_configs ADD COLUMN requires_attendance_confirmation TINYINT(1) NOT NULL DEFAULT 0');
+    console.log('✓ Schema: business_configs.requires_attendance_confirmation added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('requires_attendance_confirmation skipped:', err.message); }
+
+  try {
+    await db.query('ALTER TABLE business_configs ADD COLUMN requires_qr_scan TINYINT(1) NOT NULL DEFAULT 0');
+    console.log('✓ Schema: business_configs.requires_qr_scan added');
+  } catch (err) { if (err.code !== 'ER_DUP_FIELDNAME') console.warn('requires_qr_scan skipped:', err.message); }
+
   // staff_leaves — leave requests with status workflow
   try {
     await db.query(`

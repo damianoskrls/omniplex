@@ -488,7 +488,7 @@ function buildSlotsPayload(computed, options = {}) {
         capacity,
         remaining_spots: remaining,
         is_full: isFull,
-        waitlist_available: isFull && featureWaitlist && hasStaff,
+        waitlist_available: isFull && featureWaitlist && (hasStaff || !!sch),
         waitlist_count: waitlistCount,
         label: sch?.label || null,
         room_id: sch?.room_id || null,

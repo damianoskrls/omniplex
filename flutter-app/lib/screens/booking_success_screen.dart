@@ -62,7 +62,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
     _navigated = true;
     final nav = appNavigatorKey.currentState ?? Navigator.of(context);
     nav.popUntil((route) => route.isFirst);
-    HomeScreen.selectTab(1);
+    HomeScreen.selectTabByKey('appointments');
   }
 
   @override

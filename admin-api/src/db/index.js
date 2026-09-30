@@ -25,18 +25,26 @@ pool.on('connection', (connection) => {
   connection.query("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'");
 });
 
-// Test connection on startup
-pool.getConnection()
-  .then(conn => {
-    console.log('✓ Database connected');
-    conn.release();
-  })
-  .catch(err => {
-    const msg = err.message || String(err);
-    console.error('✗ Database connection failed:', msg || '(no details)');
-    console.error('  → Έλεγξε ότι τρέχει MySQL: brew services start mysql');
-    console.error('  → Μετά τρέξε: mysql -u root < schema.sql');
-    process.exit(1);
-  });
+// Keep retrying. A DNS failure (EAI_AGAIN on mysql.railway.internal) used to
+// call process.exit, so Railway restarted the container in a loop and the
+// browser showed a CORS error. The process now stays up until MySQL answers.
+async function waitForDatabase() {
+  let attempt = 0;
+  for (;;) {
+    try {
+      const conn = await pool.getConnection();
+      console.log('✓ Database connected');
+      conn.release();
+      return;
+    } catch (err) {
+      attempt += 1;
+      const delay = Math.min(15000, 1000 * attempt);
+      console.error(`✗ Database connection failed (attempt ${attempt}):`, err.message || String(err));
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
+waitForDatabase();
 
 module.exports = pool;

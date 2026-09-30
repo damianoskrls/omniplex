@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
+import '../services/language_service.dart';
 import '../services/push_service.dart';
 import '../config/tenant_config.dart';
 import 'discovery_landing_screen.dart';
@@ -58,11 +59,13 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   Map<String, dynamic>? _dashboard;
   bool _loading = true;
   bool _enteringGym = false;
+  int _unreadNotifications = 0;
 
   @override
   void initState() {
     super.initState();
     _loadDashboard();
+    _loadNotificationCount();
     PushService.instance.onForegroundData = (data) {
       final type = data['type']?.toString() ?? '';
       if (type != 'join_approved' && type != 'join_rejected') return;
@@ -97,6 +100,47 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _loadNotificationCount() async {
+    try {
+      final res = await http.get(
+        Uri.parse('$_apiBase/global/me/notifications'),
+        headers: {'Authorization': 'Bearer ${widget.globalAuth.token}'},
+      );
+      if (res.statusCode == 200 && mounted) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        setState(() => _unreadNotifications = (body['unread_count'] as num?)?.toInt() ?? 0);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _GlobalNotificationsPage(token: widget.globalAuth.token ?? ''),
+      ),
+    );
+    _loadNotificationCount();
+  }
+
+  void _openBooking(Map<String, dynamic> booking) {
+    final bizId = booking['business_id']?.toString();
+    GlobalGym? gym;
+    if (bizId != null) {
+      for (final candidate in widget.globalAuth.gyms) {
+        if (candidate.businessId == bizId) {
+          gym = candidate;
+          break;
+        }
+      }
+    }
+    showGlobalBookingSheet(
+      context,
+      booking,
+      onOpenGym: gym == null ? null : () => _enterGym(gym!),
+    );
   }
 
   Future<void> _enterGym(GlobalGym gym) async {
@@ -150,9 +194,21 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final firstName = widget.globalAuth.user?.fullName.trim().split(' ').first ?? '';
     return Scaffold(
       backgroundColor: _kBg,
-      body: IndexedStack(
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _OmniHeader(
+              letter: firstName.isNotEmpty ? firstName[0].toUpperCase() : '?',
+              unread: _unreadNotifications,
+              onNotifications: _openNotifications,
+              onProfile: () => _openTab(4),
+            ),
+            Expanded(
+              child: IndexedStack(
         index: _tab,
         children: [
           _HomeTab(
@@ -163,6 +219,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             onEnterGym: _enterGym,
             onRefresh: _loadDashboard,
             onTabChange: _openTab,
+            onOpenBooking: _openBooking,
             parseColor: _parseColor,
           ),
           _DiscoverTab(globalAuth: widget.globalAuth),
@@ -196,8 +253,13 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
           _ProfileTab(
             globalAuth: widget.globalAuth,
             onLogout: widget.onLogout,
+            onNotifications: _openNotifications,
           ),
         ],
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: _buildNavBar(),
     );
@@ -266,6 +328,7 @@ class _HomeTab extends StatelessWidget {
     required this.onEnterGym,
     required this.onRefresh,
     required this.onTabChange,
+    required this.onOpenBooking,
     required this.parseColor,
   });
 
@@ -276,6 +339,7 @@ class _HomeTab extends StatelessWidget {
   final Future<void> Function(GlobalGym) onEnterGym;
   final Future<void> Function() onRefresh;
   final void Function(int) onTabChange;
+  final void Function(Map<String, dynamic>) onOpenBooking;
   final Color Function(String?) parseColor;
 
   String get _greeting {
@@ -312,31 +376,11 @@ class _HomeTab extends StatelessWidget {
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          SvgPicture.asset('assets/omniplex_logo.svg', height: 32),
-                          Row(children: [
-                            const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
-                            const SizedBox(width: 14),
-                            Container(
-                              width: 40, height: 40,
-                              decoration: BoxDecoration(
-                                color: _kCard,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: _kBorder),
-                              ),
-                              child: const Icon(Icons.person_outline_rounded, color: _kGray, size: 20),
-                            ),
-                          ]),
-                        ],
-                      ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 8),
 
                       // My Gym card
                       if (primaryGym != null) ...[
@@ -349,13 +393,18 @@ class _HomeTab extends StatelessWidget {
                           nextBooking: nextBooking,
                           accentColor: parseColor(primaryGym.primaryColor),
                           onOpenGym: () => onEnterGym(primaryGym),
+                          onBookingTap: nextBooking == null ? null : () => onOpenBooking(nextBooking),
                         ),
                         const SizedBox(height: 24),
                       ],
 
                       // Next Class
                       if (nextBooking != null) ...[
-                        _NextClassCard(booking: nextBooking, parseColor: parseColor),
+                        _NextClassCard(
+                          booking: nextBooking,
+                          parseColor: parseColor,
+                          onTap: () => onOpenBooking(nextBooking),
+                        ),
                         const SizedBox(height: 24),
                       ],
 
@@ -435,7 +484,11 @@ class _HomeTab extends StatelessWidget {
 
                       // This Week
                       if (upcoming.isNotEmpty) ...[
-                        _ThisWeekSection(bookings: upcoming),
+                        _ThisWeekSection(
+                          bookings: upcoming,
+                          onOpenBooking: onOpenBooking,
+                          onSeeAll: () => onTabChange(2),
+                        ),
                         const SizedBox(height: 24),
                       ],
 
@@ -463,12 +516,14 @@ class _GymMemberCard extends StatelessWidget {
     required this.nextBooking,
     required this.accentColor,
     required this.onOpenGym,
+    this.onBookingTap,
   });
 
   final GlobalGym gym;
   final Map<String, dynamic>? nextBooking;
   final Color accentColor;
   final VoidCallback onOpenGym;
+  final VoidCallback? onBookingTap;
 
   @override
   Widget build(BuildContext context) {
@@ -540,7 +595,9 @@ class _GymMemberCard extends StatelessWidget {
 
           // Next booking
           if (nextStr != null)
-            Padding(
+            GestureDetector(
+              onTap: onBookingTap,
+              child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Row(children: [
                 const Icon(Icons.calendar_today_outlined, size: 14, color: _kAccent),
@@ -548,6 +605,7 @@ class _GymMemberCard extends StatelessWidget {
                 Text('Επόμενη: $nextStr',
                   style: GoogleFonts.manrope(fontSize: 12, color: Colors.white)),
               ]),
+            ),
             ),
 
           // Actions
@@ -593,9 +651,10 @@ class _GymMemberCard extends StatelessWidget {
 }
 
 class _NextClassCard extends StatelessWidget {
-  const _NextClassCard({required this.booking, required this.parseColor});
+  const _NextClassCard({required this.booking, required this.parseColor, required this.onTap});
   final Map<String, dynamic> booking;
   final Color Function(String?) parseColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -604,7 +663,9 @@ class _NextClassCard extends StatelessWidget {
     final gymName = booking['app_name'] as String? ?? booking['business_name'] as String? ?? '';
     final coach   = booking['staff_name'] as String?;
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       decoration: BoxDecoration(
         color: _kCard,
         borderRadius: BorderRadius.circular(20),
@@ -671,6 +732,7 @@ class _NextClassCard extends StatelessWidget {
           ),
         ]),
       ]),
+    ),
     );
   }
 }
@@ -725,8 +787,14 @@ class _QuickAction extends StatelessWidget {
 }
 
 class _ThisWeekSection extends StatelessWidget {
-  const _ThisWeekSection({required this.bookings});
+  const _ThisWeekSection({
+    required this.bookings,
+    required this.onOpenBooking,
+    required this.onSeeAll,
+  });
   final List<Map<String, dynamic>> bookings;
+  final void Function(Map<String, dynamic>) onOpenBooking;
+  final VoidCallback onSeeAll;
 
   @override
   Widget build(BuildContext context) {
@@ -755,7 +823,9 @@ class _ThisWeekSection extends StatelessWidget {
                 final time    = (b['booking_time'] as String? ?? '').substring(0, 5);
                 final service = b['service_name'] as String? ?? '';
                 final gym     = b['app_name'] as String? ?? '';
-                return Container(
+                return GestureDetector(
+                  onTap: () => onOpenBooking(b),
+                  child: Container(
                   decoration: BoxDecoration(
                     border: i < 2
                       ? const Border(bottom: BorderSide(color: Color(0xFF26272C)))
@@ -779,9 +849,12 @@ class _ThisWeekSection extends StatelessWidget {
                     ),
                     const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
                   ]),
+                ),
                 );
               }),
-              Container(
+              GestureDetector(
+                onTap: onSeeAll,
+                child: Container(
                 decoration: const BoxDecoration(
                   border: Border(top: BorderSide(color: Color(0xFF26272C)))),
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -791,6 +864,7 @@ class _ThisWeekSection extends StatelessWidget {
                   const SizedBox(width: 4),
                   const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
                 ]),
+              ),
               ),
             ],
           ),
@@ -846,6 +920,7 @@ class _DiscoverTab extends StatelessWidget {
     return DiscoveryLandingScreen(
       globalAuth: globalAuth,
       onLoggedIn: () {},
+      hideHeader: true,
     );
   }
 }
@@ -1179,16 +1254,38 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   }
 
   void _showBookingDetail(BuildContext context, Map<String, dynamic> booking) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: _kCard,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => _BookingDetailSheet(booking: booking),
+    final bizId = booking['business_id']?.toString();
+    GlobalGym? gym;
+    if (bizId != null) {
+      for (final candidate in widget.gyms) {
+        if (candidate.businessId == bizId) {
+          gym = candidate;
+          break;
+        }
+      }
+    }
+    showGlobalBookingSheet(
+      context,
+      booking,
+      onOpenGym: gym == null ? null : () => widget.onEnterGym(gym!),
     );
   }
+}
+
+void showGlobalBookingSheet(
+  BuildContext context,
+  Map<String, dynamic> booking, {
+  VoidCallback? onOpenGym,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: _kCard,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => _BookingDetailSheet(booking: booking, onOpenGym: onOpenGym),
+  );
 }
 
 String _bookingsToIcs(List<Map<String, dynamic>> bookings) {
@@ -1380,8 +1477,9 @@ class _ScheduleBookingCard extends StatelessWidget {
 }
 
 class _BookingDetailSheet extends StatelessWidget {
-  const _BookingDetailSheet({required this.booking});
+  const _BookingDetailSheet({required this.booking, this.onOpenGym});
   final Map<String, dynamic> booking;
+  final VoidCallback? onOpenGym;
 
   String _fmt(String? date, String? time) {
     if (date == null) return '';
@@ -1480,6 +1578,25 @@ class _BookingDetailSheet extends StatelessWidget {
             status == 'confirmed' ? Icons.check_circle_outline : Icons.schedule_outlined,
             status == 'confirmed' ? 'Επιβεβαιωμένη' : 'Σε αναμονή',
           ),
+          if (onOpenGym != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  onOpenGym!();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text('Άνοιξε το γυμναστήριο', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           Text('Sync με ημερολόγιο',
             style: GoogleFonts.manrope(
@@ -2102,9 +2219,14 @@ class _MyGymCard extends StatelessWidget {
 // ─────────────────────────────────────────
 
 class _ProfileTab extends StatelessWidget {
-  const _ProfileTab({required this.globalAuth, required this.onLogout});
+  const _ProfileTab({
+    required this.globalAuth,
+    required this.onLogout,
+    required this.onNotifications,
+  });
   final GlobalAuthService globalAuth;
   final VoidCallback onLogout;
+  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -2137,10 +2259,44 @@ class _ProfileTab extends StatelessWidget {
             const SizedBox(height: 32),
 
             // Settings rows
-            _SettingRow(icon: Icons.notifications_outlined, label: 'Ειδοποιήσεις'),
-            _SettingRow(icon: Icons.language_outlined, label: 'Γλώσσα'),
-            _SettingRow(icon: Icons.lock_outline_rounded, label: 'Ασφάλεια & Απόρρητο'),
-            _SettingRow(icon: Icons.help_outline_rounded, label: 'Βοήθεια & Υποστήριξη'),
+            _SettingRow(icon: Icons.notifications_outlined, label: 'Ειδοποιήσεις', onTap: onNotifications),
+            ListenableBuilder(
+              listenable: LanguageService.instance,
+              builder: (context, _) => _SettingRow(
+                icon: Icons.language_outlined,
+                label: LanguageService.instance.isGreek ? 'Γλώσσα · Ελληνικά' : 'Language · English',
+                onTap: () => LanguageService.instance.toggle(),
+              ),
+            ),
+            _SettingRow(
+              icon: Icons.lock_outline_rounded,
+              label: 'Ασφάλεια & Απόρρητο',
+              onTap: () {
+                showDialog<void>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: _kCard,
+                    title: const Text('Λογαριασμός', style: TextStyle(color: Colors.white)),
+                    content: Text(
+                      user?.email.isNotEmpty == true
+                          ? 'Συνδεδεμένος ως ${user!.email}.'
+                          : 'Δεν υπάρχει email σε αυτόν τον λογαριασμό.',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+                    ],
+                  ),
+                );
+              },
+            ),
+            _SettingRow(
+              icon: Icons.help_outline_rounded,
+              label: 'Βοήθεια & Υποστήριξη',
+              onTap: () {
+                launchUrl(Uri.parse('mailto:support@omniplex.app?subject=OmniPlex'));
+              },
+            ),
             const SizedBox(height: 16),
 
             // Logout
@@ -2172,13 +2328,16 @@ class _ProfileTab extends StatelessWidget {
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow({required this.icon, required this.label});
+  const _SettingRow({required this.icon, required this.label, this.onTap});
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -2195,6 +2354,169 @@ class _SettingRow extends StatelessWidget {
         ),
         const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
       ]),
+    ),
+    );
+  }
+}
+
+class _OmniHeader extends StatelessWidget {
+  const _OmniHeader({
+    required this.letter,
+    required this.unread,
+    required this.onNotifications,
+    required this.onProfile,
+  });
+
+  final String letter;
+  final int unread;
+  final VoidCallback onNotifications;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          SvgPicture.asset('assets/omniplex_logo.svg', height: 32),
+          Row(children: [
+            GestureDetector(
+              onTap: onNotifications,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+                  if (unread > 0)
+                    Positioned(
+                      right: -4, top: -4,
+                      child: Container(
+                        width: 8, height: 8,
+                        decoration: const BoxDecoration(color: _kLime, shape: BoxShape.circle),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            GestureDetector(
+              onTap: onProfile,
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: _kCard,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _kBorder),
+                ),
+                alignment: Alignment.center,
+                child: Text(letter, style: GoogleFonts.manrope(
+                  fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlobalNotificationsPage extends StatefulWidget {
+  const _GlobalNotificationsPage({required this.token});
+  final String token;
+
+  @override
+  State<_GlobalNotificationsPage> createState() => _GlobalNotificationsPageState();
+}
+
+class _GlobalNotificationsPageState extends State<_GlobalNotificationsPage> {
+  static const _apiBase = 'https://passionate-grace-production-98ad.up.railway.app/api';
+  List<Map<String, dynamic>> _items = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final res = await http.get(
+        Uri.parse('$_apiBase/global/me/notifications'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
+      if (res.statusCode == 200 && mounted) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        setState(() {
+          _items = ((body['notifications'] as List?) ?? []).cast<Map<String, dynamic>>();
+        });
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _markRead(Map<String, dynamic> item) async {
+    if (item['is_read'] == 1 || item['is_read'] == true) return;
+    final id = item['id']?.toString();
+    if (id == null) return;
+    try {
+      await http.patch(
+        Uri.parse('$_apiBase/global/me/notifications/$id/read'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
+      if (!mounted) return;
+      setState(() => item['is_read'] = 1);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _kBg,
+      appBar: AppBar(
+        backgroundColor: _kBg,
+        foregroundColor: Colors.white,
+        title: Text('Ειδοποιήσεις', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: _kAccent))
+          : _items.isEmpty
+              ? Center(child: Text('Δεν υπάρχουν ειδοποιήσεις',
+                  style: GoogleFonts.manrope(color: _kGray)))
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                  itemCount: _items.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) {
+                    final item = _items[i];
+                    final unread = item['is_read'] != 1 && item['is_read'] != true;
+                    return GestureDetector(
+                      onTap: () => _markRead(item),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: _kCard,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: unread ? _kAccent.withValues(alpha: 0.45) : _kBorder),
+                        ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(item['title'] as String? ?? 'Ειδοποίηση',
+                            style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                          if ((item['body'] as String?)?.isNotEmpty == true) ...[
+                            const SizedBox(height: 4),
+                            Text(item['body'] as String, style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+                          ],
+                          if ((item['gym_name'] as String?)?.isNotEmpty == true) ...[
+                            const SizedBox(height: 6),
+                            Text(item['gym_name'] as String,
+                              style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w600, color: _kAccent)),
+                          ],
+                        ]),
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

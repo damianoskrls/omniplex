@@ -12,6 +12,7 @@ import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import 'booking_success_screen.dart';
+import 'home_screen.dart';
 import '../widgets/slot_visual.dart';
 import '../widgets/staff_avatar.dart';
 import '../widgets/staff_detail_sheet.dart';
@@ -44,6 +45,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   String? _slotsMessage;
   String? _dayStatus;
   OpeningHoursConfig? _openingHours;
+  Set<int> _serviceWeekdays = {};
   bool _bulkMode = false;
   final Set<int> _selectedWeekdays = {};
   _BulkPeriod _bulkPeriod = _BulkPeriod.specificMonth;
@@ -90,15 +92,46 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     if (!_locationReady) return;
 
     final hours = await _api.fetchOpeningHours(locationId: _locationId);
+    final serviceDays = await _loadServiceWeekdays();
     if (!mounted) return;
-    setState(() => _openingHours = hours);
-    if (hours != null && !hours.isDateOpen(_selectedDate)) {
-      final next = hours.nextOpenDate(from: DateTime.now());
-      if (next != null) {
-        setState(() => _selectedDate = next);
-      }
-    }
+    setState(() {
+      _openingHours = hours;
+      _serviceWeekdays = serviceDays;
+    });
+    _moveToNextBookableDay();
     await _loadSlots();
+  }
+
+  Future<Set<int>> _loadServiceWeekdays() async {
+    try {
+      final days = await _api.fetchServiceDays(
+        serviceId: widget.service.id,
+        locationId: _locationId,
+      );
+      return days.toSet();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  void _moveToNextBookableDay() {
+    if (_isDateSelectable(_selectedDate)) return;
+    final next = _nextSelectableDate(DateTime.now());
+    if (next != null) setState(() => _selectedDate = next);
+  }
+
+  DateTime? _nextSelectableDate(DateTime from) {
+    final start = DateTime(from.year, from.month, from.day);
+    for (var i = 0; i <= 60; i++) {
+      final day = start.add(Duration(days: i));
+      if (_isDateSelectable(day)) return day;
+    }
+    return null;
+  }
+
+  bool _serviceRunsOn(int dartWeekday) {
+    if (_serviceWeekdays.isEmpty) return true;
+    return _serviceWeekdays.contains(dartWeekday);
   }
 
   Future<void> _selectLocation(GymLocation location) async {
@@ -113,14 +146,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     });
 
     final hours = await _api.fetchOpeningHours(locationId: location.id);
+    final serviceDays = await _loadServiceWeekdays();
     if (!mounted) return;
-    setState(() => _openingHours = hours);
-    if (hours != null && !hours.isDateOpen(_selectedDate)) {
-      final next = hours.nextOpenDate(from: DateTime.now());
-      if (next != null) {
-        setState(() => _selectedDate = next);
-      }
-    }
+    setState(() {
+      _openingHours = hours;
+      _serviceWeekdays = serviceDays;
+    });
+    _moveToNextBookableDay();
     await _loadSlots();
   }
 
@@ -130,6 +162,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     final first = DateTime(today.year, today.month, today.day);
     final last = first.add(const Duration(days: 60));
     if (day.isBefore(first) || day.isAfter(last)) return false;
+    if (!_serviceRunsOn(day.weekday)) return false;
     if (_openingHours == null) return true;
     return _openingHours!.isDateOpen(day);
   }
@@ -247,7 +280,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   }
 
   void _toggleWeekday(int day) {
-    if (_openingHours != null && !_openingHours!.isWeekdayOpen(day)) {
+    if (!_serviceRunsOn(day) || (_openingHours != null && !_openingHours!.isWeekdayOpen(day))) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppStrings.of(context).bookingFlowClosedDay(_weekdayFull[day] ?? '')),
@@ -386,7 +419,14 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     final first = DateTime(now.year, now.month, now.day);
     var initial = _selectedDate;
     if (!_isDateSelectable(initial)) {
-      initial = _openingHours?.nextOpenDate(from: first) ?? first;
+      final next = _nextSelectableDate(first);
+      if (next == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Δεν υπάρχουν ημέρες με πρόγραμμα για αυτή την υπηρεσία.')),
+        );
+        return;
+      }
+      initial = next;
     }
     final picked = await showDatePicker(
       context: context,
@@ -620,7 +660,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           ],
         ),
       );
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+        HomeScreen.selectTabByKey('appointments');
+      }
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -1627,7 +1670,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               runSpacing: 8,
               children: _weekdayLabels.entries.map((e) {
                 final selected = _selectedWeekdays.contains(e.key);
-                final gymClosed = _openingHours != null && !_openingHours!.isWeekdayOpen(e.key);
+                final gymClosed = !_serviceRunsOn(e.key) ||
+                    (_openingHours != null && !_openingHours!.isWeekdayOpen(e.key));
                 return FilterChip(
                   label: Text(e.value),
                   selected: selected,

@@ -41,6 +41,8 @@ class HomeScreen extends StatefulWidget {
 
   static void selectTab(int index) => _HomeScreenState.selectTab(index);
 
+  static void selectTabByKey(String key) => _HomeScreenState.selectTabByKey(key);
+
   static void openNotifications() => _HomeScreenState.openNotifications();
 
   static void openMessages({String? threadId}) => _HomeScreenState.openMessages(threadId: threadId);
@@ -74,6 +76,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final state = _active;
     if (state == null || !state.mounted) return;
     state.setState(() => state._index = state._clampTab(index));
+  }
+
+  static void selectTabByKey(String key) {
+    final state = _active;
+    if (state == null || !state.mounted) return;
+    final index = state._tabItems.indexWhere((tab) => tab.key == key);
+    if (index < 0) return;
+    state.setState(() => state._index = index);
   }
 
   static void openNotifications() {
