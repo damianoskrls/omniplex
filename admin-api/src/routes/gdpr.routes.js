@@ -26,8 +26,8 @@ router.get('/consents', requireClientAdmin, async (req, res) => {
       SELECT g.id, g.kind, g.title, g.program_name, g.full_name, g.email, g.phone,
              g.signed_at, g.expires_at, g.created_at, u.full_name AS linked_client
       FROM gdpr_consents g
-      LEFT JOIN users u ON u.id = g.user_id
-      WHERE g.business_id = ?
+      LEFT JOIN users u ON u.id = (g.user_id COLLATE utf8mb4_unicode_ci)
+      WHERE (g.business_id COLLATE utf8mb4_unicode_ci) = ?
       ORDER BY g.created_at DESC
       LIMIT 200
     `, [bizId]);
@@ -120,9 +120,9 @@ router.get('/sign/:token', async (req, res) => {
              g.kind, g.title, g.body_snapshot, g.program_name,
              bc.gdpr_text, bc.app_name, b.name AS biz_name
       FROM gdpr_consents g
-      JOIN businesses b ON b.id = g.business_id
-      LEFT JOIN business_configs bc ON bc.business_id = g.business_id
-      WHERE g.token = ?
+      JOIN businesses b ON b.id = (g.business_id COLLATE utf8mb4_unicode_ci)
+      LEFT JOIN business_configs bc ON bc.business_id = (g.business_id COLLATE utf8mb4_unicode_ci)
+      WHERE (g.token COLLATE utf8mb4_unicode_ci) = ?
     `, [req.params.token]);
 
     if (!consent) return res.status(404).json({ error: 'Ο σύνδεσμος δεν βρέθηκε' });
@@ -141,7 +141,7 @@ router.post('/sign/:token', async (req, res) => {
 
   try {
     const [[consent]] = await db.query(
-      'SELECT id, signed_at, expires_at FROM gdpr_consents WHERE token = ?',
+      'SELECT id, signed_at, expires_at FROM gdpr_consents WHERE (token COLLATE utf8mb4_unicode_ci) = ?',
       [req.params.token]
     );
     if (!consent) return res.status(404).json({ error: 'Ο σύνδεσμος δεν βρέθηκε' });
@@ -203,7 +203,7 @@ router.get('/mine', requireMember, async (req, res) => {
       `SELECT id, kind, title, program_name, full_name, signed_at, expires_at, created_at,
               body_snapshot IS NOT NULL AS has_body
        FROM gdpr_consents
-       WHERE user_id = ? AND business_id = ?
+       WHERE (user_id COLLATE utf8mb4_unicode_ci) = ? AND (business_id COLLATE utf8mb4_unicode_ci) = ?
        ORDER BY signed_at IS NULL DESC, created_at DESC
        LIMIT 50`,
       [req.member.userId, req.member.businessId],
@@ -223,9 +223,9 @@ router.get('/mine/:id', requireMember, async (req, res) => {
     const [[row]] = await db.query(
       `SELECT g.*, bc.gdpr_text, COALESCE(bc.app_name, b.name) AS gym_name
        FROM gdpr_consents g
-       JOIN businesses b ON b.id = g.business_id
-       LEFT JOIN business_configs bc ON bc.business_id = g.business_id
-       WHERE g.id = ? AND g.user_id = ? AND g.business_id = ?`,
+       JOIN businesses b ON b.id = (g.business_id COLLATE utf8mb4_unicode_ci)
+       LEFT JOIN business_configs bc ON bc.business_id = (g.business_id COLLATE utf8mb4_unicode_ci)
+       WHERE g.id = ? AND (g.user_id COLLATE utf8mb4_unicode_ci) = ? AND (g.business_id COLLATE utf8mb4_unicode_ci) = ?`,
       [req.params.id, req.member.userId, req.member.businessId],
     );
     if (!row) return res.status(404).json({ error: 'Δεν βρέθηκε' });
@@ -240,7 +240,7 @@ router.post('/mine/:id/sign', requireMember, async (req, res) => {
   if (!signature_data) return res.status(400).json({ error: 'Signature required' });
   try {
     const [[row]] = await db.query(
-      'SELECT id, signed_at, expires_at FROM gdpr_consents WHERE id = ? AND user_id = ? AND business_id = ?',
+      'SELECT id, signed_at, expires_at FROM gdpr_consents WHERE id = ? AND (user_id COLLATE utf8mb4_unicode_ci) = ? AND (business_id COLLATE utf8mb4_unicode_ci) = ?',
       [req.params.id, req.member.userId, req.member.businessId],
     );
     if (!row) return res.status(404).json({ error: 'Δεν βρέθηκε' });

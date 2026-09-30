@@ -202,7 +202,7 @@ async function bootstrapSchema() {
         INDEX idx_gdpr_biz (business_id),
         INDEX idx_gdpr_token (token),
         INDEX idx_gdpr_user (user_id)
-      )
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     console.log('✓ Schema: gdpr_consents table ready');
   } catch (err) {
@@ -220,6 +220,9 @@ async function bootstrapSchema() {
   });
   await db.query(`ALTER TABLE gdpr_consents ADD COLUMN program_name VARCHAR(200) NULL`).catch((err) => {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gdpr_consents.program_name skipped:', err.message);
+  });
+  await db.query('ALTER TABLE gdpr_consents CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci').catch((err) => {
+    console.warn('gdpr_consents collation skipped:', err.message);
   });
 
   try {

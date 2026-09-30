@@ -7,6 +7,7 @@ import { Link2, CheckCircle, Clock, Send, FileText, ChevronDown, ChevronUp, Copy
 export default function Gdpr() {
   const [consents, setConsents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [clients, setClients] = useState([]);
   const [gdprText, setGdprText] = useState('');
   const [editingText, setEditingText] = useState(false);
@@ -25,10 +26,15 @@ export default function Gdpr() {
 
   async function load() {
     setLoading(true);
+    setLoadError('');
     try {
       const r = await api.get('/gdpr/consents');
       setConsents(r.data || []);
-    } catch { toast.error('Σφάλμα φόρτωσης'); }
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Σφάλμα φόρτωσης';
+      setLoadError(msg);
+      toast.error(msg);
+    }
     finally { setLoading(false); }
   }
 
@@ -164,7 +170,9 @@ export default function Gdpr() {
       {/* Consents list */}
       <div className="card">
         <div style={{ fontWeight: 700, marginBottom: 14 }}>Ιστορικό Συναινέσεων</div>
-        {loading ? <div className="text-muted">Φόρτωση…</div> : consents.length === 0 ? (
+        {loading ? <div className="text-muted">Φόρτωση…</div> : loadError ? (
+          <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--danger, #dc2626)' }}>{loadError}</div>
+        ) : consents.length === 0 ? (
           <div className="text-muted" style={{ textAlign: 'center', padding: '24px 0' }}>Δεν υπάρχουν ακόμα GDPR φόρμες</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
