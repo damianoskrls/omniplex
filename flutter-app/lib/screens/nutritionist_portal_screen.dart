@@ -242,7 +242,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen> {
       final today = DateTime.now().toIso8601String().substring(0, 10);
       final results = await Future.wait([
         api.fetchNutritionGoalsAdmin(widget.userId),
-        api.fetchNutritionMealPlan(widget.userId),
+        api.fetchNutritionMealPlanAdmin(widget.userId),
         api.fetchNutritionMeasurementsAdmin(widget.userId),
         api.fetchNutritionClientDay(widget.userId, today),
         api.fetchNutritionTemplates(),

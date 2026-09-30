@@ -530,7 +530,7 @@ class ApiService {
     _decode(res);
   }
 
-  Future<Map<String, dynamic>> fetchNutritionMealPlan(String userId) async {
+  Future<Map<String, dynamic>> fetchNutritionMealPlanAdmin(String userId) async {
     final res = await _get('/api/client-admin/nutrition/clients/$userId/meal-plan');
     return Map<String, dynamic>.from(_decode(res) as Map);
   }
