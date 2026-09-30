@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
@@ -158,6 +158,37 @@ function PendingAvailabilityRequests({ staffId, onResolved }) {
 
 const DAYS = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
 
+function addMinutes(time, mins) {
+  const [h, m] = String(time).slice(0, 5).split(':').map(Number);
+  const total = (h * 60 + (m || 0) + mins) % (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function rangesFromSchedules(rows, durationMins) {
+  const dur = Number(durationMins) > 0 ? Number(durationMins) : 60;
+  return (rows || []).flatMap((row) => {
+    if (row.is_active === 0 || row.is_active === false) return [];
+    const start = String(row.start_time || '').slice(0, 5);
+    if (!start) return [];
+    return [{ weekday: Number(row.weekday), start_time: start, end_time: addMinutes(start, dur) }];
+  });
+}
+
+async function slotsFromServices(locationId, serviceIds, services) {
+  const chosen = services.filter((svc) => serviceIds.includes(svc.id));
+  if (!locationId || !chosen.length) return [];
+  const lists = await Promise.all(chosen.map((svc) => api.get(`/client-admin/services/${svc.id}/slot-schedules`, { params: { location_id: locationId } })
+    .then((res) => rangesFromSchedules(res.data, svc.duration_mins))
+    .catch(() => [])));
+  const seen = new Set();
+  return lists.flat().filter((slot) => {
+    const key = `${slot.weekday}-${slot.start_time}-${slot.end_time}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => a.weekday - b.weekday || a.start_time.localeCompare(b.start_time));
+}
+
 function LeavesSection({ staffId }) {
   const [leaves, setLeaves] = useState([]);
   const [form, setForm] = useState({ date_from: '', date_to: '', reason: '' });
@@ -246,6 +277,7 @@ export default function StaffDetail() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const fillSeq = useRef(0);
 
   const activePlace = places.find((p) => p.id === activePlaceId) || places[0] || null;
 
@@ -273,13 +305,29 @@ export default function StaffDetail() {
     setPlaces((prev) => prev.map((p) => (p.id === placeId ? { ...p, ...patch } : p)));
   };
 
+  const applyProgramHours = async (placeId, serviceIds) => {
+    const seq = ++fillSeq.current;
+    if (!serviceIds.length) {
+      patchPlace(placeId, { slots: [], hours_inherited: false });
+      toast.error('Διάλεξε τουλάχιστον μία υπηρεσία');
+      return;
+    }
+    const next = await slotsFromServices(placeId, serviceIds, services);
+    if (seq !== fillSeq.current) return;
+    if (!next.length) {
+      toast.error('Δεν υπάρχει πρόγραμμα για τις επιλεγμένες υπηρεσίες σε αυτό το κατάστημα');
+      return;
+    }
+    patchPlace(placeId, { slots: next, hours_inherited: false });
+  };
+
   const togglePlaceService = (place, serviceId) => {
     const has = (place.service_ids || []).includes(serviceId);
-    patchPlace(place.id, {
-      service_ids: has
-        ? place.service_ids.filter((x) => x !== serviceId)
-        : [...(place.service_ids || []), serviceId],
-    });
+    const serviceIds = has
+      ? place.service_ids.filter((x) => x !== serviceId)
+      : [...(place.service_ids || []), serviceId];
+    patchPlace(place.id, { service_ids: serviceIds });
+    applyProgramHours(place.id, serviceIds);
   };
 
   const copyScheduleToOtherLocations = () => {
@@ -333,12 +381,6 @@ export default function StaffDetail() {
     ? (profile.avatar_url.startsWith('http') ? profile.avatar_url : `${API_BASE}${profile.avatar_url}`)
     : null;
 
-  const placeHours = activePlace?.opening_hours
-    ? (typeof activePlace.opening_hours === 'string'
-      ? (() => { try { return JSON.parse(activePlace.opening_hours); } catch { return null; } })()
-      : activePlace.opening_hours)
-    : null;
-
   return (
     <Layout title={profile.full_name || 'Προσωπικό'}>
       <button className="btn btn-secondary btn-sm" onClick={() => navigate('/staff')} style={{ marginBottom: 16 }}>
@@ -390,7 +432,7 @@ export default function StaffDetail() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-header"><span className="card-title">Καταστήματα, υπηρεσίες και ώρες</span></div>
         <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: 14, lineHeight: 1.5 }}>
-          Σε κάθε κατάστημα διάλεξε αν δουλεύει, ποιες υπηρεσίες κάνει εκεί, και ένα ωράριο για όλες αυτές τις υπηρεσίες.
+          Σε κάθε κατάστημα διάλεξε αν δουλεύει και ποιες υπηρεσίες κάνει. Οι ώρες διαθεσιμότητας ακολουθούν το πρόγραμμα που έχεις περάσει σε κάθε υπηρεσία.
         </p>
         {!places.length ? (
           <div className="text-muted">Δεν υπάρχουν καταστήματα. Πρόσθεσέ τα από το μενού Καταστήματα.</div>
@@ -471,7 +513,8 @@ export default function StaffDetail() {
                     <AvailabilityEditor
                       slots={activePlace.slots || []}
                       onChange={(next) => patchPlace(activePlace.id, { slots: next, hours_inherited: false })}
-                      gymHours={placeHours}
+                      fillLabel="Γέμισε από το πρόγραμμα των υπηρεσιών"
+                      onFill={() => applyProgramHours(activePlace.id, activePlace.service_ids || [])}
                     />
                   </>
                 )}

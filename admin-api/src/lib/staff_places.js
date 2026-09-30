@@ -33,7 +33,7 @@ async function listGymStaff(dbConn, bizId) {
 
 async function listBookableServices(dbConn, bizId) {
   const [rows] = await dbConn.query(
-    `SELECT id, name FROM services
+    `SELECT id, name, duration_mins FROM services
      WHERE business_id = ? AND is_active = 1
        AND (category IS NULL OR category <> 'nutrition_consultation')
      ORDER BY name`,

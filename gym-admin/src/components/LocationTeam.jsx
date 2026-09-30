@@ -20,6 +20,37 @@ function cloneSlots(slots) {
   return (slots || []).map((s) => ({ ...s }));
 }
 
+function addMinutes(time, mins) {
+  const [h, m] = String(time).slice(0, 5).split(':').map(Number);
+  const total = (h * 60 + (m || 0) + mins) % (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function rangesFromSchedules(rows, durationMins) {
+  const dur = Number(durationMins) > 0 ? Number(durationMins) : 60;
+  return (rows || []).flatMap((row) => {
+    if (row.is_active === 0 || row.is_active === false) return [];
+    const start = String(row.start_time || '').slice(0, 5);
+    if (!start) return [];
+    return [{ weekday: Number(row.weekday), start_time: start, end_time: addMinutes(start, dur) }];
+  });
+}
+
+async function slotsFromServices(locationId, serviceIds, services) {
+  const chosen = services.filter((svc) => serviceIds.includes(svc.id));
+  if (!locationId || !chosen.length) return [];
+  const lists = await Promise.all(chosen.map((svc) => api.get(`/client-admin/services/${svc.id}/slot-schedules`, { params: { location_id: locationId } })
+    .then((res) => rangesFromSchedules(res.data, svc.duration_mins))
+    .catch(() => [])));
+  const seen = new Set();
+  return lists.flat().filter((slot) => {
+    const key = `${slot.weekday}-${slot.start_time}-${slot.end_time}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => a.weekday - b.weekday || a.start_time.localeCompare(b.start_time));
+}
+
 export default function LocationTeam({ locationId, gymHours }) {
   const [services, setServices] = useState([]);
   const [trainers, setTrainers] = useState([]);
@@ -97,6 +128,21 @@ export default function LocationTeam({ locationId, gymHours }) {
     } finally {
       setSavingHours(false);
     }
+  };
+
+  const fillFromPrograms = async () => {
+    const people = hoursTarget === 'all' ? working : working.filter((t) => t.id === hoursTarget);
+    const serviceIds = [...new Set(people.flatMap((t) => t.service_ids || []))];
+    if (!serviceIds.length) {
+      toast.error('Διάλεξε πρώτα τις υπηρεσίες');
+      return;
+    }
+    const next = await slotsFromServices(locationId, serviceIds, services);
+    if (!next.length) {
+      toast.error('Δεν υπάρχει πρόγραμμα για τις επιλεγμένες υπηρεσίες σε αυτό το κατάστημα');
+      return;
+    }
+    setSlots(next);
   };
 
   const pickTarget = (value) => {
@@ -186,7 +232,7 @@ export default function LocationTeam({ locationId, gymHours }) {
         <div style={{ marginTop: 18 }}>
           <div style={{ fontWeight: 700, marginBottom: 4 }}>Ώρες διαθεσιμότητας σε αυτό το κατάστημα</div>
           <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 10, lineHeight: 1.5 }}>
-            Ένα ωράριο για όλες τις υπηρεσίες του ατόμου εδώ. Μπορείς να το βάλεις σε όλους ή μόνο σε έναν.
+            Οι ώρες βγαίνουν από το πρόγραμμα των υπηρεσιών που κάνει εδώ. Μπορείς να τις βάλεις σε όλους ή μόνο σε έναν.
           </div>
           <div className="form-group" style={{ maxWidth: 360 }}>
             <label className="form-label">Σε ποιον ισχύει</label>
@@ -197,7 +243,12 @@ export default function LocationTeam({ locationId, gymHours }) {
               ))}
             </select>
           </div>
-          <AvailabilityEditor slots={slots} onChange={setSlots} gymHours={gymHours} />
+          <AvailabilityEditor
+            slots={slots}
+            onChange={setSlots}
+            fillLabel="Γέμισε από το πρόγραμμα των υπηρεσιών"
+            onFill={fillFromPrograms}
+          />
           <button type="button" className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveHours} disabled={savingHours}>
             {savingHours ? 'Αποθήκευση...' : hoursTarget === 'all' ? 'Αποθήκευση ωραρίου για όλους' : 'Αποθήκευση ωραρίου'}
           </button>
