@@ -154,26 +154,6 @@ class _GlobalProfileDetailsScreenState
               ],
 
               const Spacer(),
-
-              // Info hint
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _kCard,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _kBorder),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.info_outline_rounded, color: _kLime, size: 16),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Στο επόμενο βήμα θα επιλέξεις ρόλο — μπορείς να το παραλείψεις.',
-                      style: GoogleFonts.manrope(fontSize: 12, color: _kGray, height: 1.45)),
-                  ),
-                ]),
-              ),
-
               const SizedBox(height: 16),
 
               // Save button

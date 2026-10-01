@@ -17,6 +17,17 @@ const _kBorder = Color(0xFF2A2B30);
 const _kGray   = Color(0xFF9A9CA3);
 const _kLime   = Color(0xFFC6FF3D);
 
+typedef PurchaseComplete = void Function({
+  required String message,
+  required String businessId,
+  required String tabKey,
+});
+
+class GymLaunch {
+  static String? tabKey;
+  static String? message;
+}
+
 String _checkoutError(Object raw) {
   final text = raw.toString().replaceFirst('Exception: ', '');
   if (text.toLowerCase().contains('api key')) {
@@ -46,7 +57,7 @@ class GymProfileScreen extends StatefulWidget {
   final VoidCallback? onLoggedIn;
   final void Function(TenantConfig)? onEnterGym;
   final VoidCallback? onRequestSent;
-  final void Function(String message)? onPurchaseComplete;
+  final PurchaseComplete? onPurchaseComplete;
   final int initialTab;
 
   @override
@@ -471,8 +482,13 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     return null;
   }
 
-  void _finishPurchase(String message) {
-    widget.onPurchaseComplete?.call(message);
+  void _finishPurchase(String message, {required String tabKey}) {
+    final bizId = _gym?['business_id'] as String? ?? '';
+    widget.onPurchaseComplete?.call(
+      message: message,
+      businessId: bizId,
+      tabKey: tabKey,
+    );
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
@@ -520,7 +536,10 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     if (booked == true && mounted) {
       await widget.globalAuth!.refreshGyms();
       if (!mounted) return;
-      _finishPurchase('Η drop-in κράτηση είναι στα Gyms σου.');
+      _finishPurchase(
+        'Η κράτηση καταχωρήθηκε. Τη βλέπεις στα Ραντεβού.',
+        tabKey: 'appointments',
+      );
     }
   }
 
@@ -630,7 +649,10 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       if (confirm.statusCode == 200) {
         await widget.globalAuth!.refreshGyms();
         if (!mounted) return;
-        _finishPurchase('Το πακέτο «${plan['name']}» είναι στα Gyms σου. Μπορείς να κάνεις κράτηση.');
+        _finishPurchase(
+          'Το πακέτο «${plan['name']}» είναι ενεργό. Μπορείς να κάνεις κράτηση.',
+          tabKey: 'booking',
+        );
       } else {
         final err = (jsonDecode(confirm.body) as Map?)?['error'] ?? 'Σφάλμα';
         _showError(_checkoutError(err));
@@ -1793,7 +1815,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
       }
       setState(() {
         _slots = slots;
-        _message = slots.isEmpty ? (body['message'] as String? ?? 'Δεν υπάρχουν ώρες αυτή την ημέρα') : null;
+        _message = null;
       });
     } catch (_) {
       if (mounted) setState(() => _message = 'Δεν φορτώθηκαν οι ώρες');
@@ -1803,7 +1825,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
   }
 
   Future<void> _confirm(Map<String, dynamic> slot) async {
-    setState(() => _booking = true);
+    setState(() { _booking = true; _message = null; });
     try {
       String? gymToken;
       if (widget.memberLinked) {
@@ -1829,7 +1851,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
             if (widget.locationId != null) 'location_id': widget.locationId,
             if (gymToken == null) 'guest_name': user?.fullName,
           }),
-        );
+        ).timeout(const Duration(seconds: 25));
         final intentBody = jsonDecode(intentRes.body);
         if (intentRes.statusCode != 200 || intentBody is! Map) {
           final err = intentBody is Map ? (intentBody['error'] ?? 'Η πληρωμή με κάρτα δεν είναι διαθέσιμη') : 'Η πληρωμή με κάρτα δεν είναι διαθέσιμη';
@@ -1866,7 +1888,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
           if (gymToken == null) 'guest_email': user?.email,
           if (gymToken == null) 'guest_phone': user?.phone,
         }),
-      );
+      ).timeout(const Duration(seconds: 25));
       if (!mounted) return;
       if (res.statusCode == 200 || res.statusCode == 201) {
         Navigator.pop(context, true);
@@ -1874,20 +1896,13 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
       }
       final body = jsonDecode(res.body);
       final err = body is Map ? (body['error'] ?? 'Η κράτηση απέτυχε') : 'Η κράτηση απέτυχε';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_checkoutError(err.toString())), backgroundColor: Colors.red.shade700),
-      );
+      setState(() => _message = _checkoutError(err.toString()));
     } on StripeException catch (e) {
       if (!mounted || e.error.code == FailureCode.Canceled) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε'), backgroundColor: Colors.red.shade700),
-      );
+      setState(() => _message = e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε');
     } catch (e) {
       if (!mounted) return;
-      final text = _checkoutError(e.toString().replaceFirst('Exception: ', ''));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(text), backgroundColor: Colors.red.shade700),
-      );
+      setState(() => _message = _checkoutError(e.toString().replaceFirst('Exception: ', '')));
     } finally {
       if (mounted) setState(() => _booking = false);
     }
@@ -1940,17 +1955,35 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
           ),
         ),
         const SizedBox(height: 12),
-        if (_loading)
+        if (_booking)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+              SizedBox(width: 10),
+              Text('Ολοκλήρωση πληρωμής…', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            ]),
+          )
+        else if (_loading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(child: CircularProgressIndicator(color: Colors.white)),
           )
-        else if (_message != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text(_message!, style: GoogleFonts.manrope(color: const Color(0xFF9A9CA3))),
-          )
-        else
+        else ...[
+          if (_message != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(_message!, style: GoogleFonts.manrope(color: Color(0xFFF87171), height: 1.35)),
+            ),
+          if (_slots.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                _message == null ? 'Δεν υπάρχουν ώρες αυτή την ημέρα' : '',
+                style: GoogleFonts.manrope(color: const Color(0xFF9A9CA3)),
+              ),
+            )
+          else
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final slot in _slots)
               GestureDetector(
@@ -1969,6 +2002,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
                 ),
               ),
           ]),
+        ],
       ]),
     );
   }

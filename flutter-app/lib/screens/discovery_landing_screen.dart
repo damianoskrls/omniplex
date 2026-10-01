@@ -35,7 +35,7 @@ class DiscoveryLandingScreen extends StatefulWidget {
   final VoidCallback onLoggedIn;
   final void Function(TenantConfig)? onEnterGym;
   final VoidCallback? onRequestSent;
-  final void Function(String message)? onPurchaseComplete;
+  final PurchaseComplete? onPurchaseComplete;
   final bool hideHeader;
 
   @override

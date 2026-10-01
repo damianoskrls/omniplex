@@ -32,6 +32,7 @@ import 'marketplace_screen.dart';
 import 'goals_screen.dart';
 import 'payments_screen.dart';
 import 'gym_dashboard_screen.dart';
+import 'gym_profile_screen.dart';
 import 'workout_programs_screen.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
@@ -451,6 +452,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _refreshUnread();
       _loadNutritionAccess();
       _loadWorkoutNav();
+      _openLaunchTab();
       MemberIntakeScreen.promptIfNeeded(context);
     });
     _unreadTimer = Timer.periodic(const Duration(seconds: 45), (_) => _refreshUnread());
@@ -490,13 +492,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final rows = await auth.api.fetchMyPrograms(user.id);
       if (!mounted) return;
       final has = rows.any(_countsAsTrainingProgram);
-      if (has == _hasWorkoutPrograms) return;
-      final currentKey = _index >= 0 && _index < _tabItems.length ? _tabItems[_index].key : null;
-      setState(() => _hasWorkoutPrograms = has);
-      if (!mounted || currentKey == null) return;
-      final next = _tabItems.indexWhere((tab) => tab.key == currentKey);
-      if (next >= 0 && next != _index) setState(() => _index = next);
+      if (has != _hasWorkoutPrograms) {
+        final currentKey = _index >= 0 && _index < _tabItems.length ? _tabItems[_index].key : null;
+        setState(() => _hasWorkoutPrograms = has);
+        if (!mounted || currentKey == null) return;
+        final next = _tabItems.indexWhere((tab) => tab.key == currentKey);
+        if (next >= 0 && next != _index) setState(() => _index = next);
+      }
+      _openLaunchTab();
     } on ApiException catch (_) {}
+  }
+
+  void _openLaunchTab() {
+    final key = GymLaunch.tabKey;
+    if (key == null || !mounted) return;
+    final idx = _tabItems.indexWhere((tab) => tab.key == key);
+    if (idx < 0) return;
+    final msg = GymLaunch.message;
+    GymLaunch.tabKey = null;
+    GymLaunch.message = null;
+    setState(() => _index = idx);
+    if (msg == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    });
   }
 
   Future<void> _loadNutritionAccess() async {

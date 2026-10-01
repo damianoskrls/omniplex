@@ -189,7 +189,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     }
   }
 
-  /// New user or incomplete profile: name + email first, then optional role picker
+  /// New user or incomplete profile: name and email. Role is chosen only on a gym join request.
   void _goProfileDetails() {
     Navigator.pushReplacement(context, MaterialPageRoute(
       builder: (_) => GlobalProfileDetailsScreen(

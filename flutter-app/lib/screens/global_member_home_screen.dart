@@ -118,10 +118,29 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     );
   }
 
-  void _onPurchaseComplete(String message) {
-    _loadDashboard();
-    _openTab(3);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  Future<void> _onPurchaseComplete({
+    required String message,
+    required String businessId,
+    required String tabKey,
+  }) async {
+    await widget.globalAuth.refreshGyms();
+    await _loadDashboard();
+    if (!mounted) return;
+    GlobalGym? gym;
+    for (final candidate in widget.globalAuth.gyms) {
+      if (candidate.businessId == businessId && !candidate.isStaff) {
+        gym = candidate;
+        break;
+      }
+    }
+    if (gym == null) {
+      _openTab(3);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+    GymLaunch.tabKey = tabKey;
+    GymLaunch.message = message;
+    await _enterGym(gym);
   }
 
   String? _packageLine(String businessId) {
@@ -530,7 +549,7 @@ class _HomeTab extends StatelessWidget {
   final void Function(Map<String, dynamic>) onOpenBooking;
   final Color Function(String?) parseColor;
   final String? Function(String businessId) packageLine;
-  final void Function(String message) onPurchaseComplete;
+  final PurchaseComplete onPurchaseComplete;
 
   String get _greeting {
     final h = DateTime.now().hour;
@@ -1801,7 +1820,7 @@ class _DiscoverTab extends StatelessWidget {
   });
   final GlobalAuthService globalAuth;
   final VoidCallback onRequestSent;
-  final void Function(String message) onPurchaseComplete;
+  final PurchaseComplete onPurchaseComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -2705,7 +2724,7 @@ class _MyGymsTab extends StatefulWidget {
   final Future<void> Function(GlobalGym) onRemoveGym;
   final Color Function(String?) parseColor;
   final String? Function(String businessId) packageLine;
-  final void Function(String message) onPurchaseComplete;
+  final PurchaseComplete onPurchaseComplete;
 
   @override
   State<_MyGymsTab> createState() => _MyGymsTabState();

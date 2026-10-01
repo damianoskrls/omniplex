@@ -2233,7 +2233,7 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
     await conn.beginTransaction();
 
     const [[svc]] = await conn.query(
-      'SELECT id, name, drop_in_price_cents, duration_mins, max_capacity FROM services WHERE id = ? AND business_id = ? AND is_active = 1',
+      'SELECT id, name, drop_in_price_cents, duration_mins FROM services WHERE id = ? AND business_id = ? AND is_active = 1',
       [service_id, bizId],
     );
     if (!svc) { await conn.rollback(); return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε' }); }
@@ -2266,16 +2266,28 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
       svc.drop_in_price_cents = priced.priceCents;
     }
 
-    // Capacity check: count bookings + dropin_bookings for this slot
+    const slotTime = String(time).slice(0, 5);
+    const startsAt = `${date} ${slotTime}:00`;
+    let maxCap = null;
+    try {
+      const [[sch]] = await conn.query(
+        `SELECT max_capacity FROM service_slot_schedules
+         WHERE service_id = ? AND business_id = ? AND weekday = WEEKDAY(?)
+           AND TIME_FORMAT(start_time, '%H:%i') = ? AND is_active = 1
+         LIMIT 1`,
+        [service_id, bizId, date, slotTime],
+      );
+      maxCap = sch?.max_capacity == null ? null : Number(sch.max_capacity);
+    } catch (_) {}
     const [[capRow]] = await conn.query(`
       SELECT
         COALESCE((SELECT COUNT(*) FROM bookings
-                  WHERE business_id=? AND service_id=? AND booking_date=? AND TIME_FORMAT(starts_at,'%H:%i')=? AND status='confirmed'), 0)
+                  WHERE business_id=? AND service_id=? AND starts_at = ? AND status='confirmed'), 0)
         + COALESCE((SELECT COUNT(*) FROM dropin_bookings
                     WHERE business_id=? AND service_id=? AND booking_date=? AND TIME_FORMAT(booking_time,'%H:%i')=? AND status IN ('confirmed','attended')), 0)
         AS total_booked
-    `, [bizId, service_id, date, time, bizId, service_id, date, time]);
-    if (svc.max_capacity && capRow.total_booked >= svc.max_capacity) {
+    `, [bizId, service_id, startsAt, bizId, service_id, date, slotTime]);
+    if (maxCap != null && maxCap > 0 && Number(capRow.total_booked) >= maxCap) {
       await conn.rollback();
       return res.status(409).json({ error: 'Η κλάση είναι πλήρης', code: 'SLOT_FULL' });
     }
@@ -2332,13 +2344,15 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
           bizId, userId: req.user.userId, service_id,
           staff_id: staff_id || null, date, time,
           location_id: location_id || null,
-          use_credit: false, source: 'dropin',
+          use_credit: false, source: 'dropin', force: true,
         });
-        bookingId = bookingResult.bookingId || bookingResult.id;
+        bookingId = bookingResult.booking_id || bookingResult.bookingId || bookingResult.id;
         if (bookingId) {
           await conn.query('UPDATE dropin_bookings SET booking_id=? WHERE id=?', [bookingId, dropinId]);
         }
-      } catch (_) { /* slot might conflict — dropin booking still stands */ }
+      } catch (bookErr) {
+        console.warn('dropin member booking:', bookErr.message);
+      }
     }
 
     await conn.commit();
