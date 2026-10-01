@@ -26,12 +26,14 @@ class DiscoveryLandingScreen extends StatefulWidget {
     required this.globalAuth,
     required this.onLoggedIn,
     this.onEnterGym,
+    this.onRequestSent,
     this.hideHeader = false,
   });
 
   final GlobalAuthService globalAuth;
   final VoidCallback onLoggedIn;
   final void Function(TenantConfig)? onEnterGym;
+  final VoidCallback? onRequestSent;
   final bool hideHeader;
 
   @override
@@ -221,6 +223,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         globalAuth: widget.globalAuth,
         onLoggedIn: widget.onLoggedIn,
         onEnterGym: widget.onEnterGym,
+        onRequestSent: widget.onRequestSent,
       ),
     ));
   }

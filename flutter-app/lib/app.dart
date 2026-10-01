@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'config/tenant_config.dart';
 import 'models/booking.dart';
 import 'screens/home_screen.dart';
-import 'screens/discovery_landing_screen.dart';
 import 'screens/global_auth_gate_screen.dart';
 import 'screens/global_member_home_screen.dart';
 import 'services/global_auth_service.dart';
@@ -222,11 +221,18 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                       },
                     );
                   }
-                  if (_guestExplore) {
-                    return DiscoveryLandingScreen(
+                  if (_guestExplore || gAuth.isLoggedIn) {
+                    return GlobalMemberHomeScreen(
+                      key: const ValueKey('omni-shell'),
                       globalAuth: gAuth,
-                      onLoggedIn: () {
-                        if (mounted) setState(() { _guestExplore = false; });
+                      startOnDiscover: !gAuth.isLoggedIn,
+                      onEnterGym: (config) {
+                        setState(() => _guestExplore = false);
+                        widget.onEnterGym?.call(config);
+                      },
+                      onLogout: () {
+                        gAuth.clear();
+                        if (mounted) setState(() => _guestExplore = false);
                       },
                     );
                   }

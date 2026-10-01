@@ -2729,9 +2729,19 @@ router.post('/notifications/image', requireClientAdmin, (req, res, next) => {
   }
 });
 
+router.get('/notifications/audience-preview', requireClientAdmin, async (req, res) => {
+  try {
+    const { resolveAudience } = require('../lib/audience');
+    const people = await resolveAudience(db, req.admin.businessId, req.query);
+    return res.json({ total: people.length });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/notifications/broadcast', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const { title, body, audience = 'all', image_url } = req.body;
+  const { title, body, image_url } = req.body;
 
   if (!title?.trim() || !body?.trim()) {
     return res.status(400).json({ error: 'Απαιτούνται τίτλος και κείμενο' });
@@ -2742,42 +2752,47 @@ router.post('/notifications/broadcast', requireClientAdmin, async (req, res) => 
     imageUrl = String(image_url).trim();
   }
 
-  let userSql = `SELECT id FROM users WHERE business_id = ? AND ${sqlActiveClients()}`;
-  if (audience === 'active') {
-    userSql += " AND (account_status IS NULL OR account_status = 'active')";
+  const { resolveAudience, deliverAnnouncement, normalizeAudienceInput } = require('../lib/audience');
+  const target = normalizeAudienceInput(req.body);
+  let people;
+  try {
+    people = await resolveAudience(db, bizId, req.body);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
-  const [users] = await db.query(userSql, [bizId]);
-  if (!users.length) {
-    return res.status(400).json({ error: 'Δεν βρέθηκαν πελάτες' });
+  if (!people.length) {
+    return res.status(400).json({ error: 'Δεν βρέθηκαν παραλήπτες με αυτά τα φίλτρα' });
   }
 
   const conn = await db.getConnection();
-  let sent = 0;
-  let pushed = 0;
   try {
     await conn.beginTransaction();
-    for (const u of users) {
-      const note = await createUserNotification(conn, {
-        businessId: bizId,
-        userId: u.id,
-        type: 'announcement',
-        title: title.trim(),
-        body: body.trim(),
-        imageUrl,
-        payload: { audience },
-      });
-      sent += 1;
-      pushed += note.sentPush ? 1 : 0;
-    }
+    const result = await deliverAnnouncement(conn, people, {
+      businessId: bizId,
+      title: title.trim(),
+      body: body.trim(),
+      imageUrl,
+      payload: {
+        audience: target.audience,
+        location_id: target.locationId || '',
+        service_id: target.serviceId || '',
+        staff_kind: target.staffKind || '',
+      },
+    });
     await conn.commit();
     const fcmOn = !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FCM_SERVER_KEY);
+    const who = target.audience === 'staff' ? 'άτομα προσωπικού' : 'πελάτες';
+    const missed = result.unreachable
+      ? ` ${result.unreachable} δεν έχουν λογαριασμό στην εφαρμογή.`
+      : '';
     return res.json({
       ok: true,
-      sent,
-      pushed,
-      message: `Η ανακοίνωση γράφτηκε σε ${sent} πελάτες. Push έφτασε σε ${pushed}.`,
+      sent: result.sent,
+      pushed: result.pushed,
+      total: result.total,
+      message: `Η ανακοίνωση γράφτηκε σε ${result.sent} ${who}. Push έφτασε σε ${result.pushed}.${missed}`,
       push_note: fcmOn
-        ? (pushed ? null : 'Καμία συσκευή δεν είναι εγγεγραμμένη για push. Ο πελάτης πρέπει να έχει ανοιχτό το OmniPlex τουλάχιστον μία φορά.')
+        ? (result.pushed ? null : 'Καμία συσκευή δεν είναι εγγεγραμμένη για push. Πρέπει να έχει ανοίξει το OmniPlex τουλάχιστον μία φορά.')
         : 'FCM δεν είναι ρυθμισμένο — η ειδοποίηση φαίνεται μέσα στην εφαρμογή, όχι ως push στο κινητό.',
     });
   } catch (err) {

@@ -11,7 +11,6 @@ import 'app_nav.dart';
 import 'config/tenant_config.dart';
 import 'l10n/app_strings.dart';
 import 'screens/business_selector_screen.dart';
-import 'screens/discovery_landing_screen.dart';
 import 'screens/global_auth_gate_screen.dart';
 import 'screens/global_dashboard_screen.dart';
 import 'screens/global_member_home_screen.dart';
@@ -362,33 +361,26 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
     }
 
     if (_needsTenantSelection) {
-      if (_globalAuth.isLoggedIn) {
+      if (_globalAuth.isLoggedIn || _showExplore) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           home: GlobalMemberHomeScreen(
+            key: const ValueKey('omni-shell'),
             globalAuth: _globalAuth,
+            startOnDiscover: !_globalAuth.isLoggedIn,
             onEnterGym: (config) {
-              setState(() { _needsTenantSelection = false; _showGlobalDashboard = false; });
+              setState(() {
+                _needsTenantSelection = false;
+                _showGlobalDashboard = false;
+                _showExplore = false;
+              });
               _onTenantConfigLoaded(config);
             },
             onLogout: () => setState(() {
               _needsTenantSelection = true;
               _showGlobalDashboard = false;
+              _showExplore = false;
             }),
-          ),
-        );
-      }
-      // Guest explore (after tapping "Συνέχεια ως επισκέπτης")
-      if (_showExplore) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          home: DiscoveryLandingScreen(
-            globalAuth: _globalAuth,
-            onLoggedIn: () => setState(() { _showExplore = false; }),
-            onEnterGym: (config) {
-              setState(() { _showExplore = false; _needsTenantSelection = false; });
-              _onTenantConfigLoaded(config);
-            },
           ),
         );
       }

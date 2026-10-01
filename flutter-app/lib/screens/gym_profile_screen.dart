@@ -25,6 +25,7 @@ class GymProfileScreen extends StatefulWidget {
     this.globalAuth,
     this.onLoggedIn,
     this.onEnterGym,
+    this.onRequestSent,
     this.initialTab = 0,
   });
 
@@ -34,6 +35,7 @@ class GymProfileScreen extends StatefulWidget {
   final GlobalAuthService? globalAuth;
   final VoidCallback? onLoggedIn;
   final void Function(TenantConfig)? onEnterGym;
+  final VoidCallback? onRequestSent;
   final int initialTab;
 
   @override
@@ -331,12 +333,8 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         await _loadJoinStatus();
         await widget.globalAuth!.refreshGyms();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Το αίτημα στάλθηκε. Θα μπεις στο γυμναστήριο μόλις εγκριθεί.'),
-            backgroundColor: Color(0xFF16171B),
-          ),
-        );
+        widget.onRequestSent?.call();
+        Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
         final err = body['message'] ?? body['error'] ?? 'Σφάλμα';
         ScaffoldMessenger.of(context).showSnackBar(

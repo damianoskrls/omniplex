@@ -152,6 +152,15 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_DUP_FIELDNAME') throw err;
   }
 
+  try {
+    await db.query(
+      'ALTER TABLE bookings ADD COLUMN trial_satisfied TINYINT(1) NULL DEFAULT NULL',
+    );
+    console.log('✓ Schema: προστέθηκε bookings.trial_satisfied');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+  }
+
   // ── Bulk campaigns table ─────────────────────────────────────
   try {
     await db.query(`

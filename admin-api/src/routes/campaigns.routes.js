@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../lib/email');
 const { sendSms } = require('../lib/sms');
+const { resolveAudience, normalizeAudienceInput } = require('../lib/audience');
 
 function requireClientAdmin(req, res, next) {
   const auth = req.headers.authorization;
@@ -19,62 +20,8 @@ function requireClientAdmin(req, res, next) {
   }
 }
 
-/** Build recipients query based on filter */
-async function getRecipients(bizId, filterType, filterValue) {
-  let q = `
-    SELECT DISTINCT u.id, u.full_name, u.email, u.phone
-    FROM users u
-  `;
-  const params = [bizId];
-
-  switch (filterType) {
-    case 'all':
-      q += ' WHERE u.business_id = ? AND u.deleted_at IS NULL AND u.account_status = "active"';
-      break;
-
-    case 'active_members':
-      q += `
-        JOIN user_memberships m ON m.user_id = u.id AND m.business_id = u.business_id
-                                AND m.membership_status = 'active'
-        WHERE u.business_id = ? AND u.deleted_at IS NULL
-      `;
-      break;
-
-    case 'service':
-      q += `
-        JOIN user_memberships m ON m.user_id = u.id AND m.business_id = u.business_id
-                                AND m.service_id = ? AND m.membership_status = 'active'
-        WHERE u.business_id = ? AND u.deleted_at IS NULL
-      `;
-      params.unshift(filterValue); // service_id first
-      break;
-
-    case 'at_risk':
-      q += `
-        WHERE u.business_id = ? AND u.deleted_at IS NULL AND u.account_status = 'active'
-          AND u.id NOT IN (
-            SELECT DISTINCT b.user_id FROM bookings b
-            WHERE b.business_id = ? AND b.starts_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-              AND b.user_id IS NOT NULL
-          )
-      `;
-      params.push(bizId);
-      break;
-
-    case 'no_active_package':
-      q += `
-        LEFT JOIN user_memberships m ON m.user_id = u.id AND m.business_id = u.business_id
-                                     AND m.membership_status = 'active'
-        WHERE u.business_id = ? AND u.deleted_at IS NULL AND m.id IS NULL
-      `;
-      break;
-
-    default:
-      q += ' WHERE u.business_id = ? AND u.deleted_at IS NULL AND u.account_status = "active"';
-  }
-
-  const [rows] = await db.query(q, params);
-  return rows;
+async function getRecipients(bizId, input) {
+  return resolveAudience(db, bizId, input);
 }
 
 // ── GET /campaigns — list ───────────────────────────────────────────────────
@@ -94,9 +41,9 @@ router.get('/', requireClientAdmin, async (req, res) => {
 // ── GET /campaigns/preview — count recipients ──────────────────────────────
 router.get('/preview', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const { filter_type = 'all', filter_value, channel = 'sms' } = req.query;
+  const { channel = 'sms' } = req.query;
   try {
-    const all = await getRecipients(bizId, filter_type, filter_value);
+    const all = await getRecipients(bizId, req.query);
     const eligible = channel === 'email'
       ? all.filter(r => r.email)
       : all.filter(r => r.phone);
@@ -109,23 +56,31 @@ router.get('/preview', requireClientAdmin, async (req, res) => {
 // ── POST /campaigns — send ─────────────────────────────────────────────────
 router.post('/', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const { channel, subject, body, filter_type = 'all', filter_value } = req.body;
+  const { channel, subject, body } = req.body;
   if (!channel || !body) return res.status(400).json({ error: 'channel and body required' });
   if (channel === 'email' && !subject) return res.status(400).json({ error: 'subject required for email' });
   if (channel !== 'email' && !process.env.BREVO_API_KEY) {
     return res.status(400).json({ error: 'Τα SMS δεν είναι ρυθμισμένα στον server (λείπει το κλειδί αποστολής).' });
   }
 
+  const target = normalizeAudienceInput(req.body);
+  const filterType = target.audience === 'staff' ? 'staff' : (target.clientScope || 'all');
+  const filterValue = JSON.stringify({
+    location_id: target.locationId,
+    service_id: target.serviceId,
+    staff_kind: target.staffKind,
+  }).slice(0, 255);
+
   const id = uuidv4();
   try {
-    const recipients = await getRecipients(bizId, filter_type, filter_value);
+    const recipients = await getRecipients(bizId, req.body);
     const eligible = channel === 'email'
       ? recipients.filter(r => r.email)
       : recipients.filter(r => r.phone);
 
     await db.query(
       'INSERT INTO bulk_campaigns (id, business_id, channel, subject, body, filter_type, filter_value, recipient_count, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "sending")',
-      [id, bizId, channel, subject || null, body, filter_type, filter_value || null, eligible.length]
+      [id, bizId, channel, subject || null, body, filterType, filterValue, eligible.length]
     );
 
     // Respond immediately, send in background

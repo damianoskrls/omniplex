@@ -84,7 +84,17 @@ class SharePhotoService {
     y += lineGap;
 
     y = _drawLabel(canvas, _capitalize(details.dateLine), pad, y, 26 * scale, Colors.white.withValues(alpha: 0.95));
-    y = _drawLabel(canvas, details.timeLine, pad, y, 34 * scale, Colors.white, bold: true);
+    final iconSize = 32 * scale;
+    _drawMaterialIcon(canvas, Icons.fitness_center, pad, y + 4 * scale, iconSize, Colors.white);
+    y = _drawLabel(
+      canvas,
+      details.timeLine,
+      pad + iconSize + 10 * scale,
+      y,
+      34 * scale,
+      Colors.white,
+      bold: true,
+    );
 
     // Bottom branding: logo above gym name, measured to avoid overlap
     final gymFontSize = 24 * scale;
@@ -237,6 +247,22 @@ class SharePhotoService {
     final drawY = bottomAlign ? y - height : y;
     canvas.drawParagraph(paragraph, Offset(x, drawY));
     return bottomAlign ? y : y + height;
+  }
+
+  void _drawMaterialIcon(Canvas canvas, IconData icon, double x, double y, double size, Color color) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          fontSize: size,
+          color: color,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.paint(canvas, Offset(x, y));
   }
 
   String _capitalize(String s) {

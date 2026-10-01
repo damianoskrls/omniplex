@@ -202,6 +202,26 @@ class ApiService {
     await _patch('/api/mobile/staff/trials/$bookingId/note', {'notes': notes});
   }
 
+  Future<Map<String, dynamic>> fetchStaffTrialSummary() async {
+    final res = await _get('/api/mobile/staff/trials/summary');
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  Future<void> saveTrialFeedback(
+    String bookingId, {
+    required String notes,
+    bool? satisfied,
+    bool becameMember = false,
+    bool considering = false,
+  }) async {
+    await _patch('/api/mobile/staff/trials/$bookingId/feedback', {
+      'notes': notes,
+      'satisfied': satisfied,
+      'became_member': becameMember,
+      'considering': considering,
+    });
+  }
+
   Future<void> deleteStaffLeave(String leaveId) async {
     final res = await _withTimeout(http.delete(
       Uri.parse('$_base/api/mobile/staff/leaves/$leaveId'),

@@ -20,6 +20,7 @@ import 'discovery_landing_screen.dart';
 import 'electronic_documents_screen.dart';
 import 'gym_entry_splash.dart';
 import 'gym_profile_screen.dart';
+import 'phone_otp_login_screen.dart';
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -47,11 +48,13 @@ class GlobalMemberHomeScreen extends StatefulWidget {
     required this.globalAuth,
     required this.onEnterGym,
     required this.onLogout,
+    this.startOnDiscover = false,
   });
 
   final GlobalAuthService globalAuth;
   final void Function(TenantConfig) onEnterGym;
   final VoidCallback onLogout;
+  final bool startOnDiscover;
 
   @override
   State<GlobalMemberHomeScreen> createState() => _GlobalMemberHomeScreenState();
@@ -60,7 +63,7 @@ class GlobalMemberHomeScreen extends StatefulWidget {
 class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   static const _apiBase = 'https://passionate-grace-production-98ad.up.railway.app/api';
 
-  int _tab = 0;
+  late int _tab = widget.startOnDiscover ? 1 : 0;
   int _gymListVersion = 0;
   Map<String, dynamic>? _dashboard;
   bool _loading = true;
@@ -71,8 +74,13 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadDashboard();
-    _watchNotifications();
+    widget.globalAuth.addListener(_onAuthChanged);
+    if (widget.globalAuth.isLoggedIn) {
+      _loadDashboard();
+      _watchNotifications();
+    } else {
+      _loading = false;
+    }
     PushService.instance.onForegroundData = (data) {
       _loadNotificationCount();
       final type = data['type']?.toString() ?? '';
@@ -82,8 +90,37 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     };
   }
 
+  void _onAuthChanged() {
+    if (!mounted) return;
+    if (widget.globalAuth.isLoggedIn) {
+      _loadDashboard();
+      if (_notifTimer == null) _watchNotifications();
+    }
+    setState(() {});
+  }
+
+  void _openLogin() {
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => PhoneOtpLoginScreen(
+        globalAuth: widget.globalAuth,
+        onLoggedIn: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        },
+      ),
+    ));
+  }
+
+  void _onJoinRequestSent() {
+    _loadDashboard();
+    _openTab(3);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Το αίτημα είναι σε αναμονή στα Gyms σου.')),
+    );
+  }
+
   @override
   void dispose() {
+    widget.globalAuth.removeListener(_onAuthChanged);
     _notifTimer?.cancel();
     PushService.instance.onForegroundData = null;
     super.dispose();
@@ -97,6 +134,10 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   }
 
   void _openTab(int t) {
+    if (!widget.globalAuth.isLoggedIn && (t == 2 || t == 4)) {
+      _openLogin();
+      return;
+    }
     setState(() {
       _tab = t;
       if (t == 3) _gymListVersion++;
@@ -104,6 +145,10 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   }
 
   Future<void> _loadDashboard() async {
+    if (!widget.globalAuth.isLoggedIn) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
     setState(() => _loading = true);
     try {
       await widget.globalAuth.refreshGyms();
@@ -249,8 +294,10 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             _OmniHeader(
               letter: firstName.isNotEmpty ? firstName[0].toUpperCase() : '?',
               unread: _unreadNotifications,
-              onNotifications: _openNotifications,
-              onProfile: () => _openTab(4),
+              guest: !widget.globalAuth.isLoggedIn,
+              onLogin: _openLogin,
+              onNotifications: widget.globalAuth.isLoggedIn ? _openNotifications : _openLogin,
+              onProfile: widget.globalAuth.isLoggedIn ? () => _openTab(4) : _openLogin,
             ),
             Expanded(
               child: IndexedStack(
@@ -267,7 +314,10 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             onOpenBooking: _openBooking,
             parseColor: _parseColor,
           ),
-          _DiscoverTab(globalAuth: widget.globalAuth),
+          _DiscoverTab(
+            globalAuth: widget.globalAuth,
+            onRequestSent: _onJoinRequestSent,
+          ),
           _ScheduleTab(
             globalAuth: widget.globalAuth,
             gyms: widget.globalAuth.gyms,
@@ -495,6 +545,17 @@ class _HomeTab extends StatelessWidget {
                       const SizedBox(height: 8),
 
                       // My Gym card
+                      if (homeGroups.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Text(
+                            globalAuth.isLoggedIn
+                                ? 'Τα γυμναστήρια που περιμένουν έγκριση είναι στα Gyms.'
+                                : 'Βρες γυμναστήριο από την Αναζήτηση. Η σύνδεση ζητιέται όταν θες πακέτο.',
+                            style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.4),
+                          ),
+                        ),
+
                       if (homeGroups.isNotEmpty) ...[
                         Row(children: [
                           Expanded(
@@ -1674,14 +1735,16 @@ class _WeekStrip extends StatelessWidget {
 // ─────────────────────────────────────────
 
 class _DiscoverTab extends StatelessWidget {
-  const _DiscoverTab({required this.globalAuth});
+  const _DiscoverTab({required this.globalAuth, required this.onRequestSent});
   final GlobalAuthService globalAuth;
+  final VoidCallback onRequestSent;
 
   @override
   Widget build(BuildContext context) {
     return DiscoveryLandingScreen(
       globalAuth: globalAuth,
       onLoggedIn: () {},
+      onRequestSent: onRequestSent,
       hideHeader: true,
     );
   }
@@ -2972,12 +3035,16 @@ class _OmniHeader extends StatelessWidget {
     required this.unread,
     required this.onNotifications,
     required this.onProfile,
+    this.guest = false,
+    this.onLogin,
   });
 
   final String letter;
   final int unread;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
+  final bool guest;
+  final VoidCallback? onLogin;
 
   @override
   Widget build(BuildContext context) {
@@ -2987,6 +3054,13 @@ class _OmniHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           SvgPicture.asset('assets/omniplex_logo.svg', height: 32),
+          if (guest)
+            GestureDetector(
+              onTap: onLogin,
+              child: Text('Σύνδεση', style: GoogleFonts.manrope(
+                fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFFC52473))),
+            )
+          else
           Row(children: [
             GestureDetector(
               onTap: onNotifications,

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Save, Send, Bell, Settings2, ImagePlus, X, AlertTriangle, ChevronRight } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
 import { fmtDate } from '../utils/dates';
+import AudienceFields, { EMPTY_AUDIENCE, audiencePayload, audienceQuery, describeAudience } from '../components/AudienceFields';
 
 function daysLeft(validUntil) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -27,7 +28,10 @@ export default function Notifications() {
   const [sending, setSending] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [audience, setAudience] = useState('all');
+  const [target, setTarget] = useState(EMPTY_AUDIENCE);
+  const [locations, setLocations] = useState([]);
+  const [services, setServices] = useState([]);
+  const [previewCount, setPreviewCount] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -41,6 +45,20 @@ export default function Notifications() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    api.get('/client-admin/locations').then((r) => setLocations(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/client-admin/services').then((r) => setServices((r.data || []).filter((s) => s.is_active !== 0))).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      api.get(`/client-admin/notifications/audience-preview?${audienceQuery(target)}`)
+        .then((r) => setPreviewCount(r.data?.total ?? 0))
+        .catch(() => setPreviewCount(null));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [target]);
 
   const saveSettings = async () => {
     setSaving(true);
@@ -79,14 +97,15 @@ export default function Notifications() {
       toast.error('Συμπλήρωσε τίτλο και κείμενο');
       return;
     }
-    if (!window.confirm(`Να σταλεί η ανακοίνωση σε ${audience === 'active' ? 'ενεργούς' : 'όλους τους'} πελάτες;`)) return;
+    const who = describeAudience(target, locations, services);
+    if (!window.confirm(`Να σταλεί η ανακοίνωση σε ${previewCount ?? '?'} παραλήπτες (${who});`)) return;
     setSending(true);
     try {
       const r = await api.post('/client-admin/notifications/broadcast', {
         title: title.trim(),
         body: body.trim(),
-        audience,
         image_url: imageUrl || undefined,
+        ...audiencePayload(target),
       });
       toast.success(r.data.message || 'Εστάλη');
       if (r.data.push_note) toast(r.data.push_note, { icon: 'ℹ️' });
@@ -188,13 +207,12 @@ export default function Notifications() {
             <Send size={18} /> Νέα ανακοίνωση
           </div>
           <form onSubmit={sendBroadcast}>
-            <div className="form-group">
-              <label className="form-label">Παραλήπτες</label>
-              <select className="form-select" value={audience} onChange={e => setAudience(e.target.value)}>
-                <option value="all">Όλοι οι πελάτες</option>
-                <option value="active">Μόνο ενεργοί πελάτες</option>
-              </select>
-            </div>
+            <AudienceFields value={target} onChange={setTarget} locations={locations} services={services} />
+            {previewCount != null && (
+              <div className="text-muted" style={{ fontSize: '0.84rem', marginBottom: 12, fontWeight: 600 }}>
+                {previewCount} παραλήπτες
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Τίτλος</label>
               <input
@@ -255,7 +273,7 @@ export default function Notifications() {
               </div>
             </div>
             <button type="submit" className="btn btn-primary" disabled={sending}>
-              <Send size={14} /> {sending ? 'Αποστολή...' : 'Αποστολή σε πελάτες'}
+              <Send size={14} /> {sending ? 'Αποστολή...' : 'Αποστολή'}
             </button>
           </form>
         </div>

@@ -704,19 +704,55 @@ router.patch('/staff/bookings/:id/claim', requireMobileStaff, async (req, res) =
   }
 });
 
-// PATCH /api/mobile/staff/trials/:id/claim — staff claims a trial booking + optional note
+// PATCH /api/mobile/staff/trials/:id/claim — staff takes an unassigned trial
 router.patch('/staff/trials/:id/claim', requireMobileStaff, async (req, res) => {
   const { notes } = req.body;
   try {
+    const [[trial]] = await db.query(
+      'SELECT id, staff_id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
+      [req.params.id, req.businessId],
+    );
+    if (!trial) return res.status(404).json({ error: 'Δεν βρέθηκε το δοκιμαστικό' });
+    if (trial.staff_id && trial.staff_id !== req.staffId) {
+      return res.status(409).json({ error: 'Το έχει αναλάβει ήδη άλλος' });
+    }
     const sets = ['staff_id = ?'];
     const params = [req.staffId];
     if (notes !== undefined) { sets.push('notes = ?'); params.push(notes); }
     params.push(req.params.id, req.businessId);
-    const [result] = await db.query(
+    await db.query(
       `UPDATE bookings SET ${sets.join(', ')} WHERE id = ? AND business_id = ? AND is_trial = 1`,
       params,
     );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Trial not found' });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/mobile/staff/trials/:id/feedback — outcome after the trainer's own trial
+router.patch('/staff/trials/:id/feedback', requireMobileStaff, async (req, res) => {
+  const { notes, satisfied, became_member, considering } = req.body;
+  try {
+    const [[trial]] = await db.query(
+      'SELECT id, staff_id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
+      [req.params.id, req.businessId],
+    );
+    if (!trial) return res.status(404).json({ error: 'Δεν βρέθηκε το δοκιμαστικό' });
+    if (trial.staff_id !== req.staffId) {
+      return res.status(403).json({ error: 'Μόνο όποιος το ανέλαβε γράφει αποτέλεσμα' });
+    }
+    let sat = null;
+    if (satisfied === true || satisfied === 1 || satisfied === '1') sat = 1;
+    else if (satisfied === false || satisfied === 0 || satisfied === '0') sat = 0;
+    const became = became_member ? 1 : 0;
+    const thinks = became ? 0 : (considering ? 1 : 0);
+    await db.query(
+      `UPDATE bookings
+       SET notes = ?, trial_satisfied = ?, trial_became_member = ?, trial_considering = ?
+       WHERE id = ? AND business_id = ?`,
+      [notes?.trim() || null, sat, became, thinks, req.params.id, req.businessId],
+    );
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -834,19 +870,51 @@ router.delete('/staff/leaves/:id', requireMobileStaff, async (req, res) => {
 
 // ── Staff Trials ────────────────────────────────────────────────────────────
 
+// GET /api/mobile/staff/trials/summary — this trainer's trial results
+router.get('/staff/trials/summary', requireMobileStaff, async (req, res) => {
+  try {
+    const [[mine]] = await db.query(`
+      SELECT
+        COALESCE(SUM(starts_at <= NOW()), 0) AS done,
+        COALESCE(SUM(starts_at <= NOW() AND trial_became_member = 1), 0) AS became_members,
+        COALESCE(SUM(starts_at <= NOW() AND trial_satisfied = 1), 0) AS satisfied,
+        COALESCE(SUM(starts_at <= NOW() AND trial_considering = 1 AND trial_became_member = 0), 0) AS considering
+      FROM bookings
+      WHERE business_id = ? AND is_trial = 1 AND status <> 'cancelled' AND staff_id = ?
+    `, [req.businessId, req.staffId]);
+    const [[open]] = await db.query(`
+      SELECT COUNT(*) AS open_count
+      FROM bookings
+      WHERE business_id = ? AND is_trial = 1 AND status <> 'cancelled' AND staff_id IS NULL
+    `, [req.businessId]);
+    return res.json({
+      done: Number(mine?.done) || 0,
+      became_members: Number(mine?.became_members) || 0,
+      satisfied: Number(mine?.satisfied) || 0,
+      considering: Number(mine?.considering) || 0,
+      open: Number(open?.open_count) || 0,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/mobile/staff/trials — list all (or unassigned) trials for this business
 router.get('/staff/trials', requireMobileStaff, async (req, res) => {
   const unassignedOnly = req.query.unassigned === '1';
   try {
     const [rows] = await db.query(`
       SELECT b.id, b.starts_at, b.ends_at, b.status, b.notes,
-             b.user_id, b.service_id, b.staff_id, b.trial_became_member,
+             b.user_id, b.service_id, b.staff_id, b.location_id,
+             b.trial_became_member, b.trial_considering, b.trial_satisfied,
              u.full_name AS user_name, u.phone AS user_phone,
              s.name AS service_name,
+             loc.name AS location_name,
              st.full_name AS staff_name
       FROM bookings b
       LEFT JOIN users u ON u.id = b.user_id
       LEFT JOIN services s ON s.id = b.service_id
+      LEFT JOIN locations loc ON loc.id = b.location_id
       LEFT JOIN staff st ON st.id = b.staff_id
       WHERE b.business_id = ? AND b.is_trial = 1 AND b.status != 'cancelled'
         ${unassignedOnly ? 'AND b.staff_id IS NULL' : ''}
@@ -854,24 +922,6 @@ router.get('/staff/trials', requireMobileStaff, async (req, res) => {
       LIMIT 200
     `, [req.businessId]);
     return res.json(rows);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-// PATCH /api/mobile/staff/trials/:id/claim — staff claims an unassigned trial
-router.patch('/staff/trials/:id/claim', requireMobileStaff, async (req, res) => {
-  try {
-    const [[trial]] = await db.query(
-      'SELECT id, staff_id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
-      [req.params.id, req.businessId]
-    );
-    if (!trial) return res.status(404).json({ error: 'Δεν βρέθηκε' });
-    if (trial.staff_id && trial.staff_id !== req.staffId) {
-      return res.status(409).json({ error: 'Έχει ήδη εκπαιδευτή' });
-    }
-    await db.query('UPDATE bookings SET staff_id = ? WHERE id = ?', [req.staffId, req.params.id]);
-    return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

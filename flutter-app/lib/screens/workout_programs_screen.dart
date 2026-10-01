@@ -1,13 +1,19 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
+import '../config/tenant_config.dart';
 import '../l10n/app_strings.dart';
+import '../models/workout_share_details.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/health_workout_service.dart';
+import '../services/share_photo_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/workout_share_fullscreen.dart';
 
 bool _isVideoUrl(String? url) {
   if (url == null) return false;
@@ -331,6 +337,31 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
     }
   }
 
+  Future<void> _openProgram(Map<String, dynamic> program, {bool fromStart = false}) async {
+    if (fromStart) {
+      final userId = context.read<AuthService>().user?.id;
+      final programId = program['program_id']?.toString();
+      if (userId == null || programId == null) return;
+      try {
+        await context.read<AuthService>().api.resetProgramSession(userId, programId);
+        program['done_exercise_ids'] = <String>[];
+      } on ApiException catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        return;
+      }
+    }
+    if (!mounted) return;
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => WorkoutSessionScreen(program: program)),
+    );
+    if (changed == true && mounted) {
+      setState(() { _loading = true; _error = null; });
+      await _load();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = widget.serviceTitle;
@@ -389,16 +420,8 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
                         final program = _programs[i - 1];
                         return _ProgramPickCard(
                           program: program,
-                          onOpen: () async {
-                            final changed = await Navigator.push<bool>(
-                              context,
-                              MaterialPageRoute(builder: (_) => WorkoutSessionScreen(program: program)),
-                            );
-                            if (changed == true && mounted) {
-                              setState(() { _loading = true; _error = null; });
-                              await _load();
-                            }
-                          },
+                          onOpen: () => _openProgram(program),
+                          onRestart: () => _openProgram(program, fromStart: true),
                         );
                       },
                     ),
@@ -407,9 +430,10 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
 }
 
 class _ProgramPickCard extends StatelessWidget {
-  const _ProgramPickCard({required this.program, required this.onOpen});
+  const _ProgramPickCard({required this.program, required this.onOpen, required this.onRestart});
   final Map<String, dynamic> program;
   final VoidCallback onOpen;
+  final VoidCallback onRestart;
 
   @override
   Widget build(BuildContext context) {
@@ -421,7 +445,8 @@ class _ProgramPickCard extends StatelessWidget {
     final finished = total > 0 && done >= total;
     final names = (program['service_names'] as List?)?.map((e) => e.toString()).where((e) => e.isNotEmpty).toList() ?? [];
     final primary = context.tenantPrimary;
-    final label = finished ? 'Ολοκληρώθηκε' : (done > 0 ? 'Συνέχισε' : 'Ξεκίνα');
+    final partial = done > 0 && !finished;
+    final label = finished ? 'Ολοκληρώθηκε' : (partial ? 'Συνέχισε' : 'Ξεκίνα');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -430,42 +455,80 @@ class _ProgramPickCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
-      child: InkWell(
-        onTap: onOpen,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (names.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(names.join(' · '), style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w700)),
-                ),
-              Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: total == 0 ? 0 : done / total,
-                  minHeight: 6,
-                  backgroundColor: AppColors.border,
-                  color: primary,
-                ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: partial ? null : onOpen,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (names.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(names.join(' · '), style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                    ),
+                  Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      value: total == 0 ? 0 : done / total,
+                      minHeight: 6,
+                      backgroundColor: AppColors.border,
+                      color: primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(total == 0 ? 'Χωρίς ασκήσεις' : '$done από $total',
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      if (!partial) ...[
+                        const Spacer(),
+                        Text(label, style: TextStyle(color: primary, fontWeight: FontWeight.w800, fontSize: 13)),
+                        Icon(Icons.chevron_right_rounded, color: primary, size: 18),
+                      ],
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
+            ),
+            if (partial) ...[
+              const SizedBox(height: 12),
               Row(
                 children: [
-                  Text(total == 0 ? 'Χωρίς ασκήσεις' : '$done από $total',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                  const Spacer(),
-                  Text(label, style: TextStyle(color: primary, fontWeight: FontWeight.w800, fontSize: 13)),
-                  Icon(Icons.chevron_right_rounded, color: primary, size: 18),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: onOpen,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: AppColors.onFill(primary),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Συνέχισε', style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: onRestart,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Από την αρχή', style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ),
                 ],
               ),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -496,6 +559,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   int? _totalKcal;
   int? _watchKcal;
   int? _watchHr;
+  bool _sharingPhoto = false;
+  final _sharePhotos = SharePhotoService();
 
   @override
   void initState() {
@@ -695,7 +760,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     }
   }
 
-  Future<void> _restart() async {
+  Future<void> _restart({bool andBegin = false}) async {
     final programId = _programId;
     final userId = context.read<AuthService>().user?.id;
     if (programId == null || userId == null || _busy) return;
@@ -716,6 +781,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         _changed = true;
         _busy = false;
       });
+      if (andBegin) _begin();
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
@@ -776,10 +842,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Με το ναι ξεκινάει ο χρόνος. Οι ασκήσεις περνάνε μία-μία και στο τέλος βλέπεις ενδεικτικές θερμίδες από το προφίλ σου.',
+          Text(
+            continuing
+                ? 'Συνεχίζεις από εκεί που σταμάτησες, ή ξεκινάς τις ασκήσεις από την αρχή. Με το ναι ξεκινάει ο χρόνος.'
+                : 'Με το ναι ξεκινάει ο χρόνος. Οι ασκήσεις περνάνε μία-μία και στο τέλος βλέπεις ενδεικτικές θερμίδες από το προφίλ σου.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+            style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -813,6 +881,23 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               child: Text(continuing ? 'Ναι, συνεχίζω' : 'Ναι, ξεκινάω', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             ),
           ),
+          if (continuing) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _busy ? null : () => _restart(andBegin: true),
+                icon: const Icon(Icons.replay_rounded),
+                label: const Text('Ξεκίνα από την αρχή', style: TextStyle(fontWeight: FontWeight.w800)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -839,14 +924,50 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_clock(_elapsed), style: TextStyle(color: primary, fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: 1)),
-              const SizedBox(height: 4),
-              Text('${index + 1} από ${_exercises.length}',
-                  style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              Row(
+                children: [
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(_clock(_elapsed), style: TextStyle(color: primary, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _SessionAction(
+                    icon: paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                    label: paused ? 'Συνέχεια' : 'Παύση',
+                    onTap: _togglePause,
+                  ),
+                  const SizedBox(width: 8),
+                  _SessionAction(
+                    icon: Icons.stop_rounded,
+                    label: 'Διακοπή',
+                    onTap: _confirmStop,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Text('${index + 1} από ${_exercises.length}',
+                      style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: _sharingPhoto ? null : _pickSharePhoto,
+                    icon: Icon(Icons.add_a_photo_outlined, size: 18, color: primary),
+                    label: Text('Φωτογραφία', style: TextStyle(color: primary, fontWeight: FontWeight.w800)),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(99),
@@ -909,36 +1030,6 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           child: Column(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _togglePause,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: AppColors.border),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: Text(paused ? 'Συνέχεια' : 'Παύση', style: const TextStyle(fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _confirmStop,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: AppColors.border),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: const Text('Στοπ', style: TextStyle(fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -962,16 +1053,162 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     );
   }
 
+  Future<void> _pickSharePhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: Colors.white),
+              title: const Text('Κάμερα', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: Colors.white),
+              title: const Text('Συλλογή', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    final picked = await ImagePicker().pickImage(source: source, imageQuality: 90);
+    if (picked == null || !mounted) return;
+    setState(() => _sharingPhoto = true);
+    try {
+      final config = context.read<TenantConfig>();
+      final bytes = await picked.readAsBytes();
+      final logoBytes = await _sharePhotos.loadLogoBytes(
+        logoUrl: config.logoUrl,
+        apiBaseUrl: config.apiBaseUrl,
+      );
+      final now = DateTime.now();
+      final name = widget.program['program_name']?.toString() ?? 'Προπόνηση';
+      final file = await _sharePhotos.composeWorkoutShare(
+        photoBytes: bytes,
+        logoBytes: logoBytes,
+        details: WorkoutShareDetails(
+          gymName: config.appName,
+          workoutTitle: name,
+          startsAt: _startedAt ?? now,
+          endsAt: now,
+          accentColorHex: config.primaryColor,
+        ),
+      );
+      if (!mounted) return;
+      if (file == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Δεν μπόρεσε να ετοιμαστεί η φωτογραφία')),
+        );
+        return;
+      }
+      await _showShareSheet(file);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Δεν μπόρεσε να ετοιμαστεί η φωτογραφία')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sharingPhoto = false);
+    }
+  }
+
+  Future<void> _showShareSheet(File file) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Φωτογραφία προπόνησης', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: 6),
+            const Text(
+              'Λογότυπο, ημερομηνία, ώρα και εικονίδιο γυμναστηρίου.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => Navigator.of(ctx).push(MaterialPageRoute<void>(
+                builder: (_) => WorkoutShareFullscreen(imageFile: file),
+              )),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: AspectRatio(
+                  aspectRatio: 4 / 5,
+                  child: Image.file(file, fit: BoxFit.cover),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      try {
+                        await _sharePhotos.saveToGallery(file);
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Αποθηκεύτηκε στη συλλογή')),
+                          );
+                        }
+                      } catch (_) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Δεν αποθηκεύτηκε η φωτογραφία')),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.download_rounded),
+                    label: const Text('Κατέβασμα'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final box = ctx.findRenderObject() as RenderBox?;
+                      final origin = box != null && box.hasSize
+                          ? box.localToGlobal(Offset.zero) & box.size
+                          : null;
+                      await _sharePhotos.shareWorkoutPhoto(file, sharePositionOrigin: origin);
+                    },
+                    icon: const Icon(Icons.ios_share_rounded),
+                    label: const Text('Share'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _confirmStop() async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Στοπ προπόνησης;', style: TextStyle(color: Colors.white)),
+        title: const Text('Διακοπή προπόνησης;', style: TextStyle(color: Colors.white)),
         content: const Text('Ο χρόνος σταματάει και βλέπεις τη σύνοψη.', style: TextStyle(color: AppColors.textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Όχι')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Στοπ')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Διακοπή')),
         ],
       ),
     );
@@ -1040,6 +1277,36 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SessionAction extends StatelessWidget {
+  const _SessionAction({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceLight,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: Colors.white),
+              const SizedBox(width: 4),
+              Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

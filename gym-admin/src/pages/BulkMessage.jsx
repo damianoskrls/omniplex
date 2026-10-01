@@ -3,19 +3,15 @@ import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { Send, Mail, MessageSquare, Users, CheckCircle, Clock } from 'lucide-react';
-
-const FILTERS = [
-  { value: 'all', label: 'Όλοι οι ενεργοί πελάτες' },
-  { value: 'active_members', label: 'Πελάτες με ενεργό πακέτο' },
-  { value: 'at_risk', label: 'Πελάτες σε κίνδυνο (>30 μέρες χωρίς κράτηση)' },
-  { value: 'no_active_package', label: 'Πελάτες χωρίς ενεργό πακέτο' },
-];
+import AudienceFields, { EMPTY_AUDIENCE, audiencePayload, audienceQuery, campaignFilterLabel } from '../components/AudienceFields';
 
 export default function BulkMessage() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [channel, setChannel] = useState('sms');
-  const [filterType, setFilterType] = useState('all');
+  const [target, setTarget] = useState(EMPTY_AUDIENCE);
+  const [locations, setLocations] = useState([]);
+  const [services, setServices] = useState([]);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [preview, setPreview] = useState(null);
@@ -25,9 +21,14 @@ export default function BulkMessage() {
   useEffect(() => { loadCampaigns(); }, []);
 
   useEffect(() => {
+    api.get('/client-admin/locations').then((r) => setLocations(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/client-admin/services').then((r) => setServices((r.data || []).filter((s) => s.is_active !== 0))).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const t = setTimeout(() => loadPreview(), 400);
     return () => clearTimeout(t);
-  }, [channel, filterType]);
+  }, [channel, target]);
 
   async function loadCampaigns() {
     setLoading(true);
@@ -40,7 +41,7 @@ export default function BulkMessage() {
 
   async function loadPreview() {
     try {
-      const r = await api.get(`/campaigns/preview?channel=${channel}&filter_type=${filterType}`);
+      const r = await api.get(`/campaigns/preview?channel=${channel}&${audienceQuery(target)}`);
       setPreview(r.data);
     } catch { setPreview(null); }
   }
@@ -50,7 +51,7 @@ export default function BulkMessage() {
     if (channel === 'email' && !subject.trim()) return toast.error('Γράψτε τίτλο email');
     setSending(true);
     try {
-      const r = await api.post('/campaigns', { channel, subject, body, filter_type: filterType });
+      const r = await api.post('/campaigns', { channel, subject, body, ...audiencePayload(target) });
       toast.success(`Στέλνεται σε ${r.data.recipient_count} παραλήπτες!`);
       setBody(''); setSubject(''); setConfirm(false);
       setTimeout(loadCampaigns, 3000);
@@ -87,13 +88,12 @@ export default function BulkMessage() {
             ))}
           </div>
 
-          {/* Filter */}
-          <div className="form-group">
-            <label className="form-label">Παραλήπτες</label>
-            <select className="form-input" value={filterType} onChange={e => setFilterType(e.target.value)}>
-              {FILTERS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-            </select>
-          </div>
+          <AudienceFields
+            value={target}
+            onChange={(next) => { setTarget(next); setConfirm(false); }}
+            locations={locations}
+            services={services}
+          />
 
           {preview && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '10px 14px', background: 'var(--accent-dim)', borderRadius: 10 }}>
@@ -182,7 +182,7 @@ export default function BulkMessage() {
                   {c.subject && <div style={{ fontSize: '0.82rem', fontWeight: 600, marginBottom: 2 }}>{c.subject}</div>}
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-2)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.body}</div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 4 }}>
-                    {FILTERS.find(f => f.value === c.filter_type)?.label || c.filter_type} · {new Date(c.created_at).toLocaleDateString('el-GR')}
+                    {campaignFilterLabel(c, locations, services)} · {new Date(c.created_at).toLocaleDateString('el-GR')}
                   </div>
                 </div>
               ))}

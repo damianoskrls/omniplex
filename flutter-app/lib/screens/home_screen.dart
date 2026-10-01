@@ -16,6 +16,7 @@ import 'my_bookings_screen.dart';
 import 'notifications_screen.dart';
 import 'messages_screen.dart';
 import 'staff_clients_screen.dart';
+import 'staff_trials_screen.dart';
 import 'staff_leaves_screen.dart';
 import 'staff_messages_screen.dart';
 import 'staff_schedule_screen.dart';
@@ -311,12 +312,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           label: 'Κοινότητα',
           screen: const CommunityScreen(),
         ),
-        _TabItem(
-          key: 'clients',
-          icon: Icons.people_outline_rounded,
-          label: 'Πελάτες',
-          screen: const StaffClientsScreen(),
-        ),
+        if (user?.staffKind == 'physiotherapist')
+          _TabItem(
+            key: 'clients',
+            icon: Icons.people_outline_rounded,
+            label: 'Πελάτες',
+            screen: const StaffClientsScreen(),
+          )
+        else
+          _TabItem(
+            key: 'trials',
+            icon: Icons.person_search_outlined,
+            label: 'Δοκιμαστικά',
+            screen: const StaffTrialsScreen(),
+          ),
         _TabItem(
           key: 'leave',
           icon: Icons.flight_takeoff_outlined,
