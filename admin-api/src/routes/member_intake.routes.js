@@ -4,13 +4,44 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { r2Multer } = require('../lib/r2_upload');
-const { FITNESS_GOAL_LABELS, normalizeFitnessGoal } = require('../lib/client_profile');
+const { FITNESS_GOAL_LABELS, normalizeFitnessGoal, normalizeWeight } = require('../lib/client_profile');
 const { createUserNotification } = require('../lib/user_notifications');
 const { sqlActiveClients } = require('../lib/client_soft_delete');
 
 const router = express.Router();
 const GOALS = Object.keys(FITNESS_GOAL_LABELS);
 const EXPERIENCE = new Set(['beginner', 'some', 'regular']);
+const CONDITION_KEYS = ['cardiac', 'hypertension', 'diabetes', 'asthma', 'orthopedic', 'injury', 'other', 'none'];
+const FITNESS_STATUSES = new Set(['fit', 'restricted', 'clearance']);
+const GENDERS = new Set(['male', 'female', 'other']);
+const BLOOD_TYPES = new Set(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
+
+function dateOnly(value) {
+  if (!value) return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const text = String(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
+}
+
+function clip(value, max) {
+  const text = String(value || '').trim();
+  return text ? text.slice(0, max) : null;
+}
+
+function presentHealth(row) {
+  if (!row) return null;
+  let keys = [];
+  try {
+    const parsed = JSON.parse(row.conditions_json || '[]');
+    if (Array.isArray(parsed)) keys = parsed.filter(k => CONDITION_KEYS.includes(k));
+  } catch { keys = []; }
+  return { ...row, date_of_birth: dateOnly(row.date_of_birth), condition_keys: keys };
+}
 
 function authPayload(req) {
   return jwt.verify((req.headers.authorization || '').replace('Bearer ', ''), process.env.JWT_SECRET);
@@ -52,10 +83,15 @@ async function loadPair(bizId, userId) {
     'SELECT * FROM member_health_cards WHERE business_id = ? AND user_id = ?',
     [bizId, userId],
   );
+  const [[profile]] = await db.query(
+    'SELECT full_name, date_of_birth, weight_kg, height_cm FROM users WHERE id = ? AND business_id = ?',
+    [userId, bizId],
+  );
   return {
     intake_completed: !!intake?.completed_at,
     intake: intake || null,
-    health: health || null,
+    health: presentHealth(health),
+    profile: profile ? { ...profile, date_of_birth: dateOnly(profile.date_of_birth) } : null,
     goals: Object.entries(FITNESS_GOAL_LABELS).map(([id, label]) => ({ id, label })),
   };
 }
@@ -150,21 +186,75 @@ async function saveIntake(bizId, userId, body) {
 }
 
 async function saveHealth(bizId, userId, body) {
-  const hasConditions = body?.has_conditions ? 1 : 0;
+  let keys = Array.isArray(body?.condition_keys)
+    ? [...new Set(body.condition_keys.filter(k => CONDITION_KEYS.includes(k)))]
+    : [];
+  if (keys.includes('none')) keys = ['none'];
+  const hasConditions = keys.some(k => k !== 'none') || body?.has_conditions ? 1 : 0;
   const takesMedication = body?.takes_medication ? 1 : 0;
-  const conditions = String(body?.conditions_text || '').trim().slice(0, 4000);
-  const medication = String(body?.medication_text || '').trim().slice(0, 4000);
+  const conditions = clip(body?.conditions_text, 4000);
+  const medication = clip(body?.medication_text, 4000);
+  const status = FITNESS_STATUSES.has(body?.fitness_status) ? body.fitness_status : null;
+  const gender = GENDERS.has(body?.gender) ? body.gender : null;
+  const blood = BLOOD_TYPES.has(body?.blood_type) ? body.blood_type : null;
+  const dob = dateOnly(body?.date_of_birth);
+  let height = null;
+  let weight = null;
+  const heightRaw = body?.height_cm;
+  if (heightRaw !== '' && heightRaw != null) {
+    const n = Number(heightRaw);
+    if (Number.isFinite(n) && n > 0 && n <= 260) height = Math.round(n * 10) / 10;
+  }
+  try { weight = normalizeWeight(body?.weight_kg); } catch { weight = null; }
+  if (height === undefined) height = null;
+  if (weight === undefined) weight = null;
+
   await db.query(
     `INSERT INTO member_health_cards
-      (id, business_id, user_id, has_conditions, conditions_text, takes_medication, medication_text)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+      (id, business_id, user_id, has_conditions, conditions_text, takes_medication, medication_text,
+       date_of_birth, gender, height_cm, weight_kg, fitness_status, conditions_json,
+       injury_area, injury_problem, injury_limits, injury_recovery,
+       emergency_name, emergency_relation, emergency_phone,
+       allergies, blood_type, emergency_instructions, other_info)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
       has_conditions = VALUES(has_conditions),
       conditions_text = VALUES(conditions_text),
       takes_medication = VALUES(takes_medication),
-      medication_text = VALUES(medication_text)`,
-    [uuidv4(), bizId, userId, hasConditions, hasConditions ? conditions || null : null, takesMedication, takesMedication ? medication || null : null],
+      medication_text = VALUES(medication_text),
+      date_of_birth = VALUES(date_of_birth),
+      gender = VALUES(gender),
+      height_cm = VALUES(height_cm),
+      weight_kg = VALUES(weight_kg),
+      fitness_status = VALUES(fitness_status),
+      conditions_json = VALUES(conditions_json),
+      injury_area = VALUES(injury_area),
+      injury_problem = VALUES(injury_problem),
+      injury_limits = VALUES(injury_limits),
+      injury_recovery = VALUES(injury_recovery),
+      emergency_name = VALUES(emergency_name),
+      emergency_relation = VALUES(emergency_relation),
+      emergency_phone = VALUES(emergency_phone),
+      allergies = VALUES(allergies),
+      blood_type = VALUES(blood_type),
+      emergency_instructions = VALUES(emergency_instructions),
+      other_info = VALUES(other_info)`,
+    [
+      uuidv4(), bizId, userId, hasConditions, conditions, takesMedication, takesMedication ? medication : null,
+      dob, gender, height, weight, status, JSON.stringify(keys),
+      clip(body?.injury_area, 160), clip(body?.injury_problem, 2000), clip(body?.injury_limits, 2000), clip(body?.injury_recovery, 160),
+      clip(body?.emergency_name, 120), clip(body?.emergency_relation, 80), clip(body?.emergency_phone, 40),
+      clip(body?.allergies, 2000), blood, clip(body?.emergency_instructions, 2000), clip(body?.other_info, 2000),
+    ],
   );
+  await db.query(
+    `UPDATE users
+     SET date_of_birth = COALESCE(?, date_of_birth),
+         weight_kg = COALESCE(?, weight_kg),
+         height_cm = COALESCE(?, height_cm)
+     WHERE id = ? AND business_id = ?`,
+    [dob, weight, height, userId, bizId],
+  ).catch(() => {});
 }
 
 router.get('/admin/:userId', requireAdmin, async (req, res) => {

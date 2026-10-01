@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -437,15 +438,24 @@ class _HomeTab extends StatelessWidget {
 
                       // My Gym card
                       if (homeGroups.isNotEmpty) ...[
-                        Text(homeGroups.length > 1 ? 'Τα Γυμναστήριά Μου' : 'Το Γυμναστήριό Μου',
-                          style: GoogleFonts.manrope(
-                            fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                        Row(children: [
+                          Expanded(
+                            child: Text('Τα Γυμναστήριά Μου',
+                              style: GoogleFonts.manrope(
+                                fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                          ),
+                          Text(
+                            homeGroups.length == 1 ? '1 ενεργό' : '${homeGroups.length} ενεργά',
+                            style: GoogleFonts.manrope(fontSize: 13, color: _kGray, fontWeight: FontWeight.w600),
+                          ),
+                        ]),
                         const SizedBox(height: 12),
-                        _GymCarousel(
+                        _HomeGymCarousel(
                           groups: homeGroups,
                           upcoming: upcoming,
+                          globalAuth: globalAuth,
                           parseColor: parseColor,
-                          onEnterGym: onEnterGym,
+                          onEnter: onEnterGym,
                           onOpenBooking: onOpenBooking,
                           onAddRole: (gym) {
                             Navigator.push(context, MaterialPageRoute(
@@ -571,35 +581,37 @@ class _HomeTab extends StatelessWidget {
   }
 }
 
-class _GymCarousel extends StatefulWidget {
-  const _GymCarousel({
+class _HomeGymCarousel extends StatefulWidget {
+  const _HomeGymCarousel({
     required this.groups,
     required this.upcoming,
+    required this.globalAuth,
     required this.parseColor,
-    required this.onEnterGym,
+    required this.onEnter,
     required this.onOpenBooking,
     required this.onAddRole,
   });
 
   final List<List<GlobalGym>> groups;
   final List<Map<String, dynamic>> upcoming;
+  final GlobalAuthService globalAuth;
   final Color Function(String?) parseColor;
-  final Future<void> Function(GlobalGym) onEnterGym;
+  final Future<void> Function(GlobalGym) onEnter;
   final void Function(Map<String, dynamic>) onOpenBooking;
   final void Function(GlobalGym) onAddRole;
 
   @override
-  State<_GymCarousel> createState() => _GymCarouselState();
+  State<_HomeGymCarousel> createState() => _HomeGymCarouselState();
 }
 
-class _GymCarouselState extends State<_GymCarousel> {
+class _HomeGymCarouselState extends State<_HomeGymCarousel> {
   late final PageController _page;
   int _index = 0;
 
   @override
   void initState() {
     super.initState();
-    _page = PageController(viewportFraction: widget.groups.length > 1 ? 0.9 : 1);
+    _page = PageController(viewportFraction: widget.groups.length > 1 ? 0.92 : 1);
   }
 
   @override
@@ -608,69 +620,394 @@ class _GymCarouselState extends State<_GymCarousel> {
     super.dispose();
   }
 
-  Map<String, dynamic>? _nextFor(GlobalGym gym) {
-    for (final booking in widget.upcoming) {
-      if (booking['business_id']?.toString() == gym.businessId) return booking;
-    }
-    return null;
+  double get _height {
+    final maxRoles = widget.groups.fold<int>(1, (max, roles) => roles.length > max ? roles.length : max);
+    return 92 + maxRoles * 118 + 72;
   }
 
   @override
   Widget build(BuildContext context) {
     final many = widget.groups.length > 1;
-    return Column(
-      children: [
-        SizedBox(
-          height: 340,
-          child: PageView.builder(
-            controller: _page,
-            itemCount: widget.groups.length,
-            onPageChanged: (i) => setState(() => _index = i),
-            itemBuilder: (_, i) {
-              final roles = widget.groups[i];
-              final gym = roles.first;
-              final next = _nextFor(gym);
-              return Padding(
-                padding: EdgeInsets.only(right: many ? 10 : 0),
-                child: _GymMemberCard(
-                  gym: gym,
-                  roles: roles,
-                  nextBooking: next,
-                  accentColor: widget.parseColor(gym.primaryColor),
-                  onOpenGym: () => widget.onEnterGym(_memberOrFirst(roles)),
-                  onOpenRole: widget.onEnterGym,
-                  onAddRole: () => widget.onAddRole(gym),
-                  onBookingTap: next == null ? null : () => widget.onOpenBooking(next),
-                ),
-              );
-            },
-          ),
-        ),
-        if (many) ...[
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(widget.groups.length, (i) => Container(
-              width: i == _index ? 16 : 6,
-              height: 6,
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              decoration: BoxDecoration(
-                color: i == _index ? _kAccent : _kGray.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(99),
+    return Column(children: [
+      SizedBox(
+        height: _height,
+        child: PageView.builder(
+          controller: _page,
+          itemCount: widget.groups.length,
+          onPageChanged: (i) => setState(() => _index = i),
+          itemBuilder: (_, i) {
+            final roles = widget.groups[i];
+            return Padding(
+              padding: EdgeInsets.only(right: many ? 10 : 0),
+              child: _HomeGymSlide(
+                gym: roles.first,
+                roles: roles,
+                upcoming: widget.upcoming,
+                accentColor: widget.parseColor(roles.first.primaryColor),
+                globalAuth: widget.globalAuth,
+                onEnter: widget.onEnter,
+                onOpenBooking: widget.onOpenBooking,
+                onAddRole: () => widget.onAddRole(roles.first),
               ),
-            )),
+            );
+          },
+        ),
+      ),
+      if (many) ...[
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(widget.groups.length, (i) => Container(
+            width: i == _index ? 18 : 6,
+            height: 6,
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            decoration: BoxDecoration(
+              color: i == _index ? const Color(0xFF7C5CFC) : _kGray.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(99),
+            ),
+          )),
+        ),
+      ],
+    ]);
+  }
+}
+
+class _HomeGymSlide extends StatelessWidget {
+  const _HomeGymSlide({
+    required this.gym,
+    required this.roles,
+    required this.upcoming,
+    required this.accentColor,
+    required this.globalAuth,
+    required this.onEnter,
+    required this.onOpenBooking,
+    required this.onAddRole,
+  });
+
+  final GlobalGym gym;
+  final List<GlobalGym> roles;
+  final List<Map<String, dynamic>> upcoming;
+  final Color accentColor;
+  final GlobalAuthService globalAuth;
+  final Future<void> Function(GlobalGym) onEnter;
+  final void Function(Map<String, dynamic>) onOpenBooking;
+  final VoidCallback onAddRole;
+
+  Map<String, dynamic>? _nextFor(GlobalGym role) {
+    final now = DateTime.now().subtract(const Duration(minutes: 20));
+    for (final booking in upcoming) {
+      if (booking['business_id']?.toString() != role.businessId) continue;
+      final kind = booking['role']?.toString();
+      if (role.isStaff && kind != 'staff') continue;
+      if (!role.isStaff && kind == 'staff') continue;
+      final date = booking['booking_date']?.toString() ?? '';
+      final time = booking['booking_time']?.toString() ?? '00:00:00';
+      final when = DateTime.tryParse('${date}T${time.length >= 8 ? time.substring(0, 8) : time}');
+      if (when != null && when.isBefore(now)) continue;
+      return booking;
+    }
+    return null;
+  }
+
+  String _roleLabel(GlobalGym role) {
+    if (!role.isStaff) return 'Ασκούμενος';
+    if (role.staffKind == 'nutritionist') return 'Διατροφολόγος';
+    if (role.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    return 'Προπονητής';
+  }
+
+  _RoleTone _tone(GlobalGym role) {
+    if (!role.isStaff) {
+      return const _RoleTone(
+        Color(0xFF2C2450),
+        Color(0xFFC4B5FD),
+        Color(0xFF6D5BD0),
+        Icons.directions_run_rounded,
+      );
+    }
+    if (role.staffKind == 'nutritionist') {
+      return const _RoleTone(
+        Color(0xFF16301C),
+        Color(0xFF86EFAC),
+        Color(0xFF3F8F55),
+        Icons.apple_rounded,
+      );
+    }
+    if (role.staffKind == 'physiotherapist') {
+      return const _RoleTone(
+        Color(0xFF142E30),
+        Color(0xFF7DD3D0),
+        Color(0xFF2F8A88),
+        Icons.healing_rounded,
+      );
+    }
+    return const _RoleTone(
+      Color(0xFF2A1824),
+      Color(0xFFF9A8D4),
+      Color(0xFFBE4B8A),
+      Icons.person_rounded,
+    );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'Γ';
+    if (parts.length == 1) {
+      final word = parts.first;
+      return word.substring(0, word.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  Future<void> _showQr(BuildContext context) async {
+    GlobalGym member = gym;
+    for (final role in roles) {
+      if (!role.isStaff) {
+        member = role;
+        break;
+      }
+    }
+    if (member.isStaff) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Το QR είναι για τον ρόλο του ασκούμενου')),
+      );
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _kCard,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => _GymQrSheet(gym: member, globalAuth: globalAuth),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onFill = accentColor.computeLuminance() > 0.62 ? const Color(0xFF111111) : Colors.white;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF17181D),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+            child: Row(children: [
+              Container(
+                width: 52, height: 52,
+                decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(14)),
+                clipBehavior: Clip.antiAlias,
+                alignment: Alignment.center,
+                child: gym.logoUrl != null
+                    ? Image.network(
+                        gym.logoUrl!,
+                        width: 52, height: 52, fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Text(_initials(gym.appName),
+                          style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800)),
+                      )
+                    : Text(_initials(gym.appName),
+                        style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800, fontSize: 13)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(gym.appName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.manrope(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+              ),
+              GestureDetector(
+                onTap: () => _showQr(context),
+                child: Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF14301C),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF3F8F55)),
+                  ),
+                  child: const Icon(Icons.qr_code_2_rounded, color: Color(0xFF86EFAC), size: 22),
+                ),
+              ),
+            ]),
+          ),
+          const Divider(color: _kBorder, height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final role in roles) ...[
+                  _HomeRoleButton(
+                    label: _roleLabel(role),
+                    tone: _tone(role),
+                    onTap: () => onEnter(role),
+                  ),
+                  const SizedBox(height: 8),
+                  _NextAppointment(
+                    booking: _nextFor(role),
+                    onTap: () {
+                      final booking = _nextFor(role);
+                      if (booking != null) onOpenBooking(booking);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                GestureDetector(
+                  onTap: onAddRole,
+                  child: Container(
+                    height: 46,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF12131A),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: _kBorder),
+                    ),
+                    child: Text('+  Νέος ρόλος',
+                      style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
-      ],
+      ),
+    ),
     );
   }
 }
 
-String _roleLabel(GlobalGym gym) {
-  if (!gym.isStaff) return 'Ασκούμενος';
-  if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
-  if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
-  return 'Trainer';
+class _RoleTone {
+  const _RoleTone(this.bg, this.fg, this.border, this.icon);
+  final Color bg;
+  final Color fg;
+  final Color border;
+  final IconData icon;
+}
+
+class _HomeRoleButton extends StatelessWidget {
+  const _HomeRoleButton({required this.label, required this.tone, required this.onTap});
+  final String label;
+  final _RoleTone tone;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: tone.bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: tone.border),
+        ),
+        child: Row(children: [
+          Icon(tone.icon, size: 18, color: tone.fg),
+          const SizedBox(width: 8),
+          Text(label, style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: tone.fg)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _NextAppointment extends StatelessWidget {
+  const _NextAppointment({required this.booking, required this.onTap});
+  final Map<String, dynamic>? booking;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final time = (booking?['booking_time'] as String? ?? '');
+    final hhmm = time.length >= 5 ? time.substring(0, 5) : '';
+    final service = (booking?['service_name'] as String? ?? '').toUpperCase();
+    return GestureDetector(
+      onTap: booking == null ? null : onTap,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Επόμενο ραντεβού',
+          style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+        const SizedBox(height: 2),
+        Text(
+          booking == null ? 'Δεν υπάρχει ραντεβού' : '$hhmm · $service',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.manrope(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: booking == null ? _kGray : Colors.white,
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _GymQrSheet extends StatefulWidget {
+  const _GymQrSheet({required this.gym, required this.globalAuth});
+  final GlobalGym gym;
+  final GlobalAuthService globalAuth;
+
+  @override
+  State<_GymQrSheet> createState() => _GymQrSheetState();
+}
+
+class _GymQrSheetState extends State<_GymQrSheet> {
+  String? _token;
+  String? _error;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final gymToken = await widget.globalAuth.getGymToken(widget.gym.businessId);
+      final res = await http.get(
+        Uri.parse('https://passionate-grace-production-98ad.up.railway.app/api/checkin/${widget.gym.businessId}/my-code'),
+        headers: {'Authorization': 'Bearer $gymToken'},
+      );
+      final body = jsonDecode(res.body);
+      if (res.statusCode != 200) throw body['error']?.toString() ?? 'Αποτυχία QR';
+      if (mounted) setState(() => _token = body['token']?.toString());
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e'.replaceFirst('Exception: ', ''));
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 36, height: 4, decoration: BoxDecoration(color: _kBorder, borderRadius: BorderRadius.circular(99))),
+        const SizedBox(height: 16),
+        Text(widget.gym.appName, style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+        const SizedBox(height: 4),
+        Text('Δείξε το QR στο γυμναστήριο', style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+        const SizedBox(height: 16),
+        if (_loading)
+          const Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: Color(0xFF86EFAC)))
+        else if (_error != null)
+          Padding(padding: const EdgeInsets.all(16), child: Text(_error!, style: const TextStyle(color: Colors.white70)))
+        else
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            child: QrImageView(data: _token ?? '', size: 200, backgroundColor: Colors.white),
+          ),
+      ]),
+    );
+  }
 }
 
 int _roleRank(GlobalGym gym) {
@@ -685,229 +1022,452 @@ List<GlobalGym> _rolesFirst(List<GlobalGym> roles) {
   return copy;
 }
 
-GlobalGym _memberOrFirst(List<GlobalGym> roles) {
-  for (final role in roles) {
-    if (!role.isStaff) return role;
-  }
-  return roles.first;
-}
+class _GymEntryCard extends StatefulWidget {
+  const _GymEntryCard({
+    required this.gym,
+    required this.roles,
+    required this.accentColor,
+    required this.onEnter,
+    required this.onAddRole,
+    this.nextBooking,
+    this.onBookingTap,
+    this.onRemove,
+    this.margin = EdgeInsets.zero,
+  });
 
-class _EnterGymButton extends StatelessWidget {
-  const _EnterGymButton({required this.onTap, required this.color});
-  final VoidCallback onTap;
-  final Color color;
+  final GlobalGym gym;
+  final List<GlobalGym> roles;
+  final Color accentColor;
+  final Future<void> Function(GlobalGym) onEnter;
+  final VoidCallback onAddRole;
+  final Map<String, dynamic>? nextBooking;
+  final VoidCallback? onBookingTap;
+  final VoidCallback? onRemove;
+  final EdgeInsets margin;
 
   @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: const SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-        ),
-      ),
-    );
-  }
+  State<_GymEntryCard> createState() => _GymEntryCardState();
 }
 
-class _RoleSwitch extends StatelessWidget {
-  const _RoleSwitch({required this.roles, required this.selected, required this.onSelect});
-  final List<GlobalGym> roles;
-  final GlobalGym selected;
-  final Future<void> Function(GlobalGym) onSelect;
+class _GymEntryCardState extends State<_GymEntryCard> {
+  final _rolesScroll = ScrollController();
+  GlobalGym? _selected;
+  bool _rolesOverflow = false;
+  int _roleDot = 0;
 
-  bool _same(GlobalGym a, GlobalGym b) {
+  @override
+  void initState() {
+    super.initState();
+    _rolesScroll.addListener(_syncOverflow);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncOverflow());
+  }
+
+  @override
+  void didUpdateWidget(covariant _GymEntryCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_selected != null && !widget.roles.any((role) => _sameRole(role, _selected!))) {
+      _selected = null;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncOverflow());
+  }
+
+  @override
+  void dispose() {
+    _rolesScroll.dispose();
+    super.dispose();
+  }
+
+  void _syncOverflow() {
+    if (!mounted || !_rolesScroll.hasClients) return;
+    final max = _rolesScroll.position.maxScrollExtent;
+    final overflow = max > 8;
+    final dot = !overflow ? 0 : ((_rolesScroll.offset / max) * 2).round().clamp(0, 2);
+    if (overflow != _rolesOverflow || dot != _roleDot) {
+      setState(() {
+        _rolesOverflow = overflow;
+        _roleDot = dot;
+      });
+    }
+  }
+
+  bool _sameRole(GlobalGym a, GlobalGym b) {
     if (a.isStaff != b.isStaff) return false;
     if (!a.isStaff) return true;
     return (a.staffKind ?? 'trainer') == (b.staffKind ?? 'trainer');
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF12121C),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kBorder),
-      ),
-      child: Row(
-        children: [
-          for (final role in roles)
-            Expanded(
-              child: GestureDetector(
-                onTap: () => onSelect(role),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: _same(role, selected) ? _kAccent : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    _roleLabel(role),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: _same(role, selected) ? Colors.white : _kGray,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+  String _label(GlobalGym gym) {
+    if (!gym.isStaff) return 'Ασκούμενος';
+    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
+    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    return 'Προπονητής';
+  }
+
+  IconData _icon(GlobalGym gym) {
+    if (!gym.isStaff) return Icons.fitness_center_rounded;
+    if (gym.staffKind == 'nutritionist') return Icons.apple_rounded;
+    if (gym.staffKind == 'physiotherapist') return Icons.healing_rounded;
+    return Icons.person_rounded;
+  }
+
+  String _typeLabel(GlobalGym gym) {
+    final type = gym.businessType.toLowerCase();
+    if (type == 'gym' || type.contains('γυμν')) return 'Γυμναστήριο';
+    return gym.businessType;
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'Γ';
+    if (parts.length == 1) {
+      final word = parts.first;
+      return word.substring(0, word.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  void _confirmRemove() {
+    final gym = widget.gym;
+    final onRemove = widget.onRemove;
+    if (onRemove == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Αφαίρεση γυμναστηρίου',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white)),
+        content: Text(
+          gym.isStaff
+            ? 'Θα αφαιρεθείς ως trainer από το "${gym.appName}". Η σύνδεσή σου ως ασκούμενος, αν υπάρχει, μένει.'
+            : 'Θα αφαιρεθείς ως ασκούμενος από το "${gym.appName}". Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.',
+          style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Άκυρο', style: GoogleFonts.manrope(color: _kGray)),
+          ),
+          TextButton(
+            onPressed: () { Navigator.pop(ctx); onRemove(); },
+            child: Text('Αφαίρεση',
+              style: GoogleFonts.manrope(color: Colors.redAccent, fontWeight: FontWeight.w700)),
+          ),
         ],
       ),
     );
   }
-}
-
-class _RoleChip extends StatelessWidget {
-  const _RoleChip({required this.label, required this.onTap, this.outlined = false});
-  final String label;
-  final VoidCallback onTap;
-  final bool outlined;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: outlined ? Colors.transparent : _kAccent.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: outlined ? _kBorder : _kAccent.withValues(alpha: 0.45)),
-        ),
-        child: Text(label, style: GoogleFonts.manrope(
-          fontSize: 12, fontWeight: FontWeight.w700,
-          color: outlined ? Colors.white : _kAccent)),
-      ),
-    );
-  }
-}
-
-class _GymMemberCard extends StatelessWidget {
-  const _GymMemberCard({
-    required this.gym,
-    required this.roles,
-    required this.nextBooking,
-    required this.accentColor,
-    required this.onOpenGym,
-    required this.onOpenRole,
-    required this.onAddRole,
-    this.onBookingTap,
-  });
-
-  final GlobalGym gym;
-  final List<GlobalGym> roles;
-  final Map<String, dynamic>? nextBooking;
-  final Color accentColor;
-  final VoidCallback onOpenGym;
-  final Future<void> Function(GlobalGym) onOpenRole;
-  final VoidCallback onAddRole;
-  final VoidCallback? onBookingTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final nextStr = nextBooking != null
-        ? '${(nextBooking!['booking_time'] as String? ?? '').substring(0,5)} · ${nextBooking!['service_name'] ?? ''}'
-        : null;
+    final gym = widget.gym;
+    final accent = widget.accentColor;
+    final onFill = accent.computeLuminance() > 0.62 ? const Color(0xFF111111) : Colors.white;
+    final isPending = !gym.isStaff && gym.userStatus == 'pending';
+    final selected = _selected;
+    final next = widget.nextBooking;
+    final rawTime = next?['booking_time'] as String? ?? '';
+    final nextStr = next == null
+        ? null
+        : '${rawTime.length >= 5 ? rawTime.substring(0, 5) : rawTime} · ${next['service_name'] ?? ''}';
 
     return Container(
+      margin: widget.margin,
       decoration: BoxDecoration(
         color: _kCard,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _kBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gym header row
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: gym.logoUrl != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(11),
-                        child: Image.network(gym.logoUrl!, fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => Icon(Icons.fitness_center, color: accentColor, size: 18)))
-                    : Icon(Icons.fitness_center, color: accentColor, size: 18),
+            padding: const EdgeInsets.fromLTRB(14, 14, 8, 12),
+            child: Row(children: [
+              Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(gym.appName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.manrope(
-                          fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                      Text(gym.businessType == 'gym' ? 'Γυμναστήριο' : gym.businessType,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
-                    ],
-                  ),
+                clipBehavior: Clip.antiAlias,
+                alignment: Alignment.center,
+                child: gym.logoUrl != null
+                  ? Image.network(gym.logoUrl!, fit: BoxFit.cover, width: 48, height: 48,
+                      errorBuilder: (_, __, ___) => Text(_initials(gym.appName),
+                        style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800, fontSize: 14)))
+                  : Text(_initials(gym.appName),
+                      style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800, fontSize: 14)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(gym.appName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                  const SizedBox(height: 2),
+                  Text(_typeLabel(gym),
+                    style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                ]),
+              ),
+              if (widget.onRemove != null)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded, color: _kGray, size: 20),
+                  color: const Color(0xFF1C1C2E),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onSelected: (value) {
+                    if (value == 'remove') _confirmRemove();
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'remove',
+                      child: Row(children: [
+                        const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent, size: 16),
+                        const SizedBox(width: 8),
+                        Text('Αφαίρεση', style: GoogleFonts.manrope(color: Colors.redAccent, fontSize: 13)),
+                      ]),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                _EnterGymButton(onTap: onOpenGym, color: accentColor),
-              ],
-            ),
+            ]),
           ),
-
-          // Divider
           const Divider(color: _kBorder, height: 1),
-
-          // Next booking
-          if (nextStr != null)
-            GestureDetector(
-              onTap: onBookingTap,
-              child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+          if (isPending)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Row(children: [
-                const Icon(Icons.calendar_today_outlined, size: 14, color: _kAccent),
+                Icon(Icons.hourglass_empty_rounded, color: Color(0xFFF59E0B), size: 16),
+                SizedBox(width: 8),
+                Expanded(child: Text('Αναμονή έγκρισης γυμναστηρίου',
+                  style: TextStyle(fontSize: 13, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600))),
+              ]),
+            )
+          else ...[
+            if (nextStr != null)
+              GestureDetector(
+                onTap: widget.onBookingTap,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                  child: Row(children: [
+                    const Icon(Icons.calendar_today_outlined, size: 14, color: _kAccent),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text('Επόμενη: $nextStr',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(fontSize: 12, color: Colors.white))),
+                  ]),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              child: Row(children: [
+                const Icon(Icons.login_rounded, size: 15, color: _kGray),
                 const SizedBox(width: 6),
-                Text('Επόμενη: $nextStr',
-                  style: GoogleFonts.manrope(fontSize: 12, color: Colors.white)),
+                Expanded(
+                  child: Text.rich(TextSpan(children: [
+                    TextSpan(text: 'Βήμα 1: ', style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                    TextSpan(text: 'Επίλεξε ρόλο εισόδου', style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                  ])),
+                ),
+                if (widget.roles.length > 2)
+                  Text('${widget.roles.length} ρόλοι',
+                    style: GoogleFonts.manrope(fontSize: 12, color: _kGray, fontWeight: FontWeight.w600)),
               ]),
             ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 44,
+              child: ListView(
+                controller: _rolesScroll,
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                children: [
+                  for (final role in widget.roles) ...[
+                    _EntryRoleChip(
+                      label: _label(role),
+                      icon: _icon(role),
+                      selected: selected != null && _sameRole(role, selected),
+                      onTap: () => setState(() => _selected = role),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  _NewRoleChip(onTap: widget.onAddRole),
+                ],
+              ),
             ),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Ρόλοι', style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700, color: _kGray)),
-                const SizedBox(height: 8),
-                _RoleSwitch(
-                  roles: roles,
-                  selected: _memberOrFirst(roles),
-                  onSelect: onOpenRole,
+            if (_rolesOverflow)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (i) {
+                    final active = _roleDot == i;
+                    return Container(
+                      width: active ? 14 : 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: active ? Colors.white : _kGray.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    );
+                  }),
                 ),
-                const SizedBox(height: 8),
-                _RoleChip(label: 'Νέος ρόλος', outlined: true, onTap: onAddRole),
-              ],
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: _EntryConnectButton(
+                enabled: selected != null,
+                color: accent,
+                onFill: onFill,
+                label: selected == null ? 'Επίλεξε πρώτα ρόλο' : 'Σύνδεση ως ${_label(selected)}',
+                onTap: selected == null ? null : () => widget.onEnter(selected),
+              ),
             ),
-          ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _EntryRoleChip extends StatelessWidget {
+  const _EntryRoleChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const selectedColor = Color(0xFF7C5CFC);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: selected ? selectedColor : const Color(0xFF12131A),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: selected ? selectedColor : _kBorder),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 16, color: selected ? Colors.white : _kGray),
+          const SizedBox(width: 6),
+          Text(label, style: GoogleFonts.manrope(
+            fontSize: 13, fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : Colors.white)),
+          if (selected) ...[
+            const SizedBox(width: 6),
+            const Icon(Icons.check_rounded, size: 16, color: Colors.white),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+class _NewRoleChip extends StatelessWidget {
+  const _NewRoleChip({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: CustomPaint(
+        painter: const _DashedRRectPainter(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: SizedBox(
+            height: 44,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.add_rounded, size: 16, color: _kGray),
+              const SizedBox(width: 4),
+              Text('Νέος', style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashedRRectPainter extends CustomPainter {
+  const _DashedRRectPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(14)));
+    final paint = Paint()
+      ..color = _kBorder
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        canvas.drawPath(metric.extractPath(distance, distance + 5), paint);
+        distance += 9;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _EntryConnectButton extends StatelessWidget {
+  const _EntryConnectButton({
+    required this.enabled,
+    required this.color,
+    required this.onFill,
+    required this.label,
+    required this.onTap,
+  });
+
+  final bool enabled;
+  final Color color;
+  final Color onFill;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: enabled ? color : const Color(0xFF12131A),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: enabled ? color : _kBorder),
+          boxShadow: enabled
+              ? [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 18, offset: const Offset(0, 6))]
+              : null,
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          if (!enabled) ...[
+            const Icon(Icons.lock_outline_rounded, size: 16, color: _kGray),
+            const SizedBox(width: 8),
+          ],
+          Text(label, style: GoogleFonts.manrope(
+            fontSize: 15, fontWeight: FontWeight.w800,
+            color: enabled ? onFill : _kGray)),
+          if (enabled) ...[
+            const SizedBox(width: 6),
+            Icon(Icons.arrow_forward_rounded, size: 18, color: onFill),
+          ],
+        ]),
       ),
     );
   }
@@ -2257,12 +2817,12 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                       for (final gym in gyms) {
                         if (!seen.add(gym.businessId)) continue;
                         final roles = _rolesFirst(gyms.where((g) => g.businessId == gym.businessId).toList());
-                        cards.add(_MyGymCard(
+                        cards.add(_GymEntryCard(
                           gym: roles.first,
                           roles: roles,
                           accentColor: widget.parseColor(roles.first.primaryColor),
-                          onOpen: () => widget.onEnterGym(_memberOrFirst(roles)),
-                          onOpenRole: widget.onEnterGym,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          onEnter: widget.onEnterGym,
                           onAddRole: () {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (_) => GymProfileScreen(
@@ -2393,168 +2953,6 @@ class _PendingRequestCard extends StatelessWidget {
     );
   }
 }
-
-class _MyGymCard extends StatelessWidget {
-  const _MyGymCard({
-    required this.gym,
-    required this.roles,
-    required this.accentColor,
-    required this.onOpen,
-    required this.onOpenRole,
-    required this.onAddRole,
-    required this.onRemove,
-  });
-
-  final GlobalGym gym;
-  final List<GlobalGym> roles;
-  final Color accentColor;
-  final VoidCallback onOpen;
-  final Future<void> Function(GlobalGym) onOpenRole;
-  final VoidCallback onAddRole;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final isPending = !gym.isStaff && gym.userStatus == 'pending';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: _kCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kBorder),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: gym.logoUrl != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(11),
-                      child: Image.network(gym.logoUrl!, fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Icon(Icons.fitness_center, color: accentColor)))
-                  : Icon(Icons.fitness_center, color: accentColor, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(gym.appName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(
-                      fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text(gym.businessType,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
-                ]),
-              ),
-              if (!isPending) ...[
-                const SizedBox(width: 8),
-                _EnterGymButton(onTap: onOpen, color: accentColor),
-              ],
-              const SizedBox(width: 4),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded, color: _kGray, size: 18),
-                color: const Color(0xFF1C1C2E),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: EdgeInsets.zero,
-                onSelected: (value) {
-                  if (value == 'remove') {
-                    showDialog<void>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        backgroundColor: const Color(0xFF1C1C2E),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        title: Text('Αφαίρεση γυμναστηρίου',
-                          style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white)),
-                        content: Text(
-                          gym.isStaff
-                            ? 'Θα αφαιρεθείς ως trainer από το "${gym.appName}". Η σύνδεσή σου ως ασκούμενος, αν υπάρχει, μένει.'
-                            : 'Θα αφαιρεθείς ως ασκούμενος από το "${gym.appName}". Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.',
-                          style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: Text('Άκυρο', style: GoogleFonts.manrope(color: _kGray)),
-                          ),
-                          TextButton(
-                            onPressed: () { Navigator.pop(ctx); onRemove(); },
-                            child: Text('Αφαίρεση',
-                              style: GoogleFonts.manrope(color: Colors.redAccent, fontWeight: FontWeight.w700)),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'remove',
-                    child: Row(children: [
-                      const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent, size: 16),
-                      const SizedBox(width: 8),
-                      Text('Αφαίρεση', style: GoogleFonts.manrope(color: Colors.redAccent, fontSize: 13)),
-                    ]),
-                  ),
-                ],
-              ),
-            ]),
-          ),
-
-          // Pending message
-          if (isPending) ...[
-            const Divider(color: _kBorder, height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-              child: Row(children: [
-                const Icon(Icons.hourglass_empty_rounded, color: Color(0xFFF59E0B), size: 14),
-                const SizedBox(width: 6),
-                Text('Αναμονή έγκρισης γυμναστηρίου',
-                  style: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFFF59E0B))),
-              ]),
-            ),
-          ],
-
-          // Actions (only when active)
-          if (!isPending) ...[
-            const Divider(color: _kBorder, height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Ρόλοι', style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700, color: _kGray)),
-                  const SizedBox(height: 8),
-                  _RoleSwitch(
-                    roles: roles,
-                    selected: _memberOrFirst(roles),
-                    onSelect: onOpenRole,
-                  ),
-                  const SizedBox(height: 8),
-                  _RoleChip(label: 'Νέος ρόλος', outlined: true, onTap: onAddRole),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────
-// PROFILE TAB
-// ─────────────────────────────────────────
 
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({

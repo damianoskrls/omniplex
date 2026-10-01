@@ -18,6 +18,17 @@ import toast from 'react-hot-toast';
 import { mediaUrl } from '../utils/media';
 import { printHealthCard } from '../utils/healthCardPrint';
 import {
+  BLOOD_OPTIONS,
+  CONDITION_OPTIONS,
+  GENDER_OPTIONS,
+  STATUS_OPTIONS,
+  ageFromDob,
+  conditionKeys,
+  conditionLabel,
+  genderLabel,
+  statusMeta,
+} from '../utils/healthCardFields';
+import {
   eur,
   paymentStatusLabel,
   paymentTypeLabel,
@@ -699,9 +710,8 @@ export default function ClientDetail() {
               <div>Φορές / εβδομάδα: {memberFile.intake?.visits_per_week ?? '—'}</div>
             </div>
           )}
+          <HealthCardFacts client={client} file={memberFile} />
           <div style={{ display: 'grid', gap: 6, fontSize: '0.88rem' }}>
-            <div>Πρόβλημα υγείας: {memberFile.health?.has_conditions ? (memberFile.health.conditions_text || 'Ναι') : 'Όχι'}</div>
-            <div>Φάρμακα: {memberFile.health?.takes_medication ? (memberFile.health.medication_text || 'Ναι') : 'Όχι'}</div>
             {memberFile.health?.document_url && (
               <a href={mediaUrl(memberFile.health.document_url)} target="_blank" rel="noreferrer">
                 Έγγραφο γιατρού{memberFile.health.document_name ? `: ${memberFile.health.document_name}` : ''}
@@ -718,6 +728,7 @@ export default function ClientDetail() {
           </div>
           <HealthCardDeskForm
             clientId={id}
+            client={client}
             file={memberFile}
             onSaved={setMemberFile}
           />
@@ -1352,37 +1363,115 @@ function HealthPhoto({ url }) {
   );
 }
 
-function HealthCardDeskForm({ clientId, file, onSaved }) {
+function HealthCardFacts({ client, file }) {
+  const health = file?.health || {};
+  const profile = file?.profile || {};
+  const dob = String(health.date_of_birth || profile.date_of_birth || client?.date_of_birth || '').slice(0, 10);
+  const age = ageFromDob(dob);
+  const status = statusMeta(health.fitness_status);
+  const keys = conditionKeys(health);
+  const height = health.height_cm || profile.height_cm || client?.height_cm;
+  const weight = health.weight_kg || profile.weight_kg || client?.weight_kg;
+  const line = (label, value) => (
+    <div><span className="text-muted">{label}: </span>{value || '—'}</div>
+  );
+  return (
+    <div style={{ display: 'grid', gap: 6, fontSize: '0.88rem', marginBottom: 12 }}>
+      {status && (
+        <div>
+          <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 99, fontWeight: 700, background: status[3], color: status[2] }}>
+            {status[1]}
+          </span>
+        </div>
+      )}
+      {line('Γέννηση', dob ? `${dob}${age != null ? ` · ${age} ετών` : ''}` : '')}
+      {line('Φύλο', genderLabel(health.gender))}
+      {line('Ύψος', height ? `${height} cm` : '')}
+      {line('Βάρος', weight ? `${weight} kg` : '')}
+      {line('Παθήσεις', keys.length ? keys.map(conditionLabel).join(', ') : (health.has_conditions ? (health.conditions_text || 'Ναι') : ''))}
+      {keys.includes('other') && line('Άλλο', health.conditions_text)}
+      {line('Τραυματισμός', [health.injury_area, health.injury_problem].filter(Boolean).join(' — '))}
+      {line('Περιορισμοί', health.injury_limits)}
+      {line('Αποκατάσταση', health.injury_recovery)}
+      {line('Φάρμακα', health.takes_medication ? (health.medication_text || 'Ναι') : 'Όχι')}
+      {line('Επαφή έκτακτης ανάγκης', [health.emergency_name, health.emergency_relation, health.emergency_phone].filter(Boolean).join(' · '))}
+      {line('Αλλεργίες', health.allergies)}
+      {line('Ομάδα αίματος', health.blood_type)}
+      {line('Οδηγίες έκτακτης ανάγκης', health.emergency_instructions)}
+      {line('Άλλες πληροφορίες', health.other_info)}
+    </div>
+  );
+}
+
+function HealthCardDeskForm({ clientId, client, file, onSaved }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const [saving, setSaving] = useState(false);
+  const emptyHealth = {
+    date_of_birth: '',
+    gender: '',
+    height_cm: '',
+    weight_kg: '',
+    fitness_status: '',
+    condition_keys: [],
+    conditions_text: '',
+    injury_area: '',
+    injury_problem: '',
+    injury_limits: '',
+    injury_recovery: '',
+    takes_medication: false,
+    medication_text: '',
+    emergency_name: '',
+    emergency_relation: '',
+    emergency_phone: '',
+    allergies: '',
+    blood_type: '',
+    emergency_instructions: '',
+    other_info: '',
+  };
   const [form, setForm] = useState({
     fitness_goal: 'general',
     motivation: '',
     goal_text: '',
     experience: 'beginner',
     visits_per_week: '3',
-    has_conditions: false,
-    conditions_text: '',
-    takes_medication: false,
-    medication_text: '',
+    ...emptyHealth,
   });
 
   useEffect(() => {
     const intake = file?.intake || {};
     const health = file?.health || {};
+    const profile = file?.profile || {};
     setForm({
       fitness_goal: intake.fitness_goal || 'general',
       motivation: intake.motivation || '',
       goal_text: intake.goal_text || '',
       experience: intake.experience || 'beginner',
       visits_per_week: String(intake.visits_per_week || 3),
-      has_conditions: !!health.has_conditions,
+      date_of_birth: String(health.date_of_birth || profile.date_of_birth || client?.date_of_birth || '').slice(0, 10),
+      gender: health.gender || '',
+      height_cm: health.height_cm ?? profile.height_cm ?? client?.height_cm ?? '',
+      weight_kg: health.weight_kg ?? profile.weight_kg ?? client?.weight_kg ?? '',
+      fitness_status: health.fitness_status || '',
+      condition_keys: conditionKeys(health).length
+        ? conditionKeys(health)
+        : (health.has_conditions ? ['other'] : []),
       conditions_text: health.conditions_text || '',
+      injury_area: health.injury_area || '',
+      injury_problem: health.injury_problem || '',
+      injury_limits: health.injury_limits || '',
+      injury_recovery: health.injury_recovery || '',
       takes_medication: !!health.takes_medication,
       medication_text: health.medication_text || '',
+      emergency_name: health.emergency_name || '',
+      emergency_relation: health.emergency_relation || '',
+      emergency_phone: health.emergency_phone || '',
+      allergies: health.allergies || '',
+      blood_type: health.blood_type || '',
+      emergency_instructions: health.emergency_instructions || '',
+      other_info: health.other_info || '',
     });
-  }, [file]);
+  }, [file, client]);
 
   const point = (event) => {
     const canvas = canvasRef.current;
@@ -1438,10 +1527,27 @@ function HealthCardDeskForm({ clientId, file, onSaved }) {
           visits_per_week: Number(form.visits_per_week) || 3,
         },
         health: {
-          has_conditions: form.has_conditions,
+          date_of_birth: form.date_of_birth || null,
+          gender: form.gender || null,
+          height_cm: form.height_cm === '' ? null : form.height_cm,
+          weight_kg: form.weight_kg === '' ? null : form.weight_kg,
+          fitness_status: form.fitness_status || null,
+          condition_keys: form.condition_keys,
+          has_conditions: form.condition_keys.some(k => k !== 'none'),
           conditions_text: form.conditions_text,
+          injury_area: form.injury_area,
+          injury_problem: form.injury_problem,
+          injury_limits: form.injury_limits,
+          injury_recovery: form.injury_recovery,
           takes_medication: form.takes_medication,
           medication_text: form.medication_text,
+          emergency_name: form.emergency_name,
+          emergency_relation: form.emergency_relation,
+          emergency_phone: form.emergency_phone,
+          allergies: form.allergies,
+          blood_type: form.blood_type || null,
+          emergency_instructions: form.emergency_instructions,
+          other_info: form.other_info,
         },
       });
       onSaved(res.data);
@@ -1504,20 +1610,128 @@ function HealthCardDeskForm({ clientId, file, onSaved }) {
         <label className="form-label">Τι θέλει να πετύχει</label>
         <textarea className="form-input" rows={2} value={form.goal_text} onChange={e => setForm({ ...form, goal_text: e.target.value })} />
       </div>
-      <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-        <input type="checkbox" checked={form.has_conditions} onChange={e => setForm({ ...form, has_conditions: e.target.checked })} />
-        Πρόβλημα υγείας
-      </label>
-      {form.has_conditions && (
-        <textarea className="form-input" rows={2} placeholder="Περιγραφή" value={form.conditions_text} onChange={e => setForm({ ...form, conditions_text: e.target.value })} />
+      <div style={{ fontWeight: 800, margin: '16px 0 8px' }}>Προσωπικά στοιχεία</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Ημερομηνία γέννησης{ageFromDob(form.date_of_birth) != null ? ` · ${ageFromDob(form.date_of_birth)} ετών` : ''}</label>
+          <input className="form-input" type="date" value={form.date_of_birth} onChange={e => setForm({ ...form, date_of_birth: e.target.value })} />
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Φύλο</label>
+          <select className="form-select" value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}>
+            <option value="">—</option>
+            {GENDER_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+          </select>
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Ύψος (cm)</label>
+          <input className="form-input" type="number" min="50" max="260" value={form.height_cm} onChange={e => setForm({ ...form, height_cm: e.target.value })} />
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Βάρος (kg)</label>
+          <input className="form-input" type="number" min="1" max="500" step="0.1" value={form.weight_kg} onChange={e => setForm({ ...form, weight_kg: e.target.value })} />
+        </div>
+      </div>
+
+      <div style={{ fontWeight: 800, margin: '16px 0 8px' }}>Κατάσταση</div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {STATUS_OPTIONS.map(([id, label, color, bg]) => (
+          <label key={id} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '6px 10px', borderRadius: 99, border: form.fitness_status === id ? `1.5px solid ${color}` : '1px solid var(--border)', background: form.fitness_status === id ? bg : 'transparent', cursor: 'pointer' }}>
+            <input type="radio" name="fitness_status" checked={form.fitness_status === id} onChange={() => setForm({ ...form, fitness_status: id })} />
+            {label}
+          </label>
+        ))}
+      </div>
+
+      <div style={{ fontWeight: 800, margin: '16px 0 8px' }}>Παθήσεις</div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {CONDITION_OPTIONS.map(([id, label]) => (
+          <label key={id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              checked={form.condition_keys.includes(id)}
+              onChange={(e) => {
+                const on = e.target.checked;
+                let next = form.condition_keys.filter(k => k !== id);
+                if (on) next = id === 'none' ? ['none'] : [...next.filter(k => k !== 'none'), id];
+                setForm({ ...form, condition_keys: next });
+              }}
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+      {form.condition_keys.includes('other') && (
+        <textarea className="form-input" rows={2} style={{ marginTop: 8 }} placeholder="Άλλη πάθηση" value={form.conditions_text} onChange={e => setForm({ ...form, conditions_text: e.target.value })} />
       )}
-      <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
+
+      <div style={{ fontWeight: 800, margin: '16px 0 8px' }}>Τραυματισμοί / περιορισμοί</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Περιοχή σώματος</label>
+          <input className="form-input" value={form.injury_area} onChange={e => setForm({ ...form, injury_area: e.target.value })} />
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Αποκατάσταση</label>
+          <input className="form-input" placeholder="Ημερομηνία ή περίοδος" value={form.injury_recovery} onChange={e => setForm({ ...form, injury_recovery: e.target.value })} />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Τι πρόβλημα υπάρχει</label>
+        <textarea className="form-input" rows={2} value={form.injury_problem} onChange={e => setForm({ ...form, injury_problem: e.target.value })} />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Περιορισμοί στην άσκηση</label>
+        <textarea className="form-input" rows={2} value={form.injury_limits} onChange={e => setForm({ ...form, injury_limits: e.target.value })} />
+      </div>
+
+      <div style={{ fontWeight: 800, margin: '16px 0 8px' }}>Φαρμακευτική αγωγή</div>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
         <input type="checkbox" checked={form.takes_medication} onChange={e => setForm({ ...form, takes_medication: e.target.checked })} />
-        Φάρμακα
+        Λαμβάνει φαρμακευτική αγωγή
       </label>
       {form.takes_medication && (
-        <textarea className="form-input" rows={2} placeholder="Φάρμακα" value={form.medication_text} onChange={e => setForm({ ...form, medication_text: e.target.value })} />
+        <textarea className="form-input" rows={2} placeholder="Προαιρετική περιγραφή" value={form.medication_text} onChange={e => setForm({ ...form, medication_text: e.target.value })} />
       )}
+
+      <div style={{ fontWeight: 800, margin: '16px 0 8px' }}>Επαφή έκτακτης ανάγκης</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Όνομα</label>
+          <input className="form-input" value={form.emergency_name} onChange={e => setForm({ ...form, emergency_name: e.target.value })} />
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Σχέση</label>
+          <input className="form-input" value={form.emergency_relation} onChange={e => setForm({ ...form, emergency_relation: e.target.value })} />
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Τηλέφωνο</label>
+          <input className="form-input" value={form.emergency_phone} onChange={e => setForm({ ...form, emergency_phone: e.target.value })} />
+        </div>
+      </div>
+
+      <div style={{ fontWeight: 800, margin: '16px 0 8px' }}>Ιατρικά στοιχεία έκτακτης ανάγκης</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Ομάδα αίματος</label>
+          <select className="form-select" value={form.blood_type} onChange={e => setForm({ ...form, blood_type: e.target.value })}>
+            <option value="">—</option>
+            {BLOOD_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Αλλεργίες</label>
+        <textarea className="form-input" rows={2} value={form.allergies} onChange={e => setForm({ ...form, allergies: e.target.value })} />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Ιατρικές οδηγίες έκτακτης ανάγκης</label>
+        <textarea className="form-input" rows={2} value={form.emergency_instructions} onChange={e => setForm({ ...form, emergency_instructions: e.target.value })} />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Άλλες σημαντικές πληροφορίες</label>
+        <textarea className="form-input" rows={2} value={form.other_info} onChange={e => setForm({ ...form, other_info: e.target.value })} />
+      </div>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', margin: '12px 0' }}>
         <label className="btn btn-secondary btn-sm">
           Φωτογραφία πελάτη

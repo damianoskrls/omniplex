@@ -4277,21 +4277,6 @@ router.post('/services/:id/image', requireClientAdmin, (req, res, next) => {
   }
 });
 
-function sanitizeServiceSvg(raw) {
-  const start = String(raw || '').indexOf('<svg');
-  const end = String(raw || '').lastIndexOf('</svg>');
-  if (start < 0 || end < 0) throw new Error('Το AI δεν επέστρεψε εικόνα');
-  let svg = raw.slice(start, end + 6);
-  if (svg.length > 180000) throw new Error('Η εικόνα είναι πολύ μεγάλη');
-  svg = svg
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
-    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/javascript:/gi, '');
-  if (!/^<svg[\s>]/i.test(svg)) throw new Error('Το AI δεν επέστρεψε εικόνα');
-  return svg;
-}
-
 router.post('/services/:id/generate-image', requireClientAdmin, async (req, res) => {
   try {
     const [[svc]] = await db.query(
@@ -4299,34 +4284,13 @@ router.post('/services/:id/generate-image', requireClientAdmin, async (req, res)
       [req.params.id, req.admin.businessId],
     );
     if (!svc) return res.status(404).json({ error: 'Η υπηρεσία δεν βρέθηκε' });
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return res.status(400).json({ error: 'Το AI δεν είναι ρυθμισμένο' });
-    }
-    const Anthropic = require('@anthropic-ai/sdk');
     const { uploadBuffer } = require('../lib/r2_upload');
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4000,
-      messages: [{
-        role: 'user',
-        content: `Create one square SVG cover for a gym service.
-Name: ${String(svc.name || '').slice(0, 80)}
-Category: ${String(svc.category || 'training').slice(0, 40)}
-Description: ${String(svc.description || '').slice(0, 180) || 'none'}
-Show people doing that activity in a bright modern gym.
-Style: clean, colorful, flat illustration that stays clear as a small thumbnail.
-No text, letters, numbers, logos, or watermarks.
-Use viewBox="0 0 512 512".
-Return only the <svg>...</svg> markup.`,
-      }],
-    });
-    const text = (message.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
-    const svg = sanitizeServiceSvg(text);
+    const { generateServicePhoto } = require('../lib/service_photo');
+    const photo = await generateServicePhoto(svc);
     const imageUrl = await uploadBuffer({
-      buffer: Buffer.from(svg, 'utf8'),
-      key: `uploads/${req.admin.businessId}/services/${svc.id}-ai-${Date.now()}.svg`,
-      contentType: 'image/svg+xml',
+      buffer: photo.buffer,
+      key: `uploads/${req.admin.businessId}/services/${svc.id}-ai-${Date.now()}.${photo.ext}`,
+      contentType: photo.contentType,
     });
     await db.query(
       'UPDATE services SET image_url = ? WHERE id = ? AND business_id = ?',
@@ -4334,7 +4298,7 @@ Return only the <svg>...</svg> markup.`,
     );
     return res.json({ image_url: imageUrl });
   } catch (err) {
-    return res.status(400).json({ error: err.message || 'Αποτυχία δημιουργίας εικόνας' });
+    return res.status(err.status || 400).json({ error: err.message || 'Αποτυχία δημιουργίας εικόνας' });
   }
 });
 

@@ -572,7 +572,7 @@ export default function Services() {
                         <Sparkles size={14} /> {generatingId === editingService.id ? 'Δημιουργία…' : 'Δημιούργησε εικόνα με AI'}
                       </button>
                       <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: 4 }}>
-                        Από το όνομα της υπηρεσίας, χωρίς να ανεβάσεις αρχείο.
+                        Κανονική φωτογραφία από το όνομα της υπηρεσίας, χωρίς να ανεβάσεις αρχείο.
                       </div>
                     </div>
                   </div>

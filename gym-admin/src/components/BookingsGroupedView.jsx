@@ -5,6 +5,12 @@ import { groupBookingsBySlot, slotKey } from '../utils/groupBookingsBySlot';
 import { filterGymBookings, filterGymServices, isGymService } from '../utils/gym_services';
 import { displayClientName } from '../utils/clientName';
 
+const TRIAL_FILTER = '__trials__';
+
+function isTrialBooking(booking) {
+  return booking?.is_trial === 1 || booking?.is_trial === true;
+}
+
 function parseTime(startsAt) {
   const d = new Date(startsAt);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -301,12 +307,17 @@ export default function BookingsGroupedView({
   const gymWaitlist = waitlist.filter((w) => isGymService({ name: w.service_name, category: w.service_category }));
   const gymCatalogs = { ...catalogs, services: filterGymServices(catalogs.services || []) };
   const mode = groupBy === 'staff' ? 'staff' : 'service';
-  const groups = buildGroups(gymBookings, mode, gymCatalogs);
+  const viewingTrials = filterId === TRIAL_FILTER;
+  const trialBookings = gymBookings.filter(isTrialBooking);
+  const scopedBookings = viewingTrials ? trialBookings : gymBookings;
+  const groups = buildGroups(scopedBookings, mode, gymCatalogs);
   const filterOptions = buildFilterOptions(gymBookings, mode, gymCatalogs);
-  const activeGroup = filterId
+  const activeGroup = !viewingTrials && filterId
     ? filterOptions.find(g => String(g.id) === String(filterId))
     : null;
-  const visibleGroups = activeGroup ? [activeGroup] : groups.filter(g => g.bookings.length > 0);
+  const visibleGroups = viewingTrials
+    ? groups.filter(g => g.bookings.length > 0)
+    : (activeGroup ? [activeGroup] : groups.filter(g => g.bookings.length > 0));
 
   const groupLabels = {
     service: 'Υπηρεσία',
@@ -344,6 +355,21 @@ export default function BookingsGroupedView({
             <div className="bk-filter-chip-sub">{gymBookings.length} κρατήσεις</div>
           </div>
         </button>
+        <button
+          type="button"
+          className={`bk-filter-chip is-trial ${viewingTrials ? 'active' : ''} ${trialBookings.length ? '' : 'empty'}`}
+          onClick={() => onFilterChange(TRIAL_FILTER)}
+        >
+          <div className="bk-filter-chip-icon trial">Δ</div>
+          <div>
+            <div className="bk-filter-chip-label">Δοκιμαστικά</div>
+            <div className="bk-filter-chip-sub">
+              {trialBookings.length
+                ? `${trialBookings.length} ${trialBookings.length === 1 ? 'κράτηση' : 'κρατήσεις'}`
+                : 'Κανένα σήμερα'}
+            </div>
+          </div>
+        </button>
         {filterOptions.map(item => (
           <button
             key={item.id}
@@ -364,6 +390,16 @@ export default function BookingsGroupedView({
         ))}
       </div>
 
+      {viewingTrials && (
+        <div className="bk-hero">
+          <div className="bk-filter-chip-icon trial" style={{ width: 72, height: 72, borderRadius: 16, fontSize: '1.5rem' }}>Δ</div>
+          <div>
+            <div className="bk-hero-title">Δοκιμαστικά</div>
+            <div className="bk-hero-sub">{trialBookings.length} κρατήσεις σήμερα</div>
+          </div>
+        </div>
+      )}
+
       {activeGroup && (
         <div className="bk-hero">
           <EntityAvatar groupBy={mode} item={activeGroup} large />
@@ -378,7 +414,9 @@ export default function BookingsGroupedView({
       )}
 
       {visibleGroups.length === 0 && (
-        <div className="bk-empty">Δεν υπάρχουν κρατήσεις για αυτή την ημέρα.</div>
+        <div className="bk-empty">
+          {viewingTrials ? 'Δεν υπάρχουν δοκιμαστικά για αυτή την ημέρα.' : 'Δεν υπάρχουν κρατήσεις για αυτή την ημέρα.'}
+        </div>
       )}
 
       {visibleGroups.map(group => (
@@ -416,7 +454,7 @@ export default function BookingsGroupedView({
         </section>
       ))}
 
-      {gymWaitlist.length > 0 && (
+      {!viewingTrials && gymWaitlist.length > 0 && (
         <section className="bk-waitlist-section">
           <div className="bk-group-title" style={{ marginBottom: 12 }}>Λίστα αναμονής ({gymWaitlist.length})</div>
           {gymWaitlist.map(w => (

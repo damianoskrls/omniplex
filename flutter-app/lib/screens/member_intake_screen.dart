@@ -61,10 +61,26 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
   int _visits = 3;
   final _motivation = TextEditingController();
   final _goalText = TextEditingController();
-  bool _hasConditions = false;
   bool _takesMedication = false;
   final _conditions = TextEditingController();
   final _medication = TextEditingController();
+  final _dob = TextEditingController();
+  final _height = TextEditingController();
+  final _weight = TextEditingController();
+  String _gender = '';
+  String _status = '';
+  final Set<String> _conditionKeys = {};
+  final _injuryArea = TextEditingController();
+  final _injuryProblem = TextEditingController();
+  final _injuryLimits = TextEditingController();
+  final _injuryRecovery = TextEditingController();
+  final _emergencyName = TextEditingController();
+  final _emergencyRelation = TextEditingController();
+  final _emergencyPhone = TextEditingController();
+  final _allergies = TextEditingController();
+  String _blood = '';
+  final _emergencyInstructions = TextEditingController();
+  final _otherInfo = TextEditingController();
   String? _documentName;
   String? _photoUrl;
   String? _signedAt;
@@ -91,6 +107,19 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
     _goalText.dispose();
     _conditions.dispose();
     _medication.dispose();
+    _dob.dispose();
+    _height.dispose();
+    _weight.dispose();
+    _injuryArea.dispose();
+    _injuryProblem.dispose();
+    _injuryLimits.dispose();
+    _injuryRecovery.dispose();
+    _emergencyName.dispose();
+    _emergencyRelation.dispose();
+    _emergencyPhone.dispose();
+    _allergies.dispose();
+    _emergencyInstructions.dispose();
+    _otherInfo.dispose();
     super.dispose();
   }
 
@@ -115,14 +144,39 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
           _goalText.text = intake['goal_text']?.toString() ?? '';
         }
         final health = body['health'];
+        final profile = body['profile'];
         if (health is Map) {
-          _hasConditions = health['has_conditions'] == 1 || health['has_conditions'] == true;
           _takesMedication = health['takes_medication'] == 1 || health['takes_medication'] == true;
           _conditions.text = health['conditions_text']?.toString() ?? '';
           _medication.text = health['medication_text']?.toString() ?? '';
           _documentName = health['document_name']?.toString();
           _photoUrl = health['photo_url']?.toString();
           _signedAt = health['signed_at']?.toString();
+          _gender = health['gender']?.toString() ?? '';
+          _status = health['fitness_status']?.toString() ?? '';
+          _blood = health['blood_type']?.toString() ?? '';
+          _dob.text = health['date_of_birth']?.toString() ?? '';
+          _height.text = health['height_cm']?.toString() ?? '';
+          _weight.text = health['weight_kg']?.toString() ?? '';
+          _injuryArea.text = health['injury_area']?.toString() ?? '';
+          _injuryProblem.text = health['injury_problem']?.toString() ?? '';
+          _injuryLimits.text = health['injury_limits']?.toString() ?? '';
+          _injuryRecovery.text = health['injury_recovery']?.toString() ?? '';
+          _emergencyName.text = health['emergency_name']?.toString() ?? '';
+          _emergencyRelation.text = health['emergency_relation']?.toString() ?? '';
+          _emergencyPhone.text = health['emergency_phone']?.toString() ?? '';
+          _allergies.text = health['allergies']?.toString() ?? '';
+          _emergencyInstructions.text = health['emergency_instructions']?.toString() ?? '';
+          _otherInfo.text = health['other_info']?.toString() ?? '';
+          final keys = health['condition_keys'];
+          _conditionKeys
+            ..clear()
+            ..addAll(keys is List ? keys.map((k) => k.toString()) : const []);
+        }
+        if (profile is Map) {
+          if (_dob.text.isEmpty) _dob.text = profile['date_of_birth']?.toString() ?? '';
+          if (_height.text.isEmpty) _height.text = profile['height_cm']?.toString() ?? '';
+          if (_weight.text.isEmpty) _weight.text = profile['weight_kg']?.toString() ?? '';
         }
         if (intake is Map && intake['completed_at'] != null) _step = 1;
       }
@@ -200,10 +254,27 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
         Uri.parse('$_root/health'),
         headers: _headers,
         body: jsonEncode({
-          'has_conditions': _hasConditions,
+          'date_of_birth': _dob.text.trim(),
+          'gender': _gender,
+          'height_cm': _height.text.trim(),
+          'weight_kg': _weight.text.trim(),
+          'fitness_status': _status,
+          'condition_keys': _conditionKeys.toList(),
+          'has_conditions': _conditionKeys.any((k) => k != 'none'),
           'conditions_text': _conditions.text,
+          'injury_area': _injuryArea.text,
+          'injury_problem': _injuryProblem.text,
+          'injury_limits': _injuryLimits.text,
+          'injury_recovery': _injuryRecovery.text,
           'takes_medication': _takesMedication,
           'medication_text': _medication.text,
+          'emergency_name': _emergencyName.text,
+          'emergency_relation': _emergencyRelation.text,
+          'emergency_phone': _emergencyPhone.text,
+          'allergies': _allergies.text,
+          'blood_type': _blood,
+          'emergency_instructions': _emergencyInstructions.text,
+          'other_info': _otherInfo.text,
         }),
       );
       if (saved.statusCode != 200) {
@@ -350,41 +421,144 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
     ];
   }
 
+  String get _photoSrc {
+    final url = _photoUrl ?? '';
+    if (url.startsWith('http')) return url;
+    return '$_origin$url';
+  }
+
+  Widget _section(String title) => Padding(
+        padding: const EdgeInsets.only(top: 18, bottom: 8),
+        child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+      );
+
+  Widget _field(TextEditingController controller, String label, {int lines = 1, TextInputType? type}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white),
+        maxLines: lines,
+        keyboardType: type,
+        decoration: InputDecoration(labelText: label),
+      ),
+    );
+  }
+
+  void _toggleCondition(String id, bool on) {
+    setState(() {
+      if (!on) {
+        _conditionKeys.remove(id);
+        return;
+      }
+      if (id == 'none') {
+        _conditionKeys
+          ..clear()
+          ..add('none');
+      } else {
+        _conditionKeys
+          ..remove('none')
+          ..add(id);
+      }
+    });
+  }
+
   List<Widget> _healthFields() {
+    const conditions = [
+      ('cardiac', 'Καρδιολογικά προβλήματα'),
+      ('hypertension', 'Υπέρταση'),
+      ('diabetes', 'Διαβήτης'),
+      ('asthma', 'Άσθμα / αναπνευστικά'),
+      ('orthopedic', 'Ορθοπεδικά προβλήματα'),
+      ('injury', 'Τραυματισμοί'),
+      ('other', 'Άλλο'),
+      ('none', 'Κανένα'),
+    ];
+    const statuses = [
+      ('fit', 'Κατάλληλος για άσκηση'),
+      ('restricted', 'Άσκηση με περιορισμούς'),
+      ('clearance', 'Χρειάζεται ιατρική έγκριση'),
+    ];
     return [
       const Text(
         'Κάρτα υγείας ασκούμενου. Αν έχεις χαρτί γιατρού, ανέβασε φωτογραφία.',
         style: TextStyle(color: AppColors.textSecondary, height: 1.4),
       ),
-      SwitchListTile(
-        value: _hasConditions,
-        onChanged: (v) => setState(() => _hasConditions = v),
-        title: const Text('Έχω κάποιο πρόβλημα υγείας', style: TextStyle(color: Colors.white)),
+      _section('Προσωπικά στοιχεία'),
+      _field(_dob, 'Ημερομηνία γέννησης (ΕΕΕΕ-ΜΜ-ΗΗ)'),
+      Wrap(
+        spacing: 8,
+        children: const [('male', 'Άνδρας'), ('female', 'Γυναίκα'), ('other', 'Άλλο')].map((item) {
+          return ChoiceChip(
+            label: Text(item.$2),
+            selected: _gender == item.$1,
+            onSelected: (_) => setState(() => _gender = item.$1),
+          );
+        }).toList(),
       ),
-      if (_hasConditions)
-        TextField(
-          controller: _conditions,
-          style: const TextStyle(color: Colors.white),
-          maxLines: 3,
-          decoration: const InputDecoration(labelText: 'Τι σε απασχολεί;'),
-        ),
+      const SizedBox(height: 8),
+      _field(_height, 'Ύψος (cm)', type: TextInputType.number),
+      _field(_weight, 'Βάρος (kg)', type: TextInputType.number),
+      _section('Κατάσταση'),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: statuses.map((item) {
+          return ChoiceChip(
+            label: Text(item.$2),
+            selected: _status == item.$1,
+            onSelected: (_) => setState(() => _status = item.$1),
+          );
+        }).toList(),
+      ),
+      _section('Παθήσεις'),
+      ...conditions.map((item) => CheckboxListTile(
+            value: _conditionKeys.contains(item.$1),
+            onChanged: (v) => _toggleCondition(item.$1, v ?? false),
+            contentPadding: EdgeInsets.zero,
+            title: Text(item.$2, style: const TextStyle(color: Colors.white)),
+            controlAffinity: ListTileControlAffinity.leading,
+          )),
+      if (_conditionKeys.contains('other'))
+        _field(_conditions, 'Άλλη πάθηση', lines: 2),
+      _section('Τραυματισμοί / περιορισμοί'),
+      _field(_injuryArea, 'Περιοχή σώματος'),
+      _field(_injuryProblem, 'Τι πρόβλημα υπάρχει', lines: 2),
+      _field(_injuryLimits, 'Περιορισμοί στην άσκηση', lines: 2),
+      _field(_injuryRecovery, 'Ημερομηνία / περίοδος αποκατάστασης'),
+      _section('Φαρμακευτική αγωγή'),
       SwitchListTile(
         value: _takesMedication,
         onChanged: (v) => setState(() => _takesMedication = v),
-        title: const Text('Παίρνω φάρμακα', style: TextStyle(color: Colors.white)),
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Λαμβάνω φαρμακευτική αγωγή', style: TextStyle(color: Colors.white)),
       ),
       if (_takesMedication)
-        TextField(
-          controller: _medication,
-          style: const TextStyle(color: Colors.white),
-          maxLines: 3,
-          decoration: const InputDecoration(labelText: 'Ποια φάρμακα;'),
-        ),
+        _field(_medication, 'Περιγραφή (προαιρετικά)', lines: 2),
+      _section('Επαφή έκτακτης ανάγκης'),
+      _field(_emergencyName, 'Όνομα'),
+      _field(_emergencyRelation, 'Σχέση'),
+      _field(_emergencyPhone, 'Τηλέφωνο', type: TextInputType.phone),
+      _section('Ιατρικά στοιχεία έκτακτης ανάγκης'),
+      _field(_allergies, 'Αλλεργίες', lines: 2),
+      DropdownButtonFormField<String>(
+        value: _blood.isEmpty ? null : _blood,
+        dropdownColor: AppColors.bg,
+        style: const TextStyle(color: Colors.white),
+        decoration: const InputDecoration(labelText: 'Ομάδα αίματος (προαιρετικό)'),
+        items: const ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+            .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+            .toList(),
+        onChanged: (v) => setState(() => _blood = v ?? ''),
+      ),
+      const SizedBox(height: 10),
+      _field(_emergencyInstructions, 'Ιατρικές οδηγίες έκτακτης ανάγκης', lines: 2),
+      _field(_otherInfo, 'Άλλες σημαντικές πληροφορίες', lines: 2),
       const SizedBox(height: 12),
       if (_photoUrl != null && _photoUrl!.isNotEmpty)
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.network('$_origin$_photoUrl', height: 160, width: 120, fit: BoxFit.cover),
+          child: Image.network(_photoSrc, height: 160, width: 120, fit: BoxFit.cover),
         ),
       const SizedBox(height: 8),
       Row(
