@@ -133,7 +133,7 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
 
     if (cached != null) {
       // If cached URL is local/dev, clear cache and show selector
-      if (cached.apiUrl.contains('192.168') || cached.apiUrl.contains('localhost')) {
+      if (cached.apiUrl.contains('192.168') || cached.apiUrl.contains('localhost') || cached.apiUrl.contains('10.0.2.2')) {
         await TenantConfig.clearCachedTenant();
         await _waitRemainingSplash(splashStarted);
         if (!mounted) return;
@@ -265,12 +265,24 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
           : await _globalAuth.getGymToken(gym.businessId);
       await BiometricAuthService.instance.setBiometricEnabled(gym.businessId, false);
       await BiometricAuthService.instance.saveToken(gym.businessId, gymToken);
-      final config = (_config != null && _config!.businessId == gym.businessId)
-          ? _config!
-          : await TenantConfig.loadFromApi(
-              slug: gym.slug,
-              apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
-            );
+      const api = 'https://passionate-grace-production-98ad.up.railway.app';
+      TenantConfig config;
+      if (_config != null && _config!.businessId == gym.businessId) {
+        config = _config!;
+      } else {
+        try {
+          config = await TenantConfig.loadFromApi(slug: gym.slug, apiBaseUrl: api);
+        } catch (_) {
+          config = TenantConfig.knownGym(
+            businessId: gym.businessId,
+            slug: gym.slug,
+            appName: gym.appName,
+            apiBaseUrl: api,
+            primaryColor: gym.primaryColor,
+            logoUrl: gym.logoUrl,
+          );
+        }
+      }
       await _bootstrapWithConfig(config, quick: true);
     } finally {
       if (mounted) setState(() => _switchingRole = false);

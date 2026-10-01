@@ -288,10 +288,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
       await BiometricAuthService.instance.setBiometricEnabled(gym.businessId, false);
       await BiometricAuthService.instance.saveToken(gym.businessId, gymToken);
       debugPrint('[MemberHome._enterGym] Token saved, loading TenantConfig...');
-      final config = await TenantConfig.loadFromApi(
-        slug:       gym.slug,
-        apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
-      );
+      final config = await _configForGym(gym);
       debugPrint('[MemberHome._enterGym] Config loaded: slug=${config.slug} bizId=${config.businessId}');
       if (!mounted) return;
       await showGymEntrySplash(
@@ -323,6 +320,23 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
       );
     } finally {
       if (mounted) setState(() => _enteringGym = false);
+    }
+  }
+
+  Future<TenantConfig> _configForGym(GlobalGym gym) async {
+    const api = 'https://passionate-grace-production-98ad.up.railway.app';
+    try {
+      return await TenantConfig.loadFromApi(slug: gym.slug, apiBaseUrl: api);
+    } catch (e) {
+      debugPrint('[MemberHome._enterGym] config fallback: $e');
+      return TenantConfig.knownGym(
+        businessId: gym.businessId,
+        slug: gym.slug,
+        appName: gym.appName,
+        apiBaseUrl: api,
+        primaryColor: gym.primaryColor,
+        logoUrl: gym.logoUrl,
+      );
     }
   }
 

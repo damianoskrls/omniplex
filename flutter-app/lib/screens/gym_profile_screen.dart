@@ -479,10 +479,20 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           ? await widget.globalAuth!.getGymToken(bizId)
           : await widget.globalAuth!.getTrainerToken(bizId, asKind: staffHere?.staffKind);
       await BiometricAuthService.instance.saveToken(bizId, gymToken);
-      final config = await TenantConfig.loadFromApi(
-        slug:       _slug!,
-        apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
-      );
+      final api = 'https://passionate-grace-production-98ad.up.railway.app';
+      TenantConfig config;
+      try {
+        config = await TenantConfig.loadFromApi(slug: _slug!, apiBaseUrl: api);
+      } catch (_) {
+        config = TenantConfig.knownGym(
+          businessId: bizId,
+          slug: _slug!,
+          appName: _gym?['app_name'] as String? ?? _gym?['name'] as String? ?? 'Γυμναστήριο',
+          apiBaseUrl: api,
+          primaryColor: _gym?['primary_color'] as String? ?? '#00b33e',
+          logoUrl: _gym?['logo_url'] as String?,
+        );
+      }
       if (!mounted) return;
       await showGymEntrySplash(
         context,
@@ -1168,7 +1178,12 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   }
 
   Widget _buildHoursCard() {
-    if (_hours.isEmpty) {
+    final places = ((_gym?['locations'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .where((row) => row['hours'] is List && (row['hours'] as List).isNotEmpty)
+        .toList();
+    if (places.isEmpty && _hours.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1180,8 +1195,28 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
       );
     }
-    const dayNames = ['Κυρ', 'Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ'];
-    final today = DateTime.now().weekday % 7; // Mon=1->1, Sun=7->0
+    if (places.isNotEmpty) {
+      final multi = places.length > 1;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final place in places) ...[
+            if (multi) ...[
+              Text(place['name'] as String? ?? 'Κατάστημα',
+                style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+              const SizedBox(height: 8),
+            ],
+            _hoursTable((place['hours'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()),
+            const SizedBox(height: 12),
+          ],
+        ],
+      );
+    }
+    return _hoursTable(_hours);
+  }
+
+  Widget _hoursTable(List<Map<String, dynamic>> hours) {
+    final today = DateTime.now().weekday - 1;
     return Container(
       decoration: BoxDecoration(
         color: _kCard,
@@ -1190,18 +1225,24 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       ),
       clipBehavior: Clip.hardEdge,
       child: Column(
-        children: List.generate(_hours.length, (i) {
-          final h = _hours[i];
-          final dow     = (h['day_of_week'] as int?) ?? i;
+        children: List.generate(hours.length, (i) {
+          final h = hours[i];
+          final dow = (h['day_index'] as int?) ?? (h['day_of_week'] as int?) ?? i;
           final isToday = dow == today;
-          final closed  = h['is_closed'] as bool? ?? false;
-          final open    = h['open_time'] as String? ?? '';
-          final close   = h['close_time'] as String? ?? '';
-          final timeStr = closed ? 'Κλειστό' : '${open.substring(0,5)} – ${close.substring(0,5)}';
+          final closed = h['closed'] == true || h['is_closed'] == true || h['is_closed'] == 1;
+          final open = (h['open'] as String?) ?? (h['open_time'] as String?) ?? '';
+          final close = (h['close'] as String?) ?? (h['close_time'] as String?) ?? '';
+          const dayNames = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
+          final label = (h['day'] as String?)?.isNotEmpty == true
+              ? h['day'] as String
+              : dayNames[dow.clamp(0, 6)];
+          final timeStr = closed || open.isEmpty
+              ? 'Κλειστό'
+              : '${open.length >= 5 ? open.substring(0, 5) : open} – ${close.length >= 5 ? close.substring(0, 5) : close}';
           return Container(
             decoration: BoxDecoration(
               color: isToday ? _kLime.withValues(alpha: 0.08) : Colors.transparent,
-              border: i < _hours.length - 1
+              border: i < hours.length - 1
                 ? const Border(bottom: BorderSide(color: Color(0xFF26272C)))
                 : null,
             ),
@@ -1213,7 +1254,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                     decoration: const BoxDecoration(color: _kLime, shape: BoxShape.circle)),
                   const SizedBox(width: 8),
                 ],
-                Text(dayNames[dow % 7],
+                Text(label,
                   style: GoogleFonts.manrope(
                     fontSize: 14,
                     fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,

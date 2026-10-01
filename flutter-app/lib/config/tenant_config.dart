@@ -73,30 +73,36 @@ class TenantConfig {
     final resolved = await _resolveApiBaseUrl(apiBaseUrl);
     final prefs = await SharedPreferences.getInstance();
 
-    // Try fetching fresh config
-    try {
-      final url = '$resolved/api/tenants/public/$slug';
-      final response = await http.get(Uri.parse(url))
-          .timeout(const Duration(seconds: 6));
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        json['api_base_url'] = resolved;
-        // Cache for next launch
-        await prefs.setString(_prefKeyConfig, jsonEncode(json));
-        await prefs.setString(_prefKeySlug, slug);
-        await prefs.setString(_prefKeyApiUrl, resolved);
-        return TenantConfig.fromJson(json);
+    Object? lastError;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        final url = '$resolved/api/tenants/public/$slug';
+        final response = await http.get(Uri.parse(url))
+            .timeout(const Duration(seconds: 20));
+        if (response.statusCode == 200) {
+          final json = jsonDecode(response.body) as Map<String, dynamic>;
+          json['api_base_url'] = resolved;
+          await prefs.setString(_prefKeyConfig, jsonEncode(json));
+          await prefs.setString(_prefKeySlug, slug);
+          await prefs.setString(_prefKeyApiUrl, resolved);
+          return TenantConfig.fromJson(json);
+        }
+        lastError = 'HTTP ${response.statusCode}';
+      } catch (e) {
+        lastError = e;
       }
-    } catch (_) {
-      // Fall through to cached
     }
+    debugPrint('tenant config $slug failed: $lastError');
 
     // Use cached config if fetch fails
     final cached = prefs.getString(_prefKeyConfig);
     if (cached != null) {
       final json = jsonDecode(cached) as Map<String, dynamic>;
-      json['api_base_url'] = resolved;
-      return TenantConfig.fromJson(json);
+      final cachedSlug = json['slug'] as String? ?? '';
+      if (cachedSlug.isEmpty || cachedSlug == slug) {
+        json['api_base_url'] = resolved;
+        return TenantConfig.fromJson(json);
+      }
     }
 
     throw Exception('Δεν βρέθηκε config για "$slug". Έλεγξε το slug και τη σύνδεση.');
@@ -165,12 +171,49 @@ class TenantConfig {
         '• Μετά αλλαγή config: stop + flutter run (όχι hot reload)';
   }
 
-  /// On Android emulator, host machine is reachable at 10.0.2.2 (not LAN IP).
+  /// Opens a gym from the record OmniPlex already loaded, when the public
+  /// config call does not answer.
+  factory TenantConfig.knownGym({
+    required String businessId,
+    required String slug,
+    required String appName,
+    required String apiBaseUrl,
+    String primaryColor = '#00b33e',
+    String? logoUrl,
+  }) {
+    return TenantConfig(
+      businessId: businessId,
+      slug: slug,
+      appName: appName,
+      bundleId: 'com.handstand.app',
+      apiBaseUrl: apiBaseUrl,
+      primaryColor: primaryColor,
+      secondaryColor: '#03DAC6',
+      accentColor: primaryColor,
+      logoUrl: logoUrl,
+      featureOnlineBooking: true,
+      featureLoyaltyPoints: true,
+      featureMemberships: true,
+      featureNutrition: true,
+      featureMarketplace: true,
+      featureOnlinePayments: true,
+      labels: const {},
+    );
+  }
+
+  /// On Android emulator, a local API is reachable at 10.0.2.2.
+  /// Production hosts must stay as given.
   static Future<String> _resolveApiBaseUrl(String configured) async {
     if (kIsWeb || !Platform.isAndroid) return configured;
 
     final uri = Uri.tryParse(configured);
     if (uri == null || uri.host.isEmpty) return configured;
+    final host = uri.host.toLowerCase();
+    final local = host == 'localhost' ||
+        host == '127.0.0.1' ||
+        host.startsWith('192.168.') ||
+        host.startsWith('10.0.2.');
+    if (!local) return configured;
 
     final port = uri.port == 0 ? 3001 : uri.port;
     try {

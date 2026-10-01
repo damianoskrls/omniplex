@@ -1165,8 +1165,14 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         ? (distKm < 1 ? '${(distKm * 1000).round()} m' : '${distKm.toStringAsFixed(1)} km')
         : null;
     final rating   = (gym['rating'] as num?)?.toStringAsFixed(1);
-    final services = (gym['services'] as List?)?.cast<String>() ??
-                     (gym['service_types'] as String?)?.split(',').map((s) => s.trim()).toList() ?? [];
+    final hours = ((gym['hours'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((row) => (
+          name: row['name'] as String?,
+          summary: row['summary'] as String? ?? '',
+        ))
+        .where((row) => row.summary.isNotEmpty)
+        .toList();
     final color    = _parseColor(gym['primary_color'] as String?);
     final price    = gym['price_from'];
     final hasDropIn = gym['has_drop_in'] as bool? ?? false;
@@ -1307,27 +1313,34 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                   ]),
                   const SizedBox(height: 8),
 
-                  // Services: pills in results mode, text in home mode
-                  if (services.isNotEmpty)
-                    showLogoBadge
-                      ? Text(services.take(3).join(' · '),
-                          style: GoogleFonts.manrope(fontSize: 12, color: _kGray))
-                      : Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: services.take(3).map((s) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _kBg,
-                              borderRadius: BorderRadius.circular(9999),
-                              border: Border.all(color: _kBorder),
+                  if (hours.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final row in hours)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 1),
+                                  child: Icon(Icons.schedule_rounded, size: 13, color: _kGray),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    row.name == null || row.name!.isEmpty
+                                        ? row.summary
+                                        : '${row.name} · ${row.summary}',
+                                    style: GoogleFonts.manrope(fontSize: 12, color: _kGray, height: 1.35),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: Text(s,
-                              style: GoogleFonts.manrope(
-                                fontSize: 10, fontWeight: FontWeight.w500,
-                                color: _kGray)),
-                          )).toList(),
-                        ),
+                          ),
+                      ],
+                    ),
 
                   const SizedBox(height: 11),
 

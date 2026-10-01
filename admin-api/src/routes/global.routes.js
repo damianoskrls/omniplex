@@ -9,6 +9,48 @@ const jwt     = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const db      = require('../db');
 const { phoneDigitsLike, phoneLast10Eq } = require('../lib/phone_sql');
+const { parseOpeningHours } = require('../lib/slots');
+
+const HOUR_DAYS = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
+
+function describeHours(raw) {
+  const hours = parseOpeningHours(raw);
+  if (!hours || typeof hours !== 'object' || Array.isArray(hours)) return null;
+  const days = [];
+  for (let d = 0; d < 7; d++) {
+    const day = hours[d] ?? hours[String(d)];
+    if (!day || typeof day !== 'object') continue;
+    const closed = !!day.closed;
+    const open = String(day.open || '').slice(0, 5);
+    const close = String(day.close || '').slice(0, 5);
+    if (!closed && (!open || !close)) continue;
+    days.push({
+      day_index: d,
+      day: HOUR_DAYS[d],
+      open: closed ? null : open,
+      close: closed ? null : close,
+      closed,
+    });
+  }
+  if (!days.length) return null;
+  const groups = [];
+  for (const day of days) {
+    const key = day.closed ? 'closed' : `${day.open}-${day.close}`;
+    const last = groups[groups.length - 1];
+    if (last && last.key === key && last.end === day.day_index - 1) {
+      last.end = day.day_index;
+    } else {
+      groups.push({ start: day.day_index, end: day.day_index, key, closed: day.closed, open: day.open, close: day.close });
+    }
+  }
+  const summary = groups.map((group) => {
+    const label = group.start === group.end
+      ? HOUR_DAYS[group.start]
+      : `${HOUR_DAYS[group.start]}–${HOUR_DAYS[group.end]}`;
+    return group.closed ? `${label} κλειστά` : `${label} ${group.open}–${group.close}`;
+  }).join(' · ');
+  return { days, summary };
+}
 
 const router = express.Router();
 
@@ -578,9 +620,9 @@ router.get('/discovery/gyms', async (req, res) => {
 
     const [rows] = await db.query(sql, [...distParams, ...params]);
 
-    // For each gym, also return what services it offers
     const bizIds = rows.map(r => r.id);
     let serviceMap = {};
+    const hoursByBiz = {};
     if (bizIds.length) {
       const [svcRows] = await db.query(
         `SELECT business_id, name FROM services WHERE business_id IN (?) AND is_active = 1 ORDER BY name ASC`,
@@ -589,6 +631,44 @@ router.get('/discovery/gyms', async (req, res) => {
       for (const s of svcRows) {
         if (!serviceMap[s.business_id]) serviceMap[s.business_id] = [];
         serviceMap[s.business_id].push(s.name);
+      }
+      let locRows = [];
+      let cfgRows = [];
+      try {
+        [locRows] = await db.query(
+          `SELECT business_id, name, opening_hours
+           FROM locations WHERE business_id IN (?) AND is_active = 1
+           ORDER BY sort_order, name`,
+          [bizIds],
+        );
+      } catch (_) {}
+      try {
+        [cfgRows] = await db.query(
+          'SELECT business_id, opening_hours FROM business_configs WHERE business_id IN (?)',
+          [bizIds],
+        );
+      } catch (_) {}
+      const fallback = {};
+      for (const cfg of cfgRows) fallback[cfg.business_id] = describeHours(cfg.opening_hours);
+      const locs = {};
+      for (const loc of locRows) {
+        if (!locs[loc.business_id]) locs[loc.business_id] = [];
+        locs[loc.business_id].push(loc);
+      }
+      for (const id of bizIds) {
+        const places = locs[id] || [];
+        const gymHours = fallback[id];
+        if (places.length > 1) {
+          hoursByBiz[id] = places.map((loc) => ({
+            name: loc.name,
+            summary: (describeHours(loc.opening_hours) || gymHours)?.summary || null,
+          })).filter((loc) => loc.summary);
+        } else {
+          const summary = (places[0] ? describeHours(places[0].opening_hours) : null)?.summary
+            || gymHours?.summary
+            || null;
+          hoursByBiz[id] = summary ? [{ name: null, summary }] : [];
+        }
       }
     }
 
@@ -604,6 +684,7 @@ router.get('/discovery/gyms', async (req, res) => {
       logo_url:      r.logo_url || null,
       cover_url:     r.cover_url || null,
       services:      serviceMap[r.id] || [],
+      hours:         hoursByBiz[r.id] || [],
       latitude:      r.latitude  != null ? parseFloat(r.latitude)  : null,
       longitude:     r.longitude != null ? parseFloat(r.longitude) : null,
       distance_km:   r.distance_km != null ? parseFloat(Number(r.distance_km).toFixed(1)) : null,
@@ -653,12 +734,42 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
     let locations = [];
     try {
       const [locRows] = await db.query(
-        `SELECT id, name, city, address, accepts_drop_in
+        `SELECT id, name, city, address, accepts_drop_in, opening_hours
          FROM locations WHERE business_id = ? AND is_active = 1
          ORDER BY sort_order, name`,
         [biz.id],
       );
-      locations = locRows.map(l => ({ ...l, accepts_drop_in: !!l.accepts_drop_in }));
+      let businessHours = null;
+      try {
+        const [[cfg]] = await db.query(
+          'SELECT opening_hours FROM business_configs WHERE business_id = ?',
+          [biz.id],
+        );
+        businessHours = describeHours(cfg?.opening_hours);
+      } catch (_) {}
+      locations = locRows.map((l) => {
+        const described = describeHours(l.opening_hours) || businessHours;
+        return {
+          id: l.id,
+          name: l.name,
+          city: l.city,
+          address: l.address,
+          accepts_drop_in: !!l.accepts_drop_in,
+          hours: described?.days || [],
+          hours_summary: described?.summary || null,
+        };
+      });
+      if (!locations.length && businessHours) {
+        locations = [{
+          id: null,
+          name: biz.app_name || biz.name,
+          city: biz.city || null,
+          address: null,
+          accepts_drop_in: !!biz.accepts_drop_in,
+          hours: businessHours.days,
+          hours_summary: businessHours.summary,
+        }];
+      }
     } catch (_) {}
     const [plans] = await db.query(
       `SELECT id, COALESCE(discovery_name, name) AS name, price_cents, sale_price_cents, image_url, sessions, duration_mins, billing_period
