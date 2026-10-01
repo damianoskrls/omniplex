@@ -3047,7 +3047,7 @@ router.post('/bookings/drop-in', requireClientAdmin, async (req, res) => {
 // POST /client-admin/trials — create a trial booking (client optional)
 router.post('/trials', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const { trial_date, trial_time, service_id, staff_id, user_id, notes, new_client } = req.body;
+  const { trial_date, trial_time, service_id, staff_id, user_id, notes, new_client, location_id } = req.body;
 
   if (!trial_date || !trial_time) {
     return res.status(400).json({ error: 'Απαιτούνται ημερομηνία και ώρα' });
@@ -3077,15 +3077,28 @@ router.post('/trials', requireClientAdmin, async (req, res) => {
       svc = row || null;
     }
 
+    let locationId = location_id || null;
+    if (locationId) {
+      const [[loc]] = await conn.query(
+        'SELECT id FROM locations WHERE id = ? AND business_id = ?',
+        [locationId, bizId],
+      );
+      if (!loc) {
+        await conn.rollback();
+        return res.status(400).json({ error: 'Το κατάστημα δεν βρέθηκε' });
+      }
+      locationId = loc.id;
+    }
+
     const bookingId = uuidv4();
     const startsAt = new Date(`${trial_date}T${trial_time}`);
     const durationMins = svc ? (svc.duration_mins || 60) : 60;
     const endsAt = new Date(startsAt.getTime() + durationMins * 60000);
 
     await conn.query(
-      `INSERT INTO bookings (id, business_id, user_id, service_id, staff_id, starts_at, ends_at, status, source, is_trial, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', 'admin', 1, ?)`,
-      [bookingId, bizId, resolvedUserId, service_id || null, staff_id || null, startsAt, endsAt, notes?.trim() || null]
+      `INSERT INTO bookings (id, business_id, user_id, service_id, staff_id, location_id, starts_at, ends_at, status, source, is_trial, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', 'admin', 1, ?)`,
+      [bookingId, bizId, resolvedUserId, service_id || null, staff_id || null, locationId, startsAt, endsAt, notes?.trim() || null]
     );
 
     // If user provided, also create trial membership
@@ -3155,16 +3168,19 @@ router.get('/trials', requireClientAdmin, async (req, res) => {
     const params = [bizId];
     if (req.query.from) { whereClauses.push('DATE(b.starts_at) >= ?'); params.push(req.query.from); }
     if (req.query.to)   { whereClauses.push('DATE(b.starts_at) <= ?'); params.push(req.query.to); }
+    if (req.query.location_id) { whereClauses.push('b.location_id = ?'); params.push(req.query.location_id); }
     const [rows] = await db.query(`
       SELECT b.id, b.starts_at, b.ends_at, b.status, b.notes,
-             b.user_id, b.service_id, b.staff_id,
+             b.user_id, b.service_id, b.staff_id, b.location_id,
              b.trial_became_member, b.trial_considering,
              u.full_name AS user_name, u.phone AS user_phone,
              s.name AS service_name,
+             loc.name AS location_name,
              st.full_name AS staff_name, st.avatar_url AS staff_avatar, st.color_hex AS staff_color
       FROM bookings b
       LEFT JOIN users u ON u.id = b.user_id
       LEFT JOIN services s ON s.id = b.service_id
+      LEFT JOIN locations loc ON loc.id = b.location_id
       LEFT JOIN staff st ON st.id = b.staff_id
       WHERE ${whereClauses.join(' AND ')}
       ORDER BY b.starts_at DESC
@@ -3180,7 +3196,7 @@ router.get('/trials', requireClientAdmin, async (req, res) => {
 router.patch('/trials/:id', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
   const { id } = req.params;
-  const { trial_date, trial_time, service_id, staff_id, notes, user_id, new_client } = req.body;
+  const { trial_date, trial_time, service_id, staff_id, notes, user_id, new_client, location_id } = req.body;
   try {
     const [[booking]] = await db.query(
       'SELECT id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
@@ -3199,6 +3215,17 @@ router.patch('/trials/:id', requireClientAdmin, async (req, res) => {
     }
     if (service_id !== undefined) { updates.push('service_id = ?'); params.push(service_id || null); }
     if (staff_id !== undefined) { updates.push('staff_id = ?'); params.push(staff_id || null); }
+    if (location_id !== undefined) {
+      if (location_id) {
+        const [[loc]] = await db.query(
+          'SELECT id FROM locations WHERE id = ? AND business_id = ?',
+          [location_id, bizId],
+        );
+        if (!loc) return res.status(400).json({ error: 'Το κατάστημα δεν βρέθηκε' });
+      }
+      updates.push('location_id = ?');
+      params.push(location_id || null);
+    }
     if (notes !== undefined) { updates.push('notes = ?'); params.push(notes?.trim() || null); }
 
     // Link existing client or create new

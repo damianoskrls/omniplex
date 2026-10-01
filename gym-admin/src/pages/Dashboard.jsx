@@ -187,7 +187,9 @@ export default function Dashboard() {
 
   function loadTrials() {
     const today = new Date().toISOString().slice(0, 10);
-    api.get('/client-admin/trials', { params: { from: today } })
+    const params = { from: today };
+    if (locationId) params.location_id = locationId;
+    api.get('/client-admin/trials', { params })
       .then(r => setTrials((r.data || []).filter(t => new Date(t.starts_at) >= new Date())))
       .catch(() => {});
   }
@@ -208,6 +210,8 @@ export default function Dashboard() {
     } catch { /* ignore */ } finally { setSavingNote(false); }
   }
 
+  useEffect(() => { loadTrials(); }, [locationId]);
+
   useEffect(() => {
     api.get('/client-admin/locations')
       .then((r) => setLocations((r.data || []).filter((l) => l.is_active !== 0 && l.is_active !== false)))
@@ -223,7 +227,6 @@ export default function Dashboard() {
         toast.error(err.response?.data?.error || 'Δεν φορτώθηκε το dashboard');
       })
       .finally(() => setLoading(false));
-    loadTrials(false);
     api.get('/client-admin/dashboard-extras').then(r => setExtras(r.data)).catch(() => {});
 
     // Check for expiring memberships — show modal once per calendar day
@@ -336,6 +339,7 @@ export default function Dashboard() {
                         {new Date(t.starts_at).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })}
                         {' · '}
                         {new Date(t.starts_at).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}
+                        {t.location_name ? ` · ${t.location_name}` : ''}
                         {t.service_name ? ` · ${t.service_name}` : ''}
                         {t.staff_name ? ` · ${t.staff_name}` : ''}
                       </span>

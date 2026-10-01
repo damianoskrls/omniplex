@@ -7,6 +7,8 @@ import {
   Calendar, Clock, Users, Award,
 } from 'lucide-react';
 import TimeInput from '../components/ui/TimeInput';
+import StoreFilter from '../components/StoreFilter';
+import TrialSlotPicker from '../components/TrialSlotPicker';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function toDateKey(d) { return d.toISOString().slice(0, 10); }
@@ -150,13 +152,15 @@ function ClientPicker({ value, valueName, valuePhone, onChange, clients }) {
 }
 
 // ── Modals ───────────────────────────────────────────────────────────────────
-function TrialModal({ trial, staffList, services, clients, onClose, onSave, isRepeat }) {
+function TrialModal({ trial, staffList, services, clients, locations = [], defaultLocationId = '', onClose, onSave, isRepeat }) {
   const isNew = !trial?.id || isRepeat;
+  const stores = locations.filter((l) => l && l.is_active !== 0 && l.is_active !== false);
   const [form, setForm] = useState({
     trial_date: trial ? fmtDateInput(trial.starts_at) : new Date().toISOString().slice(0, 10),
     trial_time: trial ? fmtTimeInput(trial.starts_at) : '10:00',
     service_id: trial?.service_id || '',
     staff_id: trial?.staff_id || '',
+    location_id: trial?.location_id || defaultLocationId || (stores.length === 1 ? stores[0].id : ''),
     notes: isRepeat ? '' : (trial?.notes || ''),
     user_id: isRepeat ? (trial?.user_id || '') : (trial?.user_id || ''),
     user_name: isRepeat ? (trial?.user_name || '') : (trial?.user_name || ''),
@@ -187,6 +191,14 @@ function TrialModal({ trial, staffList, services, clients, onClose, onSave, isRe
   };
 
   const handleSave = async () => {
+    if (stores.length > 1 && !form.location_id) {
+      alert('Διάλεξε κατάστημα');
+      return;
+    }
+    if (form.service_id && !form.trial_time) {
+      alert('Διάλεξε ώρα από το πρόγραμμα');
+      return;
+    }
     setSaving(true);
     try { await onSave(form); onClose(); }
     catch (e) { alert('Σφάλμα: ' + (e?.response?.data?.error || e.message)); }
@@ -199,7 +211,7 @@ function TrialModal({ trial, staffList, services, clients, onClose, onSave, isRe
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 460, boxShadow: '0 24px 64px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 560, boxShadow: '0 24px 64px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
             {isRepeat ? 'Επανάληψη Δοκιμαστικού' : (trial?.id ? 'Επεξεργασία' : 'Νέο Δοκιμαστικό')}
@@ -215,10 +227,21 @@ function TrialModal({ trial, staffList, services, clients, onClose, onSave, isRe
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div><label style={lbl}>Ημερομηνία</label><input type="date" value={form.trial_date} onChange={e => set('trial_date', e.target.value)} style={inp} /></div>
-          <div><label style={lbl}>Ώρα</label><TimeInput value={form.trial_time} onChange={val => set('trial_time', val)} /></div>
-        </div>
+        {!form.service_id && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div><label style={lbl}>Ημερομηνία</label><input type="date" value={form.trial_date} onChange={e => set('trial_date', e.target.value)} style={inp} /></div>
+            <div><label style={lbl}>Ώρα</label><TimeInput value={form.trial_time} onChange={val => set('trial_time', val)} /></div>
+          </div>
+        )}
+        {stores.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <label style={lbl}>Κατάστημα</label>
+            <select value={form.location_id} onChange={e => set('location_id', e.target.value)} style={inp}>
+              {stores.length > 1 && <option value="">— Διάλεξε κατάστημα —</option>}
+              {stores.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+            </select>
+          </div>
+        )}
 
         {!isRepeat && (
           <div style={{ marginTop: 14 }}>
@@ -245,6 +268,22 @@ function TrialModal({ trial, staffList, services, clients, onClose, onSave, isRe
               ))}
           </select>
         </div>
+        {form.service_id && (
+          <div style={{ marginTop: 14 }}>
+            <TrialSlotPicker
+              serviceId={form.service_id}
+              locationId={form.location_id}
+              locationRequired={stores.length > 1}
+              date={form.trial_date}
+              time={form.trial_time}
+              suggestedDate={trial ? fmtDateInput(trial.starts_at) : ''}
+              suggestedTime={trial ? fmtTimeInput(trial.starts_at) : ''}
+              autoPick={isNew}
+              excludeBookingId={!isNew ? trial.id : ''}
+              onChange={({ date, time }) => setForm(f => ({ ...f, trial_date: date, trial_time: time }))}
+            />
+          </div>
+        )}
         <div style={{ marginTop: 14 }}><label style={lbl}>Εκπαιδευτής</label>
           <select value={form.staff_id} onChange={e => set('staff_id', e.target.value)} style={inp}>
             <option value="">— Χωρίς εκπαιδευτή —</option>
@@ -407,6 +446,9 @@ function TrialCard({ r, slotIndex, slotTotal, staffList, onEdit, onDelete, onRep
 
       {/* Service + Trainer row */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {r.location_name && (
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#92400E', background: '#FEF3C7', padding: '3px 10px', borderRadius: 99 }}>{r.location_name}</span>
+        )}
         {r.service_name && (
           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-2)', background: 'var(--surface-2)', padding: '3px 10px', borderRadius: 99 }}>{r.service_name}</span>
         )}
@@ -452,7 +494,7 @@ function periodDates(p) {
   return null;
 }
 
-function ReportsTab() {
+function ReportsTab({ locationId = '' }) {
   const [period, setPeriod] = useState('this_month');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -462,11 +504,12 @@ function ReportsTab() {
     const params = {};
     const d = periodDates(period);
     if (d) { params.from = d.from.toISOString().slice(0,10); params.to = d.to.toISOString().slice(0,10); }
+    if (locationId) params.location_id = locationId;
     api.get('/client-admin/trials', { params })
       .then(r => setRows(r.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [period]);
+  }, [period, locationId]);
 
   // Compute stats
   const total = rows.length;
@@ -598,12 +641,16 @@ export default function Trials() {
   const [showAll, setShowAll] = useState(false);
   const [allRows, setAllRows] = useState([]);
   const [allLoading, setAllLoading] = useState(false);
+  const [locations, setLocations] = useState([]);
+  const [locationId, setLocationId] = useState('');
 
   const dateKey = toDateKey(selectedDate);
 
   const reload = () => {
     setLoading(true);
-    api.get('/client-admin/trials', { params: { from: dateKey, to: dateKey } })
+    const params = { from: dateKey, to: dateKey };
+    if (locationId) params.location_id = locationId;
+    api.get('/client-admin/trials', { params })
       .then(r => setRows(r.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -611,18 +658,23 @@ export default function Trials() {
 
   const loadAll = () => {
     setAllLoading(true);
-    api.get('/client-admin/trials')
+    const params = {};
+    if (locationId) params.location_id = locationId;
+    api.get('/client-admin/trials', { params })
       .then(r => setAllRows(r.data || []))
       .catch(() => {})
       .finally(() => setAllLoading(false));
   };
 
-  useEffect(() => { reload(); }, [dateKey]);
-  useEffect(() => { if (showAll) loadAll(); }, [showAll]);
+  useEffect(() => { reload(); }, [dateKey, locationId]);
+  useEffect(() => { if (showAll) loadAll(); }, [showAll, locationId]);
   useEffect(() => {
     api.get('/client-admin/staff').then(r => setStaffList(r.data || [])).catch(() => {});
     api.get('/client-admin/services').then(r => setServices(r.data || [])).catch(() => {});
     api.get('/client-admin/clients').then(r => setClients(r.data || [])).catch(() => {});
+    api.get('/client-admin/locations')
+      .then(r => setLocations((r.data || []).filter(l => l.is_active !== 0 && l.is_active !== false)))
+      .catch(() => {});
   }, []);
 
   const goDay = delta => {
@@ -678,20 +730,20 @@ export default function Trials() {
     setRows(prev => prev.filter(r => r.id !== id));
   };
   const handleSaveEdit = async (form) => {
-    const payload = { trial_date: form.trial_date, trial_time: form.trial_time, service_id: form.service_id||null, staff_id: form.staff_id||null, notes: form.notes||null };
+    const payload = { trial_date: form.trial_date, trial_time: form.trial_time, service_id: form.service_id||null, staff_id: form.staff_id||null, location_id: form.location_id||null, notes: form.notes||null };
     if (form.new_client) payload.new_client = form.new_client;
     else payload.user_id = form.user_id || null;
     await api.patch(`/client-admin/trials/${modal.trial.id}`, payload);
     reload();
   };
   const handleSaveNew = async (form) => {
-    const payload = { trial_date: form.trial_date, trial_time: form.trial_time, service_id: form.service_id||undefined, staff_id: form.staff_id||undefined, notes: form.notes||undefined };
+    const payload = { trial_date: form.trial_date, trial_time: form.trial_time, service_id: form.service_id||undefined, staff_id: form.staff_id||undefined, location_id: form.location_id||undefined, notes: form.notes||undefined };
     if (form.new_client) payload.new_client = form.new_client;
     else if (form.user_id) payload.user_id = form.user_id;
     await api.post('/client-admin/trials', payload);
     reload();
   };
-  const handleRepeat = async (form) => { await api.post('/client-admin/trials', { trial_date: form.trial_date, trial_time: form.trial_time, service_id: form.service_id||undefined, staff_id: form.staff_id||undefined, user_id: modal.trial.user_id||undefined }); reload(); };
+  const handleRepeat = async (form) => { await api.post('/client-admin/trials', { trial_date: form.trial_date, trial_time: form.trial_time, service_id: form.service_id||undefined, staff_id: form.staff_id||undefined, location_id: form.location_id||undefined, user_id: modal.trial.user_id||undefined }); reload(); };
 
   // Quick day chips
   const quickDays = [-1, 0, 1, 2, 3].map(delta => {
@@ -739,7 +791,9 @@ export default function Trials() {
         {tabBtn('reports', 'Αναφορές', BarChart2)}
       </div>
 
-      {tab === 'reports' ? <ReportsTab /> : (
+      <StoreFilter locations={locations} value={locationId} onChange={setLocationId} />
+
+      {tab === 'reports' ? <ReportsTab locationId={locationId} /> : (
         <>
           {/* Controls row: chips + show-all toggle */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -899,9 +953,9 @@ export default function Trials() {
       )}
 
       {/* Modals */}
-      {modal?.type === 'edit' && <TrialModal trial={modal.trial} staffList={staffList} services={services} clients={clients} onClose={() => setModal(null)} onSave={handleSaveEdit} />}
-      {modal?.type === 'new'  && <TrialModal trial={null} staffList={staffList} services={services} clients={clients} onClose={() => setModal(null)} onSave={handleSaveNew} />}
-      {modal?.type === 'repeat' && <TrialModal trial={modal.trial} staffList={staffList} services={services} clients={clients} onClose={() => setModal(null)} onSave={handleRepeat} isRepeat />}
+      {modal?.type === 'edit' && <TrialModal trial={modal.trial} staffList={staffList} services={services} clients={clients} locations={locations} defaultLocationId={locationId} onClose={() => setModal(null)} onSave={handleSaveEdit} />}
+      {modal?.type === 'new'  && <TrialModal trial={null} staffList={staffList} services={services} clients={clients} locations={locations} defaultLocationId={locationId} onClose={() => setModal(null)} onSave={handleSaveNew} />}
+      {modal?.type === 'repeat' && <TrialModal trial={modal.trial} staffList={staffList} services={services} clients={clients} locations={locations} defaultLocationId={locationId} onClose={() => setModal(null)} onSave={handleRepeat} isRepeat />}
       {deleteTarget && <DeleteConfirm trial={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={() => handleDelete(deleteTarget.id)} />}
       {memberClientModal && (
         <MemberClientModal

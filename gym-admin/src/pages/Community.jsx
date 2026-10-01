@@ -298,7 +298,8 @@ function NewPostForm({ onPosted, mentionables }) {
   const [media, setMedia] = useState([]);
   const [mentions, setMentions] = useState([]);
   const [services, setServices] = useState([]);
-  const [serviceId, setServiceId] = useState('');
+  const [allServices, setAllServices] = useState(true);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef();
@@ -307,7 +308,6 @@ function NewPostForm({ onPosted, mentionables }) {
     api.get('/client-admin/services').then((r) => {
       const list = (r.data || []).filter((s) => s.is_active !== 0);
       setServices(list);
-      if (list[0]) setServiceId(list[0].id);
     }).catch(() => {});
   }, []);
 
@@ -327,13 +327,14 @@ function NewPostForm({ onPosted, mentionables }) {
 
   async function submit(e) {
     e.preventDefault();
-    if (!serviceId) { toast.error('Επίλεξε την υπηρεσία'); return; }
+    if (!allServices && !selectedIds.length) { toast.error('Επίλεξε τουλάχιστον μία υπηρεσία'); return; }
     if (!body.trim() && !media.length) { toast.error('Γράψε κάτι ή πρόσθεσε εικόνα'); return; }
     setSubmitting(true);
     try {
       await api.post('/client-admin/community/admin/posts', {
         body: body.trim() || null,
-        service_id: serviceId,
+        all_services: allServices,
+        service_ids: allServices ? [] : selectedIds,
         media,
         mentions: mentions.length ? mentions : undefined,
       });
@@ -354,13 +355,32 @@ function NewPostForm({ onPosted, mentionables }) {
       </div>
       <form onSubmit={submit}>
         <div className="form-group">
-          <label className="form-label">Υπηρεσία</label>
-          <select className="form-input" value={serviceId} onChange={(e) => setServiceId(e.target.value)} required>
-            <option value="">Επίλεξε υπηρεσία</option>
-            {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <label className="form-label">Ποιους αφορά</label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, marginBottom: 8 }}>
+            <input type="checkbox" checked={allServices} onChange={(e) => setAllServices(e.target.checked)} />
+            Όλες οι υπηρεσίες
+          </label>
+          {!allServices && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {services.map((s) => {
+                const on = selectedIds.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedIds((prev) => on ? prev.filter((id) => id !== s.id) : [...prev, s.id])}
+                    className={`store-filter-chip ${on ? 'is-on' : ''}`}
+                  >
+                    {s.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="text-muted" style={{ fontSize: '0.78rem', marginTop: 4 }}>
-            Την βλέπουν μόνο όσοι έχουν αυτή την υπηρεσία, και οι γυμναστές της.
+            {allServices
+              ? 'Την βλέπουν όσοι έχουν οποιαδήποτε υπηρεσία, στην καρτέλα της υπηρεσίας τους.'
+              : 'Την βλέπουν μόνο όσοι έχουν μία από τις υπηρεσίες που διάλεξες, και οι γυμναστές τους.'}
           </div>
         </div>
         <MentionTextarea
@@ -451,7 +471,7 @@ export default function Community() {
       <div className="page-header">
         <h1 className="page-title">Κοινότητα</h1>
         <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: 4 }}>
-          Κάθε ανάρτηση φαίνεται μόνο στην υπηρεσία που διαλέγεις
+          Μπορείς να την στείλεις σε όλες τις υπηρεσίες ή μόνο σε όσες διαλέξεις
         </p>
       </div>
 

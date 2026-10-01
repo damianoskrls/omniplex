@@ -401,7 +401,7 @@ router.get('/:bizId/next-slot', softAuth, async (req, res) => {
 
 router.post('/:bizId/plan-request', softAuth, async (req, res) => {
   if (!requireCustomer(req, res)) return;
-  const { plan_id, kind, service_id, trial_date, trial_time } = req.body || {};
+  const { plan_id, kind, service_id, trial_date, trial_time, location_id } = req.body || {};
   if (!plan_id) return res.status(400).json({ error: 'Διάλεξε πακέτο' });
   if (kind !== 'trial' && kind !== 'enroll') {
     return res.status(400).json({ error: 'Διάλεξε δοκιμαστικό ή εγγραφή στο πακέτο' });
@@ -417,14 +417,25 @@ router.post('/:bizId/plan-request', softAuth, async (req, res) => {
       [bizId, userId, plan_id],
     );
     if (existing) return res.status(400).json({ error: 'Υπάρχει ήδη εκκρεμές αίτημα για αυτό το πακέτο' });
+    let locationId = location_id || null;
+    let locationName = null;
+    if (locationId) {
+      const [[loc]] = await db.query(
+        'SELECT id, name FROM locations WHERE id = ? AND business_id = ? AND is_active = 1',
+        [locationId, bizId],
+      );
+      if (!loc) return res.status(400).json({ error: 'Το κατάστημα δεν βρέθηκε' });
+      locationId = loc.id;
+      locationName = loc.name;
+    }
     const id = uuidv4();
     const proposedDate = kind === 'trial' && trial_date ? String(trial_date).slice(0, 10) : null;
     const proposedTime = kind === 'trial' && trial_time ? String(trial_time).slice(0, 5) : null;
     await db.query(
       `INSERT INTO plan_purchase_requests
-        (id, business_id, user_id, plan_id, service_id, kind, trial_date, trial_time)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, bizId, userId, plan_id, service_id || plan.service_ids?.[0] || null, kind, proposedDate, proposedTime],
+        (id, business_id, user_id, plan_id, service_id, kind, trial_date, trial_time, location_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, bizId, userId, plan_id, service_id || plan.service_ids?.[0] || null, kind, proposedDate, proposedTime, locationId],
     );
     const [[user]] = await db.query('SELECT full_name FROM users WHERE id = ?', [userId]);
     const label = kind === 'trial' ? 'δοκιμαστικό' : 'εγγραφή στο πακέτο';
@@ -435,7 +446,7 @@ router.post('/:bizId/plan-request', softAuth, async (req, res) => {
         businessId: bizId,
         type: 'plan_request',
         title: kind === 'trial' ? 'Αίτημα δοκιμαστικού' : 'Αίτημα πακέτου',
-        body: `${user?.full_name || 'Πελάτης'} ζήτησε ${label}: ${plan.name}${when}.`,
+        body: `${user?.full_name || 'Πελάτης'} ζήτησε ${label}: ${plan.name}${when}${locationName ? ` · ${locationName}` : ''}.`,
         payload: { request_id: id, user_id: userId, plan_id, kind },
       });
     } catch (_) {}

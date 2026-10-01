@@ -23,18 +23,26 @@ function requireAdmin(req, res, next) {
 
 router.get('/', requireAdmin, async (req, res) => {
   try {
+    const params = [req.bizId];
+    let locationSql = '';
+    if (req.query.location_id) {
+      locationSql = ' AND r.location_id = ?';
+      params.push(req.query.location_id);
+    }
     const [rows] = await db.query(
       `SELECT r.id, r.kind, r.status, r.created_at, r.resolved_at, r.user_id, r.plan_id, r.service_id,
-              r.trial_date, r.trial_time,
-              u.full_name, u.phone, bp.name AS plan_name, bp.price_cents, s.name AS service_name
+              r.trial_date, r.trial_time, r.location_id,
+              u.full_name, u.phone, bp.name AS plan_name, bp.price_cents, s.name AS service_name,
+              loc.name AS location_name
        FROM plan_purchase_requests r
        JOIN users u ON u.id = (r.user_id COLLATE utf8mb4_unicode_ci)
        JOIN business_plans bp ON bp.id = (r.plan_id COLLATE utf8mb4_unicode_ci)
        LEFT JOIN services s ON s.id = (r.service_id COLLATE utf8mb4_unicode_ci)
-       WHERE r.business_id = ?
+       LEFT JOIN locations loc ON loc.id = (r.location_id COLLATE utf8mb4_unicode_ci)
+       WHERE r.business_id = ?${locationSql}
        ORDER BY (r.status COLLATE utf8mb4_unicode_ci) = (_utf8mb4'pending' COLLATE utf8mb4_unicode_ci) DESC, r.created_at DESC
        LIMIT 100`,
-      [req.bizId],
+      params,
     );
     res.json(rows);
   } catch (err) {
@@ -81,6 +89,29 @@ router.post('/:id/accept', requireAdmin, async (req, res) => {
     if (!plan) return res.status(404).json({ error: 'Το πακέτο δεν βρέθηκε' });
 
     await conn.beginTransaction();
+    let locationId = req.body?.location_id || row.location_id || null;
+    if (locationId) {
+      const [[loc]] = await conn.query(
+        'SELECT id FROM locations WHERE id = ? AND business_id = ? AND is_active = 1',
+        [locationId, req.bizId],
+      );
+      if (!loc) {
+        await conn.rollback();
+        return res.status(400).json({ error: 'Το κατάστημα δεν βρέθηκε' });
+      }
+      locationId = loc.id;
+    } else if (row.kind === 'trial') {
+      const [stores] = await conn.query(
+        'SELECT id FROM locations WHERE business_id = ? AND is_active = 1',
+        [req.bizId],
+      );
+      if (stores.length > 1) {
+        await conn.rollback();
+        return res.status(400).json({ error: 'Διάλεξε κατάστημα' });
+      }
+      locationId = stores[0]?.id || null;
+    }
+
     if (row.kind === 'trial') {
       const trial_date = req.body?.trial_date || row.trial_date;
       const trial_time = req.body?.trial_time || row.trial_time;
@@ -95,6 +126,7 @@ router.post('/:id/accept', requireAdmin, async (req, res) => {
         service_id: serviceId,
         date: trial_date,
         time: trial_time,
+        location_id: locationId,
         use_credit: false,
         is_trial: true,
         source: 'admin',
@@ -140,8 +172,8 @@ router.post('/:id/accept', requireAdmin, async (req, res) => {
       }).catch(() => {});
     }
     await conn.query(
-      `UPDATE plan_purchase_requests SET status = 'accepted', resolved_at = NOW() WHERE id = ?`,
-      [row.id],
+      `UPDATE plan_purchase_requests SET status = 'accepted', resolved_at = NOW(), location_id = COALESCE(?, location_id) WHERE id = ?`,
+      [locationId, row.id],
     );
     await conn.commit();
     res.json({

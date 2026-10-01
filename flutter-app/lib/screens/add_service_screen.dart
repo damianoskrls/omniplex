@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
+import '../models/location.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
@@ -91,13 +92,48 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       ),
     );
     if (kind == null || !mounted) return;
+    String? locationId;
+    String? locationName;
+    try {
+      final locs = await context.read<AuthService>().api.fetchLocations(serviceId: serviceId);
+      if (!mounted) return;
+      if (locs.locations.length > 1) {
+        final picked = await showDialog<GymLocation>(
+          context: context,
+          builder: (ctx) => SimpleDialog(
+            title: const Text('Σε ποιο κατάστημα;'),
+            children: [
+              for (final loc in locs.locations)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(ctx, loc),
+                  child: Text(loc.displayLine.isEmpty ? loc.name : '${loc.name}\n${loc.displayLine}'),
+                ),
+            ],
+          ),
+        );
+        if (picked == null || !mounted) return;
+        locationId = picked.id;
+        locationName = picked.name;
+      } else if (locs.locations.length == 1) {
+        locationId = locs.locations.first.id;
+        locationName = locs.locations.first.name;
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      return;
+    }
     String? trialDate;
     String? trialTime;
     if (kind == 'trial') {
       setState(() => _buyingId = planId);
       Map<String, dynamic>? slot;
       try {
-        slot = await context.read<AuthService>().api.fetchNextSlot(serviceId: serviceId);
+        slot = await context.read<AuthService>().api.fetchNextSlot(
+          serviceId: serviceId,
+          locationId: locationId,
+        );
       } on ApiException catch (e) {
         if (mounted) {
           setState(() => _buyingId = null);
@@ -121,7 +157,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           backgroundColor: AppColors.surface,
           title: const Text('Επόμενο διαθέσιμο', style: TextStyle(color: Colors.white)),
           content: Text(
-            '${_fmtSlot(trialDate, trialTime)}\n\nΘα λάβεις ειδοποίηση έγκρισης πριν κλειστεί το ραντεβού.',
+            '${locationName != null ? '$locationName\n' : ''}${_fmtSlot(trialDate, trialTime)}\n\nΘα λάβεις ειδοποίηση έγκρισης πριν κλειστεί το ραντεβού.',
             style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
           ),
           actions: [
@@ -140,6 +176,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         serviceId: serviceId,
         trialDate: trialDate,
         trialTime: trialTime,
+        locationId: locationId,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

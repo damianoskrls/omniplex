@@ -24,17 +24,68 @@ async function servicesForViewer(bizId, viewer) {
   return memberServices(db, bizId, viewer.userId);
 }
 
+function visibleToServicesSql(alias = 'p') {
+  return `(
+    ${alias}.all_services = 1
+    OR (${alias}.service_id COLLATE utf8mb4_unicode_ci) IN (?)
+    OR EXISTS (
+      SELECT 1 FROM community_post_services cps
+      WHERE (cps.post_id COLLATE utf8mb4_unicode_ci) = (${alias}.id COLLATE utf8mb4_unicode_ci)
+        AND (cps.service_id COLLATE utf8mb4_unicode_ci) IN (?)
+    )
+  )`;
+}
+
 async function postInViewerScope(bizId, postId, viewer) {
   const services = await servicesForViewer(bizId, viewer);
   const ids = services.map((s) => s.id);
   if (!ids.length) return null;
   const [[post]] = await db.query(
-    `SELECT id, user_id, staff_id, service_id
-     FROM community_posts
-     WHERE id = ? AND business_id = ? AND deleted_at IS NULL AND service_id IN (?)`,
-    [postId, bizId, ids],
+    `SELECT id, user_id, staff_id, service_id, all_services
+     FROM community_posts p
+     WHERE p.id = ? AND p.business_id = ? AND p.deleted_at IS NULL
+       AND ${visibleToServicesSql('p')}`,
+    [postId, bizId, ids, ids],
   );
   return post || null;
+}
+
+async function attachAudiences(posts) {
+  if (!posts.length) return posts;
+  const ids = posts.map((p) => p.id);
+  let links = [];
+  try {
+    const [rows] = await db.query(
+      `SELECT cps.post_id, s.id AS service_id, s.name AS service_name
+       FROM community_post_services cps
+       JOIN services s ON (s.id COLLATE utf8mb4_unicode_ci) = (cps.service_id COLLATE utf8mb4_unicode_ci)
+       WHERE cps.post_id IN (?)`,
+      [ids],
+    );
+    links = rows;
+  } catch (err) {
+    if (err.code !== 'ER_NO_SUCH_TABLE') throw err;
+  }
+  const byPost = new Map();
+  for (const row of links) {
+    if (!byPost.has(row.post_id)) byPost.set(row.post_id, []);
+    byPost.get(row.post_id).push({ id: row.service_id, name: row.service_name });
+  }
+  return posts.map((p) => {
+    const services = byPost.get(p.id) || [];
+    if (!services.length && p.service_id && p.service_name) {
+      services.push({ id: p.service_id, name: p.service_name });
+    }
+    const all = Number(p.all_services) === 1;
+    return {
+      ...p,
+      all_services: all,
+      services,
+      service_name: all
+        ? 'Όλες οι υπηρεσίες'
+        : (services.map((s) => s.name).join(' · ') || p.service_name || null),
+    };
+  });
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -167,7 +218,7 @@ router.get('/mobile/:bizId/posts', requireMobile, async (req, res) => {
     }
 
     const [rows] = await db.query(`
-      SELECT p.id, p.body, p.created_at, p.is_pinned, p.pinned_until, p.service_id,
+      SELECT p.id, p.body, p.created_at, p.is_pinned, p.pinned_until, p.service_id, p.all_services,
              sv.name AS service_name,
              u.id AS user_id, u.full_name AS user_name, u.phone AS user_phone,
              st.id AS staff_id, st.full_name AS staff_name, st.avatar_url AS staff_avatar, st.role AS staff_role
@@ -175,16 +226,17 @@ router.get('/mobile/:bizId/posts', requireMobile, async (req, res) => {
       LEFT JOIN users u ON u.id = p.user_id
       LEFT JOIN staff st ON st.id = p.staff_id
       LEFT JOIN services sv ON sv.id = p.service_id
-      WHERE p.business_id = ? AND p.deleted_at IS NULL AND p.service_id = ?
+      WHERE p.business_id = ? AND p.deleted_at IS NULL
+        AND ${visibleToServicesSql('p').replaceAll('IN (?)', '= ?')}
         ${cursor ? 'AND (p.is_pinned = 0 OR (p.pinned_until IS NOT NULL AND p.pinned_until < NOW())) AND p.created_at < (SELECT created_at FROM community_posts WHERE id = ?)' : ''}
       ORDER BY
         CASE WHEN p.is_pinned = 1 AND (p.pinned_until IS NULL OR p.pinned_until > NOW()) THEN 0 ELSE 1 END ASC,
         p.created_at DESC
       LIMIT ?
-    `, cursor ? [bizId, serviceId, cursor, limit + 1] : [bizId, serviceId, limit + 1]);
+    `, cursor ? [bizId, serviceId, serviceId, cursor, limit + 1] : [bizId, serviceId, serviceId, limit + 1]);
 
     const hasMore = rows.length > limit;
-    const data = rows.slice(0, limit);
+    const data = await attachAudiences(rows.slice(0, limit));
     const enriched = await enrichPosts(data, viewer.userId, viewer.staffId);
     return res.json({
       posts: enriched,
@@ -459,7 +511,7 @@ router.get('/admin/posts', requireClientAdmin, async (req, res) => {
   const cursor = req.query.cursor || null;
   try {
     const [rows] = await db.query(`
-      SELECT p.id, p.body, p.created_at, p.deleted_at, p.is_pinned, p.pinned_until, p.service_id,
+      SELECT p.id, p.body, p.created_at, p.deleted_at, p.is_pinned, p.pinned_until, p.service_id, p.all_services,
              sv.name AS service_name,
              u.id AS user_id, u.full_name AS user_name,
              st.id AS staff_id, st.full_name AS staff_name, st.avatar_url AS staff_avatar
@@ -476,7 +528,7 @@ router.get('/admin/posts', requireClientAdmin, async (req, res) => {
     `, cursor ? [bizId, cursor, limit + 1] : [bizId, limit + 1]);
 
     const hasMore = rows.length > limit;
-    const data = rows.slice(0, limit);
+    const data = await attachAudiences(rows.slice(0, limit));
     const enriched = await enrichPosts(data, null, null);
     return res.json({ posts: enriched, next_cursor: hasMore ? data[data.length - 1]?.id : null });
   } catch (err) {
@@ -545,22 +597,42 @@ router.get('/admin/mentionables', requireClientAdmin, async (req, res) => {
 // POST /api/client-admin/community/posts  (admin/secretary posts to feed)
 router.post('/admin/posts', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const { body, media, staff_id, mentions, service_id: serviceId } = req.body;
+  const { body, media, staff_id, mentions } = req.body;
+  const allServices = req.body.all_services === true || req.body.all_services === 1;
+  let serviceIds = Array.isArray(req.body.service_ids)
+    ? [...new Set(req.body.service_ids.filter(Boolean))]
+    : [];
+  if (!serviceIds.length && req.body.service_id) serviceIds = [req.body.service_id];
   if (!body?.trim() && (!media || !media.length)) {
     return res.status(400).json({ error: 'Κείμενο ή μέσο απαιτείται' });
   }
-  if (!serviceId) return res.status(400).json({ error: 'Επίλεξε την υπηρεσία της ανάρτησης' });
+  if (!allServices && !serviceIds.length) {
+    return res.status(400).json({ error: 'Επίλεξε υπηρεσίες ή όλες τις υπηρεσίες' });
+  }
   try {
-    const [[svc]] = await db.query(
-      'SELECT id FROM services WHERE id = ? AND business_id = ? AND is_active = 1',
-      [serviceId, bizId],
-    );
-    if (!svc) return res.status(400).json({ error: 'Η υπηρεσία δεν βρέθηκε' });
+    if (!allServices) {
+      const [found] = await db.query(
+        'SELECT id FROM services WHERE business_id = ? AND is_active = 1 AND id IN (?)',
+        [bizId, serviceIds],
+      );
+      if (found.length !== serviceIds.length) {
+        return res.status(400).json({ error: 'Κάποια υπηρεσία δεν βρέθηκε' });
+      }
+    }
     const postId = uuid();
+    const storedServiceId = !allServices && serviceIds.length === 1 ? serviceIds[0] : null;
     await db.query(
-      'INSERT INTO community_posts (id, business_id, staff_id, service_id, body) VALUES (?, ?, ?, ?, ?)',
-      [postId, bizId, staff_id || null, serviceId, body?.trim() || null],
+      'INSERT INTO community_posts (id, business_id, staff_id, service_id, all_services, body) VALUES (?, ?, ?, ?, ?, ?)',
+      [postId, bizId, staff_id || null, storedServiceId, allServices ? 1 : 0, body?.trim() || null],
     );
+    if (!allServices) {
+      for (const serviceId of serviceIds) {
+        await db.query(
+          'INSERT INTO community_post_services (post_id, service_id) VALUES (?, ?)',
+          [postId, serviceId],
+        );
+      }
+    }
     if (media?.length) {
       for (let i = 0; i < media.length; i++) {
         await db.query(

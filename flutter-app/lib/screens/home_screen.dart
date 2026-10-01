@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../app_nav.dart';
 import '../config/tenant_config.dart';
 import '../l10n/app_strings.dart';
+import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/global_auth_service.dart';
 import '../theme/app_colors.dart';
@@ -66,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _unreadCount = 0;
   int _messageUnreadCount = 0;
   bool _hasNutritionAccess = false;
+  bool _switchingRole = false;
   Timer? _unreadTimer;
 
   static void selectTab(int index) {
@@ -98,6 +101,152 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final state = _active;
     if (state == null || !state.mounted) return;
     state._openCommunityPost(postId);
+  }
+
+  VoidCallback? get _leaveToOmniplex => widget.onSwitchGym ?? AppNav.leaveGym;
+
+  Future<void> Function(GlobalGym)? get _enterRole => widget.onEnterAsRole ?? AppNav.enterAsRole;
+
+  List<GlobalGym> _rolesHere() {
+    final config = context.read<TenantConfig>();
+    final gyms = widget.globalAuth?.gyms.where((g) => g.businessId == config.businessId).toList() ?? [];
+    gyms.sort((a, b) {
+      int rank(GlobalGym g) {
+        if (g.staffKind == 'nutritionist') return 0;
+        if (g.staffKind == 'physiotherapist') return 1;
+        if (!g.isStaff) return 2;
+        return 3;
+      }
+      return rank(a).compareTo(rank(b));
+    });
+    return gyms;
+  }
+
+  String _roleLabelForUser(AppUser user) {
+    if (user.isNutritionist || user.staffKind == 'nutritionist') return 'Διατροφολόγος';
+    if (user.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    if (user.isStaff) return 'Trainer';
+    return 'Ασκούμενος';
+  }
+
+  String _roleBlurb(GlobalGym gym) {
+    if (!gym.isStaff) return 'My Gym, κρατήσεις και προπόνηση';
+    if (gym.staffKind == 'nutritionist') return 'Πελάτες, πρόγραμμα και ραντεβού';
+    if (gym.staffKind == 'physiotherapist') return 'Πελάτες και πρόγραμμα';
+    return 'Πρόγραμμα, μηνύματα και πελάτες';
+  }
+
+  void _openRoleSheet(AppUser user) {
+    final roles = _rolesHere();
+    final primary = context.tenantPrimary;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36, height: 4,
+                  decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Ρόλος', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text('Τώρα: ${_roleLabelForUser(user)}', style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 14),
+              if (_leaveToOmniplex != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _leaveToOmniplex!();
+                      },
+                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                      label: const Text('Πίσω στο OmniPlex'),
+                    ),
+                  ),
+                ),
+              if (roles.isNotEmpty)
+                _InGymRoleBar(
+                  roles: roles,
+                  currentIsStaff: user.isStaff,
+                  currentKind: user.isNutritionist ? 'nutritionist' : user.staffKind,
+                  switching: _switchingRole,
+                  onEnter: (role) async {
+                    Navigator.pop(ctx);
+                    await _switchRole(role);
+                  },
+                  onRequest: () {
+                    Navigator.pop(ctx);
+                    _openProfile();
+                  },
+                ),
+              const SizedBox(height: 8),
+              for (final role in roles)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('${_sheetRoleLabel(role)} · ${_roleBlurb(role)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _sheetIsCurrent(role, user) ? primary : AppColors.textSecondary,
+                      fontWeight: _sheetIsCurrent(role, user) ? FontWeight.w700 : FontWeight.w500,
+                    )),
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _openProfile();
+                  },
+                  child: const Text('Προφίλ'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _sheetRoleLabel(GlobalGym gym) {
+    if (!gym.isStaff) return 'Ασκούμενος';
+    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
+    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    return 'Trainer';
+  }
+
+  bool _sheetIsCurrent(GlobalGym gym, AppUser user) {
+    if (gym.isStaff != user.isStaff) return false;
+    if (!gym.isStaff) return true;
+    final kind = user.isNutritionist ? 'nutritionist' : (user.staffKind ?? 'trainer');
+    return (gym.staffKind ?? 'trainer') == kind;
+  }
+
+  Future<void> _switchRole(GlobalGym role) async {
+    if (_switchingRole || _enterRole == null) return;
+    setState(() => _switchingRole = true);
+    try {
+      await _enterRole!(role);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _switchingRole = false);
+    }
   }
 
   int _clampTab(int index) {
@@ -436,32 +585,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               name: firstName,
               subtitle: config.appName,
               avatarLetter: user.fullName.isNotEmpty ? user.fullName[0] : '?',
+              roleLabel: _roleLabelForUser(user),
               onLogoTap: _openGymInfo,
-              onAvatarTap: _openProfile,
+              onAvatarTap: _enterRole != null || _leaveToOmniplex != null
+                  ? () => _openRoleSheet(user)
+                  : _openProfile,
               onCheckinTap: config.featureQrCheckin ? _openCheckin : null,
               onMessagesTap: _showMessages,
               onNotificationsTap: _showNotifications,
-              onSwitchGym: widget.onSwitchGym,
+              onSwitchGym: _leaveToOmniplex,
               notificationCount: _unreadCount,
               messageCount: _messageUnreadCount,
             ),
-            if (widget.globalAuth != null && widget.onEnterAsRole != null)
-              _InGymRoleBar(
-                roles: (widget.globalAuth!.gyms.where((g) => g.businessId == config.businessId).toList()
-                  ..sort((a, b) {
-                    int rank(GlobalGym g) {
-                      if (g.staffKind == 'nutritionist') return 0;
-                      if (g.staffKind == 'physiotherapist') return 1;
-                      if (!g.isStaff) return 2;
-                      return 3;
-                    }
-                    return rank(a).compareTo(rank(b));
-                  })),
-                currentIsStaff: user.isStaff,
-                currentKind: user.isNutritionist ? 'nutritionist' : user.staffKind,
-                onEnter: widget.onEnterAsRole!,
-                onRequest: () => _openProfile(),
-              ),
             Expanded(child: tabs[_index].screen),
           ],
         ),
@@ -588,6 +723,7 @@ class _InGymRoleBar extends StatelessWidget {
     required this.currentKind,
     required this.onEnter,
     required this.onRequest,
+    required this.switching,
   });
 
   final List<GlobalGym> roles;
@@ -595,6 +731,7 @@ class _InGymRoleBar extends StatelessWidget {
   final String? currentKind;
   final Future<void> Function(GlobalGym) onEnter;
   final VoidCallback onRequest;
+  final bool switching;
 
   bool _isCurrent(GlobalGym gym) {
     if (gym.isStaff != currentIsStaff) return false;
@@ -613,44 +750,66 @@ class _InGymRoleBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (roles.isEmpty) return const SizedBox.shrink();
     final primary = context.tenantPrimary;
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(children: [
-          for (final role in roles)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: _isCurrent(role) ? null : () => onEnter(role),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: _isCurrent(role) ? primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: _isCurrent(role) ? primary : AppColors.border),
-                  ),
-                  child: Text(_label(role), style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w700,
-                    color: _isCurrent(role) ? AppColors.onFill(primary) : AppColors.textPrimary,
-                  )),
-                ),
-              ),
+    final onFill = AppColors.onFill(primary);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(children: [
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: AppColors.bg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
             ),
-          GestureDetector(
-            onTap: onRequest,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Text('Νέος ρόλος', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            child: Row(
+              children: [
+                for (final role in roles)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: switching || _isCurrent(role) ? null : () => onEnter(role),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: _isCurrent(role) ? primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: switching && !_isCurrent(role)
+                            ? SizedBox(
+                                width: 16, height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: primary),
+                              )
+                            : Text(_label(role),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w700,
+                                  color: _isCurrent(role) ? onFill : AppColors.textPrimary,
+                                )),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-        ]),
-      ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: switching ? null : onRequest,
+          child: Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Text('Νέος ρόλος', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          ),
+        ),
+      ]),
     );
   }
 }

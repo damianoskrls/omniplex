@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
+import 'app_nav.dart';
 import 'config/tenant_config.dart';
 import 'l10n/app_strings.dart';
 import 'screens/business_selector_screen.dart';
@@ -51,6 +52,8 @@ class _AppBootstrapState extends State<AppBootstrap> {
   @override
   void initState() {
     super.initState();
+    AppNav.leaveGym = _resetToSelector;
+    AppNav.enterAsRole = _enterAsRole;
     LanguageService.instance.addListener(_onLanguageChanged);
     SchedulerBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
@@ -73,6 +76,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
   bool _showAuthGate   = false;
   bool _showGlobalDashboard = false;
   bool _showExplore    = false; // guest explore without login
+  bool _switchingRole  = false;
   final _globalAuth = GlobalAuthService();
   String _selectorApiBase = 'https://passionate-grace-production-98ad.up.railway.app';
 
@@ -228,16 +232,24 @@ class _AppBootstrapState extends State<AppBootstrap> {
   }
 
   Future<void> _enterAsRole(GlobalGym gym) async {
-    final gymToken = gym.isStaff
-        ? await _globalAuth.getTrainerToken(gym.businessId, asKind: gym.staffKind)
-        : await _globalAuth.getGymToken(gym.businessId);
-    await BiometricAuthService.instance.setBiometricEnabled(gym.businessId, false);
-    await BiometricAuthService.instance.saveToken(gym.businessId, gymToken);
-    final config = await TenantConfig.loadFromApi(
-      slug: gym.slug,
-      apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
-    );
-    _onTenantConfigLoaded(config);
+    if (_switchingRole) return;
+    setState(() => _switchingRole = true);
+    try {
+      final gymToken = gym.isStaff
+          ? await _globalAuth.getTrainerToken(gym.businessId, asKind: gym.staffKind)
+          : await _globalAuth.getGymToken(gym.businessId);
+      await BiometricAuthService.instance.setBiometricEnabled(gym.businessId, false);
+      await BiometricAuthService.instance.saveToken(gym.businessId, gymToken);
+      final config = (_config != null && _config!.businessId == gym.businessId)
+          ? _config!
+          : await TenantConfig.loadFromApi(
+              slug: gym.slug,
+              apiBaseUrl: 'https://passionate-grace-production-98ad.up.railway.app',
+            );
+      await _bootstrapWithConfig(config, quick: true);
+    } finally {
+      if (mounted) setState(() => _switchingRole = false);
+    }
   }
 
   void _onTenantConfigLoaded(TenantConfig config) {
@@ -251,16 +263,20 @@ class _AppBootstrapState extends State<AppBootstrap> {
     _bootstrapWithConfig(config);
   }
 
-  Future<void> _bootstrapWithConfig(TenantConfig config) async {
+  Future<void> _bootstrapWithConfig(TenantConfig config, {bool quick = false}) async {
     final splashStarted = DateTime.now();
-    debugPrint('[Bootstrap] Starting for slug=${config.slug} bizId=${config.businessId}');
+    debugPrint('[Bootstrap] Starting for slug=${config.slug} bizId=${config.businessId} quick=$quick');
     try {
-      if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
+      if (!quick && !kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
         final reachErr = await TenantConfig.verifyApiReachable(config.apiBaseUrl);
         if (reachErr != null) throw reachErr;
       }
       final auth = AuthService(config);
-      await Future.wait([auth.init(), _waitRemainingSplash(splashStarted)]);
+      if (quick) {
+        await auth.init();
+      } else {
+        await Future.wait([auth.init(), _waitRemainingSplash(splashStarted)]);
+      }
       debugPrint('[Bootstrap] auth.isLoggedIn=${auth.isLoggedIn}');
       if (!mounted) return;
       final seenOnboarding = await hasSeenOnboarding();
@@ -274,6 +290,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
     } catch (e) {
       debugPrint('[Bootstrap] ERROR: $e');
       if (!mounted) return;
+      if (quick) rethrow;
       setState(() { _error = e.toString(); _config = null; });
     }
   }
@@ -387,26 +404,46 @@ class _AppBootstrapState extends State<AppBootstrap> {
     }
 
     if (_config != null && _auth != null) {
-      return AnimatedSwitcher(
-        duration: const Duration(milliseconds: 450),
-        switchInCurve: Curves.easeOut,
-        child: BookUpApp(
-          key: const ValueKey('app-ready'),
-          config: _config!,
-          auth: _auth!,
-          globalAuth: _globalAuth,
-          onEnterGym: _onTenantConfigLoaded,
-          onEnterAsRole: _globalAuth.isLoggedIn ? _enterAsRole : null,
-          onSwitchGym: _globalAuth.isLoggedIn ? _resetToSelector : null,
-          onRemoveGym: _globalAuth.isLoggedIn
-              ? () async {
-                  final role = _auth?.user?.isStaff == true ? 'staff' : 'member';
-                  await _auth?.logout();
-                  await _globalAuth.removeGym(_config!.businessId, role: role);
-                  _resetToSelector();
-                }
-              : null,
-        ),
+      final user = _auth!.user;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 450),
+            switchInCurve: Curves.easeOut,
+            child: BookUpApp(
+              key: ValueKey('app-${user?.id}-${user?.isStaff}-${user?.staffKind}'),
+              config: _config!,
+              auth: _auth!,
+              globalAuth: _globalAuth,
+              onEnterGym: _onTenantConfigLoaded,
+              onEnterAsRole: _enterAsRole,
+              onSwitchGym: _resetToSelector,
+              onRemoveGym: _globalAuth.isLoggedIn
+                  ? () async {
+                      final role = _auth?.user?.isStaff == true ? 'staff' : 'member';
+                      await _auth?.logout();
+                      await _globalAuth.removeGym(_config!.businessId, role: role);
+                      _resetToSelector();
+                    }
+                  : null,
+            ),
+          ),
+          if (_switchingRole)
+            const ColoredBox(
+              color: Color(0xCC000000),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Color(0xFFB8F55E)),
+                    SizedBox(height: 16),
+                    Text('Αλλαγή ρόλου...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ),
+        ],
       );
     }
 

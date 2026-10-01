@@ -422,10 +422,16 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
   }
 
   Widget _num(TextEditingController c, String label) {
-    return TextField(
-      controller: c,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(labelText: label),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: TextField(
+        controller: c,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          hintText: label,
+          floatingLabelBehavior: FloatingLabelBehavior.never,
+        ),
+      ),
     );
   }
 
@@ -450,24 +456,36 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
               if (picked != null) setState(() => _measuredOn = picked.toIso8601String().substring(0, 10));
             },
           ),
+          const SizedBox(height: 4),
+          const Text('Στιγμή ημέρας', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             value: _timeOfDay,
-            decoration: const InputDecoration(labelText: 'Στιγμή ημέρας'),
+            decoration: const InputDecoration(floatingLabelBehavior: FloatingLabelBehavior.never),
             items: times.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
             onChanged: (v) => setState(() => _timeOfDay = v ?? 'morning'),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
           const Text('Βασικές μετρήσεις', style: TextStyle(fontWeight: FontWeight.w700)),
           _num(_weight, 'Βάρος kg'),
           _num(_height, 'Ύψος cm'),
           _num(_fat, 'Λίπος %'),
           _num(_bmi, 'BMI'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
           const Text('Σύνθεση σώματος', style: TextStyle(fontWeight: FontWeight.w700)),
           _num(_muscle, 'Μυϊκή μάζα kg'),
           _num(_fatMass, 'Λιπώδης μάζα kg'),
           _num(_visceral, 'Σπλαχνικό λίπος'),
-          TextField(controller: _notes, decoration: const InputDecoration(labelText: 'Σημειώσεις', hintText: 'π.χ. Μετά από InBody')),
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: TextField(
+              controller: _notes,
+              decoration: const InputDecoration(
+                hintText: 'Σημειώσεις, π.χ. μετά από InBody',
+                floatingLabelBehavior: FloatingLabelBehavior.never,
+              ),
+            ),
+          ),
           const SizedBox(height: 10),
           FilledButton(onPressed: _saveMeasurement, child: const Text('Καταχώρηση μέτρησης')),
         ]),

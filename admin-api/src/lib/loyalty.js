@@ -127,7 +127,7 @@ async function activeDiscountRows(conn, userId, businessId) {
   const [rows] = await conn.query(`
     SELECT r.id AS redemption_id, w.reward_type, w.discount_percent, w.discount_cents, w.title
     FROM loyalty_redemptions r
-    JOIN loyalty_rewards w ON w.id = r.reward_id
+    JOIN loyalty_rewards w ON (w.id COLLATE utf8mb4_unicode_ci) = (r.reward_id COLLATE utf8mb4_unicode_ci)
     WHERE r.user_id = ? AND r.business_id = ? AND r.status = 'active'
       AND w.active = 1
       AND w.reward_type IN ('discount_percent', 'discount_fixed')

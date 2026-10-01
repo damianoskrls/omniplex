@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app.dart';
+import '../app_nav.dart';
 import '../config/tenant_config.dart';
 import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
@@ -191,6 +192,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: EdgeInsets.zero,
           child: Column(
             children: [
+              if (AppNav.leaveGym != null) ...[
+                _MenuTile(
+                  icon: Icons.arrow_back_rounded,
+                  title: 'Πίσω στο OmniPlex',
+                  subtitle: 'Έξοδος από αυτόν τον ρόλο',
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    AppNav.leaveGym!();
+                  },
+                ),
+                const Divider(height: 1, indent: 56),
+              ],
               if (config.featureQrCheckin) ...[
                 _MenuTile(
                   icon: Icons.qr_code_2_outlined,
@@ -598,7 +611,9 @@ class _RoleSwitcherState extends State<_RoleSwitcher> {
             icon: Icons.swap_horiz_rounded,
             title: 'Μπες ως ${_label(role)}',
             subtitle: 'Αλλαγή ρόλου χωρίς να ξαναβρείς το γυμναστήριο',
-            onTap: widget.onEnterAsRole == null ? null : () => widget.onEnterAsRole!(role),
+            onTap: (widget.onEnterAsRole ?? AppNav.enterAsRole) == null
+                ? null
+                : () => (widget.onEnterAsRole ?? AppNav.enterAsRole)!(role),
           ),
           const Divider(height: 1, indent: 56),
         ],

@@ -621,7 +621,7 @@ class _GymCarouselState extends State<_GymCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 300,
+          height: 340,
           child: PageView.builder(
             controller: _page,
             itemCount: widget.groups.length,
@@ -637,7 +637,7 @@ class _GymCarouselState extends State<_GymCarousel> {
                   roles: roles,
                   nextBooking: next,
                   accentColor: widget.parseColor(gym.primaryColor),
-                  onOpenGym: () => widget.onEnterGym(roles.length == 1 ? gym : roles.first),
+                  onOpenGym: () => widget.onEnterGym(_memberOrFirst(roles)),
                   onOpenRole: widget.onEnterGym,
                   onAddRole: () => widget.onAddRole(gym),
                   onBookingTap: next == null ? null : () => widget.onOpenBooking(next),
@@ -683,6 +683,90 @@ int _roleRank(GlobalGym gym) {
 List<GlobalGym> _rolesFirst(List<GlobalGym> roles) {
   final copy = [...roles]..sort((a, b) => _roleRank(a).compareTo(_roleRank(b)));
   return copy;
+}
+
+GlobalGym _memberOrFirst(List<GlobalGym> roles) {
+  for (final role in roles) {
+    if (!role.isStaff) return role;
+  }
+  return roles.first;
+}
+
+class _EnterGymButton extends StatelessWidget {
+  const _EnterGymButton({required this.onTap, required this.color});
+  final VoidCallback onTap;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: const SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleSwitch extends StatelessWidget {
+  const _RoleSwitch({required this.roles, required this.selected, required this.onSelect});
+  final List<GlobalGym> roles;
+  final GlobalGym selected;
+  final Future<void> Function(GlobalGym) onSelect;
+
+  bool _same(GlobalGym a, GlobalGym b) {
+    if (a.isStaff != b.isStaff) return false;
+    if (!a.isStaff) return true;
+    return (a.staffKind ?? 'trainer') == (b.staffKind ?? 'trainer');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12121C),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Row(
+        children: [
+          for (final role in roles)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onSelect(role),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _same(role, selected) ? _kAccent : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _roleLabel(role),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.manrope(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _same(role, selected) ? Colors.white : _kGray,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _RoleChip extends StatelessWidget {
@@ -771,27 +855,19 @@ class _GymMemberCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(gym.appName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.manrope(
                           fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                       Text(gym.businessType == 'gym' ? 'Γυμναστήριο' : gym.businessType,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: _kAccent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.check_rounded, color: _kAccent, size: 12),
-                    const SizedBox(width: 4),
-                    Text('Ενεργό',
-                      style: GoogleFonts.manrope(
-                        fontSize: 11, fontWeight: FontWeight.w700, color: _kAccent)),
-                  ]),
-                ),
+                const SizedBox(width: 8),
+                _EnterGymButton(onTap: onOpenGym, color: accentColor),
               ],
             ),
           ),
@@ -819,38 +895,15 @@ class _GymMemberCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final role in roles)
-                      _RoleChip(
-                        label: _roleLabel(role),
-                        onTap: () => onOpenRole(role),
-                      ),
-                    _RoleChip(label: 'Νέος ρόλος', outlined: true, onTap: onAddRole),
-                  ],
+                Text('Ρόλοι', style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700, color: _kGray)),
+                const SizedBox(height: 8),
+                _RoleSwitch(
+                  roles: roles,
+                  selected: _memberOrFirst(roles),
+                  onSelect: onOpenRole,
                 ),
-                if (roles.length == 1) ...[
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: onOpenGym,
-                    child: Container(
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _kBorder),
-                      ),
-                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        const Icon(Icons.open_in_new_rounded, size: 14, color: Colors.white),
-                        const SizedBox(width: 6),
-                        Text('Άνοιξε', style: GoogleFonts.manrope(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                      ]),
-                    ),
-                  ),
-                ],
+                const SizedBox(height: 8),
+                _RoleChip(label: 'Νέος ρόλος', outlined: true, onTap: onAddRole),
               ],
             ),
           ),
@@ -2208,7 +2261,7 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                           gym: roles.first,
                           roles: roles,
                           accentColor: widget.parseColor(roles.first.primaryColor),
-                          onOpen: () => widget.onEnterGym(roles.first),
+                          onOpen: () => widget.onEnterGym(_memberOrFirst(roles)),
                           onOpenRole: widget.onEnterGym,
                           onAddRole: () {
                             Navigator.push(context, MaterialPageRoute(
@@ -2360,28 +2413,6 @@ class _MyGymCard extends StatelessWidget {
   final VoidCallback onAddRole;
   final VoidCallback onRemove;
 
-  String get _statusLabel {
-    final labels = roles.map(_roleLabel).toSet().toList();
-    if (labels.isNotEmpty && roles.any((g) => g.isStaff || g.staffKind != null)) {
-      return labels.join(' · ');
-    }
-    switch (gym.userStatus) {
-      case 'active': return 'Ενεργή Συνδρομή';
-      case 'pending': return 'Σε Αναμονή';
-      case 'inactive': return 'Ανενεργό';
-      default: return labels.isEmpty ? gym.userStatus : labels.join(' · ');
-    }
-  }
-
-  Color get _statusColor {
-    if (gym.isStaff) return const Color(0xFF3EE6FF);
-    switch (gym.userStatus) {
-      case 'active': return _kAccent;
-      case 'pending': return const Color(0xFFF59E0B);
-      default: return _kGray;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isPending = !gym.isStaff && gym.userStatus == 'pending';
@@ -2416,29 +2447,21 @@ class _MyGymCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(gym.appName, style: GoogleFonts.manrope(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text(gym.businessType, style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
+                  Text(gym.appName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.manrope(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                  Text(gym.businessType,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
                 ]),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  if (gym.isStaff)
-                    Icon(Icons.sports_rounded, size: 11, color: _statusColor),
-                  if (!gym.isStaff && !isPending)
-                    const Icon(Icons.check_rounded, size: 11, color: _kAccent),
-                  if (!gym.isStaff && isPending)
-                    const Icon(Icons.hourglass_empty_rounded, size: 11, color: Color(0xFFF59E0B)),
-                  const SizedBox(width: 3),
-                  Text(_statusLabel, style: GoogleFonts.manrope(
-                    fontSize: 10, fontWeight: FontWeight.w700, color: _statusColor)),
-                ]),
-              ),
+              if (!isPending) ...[
+                const SizedBox(width: 8),
+                _EnterGymButton(onTap: onOpen, color: accentColor),
+              ],
               const SizedBox(width: 4),
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert_rounded, color: _kGray, size: 18),
@@ -2507,15 +2530,18 @@ class _MyGymCard extends StatelessWidget {
             const Divider(color: _kBorder, height: 1),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final role in roles)
-                    _RoleChip(label: _roleLabel(role), onTap: () => onOpenRole(role)),
+                  Text('Ρόλοι', style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700, color: _kGray)),
+                  const SizedBox(height: 8),
+                  _RoleSwitch(
+                    roles: roles,
+                    selected: _memberOrFirst(roles),
+                    onSelect: onOpenRole,
+                  ),
+                  const SizedBox(height: 8),
                   _RoleChip(label: 'Νέος ρόλος', outlined: true, onTap: onAddRole),
-                  if (roles.length == 1)
-                    _RoleChip(label: 'Άνοιξε', outlined: true, onTap: onOpen),
                 ],
               ),
             ),

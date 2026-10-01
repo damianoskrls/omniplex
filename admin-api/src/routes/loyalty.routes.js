@@ -57,8 +57,8 @@ router.get('/admin', requireAdmin, async (req, res) => {
       `SELECT r.id, r.status, r.points_spent, r.created_at, r.used_at,
               w.title, u.full_name
        FROM loyalty_redemptions r
-       JOIN loyalty_rewards w ON w.id = r.reward_id
-       LEFT JOIN users u ON u.id = r.user_id
+       JOIN loyalty_rewards w ON (w.id COLLATE utf8mb4_unicode_ci) = (r.reward_id COLLATE utf8mb4_unicode_ci)
+       LEFT JOIN users u ON (u.id COLLATE utf8mb4_unicode_ci) = (r.user_id COLLATE utf8mb4_unicode_ci)
        WHERE r.business_id = ?
        ORDER BY r.created_at DESC
        LIMIT 40`,

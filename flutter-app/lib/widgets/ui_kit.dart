@@ -11,6 +11,7 @@ class GreetingHeader extends StatelessWidget {
     this.subtitle,
     this.avatarLetter,
     this.onAvatarTap,
+    this.roleLabel,
     this.onNotificationsTap,
     this.onMessagesTap,
     this.onCheckinTap,
@@ -25,6 +26,7 @@ class GreetingHeader extends StatelessWidget {
   final String? subtitle;
   final String? avatarLetter;
   final VoidCallback? onAvatarTap;
+  final String? roleLabel;
   final VoidCallback? onNotificationsTap;
   final VoidCallback? onMessagesTap;
   final VoidCallback? onCheckinTap;
@@ -50,27 +52,34 @@ class GreetingHeader extends StatelessWidget {
               onTap: onSwitchGym,
               behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.textSecondary, size: 12),
-                    const SizedBox(width: 6),
-                    SvgPicture.asset(
-                      'assets/icons/omniplex_icon.svg',
-                      width: 14, height: 14,
-                    ),
-                    const SizedBox(width: 5),
-                    const Text(
-                      'Omniplex',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 14),
+                      const SizedBox(width: 8),
+                      SvgPicture.asset(
+                        'assets/icons/omniplex_icon.svg',
+                        width: 16, height: 16,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      const Text(
+                        'OmniPlex',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -108,22 +117,65 @@ class GreetingHeader extends StatelessWidget {
               if (avatarLetter != null)
                 GestureDetector(
                   onTap: onAvatarTap,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: context.tenantPrimary,
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      avatarLetter!.toUpperCase(),
-                      style: TextStyle(
-                        color: AppColors.onFill(context.tenantPrimary),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: context.tenantPrimary,
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              avatarLetter!.toUpperCase(),
+                              style: TextStyle(
+                                color: AppColors.onFill(context.tenantPrimary),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                          if (roleLabel != null)
+                            Positioned(
+                              right: -4,
+                              bottom: -4,
+                              child: Container(
+                                width: 18,
+                                height: 18,
+                                decoration: BoxDecoration(
+                                  color: AppColors.bg,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: context.tenantPrimary, width: 1.5),
+                                ),
+                                child: Icon(Icons.swap_horiz_rounded, size: 12, color: context.tenantPrimary),
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
+                      if (roleLabel != null) ...[
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          width: 78,
+                          child: Text(
+                            roleLabel!,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10,
+                              height: 1.15,
+                              fontWeight: FontWeight.w800,
+                              color: context.tenantPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
             ],

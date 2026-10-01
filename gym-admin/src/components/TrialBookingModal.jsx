@@ -4,6 +4,7 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import { mediaUrl, hashColor, initials } from '../utils/media';
 import TimeInput from './ui/TimeInput';
+import TrialSlotPicker from './TrialSlotPicker';
 
 function normalize(str) {
   return String(str || '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
@@ -23,6 +24,7 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
   const [clients, setClients] = useState([]);
   const [services, setServices] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [takenServiceIds, setTakenServiceIds] = useState([]);
   const [query, setQuery] = useState('');
   const [showList, setShowList] = useState(false);
@@ -34,6 +36,7 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
     trial_time: '10:00',
     service_id: '',
     staff_id: '',
+    location_id: '',
     notes: '',
   });
   const [newClient, setNewClient] = useState({ full_name: '', phone: '' });
@@ -51,6 +54,7 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
         trial_time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
         service_id: editTrial.service_id || '',
         staff_id: editTrial.staff_id || '',
+        location_id: editTrial.location_id || '',
         notes: editTrial.notes || '',
       });
     } else {
@@ -62,6 +66,7 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
         trial_time: '10:00',
         service_id: '',
         staff_id: '',
+        location_id: '',
         notes: '',
       });
     }
@@ -70,6 +75,15 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
     api.get('/client-admin/clients').then(r => setClients(r.data || [])).catch(() => {});
     api.get('/client-admin/services').then(r => setServices(r.data || [])).catch(() => {});
     api.get('/client-admin/staff').then(r => setStaff(r.data || [])).catch(() => {});
+    api.get('/client-admin/locations').then(r => {
+      const stores = (r.data || []).filter(l => l.is_active !== 0 && l.is_active !== false);
+      setLocations(stores);
+      setForm(f => {
+        if (f.location_id) return f;
+        if (stores.length === 1) return { ...f, location_id: stores[0].id };
+        return f;
+      });
+    }).catch(() => {});
     const initUserId = isEdit ? editTrial.user_id : presetClient?.id;
     if (initUserId) {
       api.get(`/client-admin/clients/${initUserId}/active-service-ids`).then(r => setTakenServiceIds(r.data || [])).catch(() => {});
@@ -86,7 +100,11 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.trial_date || !form.trial_time) { toast.error('Συμπλήρωσε ημερομηνία και ώρα'); return; }
+    if (!form.trial_date || !form.trial_time) {
+      toast.error(form.service_id ? 'Διάλεξε ημέρα και ώρα από το πρόγραμμα' : 'Συμπλήρωσε ημερομηνία και ώρα');
+      return;
+    }
+    if (locations.length > 1 && !form.location_id) { toast.error('Διάλεξε κατάστημα'); return; }
     setSubmitting(true);
     try {
       if (newClientMode && (!newClient.full_name.trim() || !newClient.phone.trim())) {
@@ -99,6 +117,7 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
           trial_time: form.trial_time,
           service_id: form.service_id || null,
           staff_id: form.staff_id || null,
+          location_id: form.location_id || null,
           notes: form.notes || null,
         };
         if (newClientMode) {
@@ -123,6 +142,7 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
           trial_time: form.trial_time,
           service_id: form.service_id || undefined,
           staff_id: form.staff_id || undefined,
+          location_id: form.location_id || undefined,
           user_id: userId || undefined,
           notes: form.notes || undefined,
         });
@@ -154,21 +174,32 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
         <form onSubmit={handleSubmit}>
           <div style={{ padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-            {/* Date + Time */}
-            <div>
-              <div className="cb-section-label"><Calendar size={14} /> Πότε;</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Ημερομηνία *</label>
-                  <input type="date" className="form-input" value={form.trial_date}
-                    onChange={e => set('trial_date', e.target.value)} required />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Ώρα *</label>
-                  <TimeInput value={form.trial_time} onChange={val => set('trial_time', val)} />
+            {!form.service_id && (
+              <div>
+                <div className="cb-section-label"><Calendar size={14} /> Πότε;</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Ημερομηνία *</label>
+                    <input type="date" className="form-input" value={form.trial_date}
+                      onChange={e => set('trial_date', e.target.value)} required />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Ώρα *</label>
+                    <TimeInput value={form.trial_time} onChange={val => set('trial_time', val)} />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {locations.length > 0 && (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Κατάστημα{locations.length > 1 ? ' *' : ''}</label>
+                <select className="form-select" value={form.location_id} onChange={e => set('location_id', e.target.value)}>
+                  {locations.length > 1 && <option value="">— Διάλεξε κατάστημα —</option>}
+                  {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+                </select>
+              </div>
+            )}
 
             {/* Client */}
             <div>
@@ -280,6 +311,17 @@ export default function TrialBookingModal({ open, editTrial, presetClient, initi
                 </div>
               );
             })()}
+
+            {form.service_id && (
+              <TrialSlotPicker
+                serviceId={form.service_id}
+                locationId={form.location_id}
+                locationRequired={locations.length > 1}
+                date={form.trial_date}
+                time={form.trial_time}
+                onChange={({ date, time }) => setForm(f => ({ ...f, trial_date: date, trial_time: time }))}
+              />
+            )}
 
             {/* Staff */}
             <div>

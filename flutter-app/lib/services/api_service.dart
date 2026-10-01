@@ -506,6 +506,7 @@ class ApiService {
     String? serviceId,
     String? trialDate,
     String? trialTime,
+    String? locationId,
   }) async {
     final res = await _post('/api/booking/$bizId/plan-request', {
       'plan_id': planId,
@@ -513,6 +514,7 @@ class ApiService {
       if (serviceId != null) 'service_id': serviceId,
       if (trialDate != null) 'trial_date': trialDate,
       if (trialTime != null) 'trial_time': trialTime,
+      if (locationId != null) 'location_id': locationId,
     });
     return Map<String, dynamic>.from(_decode(res) as Map);
   }

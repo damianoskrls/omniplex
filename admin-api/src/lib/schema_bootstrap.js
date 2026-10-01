@@ -240,7 +240,7 @@ async function bootstrapSchema() {
         active           TINYINT      NOT NULL DEFAULT 1,
         created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_lr_biz (business_id)
-      )
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     await db.query(`
       CREATE TABLE IF NOT EXISTS loyalty_redemptions (
@@ -254,8 +254,10 @@ async function bootstrapSchema() {
         used_at      DATETIME    NULL,
         INDEX idx_lred_user (user_id, status),
         INDEX idx_lred_biz (business_id)
-      )
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    await db.query('ALTER TABLE loyalty_rewards CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+    await db.query('ALTER TABLE loyalty_redemptions CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
     console.log('✓ Schema: loyalty rewards ready');
   } catch (err) {
     console.warn('loyalty rewards skipped:', err.message);
@@ -326,6 +328,7 @@ async function bootstrapSchema() {
         kind         VARCHAR(16) NOT NULL,
         trial_date   VARCHAR(10) NULL,
         trial_time   VARCHAR(5)  NULL,
+        location_id  VARCHAR(36) NULL,
         status       VARCHAR(16) NOT NULL DEFAULT 'pending',
         created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
         resolved_at  DATETIME    NULL,
@@ -337,6 +340,7 @@ async function bootstrapSchema() {
     for (const col of [
       'ALTER TABLE plan_purchase_requests ADD COLUMN trial_date VARCHAR(10) NULL',
       'ALTER TABLE plan_purchase_requests ADD COLUMN trial_time VARCHAR(5) NULL',
+      'ALTER TABLE plan_purchase_requests ADD COLUMN location_id VARCHAR(36) NULL',
     ]) {
       try { await db.query(col); } catch (err) {
         if (err.code !== 'ER_DUP_FIELDNAME') console.warn('plan request slot column skipped:', err.message);
@@ -986,6 +990,25 @@ async function bootstrapSchema() {
 
   await db.query('ALTER TABLE community_posts ADD COLUMN service_id VARCHAR(36) NULL').catch((err) => {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('community_posts.service_id skipped:', err.message);
+  });
+  await db.query('ALTER TABLE community_posts ADD COLUMN all_services TINYINT(1) NOT NULL DEFAULT 0').catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('community_posts.all_services skipped:', err.message);
+  });
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS community_post_services (
+      post_id VARCHAR(36) NOT NULL,
+      service_id VARCHAR(36) NOT NULL,
+      PRIMARY KEY (post_id, service_id),
+      INDEX idx_cps_service (service_id)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `).catch((err) => {
+    if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('community_post_services skipped:', err.message);
+  });
+  await db.query(`
+    INSERT IGNORE INTO community_post_services (post_id, service_id)
+    SELECT id, service_id FROM community_posts WHERE service_id IS NOT NULL
+  `).catch((err) => {
+    console.warn('community_post_services backfill skipped:', err.message);
   });
   await db.query('ALTER TABLE community_comments ADD COLUMN staff_id VARCHAR(36) NULL').catch((err) => {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('community_comments.staff_id skipped:', err.message);
