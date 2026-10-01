@@ -1,4 +1,5 @@
 const https = require('https');
+const { phoneLast10Eq } = require('./phone_sql');
 
 let _admin = null;
 
@@ -127,38 +128,59 @@ async function getGlobalUserFcmTokens(dbConn, globalUserId) {
 /** Gym device tokens plus the OmniPlex token, so pushes arrive outside the gym too. */
 async function getUserFcmTokens(dbConn, userId) {
   if (!userId) return [];
-  const [gymRows] = await dbConn.query(
-    'SELECT fcm_token FROM device_tokens WHERE user_id = ?',
-    [userId],
-  );
+  let gymTokens = [];
+  try {
+    const [gymRows] = await dbConn.query(
+      'SELECT fcm_token FROM device_tokens WHERE user_id = ?',
+      [userId],
+    );
+    gymTokens = gymRows.map((r) => r.fcm_token);
+  } catch (err) {
+    console.error('device token lookup failed:', err.message);
+  }
+
   let globalUserId = null;
-  const [[member]] = await dbConn.query(
-    'SELECT global_user_id FROM users WHERE id = ?',
-    [userId],
-  );
-  globalUserId = member?.global_user_id || null;
-  if (!globalUserId && member) {
-    const [[withPhone]] = await dbConn.query('SELECT phone FROM users WHERE id = ?', [userId]);
-    const digits = String(withPhone?.phone || '').replace(/\D/g, '').slice(-10);
-    if (digits.length >= 10) {
-      const [[gu]] = await dbConn.query(
-        `SELECT id FROM global_users
-         WHERE REPLACE(REPLACE(REPLACE(IFNULL(phone,''), ' ', ''), '+', ''), '-', '') LIKE ?
-         LIMIT 1`,
-        [`%${digits}`],
-      );
-      globalUserId = gu?.id || null;
+  try {
+    const [[member]] = await dbConn.query(
+      'SELECT global_user_id FROM users WHERE id = ?',
+      [userId],
+    );
+    globalUserId = member?.global_user_id || null;
+  } catch (_) {}
+  if (!globalUserId) {
+    try {
+      const [[withPhone]] = await dbConn.query('SELECT phone FROM users WHERE id = ?', [userId]);
+      const digits = String(withPhone?.phone || '').replace(/\D/g, '');
+      if (digits.length >= 10) {
+        const [[gu]] = await dbConn.query(
+          `SELECT id FROM global_users WHERE ${phoneLast10Eq('phone')} LIMIT 1`,
+          [digits],
+        );
+        globalUserId = gu?.id || null;
+      }
+    } catch (err) {
+      console.error('global user link for push failed:', err.message);
     }
   }
   if (!globalUserId) {
-    const [[staff]] = await dbConn.query(
-      'SELECT global_user_id FROM staff WHERE id = ?',
-      [userId],
-    );
-    globalUserId = staff?.global_user_id || null;
+    try {
+      const [[staff]] = await dbConn.query(
+        'SELECT global_user_id FROM staff WHERE id = ?',
+        [userId],
+      );
+      globalUserId = staff?.global_user_id || null;
+    } catch (_) {}
   }
-  const globalTokens = await getGlobalUserFcmTokens(dbConn, globalUserId);
-  return [...new Set([...gymRows.map((r) => r.fcm_token), ...globalTokens].filter(Boolean))];
+
+  let globalTokens = [];
+  try {
+    globalTokens = await getGlobalUserFcmTokens(dbConn, globalUserId);
+  } catch (err) {
+    console.error('global token lookup failed:', err.message);
+  }
+  const tokens = [...new Set([...gymTokens, ...globalTokens].filter(Boolean))];
+  if (!tokens.length) console.log(`FCM: no tokens for user ${userId}`);
+  return tokens;
 }
 
 async function sendFcmMany(tokens, payload) {

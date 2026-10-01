@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_service.dart';
+import 'global_auth_service.dart';
 import 'notification_service.dart';
 import 'push_service.dart';
 
@@ -25,14 +27,17 @@ class UserNotificationSync {
   static final UserNotificationSync instance = UserNotificationSync._();
 
   Timer? _timer;
+  Timer? _globalTimer;
   DateTime? _since;
   AuthService? _auth;
+  GlobalAuthService? _global;
 
   // Persisted across app restarts via SharedPreferences.
   final Set<String> _shownIds = {};
   bool _shownIdsLoaded = false;
 
   void start(AuthService auth) {
+    PushService.instance.claimNotification = take;
     _auth = auth;
     _since = DateTime.now().toUtc();
     _timer?.cancel();
@@ -48,6 +53,31 @@ class UserNotificationSync {
     _timer = null;
     _auth = null;
     _since = null;
+  }
+
+  /// Keeps alerting while the OmniPlex session is logged in, inside a gym or not.
+  void watchGlobal(GlobalAuthService global) {
+    PushService.instance.claimNotification = take;
+    _global = global;
+    _globalTimer?.cancel();
+    _loadShownIds().then((_) {
+      _pollGlobal();
+      _globalTimer = Timer.periodic(const Duration(seconds: 20), (_) => _pollGlobal());
+    });
+  }
+
+  void pollNow() {
+    _poll();
+    _pollGlobal();
+  }
+
+  Future<void> ensureShownIds() => _loadShownIds();
+
+  bool take(String id) {
+    if (id.isEmpty || _shownIds.contains(id)) return false;
+    _shownIds.add(id);
+    _persistShownIds();
+    return true;
   }
 
   Future<void> _registerPushToken(AuthService auth) async {
@@ -108,15 +138,13 @@ class UserNotificationSync {
         if (isRead) continue;
 
         final id = n['id'] as String? ?? '';
-        if (_shownIds.contains(id)) continue;
+        if (!take(id)) continue;
 
         // Skip time-sensitive notifications about past events.
         if (_isStale(n)) {
           _shownIds.add(id);
           continue;
         }
-
-        _shownIds.add(id);
 
         final type = n['type'] as String? ?? 'notice';
         final bookingId = n['booking_id'] as String?;
@@ -132,6 +160,8 @@ class UserNotificationSync {
           payload = postId != null ? 'community:$postId' : 'community:';
         } else if (bookingId != null) {
           payload = 'prep:$bookingId';
+        } else if (type == 'message') {
+          payload = messagePayload(n);
         } else if (type == 'announcement') {
           payload = 'notif:$id';
         }
@@ -146,6 +176,63 @@ class UserNotificationSync {
     } catch (e) {
       debugPrint('Notification poll failed: $e');
     }
+  }
+
+  Future<void> _pollGlobal() async {
+    final global = _global;
+    if (global == null || !global.isLoggedIn) return;
+    try {
+      final body = await global.fetchInbox();
+      if (body == null) return;
+      final items = ((body['notifications'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      for (final n in items) {
+        final unread = n['is_read'] != 1 && n['is_read'] != true;
+        if (!unread) continue;
+        if (_isStale(n)) continue;
+        final id = n['id']?.toString() ?? '';
+        final created = _createdAt(n);
+        if (created != null && DateTime.now().difference(created) > const Duration(minutes: 15)) {
+          take(id);
+          continue;
+        }
+        if (!take(id)) continue;
+        final type = n['type']?.toString() ?? 'notice';
+        final payload = type == 'message' ? messagePayload(n) : 'notif:$id';
+        await NotificationService.instance.showInstant(
+          title: n['title'] as String? ?? 'Ειδοποίηση',
+          body: n['body'] as String? ?? '',
+          payload: payload,
+        );
+      }
+    } catch (e) {
+      debugPrint('Global notification poll failed: $e');
+    }
+  }
+
+  String messagePayload(Map<String, dynamic> n) {
+    final raw = _payloadMap(n['payload']);
+    final threadId = raw['thread_id']?.toString() ?? '';
+    return threadId.isNotEmpty ? 'messages:$threadId' : 'messages:open';
+  }
+
+  DateTime? _createdAt(Map<String, dynamic> n) {
+    final raw = n['created_at']?.toString();
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw.replaceFirst(' ', 'T'))?.toLocal();
+  }
+
+  Map<String, dynamic> _payloadMap(dynamic raw) {
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is String && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    }
+    return {};
   }
 
   static String platformLabel() {

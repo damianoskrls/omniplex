@@ -19,6 +19,7 @@ class PushService {
   bool _ready = false;
   PushTapHandler? onTap;
   void Function(Map<String, dynamic> data)? onForegroundData;
+  bool Function(String id)? claimNotification;
   AuthService? _auth;
   GlobalAuthService? _global;
   String? _pendingTapPayload;
@@ -120,6 +121,8 @@ class PushService {
   }
 
   void _onForegroundMessage(RemoteMessage message) {
+    final id = message.data['notification_id']?.toString() ?? '';
+    if (id.isNotEmpty && claimNotification?.call(id) == false) return;
     final notification = message.notification;
     final title = notification?.title ?? message.data['title'] as String? ?? 'Ειδοποίηση';
     final body = notification?.body ?? message.data['body'] as String? ?? '';

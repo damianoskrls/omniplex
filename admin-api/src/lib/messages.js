@@ -4,6 +4,7 @@ const { createAdminNotification } = require('./notifications');
 const { validateAttachmentUrl } = require('./message_upload');
 const { assertImageUploadAllowed } = require('./message_attachments');
 const { sendFcm, getUserFcmTokens } = require('./push');
+const { createUserNotification } = require('./user_notifications');
 
 function buildMessagePreview({ body, message_type: messageType, attachment_url: attachmentUrl }) {
   if (messageType === 'image') {
@@ -757,18 +758,21 @@ async function sendStaffMessage(conn, actor, { threadId, body, attachment_url: a
     is_mine: true,
   };
 
-  // FCM push to the client (fire-and-forget)
+  // Inbox row plus push, so it shows inside the open app and on the lock screen.
   try {
-    const tokens = await getUserFcmTokens(conn, thread.client_user_id);
-    if (tokens.length > 0) {
-      const preview = type === 'image' ? '📷 Φωτογραφία' : (text.length > 100 ? text.slice(0, 100) + '…' : text);
-      await sendFcm(tokens, {
-        title: sender.sender_name,
-        body: preview,
-        data: { type: 'message', thread_id: threadId },
-      });
-    }
-  } catch (_) {}
+    const previewText = type === 'image' ? '📷 Φωτογραφία' : (text.length > 100 ? `${text.slice(0, 100)}…` : text);
+    await createUserNotification(conn, {
+      businessId: actor.businessId,
+      userId: thread.client_user_id,
+      type: 'message',
+      title: sender.sender_name || 'Νέο μήνυμα',
+      body: previewText,
+      payload: { thread_id: threadId, action: 'open_messages' },
+      sendPush: true,
+    });
+  } catch (err) {
+    console.error('message push failed:', err.message);
+  }
 
   return { message, thread_id: threadId };
 }

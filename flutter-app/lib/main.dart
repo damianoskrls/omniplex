@@ -22,6 +22,8 @@ import 'services/global_auth_service.dart';
 import 'services/language_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_service.dart';
+import 'services/user_notification_sync.dart';
+
 import 'widgets/splash_screen.dart' show SplashScreen, GymSplashScreen;
 
 void main() async {
@@ -46,7 +48,7 @@ class AppBootstrap extends StatefulWidget {
   State<AppBootstrap> createState() => _AppBootstrapState();
 }
 
-class _AppBootstrapState extends State<AppBootstrap> {
+class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver {
   static const _minSplash = Duration(milliseconds: 2400);
 
   @override
@@ -55,7 +57,15 @@ class _AppBootstrapState extends State<AppBootstrap> {
     AppNav.leaveGym = _resetToSelector;
     AppNav.enterAsRole = _enterAsRole;
     LanguageService.instance.addListener(_onLanguageChanged);
+    WidgetsBinding.instance.addObserver(this);
     SchedulerBinding.instance.addPostFrameCallback((_) => _bootstrap());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_armNotifications(poll: true));
+    }
   }
 
   void _onLanguageChanged() {
@@ -65,6 +75,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
   @override
   void dispose() {
     LanguageService.instance.removeListener(_onLanguageChanged);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -115,6 +126,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
 
     // Load global auth state
     await _globalAuth.init();
+    unawaited(_armNotifications());
 
     // Dynamic mode: check for a cached tenant config first
     final cached = await TenantConfig.getCachedTenant();
@@ -200,11 +212,25 @@ class _AppBootstrapState extends State<AppBootstrap> {
     }
   }
 
-  Future<void> _initBackgroundServices() async {
+  bool _inboxWatching = false;
+
+  Future<void> _initBackgroundServices() => _armNotifications();
+
+  Future<void> _armNotifications({bool poll = false}) async {
     try {
       await NotificationService.instance.init();
       await PushService.instance.init();
       await PushService.instance.registerGlobal(_globalAuth);
+      final auth = _auth;
+      if (auth != null && auth.isLoggedIn) {
+        await PushService.instance.registerWithAuth(auth);
+      }
+      if (_globalAuth.isLoggedIn && !_inboxWatching) {
+        _inboxWatching = true;
+        UserNotificationSync.instance.watchGlobal(_globalAuth);
+      } else if (poll) {
+        UserNotificationSync.instance.pollNow();
+      }
     } catch (_) {}
   }
 

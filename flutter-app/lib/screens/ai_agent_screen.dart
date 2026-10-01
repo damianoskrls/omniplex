@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import '../config/tenant_config.dart';
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
@@ -87,15 +88,23 @@ class _AiAgentScreenState extends State<AiAgentScreen> with TickerProviderStateM
 
     try {
       final resp = await auth.api.post(
-        '/ai/${config.businessId}/chat',
+        '/api/ai/${config.businessId}/chat',
         {'messages': history, 'locale': locale},
+        timeout: const Duration(seconds: 50),
       );
       final reply = (resp['reply'] as String?) ?? '';
       setState(() {
-        _messages.add(_Msg(role: 'assistant', text: reply));
+        _messages.add(_Msg(role: 'assistant', text: reply.isEmpty
+            ? (LanguageService.instance.isGreek ? 'Δεν πήρα απάντηση. Δοκίμασε ξανά.' : 'No reply. Please try again.')
+            : reply));
         _loading = false;
       });
-    } catch (e) {
+    } on ApiException catch (e) {
+      setState(() {
+        _messages.add(_Msg(role: 'assistant', text: e.message, isError: true));
+        _loading = false;
+      });
+    } catch (_) {
       setState(() {
         _messages.add(_Msg(
           role: 'assistant',

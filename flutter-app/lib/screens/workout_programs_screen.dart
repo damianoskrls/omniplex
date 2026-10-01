@@ -102,8 +102,9 @@ class _MediaThumbState extends State<_MediaThumb> {
 
 /// Full-size media. Video starts only after a tap and stops when disposed.
 class _MediaFull extends StatefulWidget {
-  const _MediaFull({super.key, required this.url, this.paused = false});
+  const _MediaFull({super.key, required this.url, this.poster, this.paused = false});
   final String url;
+  final String? poster;
   final bool paused;
   @override
   State<_MediaFull> createState() => _MediaFullState();
@@ -111,8 +112,32 @@ class _MediaFull extends StatefulWidget {
 
 class _MediaFullState extends State<_MediaFull> {
   VideoPlayerController? _ctrl;
-  bool _initialized = false;
-  bool _started = false;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _open(widget.url);
+  }
+
+  Future<void> _open(String url) async {
+    if (!_isVideoUrl(url)) return;
+    final ctrl = VideoPlayerController.networkUrl(Uri.parse(url));
+    _ctrl = ctrl;
+    try {
+      await ctrl.initialize();
+      await ctrl.setLooping(true);
+      await ctrl.seekTo(Duration.zero);
+      await ctrl.pause();
+      if (!mounted || _ctrl != ctrl) {
+        await ctrl.dispose();
+        return;
+      }
+      setState(() => _ready = true);
+    } catch (_) {
+      if (mounted && _ctrl == ctrl) setState(() => _ready = false);
+    }
+  }
 
   @override
   void didUpdateWidget(_MediaFull oldWidget) {
@@ -124,31 +149,18 @@ class _MediaFullState extends State<_MediaFull> {
       _ctrl?.pause();
       _ctrl?.dispose();
       _ctrl = null;
-      _initialized = false;
-      _started = false;
+      _ready = false;
+      _open(widget.url);
     }
   }
 
   Future<void> _toggle() async {
-    if (!_isVideoUrl(widget.url)) return;
-    if (_ctrl == null) {
-      final ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url));
-      _ctrl = ctrl;
-      setState(() => _started = true);
-      await ctrl.initialize();
-      if (!mounted || _ctrl != ctrl) {
-        ctrl.dispose();
-        return;
-      }
-      ctrl.setLooping(true);
-      if (!widget.paused) await ctrl.play();
-      setState(() => _initialized = true);
-      return;
-    }
-    if (_ctrl!.value.isPlaying) {
-      await _ctrl!.pause();
+    final ctrl = _ctrl;
+    if (ctrl == null || !_ready) return;
+    if (ctrl.value.isPlaying) {
+      await ctrl.pause();
     } else if (!widget.paused) {
-      await _ctrl!.play();
+      await ctrl.play();
     }
     if (mounted) setState(() {});
   }
@@ -173,17 +185,18 @@ class _MediaFullState extends State<_MediaFull> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                if (_initialized && _ctrl != null)
+                if (_ready && _ctrl != null)
                   FittedBox(fit: BoxFit.contain, child: SizedBox(
                     width: _ctrl!.value.size.width,
                     height: _ctrl!.value.size.height,
                     child: VideoPlayer(_ctrl!),
                   ))
-                else if (_started)
-                  const CircularProgressIndicator(color: Colors.white)
+                else if (widget.poster != null)
+                  Image.network(widget.poster!, width: double.infinity, height: 220, fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const CircularProgressIndicator(color: Colors.white))
                 else
-                  const Icon(Icons.play_circle_fill, color: Colors.white70, size: 64),
-                if (_initialized && !playing)
+                  const CircularProgressIndicator(color: Colors.white),
+                if ((_ready && !playing) || (!_ready && widget.poster != null))
                   const Icon(Icons.play_circle_fill, color: Colors.white70, size: 64),
               ],
             ),
@@ -812,8 +825,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     final notes = exercise['notes']?.toString();
     final desc = exercise['exercise_description']?.toString();
     final rawUrl = exercise['animation_url']?.toString();
+    final rawPoster = exercise['thumbnail_url']?.toString();
     final apiBase = context.read<AuthService>().api.config.apiBaseUrl;
     final media = rawUrl == null || rawUrl.isEmpty ? null : _resolveMediaUrl(rawUrl, apiBase);
+    final poster = rawPoster == null || rawPoster.isEmpty ? null : _resolveMediaUrl(rawPoster, apiBase);
     final sets = _asInt(exercise['exercise_sets']);
     final reps = exercise['exercise_reps'];
     final dur = _asInt(exercise['duration_secs']);
@@ -853,6 +868,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 _MediaFull(
                   key: ValueKey('${exercise['id']}-$media'),
                   url: media,
+                  poster: poster,
                   paused: paused,
                 ),
               if (media != null) const SizedBox(height: 16),
@@ -938,7 +954,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 ),
               ),
               if (_done.isNotEmpty)
-                TextButton(onPressed: _busy ? null : _undo, child: const Text('Αναίρεση προηγούμενης')),
+                TextButton(onPressed: _busy ? null : _undo, child: const Text('Προηγούμενη άσκηση')),
             ],
           ),
         ),

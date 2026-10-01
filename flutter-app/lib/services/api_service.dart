@@ -1226,13 +1226,20 @@ class ApiService {
     }
   }
 
-  Future<http.Response> _post(String path, Map<String, dynamic> body) async {
+  Future<http.Response> _post(String path, Map<String, dynamic> body, {Duration? timeout}) async {
     try {
-      return await _withTimeout(http.post(
+      final request = http.post(
         Uri.parse('$_base$path'),
         headers: _headers,
         body: jsonEncode(body),
-      ));
+      );
+      if (timeout != null) {
+        return await request.timeout(
+          timeout,
+          onTimeout: () => throw ApiException('Ο βοηθός άργησε να απαντήσει. Δοκίμασε ξανά.'),
+        );
+      }
+      return await _withTimeout(request);
     } on SocketException {
       throw ApiException(
         'Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.',
@@ -1457,8 +1464,8 @@ class ApiService {
     _decode(res);
   }
 
-  Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) async {
-    final res = await _post(path, body);
+  Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body, {Duration? timeout}) async {
+    final res = await _post(path, body, timeout: timeout);
     return Map<String, dynamic>.from(_decode(res) as Map);
   }
 

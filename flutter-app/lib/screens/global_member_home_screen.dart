@@ -8,13 +8,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../services/language_service.dart';
 import '../services/notification_service.dart';
 import '../services/push_service.dart';
+import '../services/user_notification_sync.dart';
 import '../config/tenant_config.dart';
 import 'discovery_landing_screen.dart';
 import 'electronic_documents_screen.dart';
@@ -67,7 +67,6 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   bool _enteringGym = false;
   int _unreadNotifications = 0;
   Timer? _notifTimer;
-  final Set<String> _shownNotifs = {};
 
   @override
   void initState() {
@@ -91,10 +90,6 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   }
 
   Future<void> _watchNotifications() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _shownNotifs.addAll(prefs.getStringList('notif_shown_ids_v2') ?? const []);
-    } catch (_) {}
     await _loadNotificationCount(announce: true);
     _notifTimer = Timer.periodic(const Duration(seconds: 45), (_) {
       _loadNotificationCount(announce: true);
@@ -137,23 +132,24 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
           .toList();
       setState(() => _unreadNotifications = (body['unread_count'] as num?)?.toInt() ?? 0);
       if (!announce) return;
+      await UserNotificationSync.instance.ensureShownIds();
       var popped = 0;
       for (final item in items) {
         final id = item['id']?.toString() ?? '';
-        if (id.isEmpty || _shownNotifs.contains(id)) continue;
         final unread = item['is_read'] != 1 && item['is_read'] != true;
-        _shownNotifs.add(id);
-        if (!unread || popped >= 3) continue;
+        if (id.isEmpty || !unread || popped >= 3) continue;
+        if (!UserNotificationSync.instance.take(id)) continue;
         popped += 1;
+        final type = item['type']?.toString() ?? '';
+        final payload = type == 'message'
+            ? UserNotificationSync.instance.messagePayload(item)
+            : 'notif:$id';
         await NotificationService.instance.showInstant(
           title: item['title'] as String? ?? 'Ειδοποίηση',
           body: item['body'] as String? ?? '',
-          payload: 'notif:$id',
+          payload: payload,
         );
       }
-      final prefs = await SharedPreferences.getInstance();
-      final ids = _shownNotifs.toList();
-      await prefs.setStringList('notif_shown_ids_v2', ids.length > 200 ? ids.sublist(ids.length - 200) : ids);
     } catch (_) {}
   }
 

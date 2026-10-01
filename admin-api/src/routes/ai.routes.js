@@ -124,29 +124,50 @@ const TOOLS = [
 // ── tool executors ─────────────────────────────────────────────────────────────
 
 async function execGetServices(bizId, userId, input) {
+  const params = [bizId];
+  let categorySql = '';
+  if (input.category) {
+    categorySql = 'AND s.category = ?';
+    params.push(input.category);
+  }
   const [rows] = await db.query(
-    `SELECT s.id, s.name, s.category, s.duration_minutes, s.color_hex,
-            s.capacity, s.is_active,
-            (SELECT COUNT(*) FROM memberships m
-               JOIN plan_service_items psi ON psi.membership_plan_id = m.plan_id
-               JOIN services s2 ON s2.id = psi.service_id AND s2.id = s.id
-             WHERE m.user_id = ? AND m.business_id = ? AND m.status = 'active'
-            ) AS has_plan_access
+    `SELECT s.id, s.name, s.category, s.duration_mins, s.description
      FROM services s
      WHERE s.business_id = ? AND s.is_active = 1
-     ${input.category ? 'AND s.category = ?' : ''}
+       AND (s.category IS NULL OR s.category NOT IN ('nutrition', 'nutrition_consultation'))
+       ${categorySql}
      ORDER BY s.category, s.name`,
-    input.category
-      ? [userId, bizId, bizId, input.category]
-      : [userId, bizId, bizId],
+    params,
   );
+  let accessIds = new Set();
+  try {
+    const [access] = await db.query(
+      `SELECT DISTINCT s.id
+       FROM services s
+       JOIN user_memberships um ON um.user_id = ? AND um.business_id = ?
+         AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
+         AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
+       LEFT JOIN plan_service_items psi ON (psi.plan_id COLLATE utf8mb4_unicode_ci) = (um.plan_id COLLATE utf8mb4_unicode_ci)
+       LEFT JOIN service_plan_assignments spa ON (spa.plan_id COLLATE utf8mb4_unicode_ci) = (um.plan_id COLLATE utf8mb4_unicode_ci)
+       WHERE s.business_id = ?
+         AND (
+           (um.service_id COLLATE utf8mb4_unicode_ci) = (s.id COLLATE utf8mb4_unicode_ci)
+           OR (psi.service_id COLLATE utf8mb4_unicode_ci) = (s.id COLLATE utf8mb4_unicode_ci)
+           OR (spa.service_id COLLATE utf8mb4_unicode_ci) = (s.id COLLATE utf8mb4_unicode_ci)
+         )`,
+      [userId, bizId, bizId],
+    );
+    accessIds = new Set(access.map((row) => row.id));
+  } catch (err) {
+    console.error('ai get_services access skipped:', err.message);
+  }
   return rows.map(r => ({
     id: r.id,
     name: r.name,
     category: r.category,
-    duration_minutes: r.duration_minutes,
-    color: r.color_hex,
-    has_plan_access: r.has_plan_access > 0,
+    duration_minutes: r.duration_mins,
+    description: r.description,
+    has_plan_access: accessIds.has(r.id),
   }));
 }
 
@@ -190,16 +211,16 @@ async function execCreateBooking(bizId, userId, input) {
   const conn = await db.getConnection();
   try {
     const result = await createOneBooking(conn, {
-      businessId: bizId,
+      bizId,
       userId,
-      serviceId: input.service_id,
+      service_id: input.service_id,
       date,
       time: input.time,
-      staffId: input.staff_id || null,
-      useCredit: input.use_credit !== false,
+      staff_id: input.staff_id || null,
+      use_credit: input.use_credit !== false,
       source: 'ai_agent',
     });
-    return { success: true, booking_id: result.bookingId, date, time: input.time };
+    return { success: true, booking_id: result.booking_id, service: result.service, date, time: input.time };
   } finally {
     conn.release();
   }
@@ -209,7 +230,7 @@ async function execGetMyBookings(bizId, userId, input) {
   const limit = input.limit || 5;
   const [rows] = await db.query(
     `SELECT b.id, b.starts_at, b.ends_at, b.status,
-            s.name AS service_name, s.duration_mins,
+            s.name AS service_name, s.duration_mins AS duration_mins,
             st.full_name AS staff_name
      FROM bookings b
      JOIN services s ON s.id = b.service_id
@@ -250,22 +271,28 @@ async function execCancelBooking(bizId, userId, input) {
 }
 
 async function execGetGymInfo(bizId) {
-  const [rows] = await db.query(
-    `SELECT b.name, b.address, b.phone, b.email, b.description,
-            (SELECT JSON_ARRAYAGG(JSON_OBJECT('day', oh.day_of_week, 'open', oh.open_time, 'close', oh.close_time))
-             FROM opening_hours oh WHERE oh.business_id = b.id) AS hours
-     FROM businesses b WHERE b.id = ?`,
-    [bizId],
-  );
-  if (!rows.length) return { error: 'Gym not found' };
-  const r = rows[0];
+  const [[biz]] = await db.query('SELECT name FROM businesses WHERE id = ?', [bizId]);
+  if (!biz) return { error: 'Gym not found' };
+  let hours = [];
+  try {
+    const [rows] = await db.query(
+      'SELECT day_of_week, open_time, close_time, is_closed FROM opening_hours WHERE business_id = ? ORDER BY day_of_week',
+      [bizId],
+    );
+    hours = rows;
+  } catch (_) {}
+  let locations = [];
+  try {
+    const [rows] = await db.query(
+      'SELECT name, address FROM locations WHERE business_id = ? AND is_active = 1',
+      [bizId],
+    );
+    locations = rows;
+  } catch (_) {}
   return {
-    name: r.name,
-    address: r.address,
-    phone: r.phone,
-    email: r.email,
-    description: r.description,
-    opening_hours: r.hours ? JSON.parse(r.hours) : [],
+    name: biz.name,
+    locations,
+    opening_hours: hours,
   };
 }
 
@@ -310,90 +337,128 @@ IMPORTANT:
 
 // ── route ─────────────────────────────────────────────────────────────────────
 
+function openaiTools() {
+  return TOOLS.map((tool) => ({
+    type: 'function',
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.input_schema,
+    },
+  }));
+}
+
+async function runAnthropic(apiKey, { system, messages, bizId, userId }) {
+  const client = new Anthropic({ apiKey });
+  let currentMessages = messages.map((m) => ({
+    role: m.role === 'assistant' ? 'assistant' : 'user',
+    content: typeof m.content === 'string' ? m.content : String(m.content || ''),
+  }));
+  for (let i = 0; i < 8; i++) {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system,
+      tools: TOOLS,
+      messages: currentMessages,
+    });
+    if (response.stop_reason !== 'tool_use') {
+      return response.content.find((b) => b.type === 'text')?.text || '';
+    }
+    currentMessages.push({ role: 'assistant', content: response.content });
+    const toolResults = await Promise.all(
+      response.content.filter((b) => b.type === 'tool_use').map(async (toolBlock) => {
+        let result;
+        try {
+          result = await executeTool(toolBlock.name, toolBlock.input || {}, bizId, userId);
+        } catch (err) {
+          result = { error: err.message || 'Tool execution failed' };
+        }
+        return { type: 'tool_result', tool_use_id: toolBlock.id, content: JSON.stringify(result) };
+      }),
+    );
+    currentMessages.push({ role: 'user', content: toolResults });
+  }
+  return '';
+}
+
+async function runOpenAI(apiKey, { system, messages, bizId, userId }) {
+  const chat = [
+    { role: 'system', content: system },
+    ...messages.map((m) => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: typeof m.content === 'string' ? m.content : String(m.content || ''),
+    })),
+  ];
+  for (let i = 0; i < 8; i++) {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: chat,
+        tools: openaiTools(),
+        tool_choice: 'auto',
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error?.message || 'OpenAI error');
+    }
+    const message = data.choices?.[0]?.message;
+    const calls = message?.tool_calls || [];
+    if (!calls.length) return message?.content || '';
+    chat.push(message);
+    for (const call of calls) {
+      let args = {};
+      try { args = JSON.parse(call.function?.arguments || '{}'); } catch (_) {}
+      let result;
+      try {
+        result = await executeTool(call.function?.name, args, bizId, userId);
+      } catch (err) {
+        result = { error: err.message || 'Tool execution failed' };
+      }
+      chat.push({
+        role: 'tool',
+        tool_call_id: call.id,
+        content: JSON.stringify(result),
+      });
+    }
+  }
+  return '';
+}
+
 router.post('/:bizId/chat', mobileAuth, async (req, res) => {
 
   const { bizId } = req.params;
   const { messages = [], locale = 'el' } = req.body;
   const userId = req.user.userId;
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(503).json({ error: 'AI service not configured' });
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!openaiKey && !anthropicKey) {
+    return res.status(503).json({ error: 'Ο βοηθός δεν είναι ρυθμισμένος. Λείπει το OPENAI_API_KEY.' });
   }
 
   try {
-    // Fetch gym name + user name
-    const [[gymRow]] = await db.query(
-      'SELECT name FROM businesses WHERE id = ?', [bizId],
-    );
+    const [[gymRow]] = await db.query('SELECT name FROM businesses WHERE id = ?', [bizId]);
     const [[userRow]] = await db.query(
       'SELECT full_name FROM users WHERE id = ?', [userId],
     );
-    const gymName  = gymRow?.name  || 'Gym';
+    const gymName  = gymRow?.name || 'Gym';
     const userName = userRow?.full_name || '';
+    const system = buildSystemPrompt(gymName, locale, userName);
+    const history = (Array.isArray(messages) ? messages : []).filter((m) => m && m.content);
+    const reply = openaiKey
+      ? await runOpenAI(openaiKey, { system, messages: history, bizId, userId })
+      : await runAnthropic(anthropicKey, { system, messages: history, bizId, userId });
 
-    const client = new Anthropic({ apiKey });
-
-    // Agentic loop: keep going until no more tool_use blocks
-    let currentMessages = messages.map(m => ({
-      role: m.role,
-      content: typeof m.content === 'string' ? m.content : m.content,
-    }));
-
-    let finalText = null;
-    const MAX_ITERATIONS = 8;
-
-    for (let i = 0; i < MAX_ITERATIONS; i++) {
-      const response = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system: buildSystemPrompt(gymName, locale, userName),
-        tools: TOOLS,
-        messages: currentMessages,
-      });
-
-      if (response.stop_reason === 'end_turn') {
-        // Collect text
-        const textBlock = response.content.find(b => b.type === 'text');
-        finalText = textBlock?.text || '';
-        break;
-      }
-
-      if (response.stop_reason === 'tool_use') {
-        // Add assistant message
-        currentMessages.push({ role: 'assistant', content: response.content });
-
-        // Execute all tool calls in parallel
-        const toolResults = await Promise.all(
-          response.content
-            .filter(b => b.type === 'tool_use')
-            .map(async (toolBlock) => {
-              let result;
-              try {
-                result = await executeTool(toolBlock.name, toolBlock.input, bizId, userId);
-              } catch (err) {
-                result = { error: err.message || 'Tool execution failed' };
-              }
-              return {
-                type: 'tool_result',
-                tool_use_id: toolBlock.id,
-                content: JSON.stringify(result),
-              };
-            }),
-        );
-
-        currentMessages.push({ role: 'user', content: toolResults });
-        continue;
-      }
-
-      // Unexpected stop reason
-      break;
-    }
-
-    res.json({ reply: finalText || '' });
+    res.json({ reply: reply || 'Δεν έχω απάντηση αυτή τη στιγμή. Δοκίμασε ξανά.' });
   } catch (err) {
     console.error('[AI Agent]', err.message);
-    res.status(500).json({ error: 'AI agent error', detail: err.message });
+    res.status(500).json({ error: err.message || 'Ο βοηθός δεν απάντησε.' });
   }
 });
 

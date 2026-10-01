@@ -20,6 +20,8 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
   DateTime _selectedDate = DateTime.now();
   List<Map<String, dynamic>> _bookings = [];
   List<Map<String, dynamic>> _trials = [];
+  List<Map<String, dynamic>> _nextDayBookings = [];
+  DateTime? _upcomingDay;
   bool _loading = true;
   String? _error;
   late final TabController _tabController;
@@ -47,15 +49,54 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
       final date = DateFormat('yyyy-MM-dd').format(_selectedDate);
       final scheduleData = await api.fetchStaffSchedule(date: date);
       final trialsData   = await api.fetchStaffTrials();
+      final bookings = (scheduleData['bookings'] as List).cast<Map<String, dynamic>>();
+      DateTime? nextDay;
+      var nextDayBookings = <Map<String, dynamic>>[];
+      if (bookings.isEmpty && _isToday(_selectedDate)) {
+        final found = await _findNextDay(api);
+        nextDay = found?.$1;
+        nextDayBookings = found?.$2 ?? [];
+      }
       if (mounted) setState(() {
-        _bookings = (scheduleData['bookings'] as List).cast<Map<String, dynamic>>();
+        _bookings = bookings;
         _trials   = trialsData.cast<Map<String, dynamic>>();
+        _upcomingDay = nextDay;
+        _nextDayBookings = nextDayBookings;
       });
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<(DateTime, List<Map<String, dynamic>> )?> _findNextDay(ApiService api) async {
+    final start = DateTime.now().add(const Duration(days: 1));
+    for (var week = 0; week < 4; week++) {
+      final from = DateFormat('yyyy-MM-dd').format(start.add(Duration(days: week * 7)));
+      final data = await api.fetchStaffWeekSchedule(from: from);
+      final rows = (data['bookings'] as List?) ?? const [];
+      DateTime? earliest;
+      for (final raw in rows) {
+        if (raw is! Map) continue;
+        final parsed = DateTime.tryParse(raw['starts_at']?.toString().replaceFirst(' ', 'T') ?? '');
+        if (parsed == null) continue;
+        final day = DateTime(parsed.toLocal().year, parsed.toLocal().month, parsed.toLocal().day);
+        final today = DateTime.now();
+        final todayDate = DateTime(today.year, today.month, today.day);
+        if (!day.isAfter(todayDate)) continue;
+        if (earliest == null || day.isBefore(earliest)) earliest = day;
+      }
+      if (earliest != null) {
+        final dayData = await api.fetchStaffSchedule(date: DateFormat('yyyy-MM-dd').format(earliest));
+        final list = ((dayData['bookings'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        if (list.isNotEmpty) return (earliest, list);
+      }
+    }
+    return null;
   }
 
   void _prevDay() { setState(() => _selectedDate = _selectedDate.subtract(const Duration(days: 1))); _load(); }
@@ -147,6 +188,50 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
   bool _isToday(DateTime d) {
     final n = DateTime.now();
     return d.year == n.year && d.month == n.month && d.day == n.day;
+  }
+
+  Widget _nextAppointmentView(String locale) {
+    final day = _upcomingDay!;
+    final label = DateFormat('EEEE d MMMM', locale).format(day);
+    final pretty = label.isEmpty ? label : '${label[0].toUpperCase()}${label.substring(1)}';
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: AppColors.lime,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        children: [
+          Text(
+            'Σήμερα δεν έχεις ραντεβού.',
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Το επόμενο είναι $pretty.',
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 15, height: 1.4),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () {
+                setState(() => _selectedDate = day);
+                _load();
+              },
+              child: const Text('Άνοιξε αυτή την ημέρα'),
+            ),
+          ),
+          ..._nextDayBookings.map((booking) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _BookingCard(
+              booking: booking,
+              myStaffId: _myStaffId,
+              onToggleAttendance: () => _toggleAttendance(booking),
+              onClaim: () => _claimBooking(booking['id'] as String),
+            ),
+          )),
+        ],
+      ),
+    );
   }
 
   @override
@@ -245,13 +330,15 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
                       children: [
                         // ── Bookings tab ──
                         _bookings.isEmpty
-                            ? EmptyState(
-                                icon: Icons.calendar_today_outlined,
-                                title: AppStrings.of(context).staffScheduleNoBookings,
-                                subtitle: _isToday(_selectedDate)
-                                    ? AppStrings.of(context).staffScheduleNoneToday
-                                    : AppStrings.of(context).staffScheduleNoneDay,
-                              )
+                            ? _upcomingDay != null && _nextDayBookings.isNotEmpty
+                                ? _nextAppointmentView(locale)
+                                : EmptyState(
+                                    icon: Icons.calendar_today_outlined,
+                                    title: AppStrings.of(context).staffScheduleNoBookings,
+                                    subtitle: _isToday(_selectedDate)
+                                        ? AppStrings.of(context).staffScheduleNoneToday
+                                        : AppStrings.of(context).staffScheduleNoneDay,
+                                  )
                             : RefreshIndicator(
                                 onRefresh: _load,
                                 color: AppColors.lime,

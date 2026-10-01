@@ -317,6 +317,18 @@ class GlobalAuthService extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>?> fetchInbox() async {
+    if (_token == null) return null;
+    final res = await http.get(
+      Uri.parse('$_apiBase/global/me/notifications'),
+      headers: {'Authorization': 'Bearer $_token'},
+    );
+    if (res.statusCode != 200) return null;
+    final body = jsonDecode(res.body);
+    if (body is! Map) return null;
+    return Map<String, dynamic>.from(body);
+  }
+
   /// Register FCM token for push notifications (call after login)
   Future<void> registerFcmToken(String fcmToken, {String platform = 'unknown'}) async {
     if (_token == null) return;

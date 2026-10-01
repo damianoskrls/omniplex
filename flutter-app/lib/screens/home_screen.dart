@@ -266,16 +266,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (user?.isNutritionist == true && user?.staffKind == 'nutritionist') {
       return [
         _TabItem(
-          key: 'nutrition_clients',
-          icon: Icons.people_outline_rounded,
-          label: 'Πελάτες',
-          screen: const NutritionistClientsScreen(),
-        ),
-        _TabItem(
           key: 'nutrition_bookings',
           icon: Icons.calendar_today_outlined,
           label: 'Ραντεβού',
           screen: const NutritionistBookingsScreen(),
+        ),
+        _TabItem(
+          key: 'nutrition_clients',
+          icon: Icons.people_outline_rounded,
+          label: 'Πελάτες',
+          screen: const NutritionistClientsScreen(),
         ),
         _TabItem(
           key: 'nutrition_templates',
@@ -323,6 +323,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           label: 'Άδειες',
           screen: const StaffLeavesScreen(),
         ),
+        if (config.featureQrCheckin)
+          _TabItem(
+            key: 'qr',
+            icon: Icons.qr_code_2_rounded,
+            label: 'QR',
+            screen: const MyQrScreen(),
+          ),
       ];
     }
     return [
@@ -606,11 +613,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     final firstName = user.fullName.split(' ').first;
     final tabs = _tabItems;
-    final hasOverflow = tabs.length > _maxNavItems;
-    final visibleTabs = hasOverflow ? tabs.sublist(0, _maxNavItems - 1) : tabs;
-    final overflowTabs = hasOverflow ? tabs.sublist(_maxNavItems - 1) : <_TabItem>[];
-    final overflowSelected = hasOverflow && _index >= _maxNavItems - 1;
-    final navSelectedIndex = overflowSelected ? visibleTabs.length : _index;
+    final centerKey = !user.isStaff
+        ? null
+        : (user.isNutritionist ? 'nutrition_bookings' : 'schedule');
+    final sideTabs = centerKey == null
+        ? tabs
+        : tabs.where((t) => t.key != centerKey).toList();
+    final hasOverflow = sideTabs.length > _maxNavItems;
+    final visibleTabs = hasOverflow ? sideTabs.sublist(0, _maxNavItems - 1) : sideTabs;
+    final overflowTabs = hasOverflow ? sideTabs.sublist(_maxNavItems - 1) : <_TabItem>[];
+    final currentKey = tabs[_index].key;
+    final sideIndex = visibleTabs.indexWhere((t) => t.key == currentKey);
+    final overflowSelected = overflowTabs.any((t) => t.key == currentKey);
+    final navSelectedIndex = overflowSelected ? visibleTabs.length : sideIndex;
 
     return Scaffold(
       body: SafeArea(
@@ -665,8 +680,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _openMoreSheet(overflowTabs);
             return;
           }
-          setState(() => _index = i);
-          if (tabs[i].key == 'gym_dashboard' || tabs[i].key == 'booking') {
+          if (i < 0 || i >= visibleTabs.length) return;
+          final idx = tabs.indexWhere((t) => t.key == visibleTabs[i].key);
+          if (idx < 0) return;
+          setState(() => _index = idx);
+          if (tabs[idx].key == 'gym_dashboard' || tabs[idx].key == 'booking') {
             _loadNutritionAccess();
           }
         },
@@ -675,15 +693,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (hasOverflow)
             FloatingNavItem(icon: Icons.grid_view_rounded, label: AppStrings.of(context).more),
         ],
-        centerAction: user.isStaff
-            ? (config.featureQrCheckin
-                ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyQrScreen()))
-                : null)
-            : () {
-                final idx = tabs.indexWhere((t) => t.key == 'booking');
-                if (idx >= 0) setState(() => _index = idx);
-              },
-        centerIcon: user.isStaff ? Icons.qr_code_2_rounded : Icons.event_available_rounded,
+        centerAction: () {
+          final key = centerKey ?? 'booking';
+          final idx = tabs.indexWhere((t) => t.key == key);
+          if (idx >= 0) setState(() => _index = idx);
+        },
+        centerIcon: Icons.event_available_rounded,
         activeColor: context.tenantPrimary,
       ),
     );
