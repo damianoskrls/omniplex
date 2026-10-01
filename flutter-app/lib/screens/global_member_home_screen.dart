@@ -315,48 +315,111 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   }
 
   Widget _buildNavBar() {
-    final items = [
-      ('Αρχική',   'assets/icons/nav_home.svg',  false),
-      ('Αναζήτηση','assets/icons/nav_search.svg',     false),
-      ('Πρόγραμμα','assets/icons/nav_calendar.svg',      false),
-      ('Γυμναστήρια','assets/icons/nav_gyms.svg', false),
-      ('Προφίλ',   'assets/icons/nav_profile.svg',       false),
-    ];
-    return Container(
-      decoration: const BoxDecoration(
-        color: _kCard,
-        border: Border(top: BorderSide(color: _kBorder)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: List.generate(items.length, (i) {
-              final active = _tab == i;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => _openTab(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return ColoredBox(
+      color: _kBg,
+      child: SizedBox(
+        height: 76 + bottom,
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              height: 58 + bottom,
+              child: ColoredBox(
+                color: const Color(0xFF141416),
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: bottom),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      SvgPicture.asset(
-                        items[i].$2,
-                        width: 20, height: 20,
-                        colorFilter: ColorFilter.mode(
-                          active ? _kAccent : _kGray, BlendMode.srcIn),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(items[i].$1,
-                        style: GoogleFonts.manrope(
-                          fontSize: 10, fontWeight: FontWeight.w600,
-                          color: active ? _kAccent : _kGray)),
+                      _navItem(0, 'Home', 'assets/icons/nav_omni_home.png'),
+                      _navItem(1, 'Αναζήτηση', 'assets/icons/nav_omni_search.png'),
+                      const SizedBox(width: 70),
+                      _navItem(3, 'Gyms', 'assets/icons/nav_omni_gyms.png'),
+                      _navItem(4, 'Προφίλ', 'assets/icons/nav_omni_profile.png'),
                     ],
                   ),
                 ),
-              );
-            }),
+              ),
+            ),
+            Positioned(
+              top: 2, left: 0, right: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () => _openTab(2),
+                  child: Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: _kBrandGradient,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFC52473).withValues(alpha: 0.38),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: SvgPicture.asset(
+                      'assets/icons/nav_calendar.svg',
+                      width: 26,
+                      height: 26,
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(int index, String label, String asset) {
+    final active = _tab == index;
+    final iconColor = active ? const Color(0xFFC52473) : const Color(0xFF717479);
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _openTab(index),
+        behavior: HitTestBehavior.opaque,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.fromLTRB(10, 5, 10, 4),
+            decoration: BoxDecoration(
+              color: active ? const Color(0xFF2A2B31) : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ColorFiltered(
+                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                  child: Image.asset(
+                    asset,
+                    width: 22,
+                    height: 22,
+                    filterQuality: FilterQuality.medium,
+                    gaplessPlayback: true,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.manrope(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: active ? Colors.white : const Color(0xFF717479),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -416,7 +479,6 @@ class _HomeTab extends StatelessWidget {
         homeGroups.add(_rolesFirst(gyms.where((g) => g.businessId == gym.businessId).toList()));
       }
     }
-    final primaryGym = gyms.isNotEmpty ? gyms.first : null;
     final upcoming = (dashboard?['upcoming_bookings'] as List?)
         ?.cast<Map<String, dynamic>>() ?? [];
     final nextBooking = upcoming.isNotEmpty ? upcoming.first : null;
@@ -479,80 +541,6 @@ class _HomeTab extends StatelessWidget {
                         const SizedBox(height: 24),
                       ],
 
-                      // Quick Actions
-                      Text('Γρήγορες Ενέργειες',
-                        style: GoogleFonts.manrope(
-                          fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                      const SizedBox(height: 12),
-                      GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.4,
-                        children: [
-                          _QuickAction(
-                            icon: Icons.fitness_center_rounded,
-                            iconColor: _kAccent,
-                            iconBg: const Color(0xFF1A2A0A),
-                            label: 'Κράτηση\nΜαθήματος',
-                            onTap: () {
-                              final gyms = globalAuth.gyms;
-                              if (gyms.isEmpty) {
-                                onTabChange(1);
-                              } else if (gyms.length == 1) {
-                                onEnterGym(gyms.first);
-                              } else {
-                                showModalBottomSheet<void>(
-                                  context: context,
-                                  backgroundColor: _kCard,
-                                  shape: const RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                                  ),
-                                  builder: (_) => _GymPickerSheet(
-                                    gyms: gyms,
-                                    onSelect: onEnterGym,
-                                    parseColor: parseColor,
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                          _QuickAction(
-                            icon: Icons.explore_outlined,
-                            iconColor: _kCyan,
-                            iconBg: const Color(0xFF0A1A2A),
-                            label: 'Ανακάλυψε\nΓυμναστήρια',
-                            onTap: () => onTabChange(1),
-                          ),
-                          _QuickAction(
-                            icon: Icons.shopping_bag_outlined,
-                            iconColor: const Color(0xFFA78BFA),
-                            iconBg: const Color(0xFF1A1420),
-                            label: 'Αγορά\nΠακέτου',
-                            onTap: () {
-                              if (primaryGym != null) {
-                                Navigator.push(context, MaterialPageRoute(
-                                  builder: (_) => GymProfileScreen(
-                                    slug: primaryGym.slug,
-                                    globalAuth: globalAuth,
-                                  ),
-                                ));
-                              }
-                            },
-                          ),
-                          _QuickAction(
-                            icon: Icons.card_membership_outlined,
-                            iconColor: const Color(0xFFFBBF24),
-                            iconBg: const Color(0xFF261E14),
-                            label: 'Τα Γυμναστήριά\nΜου',
-                            onTap: () => onTabChange(3),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
                       // This Week
                       if (upcoming.isNotEmpty) ...[
                         _ThisWeekSection(
@@ -579,6 +567,59 @@ class _HomeTab extends StatelessWidget {
       ],
     );
   }
+}
+
+class _GymLogo extends StatelessWidget {
+  const _GymLogo({required this.url, required this.name, required this.accent});
+
+  final String? url;
+  final String name;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final onFill = accent.computeLuminance() > 0.62 ? const Color(0xFF111111) : Colors.white;
+    final initials = _logoInitials(name);
+    if (url == null || url!.isEmpty) {
+      return Container(
+        width: 56,
+        height: 56,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: accent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(initials, style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800, fontSize: 14)),
+      );
+    }
+    return Container(
+      width: 88,
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Image.network(
+        url!,
+        fit: BoxFit.contain,
+        width: 76,
+        height: 48,
+        errorBuilder: (_, _, _) => Text(initials, style: GoogleFonts.manrope(color: const Color(0xFF111111), fontWeight: FontWeight.w800)),
+      ),
+    );
+  }
+}
+
+String _logoInitials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+  if (parts.isEmpty) return 'Γ';
+  if (parts.length == 1) {
+    final word = parts.first;
+    return word.substring(0, word.length >= 2 ? 2 : 1).toUpperCase();
+  }
+  return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
 class _HomeGymCarousel extends StatefulWidget {
@@ -749,16 +790,6 @@ class _HomeGymSlide extends StatelessWidget {
     );
   }
 
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return 'Γ';
-    if (parts.length == 1) {
-      final word = parts.first;
-      return word.substring(0, word.length >= 2 ? 2 : 1).toUpperCase();
-    }
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-
   Future<void> _showQr(BuildContext context) async {
     GlobalGym member = gym;
     for (final role in roles) {
@@ -783,7 +814,6 @@ class _HomeGymSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onFill = accentColor.computeLuminance() > 0.62 ? const Color(0xFF111111) : Colors.white;
     return Align(
       alignment: Alignment.topCenter,
       child: Container(
@@ -799,21 +829,7 @@ class _HomeGymSlide extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
             child: Row(children: [
-              Container(
-                width: 52, height: 52,
-                decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(14)),
-                clipBehavior: Clip.antiAlias,
-                alignment: Alignment.center,
-                child: gym.logoUrl != null
-                    ? Image.network(
-                        gym.logoUrl!,
-                        width: 52, height: 52, fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Text(_initials(gym.appName),
-                          style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800)),
-                      )
-                    : Text(_initials(gym.appName),
-                        style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800, fontSize: 13)),
-              ),
+              _GymLogo(url: gym.logoUrl, name: gym.appName, accent: accentColor),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(gym.appName,
@@ -1116,16 +1132,6 @@ class _GymEntryCardState extends State<_GymEntryCard> {
     return gym.businessType;
   }
 
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return 'Γ';
-    if (parts.length == 1) {
-      final word = parts.first;
-      return word.substring(0, word.length >= 2 ? 2 : 1).toUpperCase();
-    }
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-
   void _confirmRemove() {
     final gym = widget.gym;
     final onRemove = widget.onRemove;
@@ -1184,21 +1190,7 @@ class _GymEntryCardState extends State<_GymEntryCard> {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 8, 12),
             child: Row(children: [
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                clipBehavior: Clip.antiAlias,
-                alignment: Alignment.center,
-                child: gym.logoUrl != null
-                  ? Image.network(gym.logoUrl!, fit: BoxFit.cover, width: 48, height: 48,
-                      errorBuilder: (_, __, ___) => Text(_initials(gym.appName),
-                        style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800, fontSize: 14)))
-                  : Text(_initials(gym.appName),
-                      style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800, fontSize: 14)),
-              ),
+              _GymLogo(url: gym.logoUrl, name: gym.appName, accent: accent),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1556,55 +1548,6 @@ class _NextClassCard extends StatelessWidget {
         ]),
       ]),
     ),
-    );
-  }
-}
-
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: _kCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _kBorder),
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: iconColor, size: 18),
-            ),
-            const Spacer(),
-            Text(label, style: GoogleFonts.manrope(
-              fontSize: 12, fontWeight: FontWeight.w700,
-              color: Colors.white, height: 1.3)),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -2591,61 +2534,6 @@ class _CalBtn extends StatelessWidget {
   );
 }
 
-class _GymPickerSheet extends StatelessWidget {
-  const _GymPickerSheet({required this.gyms, required this.onSelect, required this.parseColor});
-  final List<GlobalGym> gyms;
-  final Future<void> Function(GlobalGym) onSelect;
-  final Color Function(String?) parseColor;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Center(child: Container(width: 36, height: 4,
-          decoration: BoxDecoration(color: _kBorder, borderRadius: BorderRadius.circular(2)))),
-        const SizedBox(height: 16),
-        Text('Σε ποιο γυμναστήριο;',
-          style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-        const SizedBox(height: 14),
-        ...gyms.map((gym) => GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-            onSelect(gym);
-          },
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _kBg,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _kBorder),
-            ),
-            child: Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: parseColor(gym.primaryColor).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(child: Text(
-                  gym.appName.isNotEmpty ? gym.appName[0].toUpperCase() : 'G',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
-                    color: parseColor(gym.primaryColor)))),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Text(gym.appName,
-                style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white))),
-              const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
-            ]),
-          ),
-        )),
-      ],
-    ),
-  );
-}
-
 class _NoBookingsDay extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
@@ -2777,36 +2665,13 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
                 children: [
                   // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Τα Γυμναστήριά Μου',
-                          style: GoogleFonts.manrope(
-                            fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-                        Text('$totalCount γυμναστήρια',
-                          style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
-                      ]),
-                      GestureDetector(
-                        onTap: widget.onAddGym,
-                        child: Container(
-                          height: 38,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            color: _kAccent.withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: _kAccent.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.add_rounded, color: _kAccent, size: 16),
-                            const SizedBox(width: 4),
-                            Text('Προσθήκη', style: GoogleFonts.manrope(
-                              fontSize: 12, fontWeight: FontWeight.w700, color: _kAccent)),
-                          ]),
-                        ),
-                      ),
-                    ],
-                  ),
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Τα Γυμναστήριά Μου',
+                      style: GoogleFonts.manrope(
+                        fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                    Text('$totalCount γυμναστήρια',
+                      style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                  ]),
                   const SizedBox(height: 20),
 
                   if (gyms.isNotEmpty) ...[

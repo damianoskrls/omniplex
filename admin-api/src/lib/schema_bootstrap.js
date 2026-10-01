@@ -1058,6 +1058,152 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('feature_qr_checkin skipped:', err.message);
   });
 
+  for (const col of [
+    'ALTER TABLE exercises ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1',
+    'ALTER TABLE exercises ADD COLUMN thumbnail_url TEXT NULL',
+    'ALTER TABLE exercises ADD COLUMN description TEXT NULL',
+    'ALTER TABLE exercises ADD COLUMN animation_url TEXT NULL',
+    'ALTER TABLE workout_programs ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1',
+  ]) {
+    await db.query(col).catch((err) => {
+      if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_NO_SUCH_TABLE') {
+        console.warn('workout column skipped:', err.message);
+      }
+    });
+  }
+  for (const table of ['workout_programs', 'workout_program_services', 'client_programs', 'exercises', 'program_exercises', 'member_workout_checks']) {
+    await db.query(`ALTER TABLE ${table} CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`).catch((err) => {
+      if (err.code !== 'ER_NO_SUCH_TABLE') console.warn(`${table} collation skipped:`, err.message);
+    });
+  }
+
+  await db.query(
+    'ALTER TABLE business_configs ADD COLUMN feature_marketplace TINYINT(1) NOT NULL DEFAULT 0',
+  ).catch((err) => {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.warn('feature_marketplace skipped:', err.message);
+  });
+
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id            VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id   VARCHAR(36)  NOT NULL,
+        name          VARCHAR(255) NOT NULL,
+        description   TEXT         NULL,
+        category      VARCHAR(100) NULL,
+        price_cents   INT          NOT NULL,
+        stock         INT          NULL,
+        image_url     VARCHAR(500) NULL,
+        is_active     TINYINT(1)   NOT NULL DEFAULT 1,
+        sort_order    INT          NOT NULL DEFAULT 0,
+        sku           VARCHAR(64)  NULL,
+        weight_grams  INT          NULL,
+        notes         TEXT         NULL,
+        ingredients   TEXT         NULL,
+        usage_instructions TEXT    NULL,
+        created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_products_biz (business_id, is_active, sort_order)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    for (const col of [
+      'ALTER TABLE products ADD COLUMN sku VARCHAR(64) NULL',
+      'ALTER TABLE products ADD COLUMN weight_grams INT NULL',
+      'ALTER TABLE products ADD COLUMN notes TEXT NULL',
+      'ALTER TABLE products ADD COLUMN ingredients TEXT NULL',
+      'ALTER TABLE products ADD COLUMN usage_instructions TEXT NULL',
+    ]) {
+      await db.query(col).catch((err) => {
+        if (err.code !== 'ER_DUP_FIELDNAME') console.warn('products column skipped:', err.message);
+      });
+    }
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS product_images (
+        id          VARCHAR(36)  NOT NULL PRIMARY KEY,
+        product_id  VARCHAR(36)  NOT NULL,
+        image_url   VARCHAR(500) NOT NULL,
+        sort_order  INT          NOT NULL DEFAULT 0,
+        INDEX idx_product_images (product_id, sort_order)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id                 VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id        VARCHAR(36)  NOT NULL,
+        user_id            VARCHAR(36)  NULL,
+        status             VARCHAR(30)  NOT NULL DEFAULT 'pending',
+        total_cents        INT          NOT NULL,
+        provider           VARCHAR(30)  NULL,
+        provider_txn_id    VARCHAR(255) NULL,
+        provider_intent_id VARCHAR(255) NULL,
+        mydata_mark        VARCHAR(100) NULL,
+        mydata_uid         VARCHAR(100) NULL,
+        notes              TEXT         NULL,
+        payment_method     VARCHAR(30)  NULL,
+        customer_name      VARCHAR(160) NULL,
+        customer_phone     VARCHAR(40)  NULL,
+        shipping_address   TEXT         NULL,
+        delivery_method    VARCHAR(30)  NULL,
+        source             VARCHAR(20)  NULL,
+        created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_orders_biz (business_id, status, created_at),
+        INDEX idx_orders_user (user_id, created_at)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    for (const col of [
+      'ALTER TABLE orders ADD COLUMN payment_method VARCHAR(30) NULL',
+      'ALTER TABLE orders ADD COLUMN customer_name VARCHAR(160) NULL',
+      'ALTER TABLE orders ADD COLUMN customer_phone VARCHAR(40) NULL',
+      'ALTER TABLE orders ADD COLUMN shipping_address TEXT NULL',
+      'ALTER TABLE orders ADD COLUMN delivery_method VARCHAR(30) NULL',
+      'ALTER TABLE orders ADD COLUMN source VARCHAR(20) NULL',
+      'ALTER TABLE orders ADD COLUMN provider VARCHAR(30) NULL',
+      'ALTER TABLE orders ADD COLUMN provider_txn_id VARCHAR(255) NULL',
+      'ALTER TABLE orders ADD COLUMN provider_intent_id VARCHAR(255) NULL',
+      'ALTER TABLE orders ADD COLUMN mydata_mark VARCHAR(100) NULL',
+      'ALTER TABLE orders ADD COLUMN mydata_uid VARCHAR(100) NULL',
+    ]) {
+      await db.query(col).catch((err) => {
+        if (err.code !== 'ER_DUP_FIELDNAME') console.warn('orders column skipped:', err.message);
+      });
+    }
+    await db.query('ALTER TABLE orders MODIFY COLUMN user_id VARCHAR(36) NULL').catch((err) => {
+      console.warn('orders.user_id nullable skipped:', err.message);
+    });
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS order_items (
+        id               VARCHAR(36)  NOT NULL PRIMARY KEY,
+        order_id         VARCHAR(36)  NOT NULL,
+        product_id       VARCHAR(36)  NOT NULL,
+        product_name     VARCHAR(255) NOT NULL,
+        qty              INT          NOT NULL DEFAULT 1,
+        unit_price_cents INT          NOT NULL,
+        INDEX idx_order_items (order_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS marketplace_categories (
+        id          VARCHAR(36)  NOT NULL PRIMARY KEY,
+        business_id VARCHAR(36)  NOT NULL,
+        name        VARCHAR(120) NOT NULL,
+        sort_order  INT          NOT NULL DEFAULT 0,
+        UNIQUE KEY uq_market_cat (business_id, name),
+        INDEX idx_market_cat (business_id, sort_order)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS marketplace_settings (
+        business_id          VARCHAR(36) NOT NULL PRIMARY KEY,
+        shipping_json        TEXT        NULL,
+        payment_methods_json TEXT        NULL
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: marketplace tables ready');
+  } catch (err) {
+    console.warn('marketplace schema skipped:', err.message);
+  }
+
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS member_workout_checks (

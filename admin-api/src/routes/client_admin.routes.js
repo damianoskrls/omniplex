@@ -7444,6 +7444,27 @@ async function memberFromWorkoutHeaders(req, res) {
   return { bizId, userId };
 }
 
+const PROGRAM_LINKS_SQL = `
+  SELECT program_id COLLATE utf8mb4_unicode_ci AS program_id,
+         service_id COLLATE utf8mb4_unicode_ci AS service_id
+  FROM workout_program_services
+  UNION
+  SELECT id COLLATE utf8mb4_unicode_ci AS program_id,
+         service_id COLLATE utf8mb4_unicode_ci AS service_id
+  FROM workout_programs
+  WHERE service_id IS NOT NULL
+    AND (id COLLATE utf8mb4_unicode_ci) NOT IN (
+      SELECT program_id COLLATE utf8mb4_unicode_ci FROM workout_program_services
+    )
+`;
+
+const MEMBERSHIP_SERVICE_MATCH_SQL = `
+  (um.service_id COLLATE utf8mb4_unicode_ci) = links.service_id
+  OR (bp.service_id COLLATE utf8mb4_unicode_ci) = links.service_id
+  OR (psi.service_id COLLATE utf8mb4_unicode_ci) = links.service_id
+  OR (spa.service_id COLLATE utf8mb4_unicode_ci) = links.service_id
+`;
+
 async function memberOwnsProgram(bizId, userId, programId) {
   const [[row]] = await db.query(
     `SELECT wp.id
@@ -7452,33 +7473,23 @@ async function memberOwnsProgram(bizId, userId, programId) {
        AND (
          EXISTS (
            SELECT 1 FROM client_programs cp
-           WHERE cp.program_id = wp.id AND cp.user_id = ? AND cp.business_id = ? AND cp.is_active = 1
+           WHERE (cp.program_id COLLATE utf8mb4_unicode_ci) = (wp.id COLLATE utf8mb4_unicode_ci)
+             AND cp.user_id = ? AND cp.business_id = ? AND cp.is_active = 1
          )
          OR EXISTS (
            SELECT 1
-           FROM (
-             SELECT program_id, service_id FROM workout_program_services
-             UNION
-             SELECT id AS program_id, service_id FROM workout_programs
-             WHERE service_id IS NOT NULL
-               AND id NOT IN (SELECT program_id FROM workout_program_services)
-           ) links
-           WHERE links.program_id = wp.id
+           FROM (${PROGRAM_LINKS_SQL}) links
+           WHERE links.program_id = (wp.id COLLATE utf8mb4_unicode_ci)
              AND EXISTS (
                SELECT 1
                FROM user_memberships um
-               LEFT JOIN business_plans bp ON bp.id = um.plan_id
-               LEFT JOIN plan_service_items psi ON psi.plan_id = um.plan_id
-               LEFT JOIN service_plan_assignments spa ON spa.plan_id = um.plan_id
+               LEFT JOIN business_plans bp ON (bp.id COLLATE utf8mb4_unicode_ci) = (um.plan_id COLLATE utf8mb4_unicode_ci)
+               LEFT JOIN plan_service_items psi ON (psi.plan_id COLLATE utf8mb4_unicode_ci) = (um.plan_id COLLATE utf8mb4_unicode_ci)
+               LEFT JOIN service_plan_assignments spa ON (spa.plan_id COLLATE utf8mb4_unicode_ci) = (um.plan_id COLLATE utf8mb4_unicode_ci)
                WHERE um.user_id = ? AND um.business_id = ?
                  AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
                  AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
-                 AND (
-                   um.service_id = links.service_id
-                   OR bp.service_id = links.service_id
-                   OR psi.service_id = links.service_id
-                   OR spa.service_id = links.service_id
-                 )
+                 AND (${MEMBERSHIP_SERVICE_MATCH_SQL})
              )
          )
        )
@@ -7488,20 +7499,47 @@ async function memberOwnsProgram(bizId, userId, programId) {
   return !!row;
 }
 
+async function loadProgramExercises(programId) {
+  const joined = `(e.id COLLATE utf8mb4_unicode_ci) = (pe.exercise_id COLLATE utf8mb4_unicode_ci)`;
+  try {
+    const [exs] = await db.query(
+      `SELECT pe.*, e.name AS exercise_name, e.muscle_group, e.animation_url, e.thumbnail_url, e.description AS exercise_description
+       FROM program_exercises pe
+       JOIN exercises e ON ${joined} AND e.is_active = 1
+       WHERE pe.program_id = ? ORDER BY pe.sort_order`,
+      [programId],
+    );
+    return exs;
+  } catch (err) {
+    if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+    const [exs] = await db.query(
+      `SELECT pe.*, e.name AS exercise_name, e.muscle_group, e.animation_url, e.description AS exercise_description
+       FROM program_exercises pe
+       JOIN exercises e ON ${joined}
+       WHERE pe.program_id = ? ORDER BY pe.sort_order`,
+      [programId],
+    );
+    return exs;
+  }
+}
+
 // Mobile API: client sees their own programs (used by app)
 router.get('/my-programs', async (req, res) => {
   const bizId = req.headers['x-business-id'];
   const userId = req.headers['x-user-id'];
   if (!bizId || !userId) return res.status(400).json({ error: 'Missing headers' });
 
+  try {
   // Personal assignments
   const [assignments] = await db.query(
     `SELECT cp.id as assignment_id, cp.assigned_at, cp.notes as assignment_notes,
             wp.id as program_id, wp.name as program_name, wp.description as program_description,
             wp.service_id
      FROM client_programs cp
-     JOIN workout_programs wp ON wp.id=cp.program_id AND wp.is_active=1
-     WHERE cp.user_id=? AND cp.business_id=? AND cp.is_active=1
+     JOIN workout_programs wp
+       ON (wp.id COLLATE utf8mb4_unicode_ci) = (cp.program_id COLLATE utf8mb4_unicode_ci)
+      AND wp.is_active = 1
+     WHERE cp.user_id = ? AND cp.business_id = ? AND cp.is_active = 1
      ORDER BY cp.assigned_at DESC`,
     [userId, bizId]
   );
@@ -7531,37 +7569,32 @@ router.get('/my-programs', async (req, res) => {
   }
 
   // One row per service the member actually has, so the same program shows under each of them.
-  const [servicePrograms] = await db.query(
-    `SELECT NULL as assignment_id, wp.created_at as assigned_at, NULL as assignment_notes,
-            wp.id as program_id, wp.name as program_name, wp.description as program_description,
-            links.service_id
-     FROM workout_programs wp
-     JOIN (
-       SELECT program_id, service_id FROM workout_program_services
-       UNION
-       SELECT id AS program_id, service_id FROM workout_programs
-       WHERE service_id IS NOT NULL
-         AND id NOT IN (SELECT program_id FROM workout_program_services)
-     ) links ON links.program_id = wp.id
-     WHERE wp.business_id = ? AND wp.is_active = 1
-       AND EXISTS (
-         SELECT 1
-         FROM user_memberships um
-         LEFT JOIN business_plans bp ON bp.id = um.plan_id
-         LEFT JOIN plan_service_items psi ON psi.plan_id = um.plan_id
-         LEFT JOIN service_plan_assignments spa ON spa.plan_id = um.plan_id
-         WHERE um.user_id = ? AND um.business_id = ?
-           AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
-           AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
-           AND (
-             um.service_id = links.service_id
-             OR bp.service_id = links.service_id
-             OR psi.service_id = links.service_id
-             OR spa.service_id = links.service_id
-           )
-       )`,
-    [bizId, userId, bizId]
-  );
+  let servicePrograms = [];
+  try {
+    const [rows] = await db.query(
+      `SELECT NULL as assignment_id, wp.created_at as assigned_at, NULL as assignment_notes,
+              wp.id as program_id, wp.name as program_name, wp.description as program_description,
+              links.service_id
+       FROM workout_programs wp
+       JOIN (${PROGRAM_LINKS_SQL}) links ON links.program_id = (wp.id COLLATE utf8mb4_unicode_ci)
+       WHERE wp.business_id = ? AND wp.is_active = 1
+         AND EXISTS (
+           SELECT 1
+           FROM user_memberships um
+           LEFT JOIN business_plans bp ON (bp.id COLLATE utf8mb4_unicode_ci) = (um.plan_id COLLATE utf8mb4_unicode_ci)
+           LEFT JOIN plan_service_items psi ON (psi.plan_id COLLATE utf8mb4_unicode_ci) = (um.plan_id COLLATE utf8mb4_unicode_ci)
+           LEFT JOIN service_plan_assignments spa ON (spa.plan_id COLLATE utf8mb4_unicode_ci) = (um.plan_id COLLATE utf8mb4_unicode_ci)
+           WHERE um.user_id = ? AND um.business_id = ?
+             AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
+             AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
+             AND (${MEMBERSHIP_SERVICE_MATCH_SQL})
+         )`,
+      [bizId, userId, bizId]
+    );
+    servicePrograms = rows;
+  } catch (err) {
+    console.error('my-programs service links skipped:', err.message);
+  }
 
   const seenKeys = new Set(expandedAssignments.map(a => `${a.program_id}:${a.service_id || ''}`));
   const combined = [...expandedAssignments];
@@ -7600,13 +7633,7 @@ router.get('/my-programs', async (req, res) => {
 
   const result = [];
   for (const a of combined) {
-    const [exs] = await db.query(
-      `SELECT pe.*, e.name AS exercise_name, e.muscle_group, e.animation_url, e.thumbnail_url, e.description AS exercise_description
-       FROM program_exercises pe
-       JOIN exercises e ON e.id=pe.exercise_id AND e.is_active=1
-       WHERE pe.program_id=? ORDER BY pe.sort_order`,
-      [a.program_id]
-    );
+    const exs = await loadProgramExercises(a.program_id);
     result.push({
       ...a,
       service_name: serviceNames.get(a.service_id) || null,
@@ -7615,6 +7642,10 @@ router.get('/my-programs', async (req, res) => {
     });
   }
   res.json(result);
+  } catch (err) {
+    console.error('my-programs', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message || 'Δεν φορτώθηκαν τα προγράμματα' });
+  }
 });
 
 router.post('/my-programs/:programId/check', async (req, res) => {

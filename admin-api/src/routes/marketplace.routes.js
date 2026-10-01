@@ -128,6 +128,7 @@ router.post('/:bizId/orders', softAuth, requireActiveCustomer, async (req, res) 
       [req.params.bizId],
     );
     if (!cfg?.feature_marketplace) {
+      await conn.rollback();
       return res.status(403).json({ error: 'Marketplace δεν είναι ενεργό' });
     }
 
@@ -152,14 +153,34 @@ router.post('/:bizId/orders', softAuth, requireActiveCustomer, async (req, res) 
       lineItems.push({ product, qty });
     }
 
+    const delivery = delivery_method === 'shipping' ? 'shipping' : 'pickup';
+    let shippingCents = 0;
+    if (delivery === 'shipping') {
+      if (!String(shipping_address || '').trim()) {
+        throw Object.assign(new Error('Συμπλήρωσε διεύθυνση αποστολής'), { status: 400 });
+      }
+      const [[settings]] = await conn.query(
+        'SELECT shipping_json FROM marketplace_settings WHERE business_id = ?',
+        [req.params.bizId],
+      );
+      const shipping = settings?.shipping_json ? JSON.parse(settings.shipping_json) : {};
+      if (!shipping.enabled) {
+        throw Object.assign(new Error('Η αποστολή δεν είναι διαθέσιμη'), { status: 400 });
+      }
+      const rate = Number(shipping.flat_rate_cents) || 0;
+      const threshold = Number(shipping.free_threshold_cents) || 0;
+      shippingCents = threshold > 0 && totalCents >= threshold ? 0 : rate;
+      totalCents += shippingCents;
+    }
+
     // Create order
     const orderId = uuidv4();
     await conn.query(`
       INSERT INTO orders (id, business_id, user_id, status, total_cents, notes, payment_method, customer_name, customer_phone, shipping_address, delivery_method, source)
       VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, 'app')
     `, [orderId, req.params.bizId, req.user.userId, totalCents, notes || null,
-        payment_method || 'pickup', customer_name || null, customer_phone || null,
-        shipping_address || null, delivery_method || 'pickup']);
+        payment_method || 'cash', customer_name || null, customer_phone || null,
+        shipping_address || null, delivery]);
 
     for (const { product, qty } of lineItems) {
       await conn.query(`
@@ -177,7 +198,7 @@ router.post('/:bizId/orders', softAuth, requireActiveCustomer, async (req, res) 
     }
 
     let paymentInfo = null;
-    if (cfg.feature_online_payments && totalCents > 0) {
+    if (payment_method === 'stripe' && cfg.feature_online_payments && totalCents > 0) {
       const [[user]] = await conn.query('SELECT email, full_name FROM users WHERE id = ?', [req.user.userId]);
       try {
         const intent = await createPaymentIntent(conn, req.params.bizId, {
@@ -203,10 +224,11 @@ router.post('/:bizId/orders', softAuth, requireActiveCustomer, async (req, res) 
 
     await conn.commit();
     return res.status(201).json({
-      order_id:    orderId,
-      total_cents: totalCents,
-      status:      'pending',
-      payment:     paymentInfo,
+      order_id:       orderId,
+      total_cents:    totalCents,
+      shipping_cents: shippingCents,
+      status:         'pending',
+      payment:        paymentInfo,
     });
   } catch (err) {
     await conn.rollback();
@@ -556,8 +578,11 @@ router.get('/:bizId/mobile-settings', async (req, res) => {
       'SELECT payment_methods_json, shipping_json FROM marketplace_settings WHERE business_id = ?',
       [req.params.bizId],
     );
-    const paymentMethods = row?.payment_methods_json ? JSON.parse(row.payment_methods_json) : { cash: true, pickup: true };
-    return res.json({ payment_methods: paymentMethods });
+    const paymentMethods = row?.payment_methods_json
+      ? JSON.parse(row.payment_methods_json)
+      : { cash: true, card: true, stripe: false, bank_transfer: false };
+    const shipping = row?.shipping_json ? JSON.parse(row.shipping_json) : { enabled: false };
+    return res.json({ payment_methods: paymentMethods, shipping });
   } catch (err) { return res.status(500).json({ error: err.message }); }
 });
 

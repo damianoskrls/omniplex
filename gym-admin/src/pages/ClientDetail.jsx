@@ -97,6 +97,8 @@ export default function ClientDetail() {
   const [memberFile, setMemberFile] = useState(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [locationIds, setLocationIds] = useState([]);
+  const [clientBookings, setClientBookings] = useState([]);
+  const [tab, setTab] = useState('profile');
   const [editForm, setEditForm] = useState({
     total_sessions: 10,
     used_sessions: 0,
@@ -147,6 +149,30 @@ export default function ClientDetail() {
   );
 
   const allGymPackagesActive = gymPackageOptions.length > 0 && selectableGymPackages.length === 0;
+
+  const clientStats = useMemo(() => {
+    const now = new Date();
+    let upcoming = 0;
+    let attended = 0;
+    let trials = 0;
+    let noShows = 0;
+    let next = null;
+    for (const booking of clientBookings) {
+      if (booking.status === 'cancelled') continue;
+      if (booking.is_trial === 1 || booking.is_trial === true) trials += 1;
+      if (booking.status === 'no_show') noShows += 1;
+      const start = new Date(booking.starts_at);
+      if (Number.isNaN(start.getTime())) continue;
+      if (start >= now && booking.status !== 'no_show') {
+        upcoming += 1;
+        if (!next || start < new Date(next.starts_at)) next = booking;
+      } else if (booking.attendance_confirmed || booking.status === 'completed') {
+        attended += 1;
+      }
+    }
+    const activePackages = visibleCredits.filter((credit) => !['expired', 'cancelled'].includes(credit.access_state || 'active')).length;
+    return { upcoming, attended, trials, noShows, next, activePackages };
+  }, [clientBookings, visibleCredits]);
 
   const openSubscription = () => {
     setActivateTrialMembership(null);
@@ -231,7 +257,12 @@ export default function ClientDetail() {
   };
 
   const load = async () => {
-    const [clientRes, clientsRes, creditsRes, optionsRes, paymentsRes, locRes, progRes, allProgRes] = await Promise.all([
+    const day = (offset) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offset);
+      return d.toISOString().slice(0, 10);
+    };
+    const [clientRes, clientsRes, creditsRes, optionsRes, paymentsRes, locRes, progRes, allProgRes, bookingsRes] = await Promise.all([
       api.get(`/client-admin/clients/${id}`),
       api.get('/client-admin/clients'),
       api.get(`/client-admin/clients/${id}/credits`),
@@ -240,6 +271,7 @@ export default function ClientDetail() {
       api.get(`/client-admin/clients/${id}/locations`).catch(() => ({ data: [] })),
       api.get(`/client-admin/clients/${id}/programs`).catch(() => ({ data: [] })),
       api.get('/client-admin/programs').catch(() => ({ data: [] })),
+      api.get('/client-admin/bookings', { params: { user_id: id, from: day(-365), to: day(180) } }).catch(() => ({ data: [] })),
     ]);
     setClient(clientRes.data);
     setAllClients(clientsRes.data.filter(c => c.id !== id));
@@ -250,10 +282,14 @@ export default function ClientDetail() {
     setLocationIds(locRes.data || []);
     setClientPrograms(progRes.data || []);
     setAllPrograms(allProgRes.data || []);
+    setClientBookings(bookingsRes.data || []);
     api.get(`/member/admin/${id}`).then(r => setMemberFile(r.data)).catch(() => setMemberFile(null));
   };
 
-  useEffect(() => { load().catch(() => navigate('/clients')); }, [id]);
+  useEffect(() => {
+    setTab('profile');
+    load().catch(() => navigate('/clients'));
+  }, [id]);
 
   const updateClientStatus = async (status) => {
     const labels = { active: 'εγκρίθηκε', suspended: 'απενεργοποιήθηκε' };
@@ -465,6 +501,48 @@ export default function ClientDetail() {
         </div>
       )}
 
+      <div style={{ position: 'sticky', top: 0, zIndex: 4, background: 'var(--bg)', paddingBottom: 8, marginBottom: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 10 }}>
+          {[
+            ['Επερχόμενες', clientStats.upcoming],
+            ['Παρουσίες', clientStats.attended],
+            ['Δοκιμαστικά', clientStats.trials],
+            ['Απόντες', clientStats.noShows],
+            ['Ενεργά πακέτα', clientStats.activePackages],
+          ].map(([label, value]) => (
+            <div key={label} className="card" style={{ margin: 0, padding: '10px 12px' }}>
+              <div className="text-muted" style={{ fontSize: '0.75rem' }}>{label}</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.2 }}>{value}</div>
+            </div>
+          ))}
+        </div>
+        {clientStats.next && (
+          <div className="text-muted" style={{ fontSize: '0.82rem', marginBottom: 8 }}>
+            Επόμενη κράτηση: {fmtDateTime(clientStats.next.starts_at)} · {clientStats.next.service_name || '—'}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+          {[
+            ['profile', 'Προφίλ'],
+            ['health', 'Υγεία'],
+            ['packages', 'Πακέτα'],
+            ['bookings', 'Κρατήσεις'],
+            ['programs', 'Προγράμματα'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`btn btn-sm ${tab === id ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === 'profile' && (
+      <>
       {!isDeleted && (
       <div
         className="card"
@@ -665,8 +743,10 @@ export default function ClientDetail() {
           <Save size={14} /> {savingProfile ? 'Αποθήκευση...' : 'Αποθήκευση προφίλ'}
         </button>
       </div>
+      </>
+      )}
 
-      {memberFile && (
+      {tab === 'health' && (memberFile ? (
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
             <div style={{ fontWeight: 800 }}>Κάρτα υγείας & πρώτη εγγραφή</div>
@@ -733,8 +813,12 @@ export default function ClientDetail() {
             onSaved={setMemberFile}
           />
         </div>
-      )}
+      ) : (
+        <div className="card text-muted">Δεν υπάρχει ακόμα κάρτα υγείας.</div>
+      ))}
 
+      {tab === 'packages' && (
+      <>
       <div className="page-header">
         <div>
           <h2 className="page-title" style={{ margin: 0 }}>Πακέτα</h2>
@@ -986,18 +1070,21 @@ export default function ClientDetail() {
           </div>
         )}
       </div>
+      </>
+      )}
 
-      {client && (
+      {tab === 'bookings' && client && (
         <ClientBookingsSection
           userId={id}
           clientName={client.full_name}
           memberships={visibleCredits}
+          bookings={clientBookings}
           showCharts
           onReload={load}
         />
       )}
 
-      {/* Programs section */}
+      {tab === 'programs' && (
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1033,6 +1120,7 @@ export default function ClientDetail() {
           </div>
         )}
       </div>
+      )}
 
       {/* Program assign modal */}
       {programAssignOpen && (

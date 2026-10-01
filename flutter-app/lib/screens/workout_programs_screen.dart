@@ -279,8 +279,11 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
           ? all.where((p) => _programMatchesService(p, widget.serviceId)).toList()
           : all;
       if (mounted) setState(() { _programs = _mergePrograms(filtered); _loading = false; });
-    } on ApiException catch (e) {
-      if (mounted) setState(() { _error = e.message; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() {
+        _error = e is ApiException ? e.message : 'Δεν φορτώθηκαν τα προγράμματα';
+        _loading = false;
+      });
     }
   }
 

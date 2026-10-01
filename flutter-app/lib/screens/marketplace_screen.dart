@@ -1,6 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/omni_design.dart';
+import 'package:provider/provider.dart';
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
+import '../theme/app_colors.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({super.key});
@@ -10,90 +16,269 @@ class MarketplaceScreen extends StatefulWidget {
 }
 
 class _MarketplaceScreenState extends State<MarketplaceScreen> {
-  static const _kBorder26 = Color(0xFF262626);
-  static const _kGray6B = Color(0xFF6B7280);
-  static const _kGray9C = Color(0xFF9CA3AF);
-  static const _kDark16 = Color(0xFF161616);
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _products = [];
+  Map<String, dynamic> _settings = {};
+  String _query = '';
+  String _category = 'Όλα';
+  final Map<String, int> _cart = {};
 
-  int _activeFilter = 0;
-  final _filters = ['ALL', 'SUPPLEMENTS', 'APPAREL', 'ACCESSORIES'];
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final api = context.read<AuthService>().api;
+      final products = await api.fetchMarketplaceProducts();
+      Map<String, dynamic> settings = {};
+      try { settings = await api.fetchMarketplaceSettings(); } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _products = products;
+        _settings = settings;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e is ApiException ? e.message : 'Δεν φορτώθηκε το κατάστημα';
+        _loading = false;
+      });
+    }
+  }
+
+  int get _cartCount => _cart.values.fold(0, (sum, n) => sum + n);
+
+  List<String> get _categories {
+    final names = _products
+        .map((p) => (p['category'] as String?)?.trim() ?? '')
+        .where((c) => c.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return ['Όλα', ...names];
+  }
+
+  List<Map<String, dynamic>> get _visible {
+    final q = _query.trim().toLowerCase();
+    return _products.where((p) {
+      final cat = (p['category'] as String?)?.trim() ?? '';
+      if (_category != 'Όλα' && cat != _category) return false;
+      if (q.isEmpty) return true;
+      final name = (p['name'] as String? ?? '').toLowerCase();
+      final desc = (p['description'] as String? ?? '').toLowerCase();
+      return name.contains(q) || desc.contains(q);
+    }).toList();
+  }
+
+  void _add(Map<String, dynamic> product, {int qty = 1}) {
+    final id = product['id']?.toString() ?? '';
+    if (id.isEmpty) return;
+    final stock = product['stock'];
+    final next = (_cart[id] ?? 0) + qty;
+    if (stock is num && next > stock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Δεν υπάρχει άλλο απόθεμα')),
+      );
+      return;
+    }
+    setState(() => _cart[id] = next);
+  }
+
+  void _setQty(String id, int qty) {
+    setState(() {
+      if (qty <= 0) {
+        _cart.remove(id);
+      } else {
+        _cart[id] = qty;
+      }
+    });
+  }
+
+  Map<String, dynamic>? _productById(String id) {
+    for (final p in _products) {
+      if (p['id']?.toString() == id) return p;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final accent = context.tenantPrimary;
     return Scaffold(
-      backgroundColor: kBg,
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 96),
-            child: Column(
-              children: [
-                _buildHeader(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                  child: Column(
-                    children: [
-                      _buildSearchAndFilters(),
-                      const SizedBox(height: 32),
-                      _buildProductGrid(),
-                      const SizedBox(height: 32),
-                      _buildPromoBanner(),
-                    ],
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('Κατάστημα', style: GoogleFonts.manrope(
+                      color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
                   ),
-                ),
-              ],
+                  IconButton(
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => const _MyOrdersPage(),
+                    )),
+                    icon: const Icon(Icons.receipt_long_outlined, color: Colors.white),
+                  ),
+                  IconButton(
+                    onPressed: _cart.isEmpty ? null : () => _openCart(accent),
+                    icon: Badge(
+                      isLabelVisible: _cartCount > 0,
+                      label: Text('$_cartCount'),
+                      child: const Icon(Icons.shopping_bag_outlined, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(child: _body(accent)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _body(Color accent) {
+    if (_loading) return Center(child: CircularProgressIndicator(color: accent));
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_error!, textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: _load, child: const Text('Ξανά')),
+            ],
+          ),
+        ),
+      );
+    }
+    final items = _visible;
+    return RefreshIndicator(
+      color: accent,
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+        children: [
+          TextField(
+            onChanged: (v) => setState(() => _query = v),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Αναζήτηση προϊόντος',
+              hintStyle: const TextStyle(color: AppColors.textSecondary),
+              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
             ),
           ),
-          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomNav()),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _categories.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                final name = _categories[i];
+                final on = name == _category;
+                return GestureDetector(
+                  onTap: () => setState(() => _category = name),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: on ? accent : AppColors.surface,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(name, style: GoogleFonts.manrope(
+                      fontSize: 12, fontWeight: FontWeight.w700,
+                      color: on ? AppColors.onFill(accent) : AppColors.textSecondary)),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 48),
+              child: Text('Δεν υπάρχουν προϊόντα', textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary)),
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.68,
+              ),
+              itemCount: items.length,
+              itemBuilder: (_, i) => _card(items[i], accent),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return SafeArea(
+  Widget _card(Map<String, dynamic> product, Color accent) {
+    final stock = product['stock'];
+    final out = stock is num && stock <= 0;
+    return GestureDetector(
+      onTap: () => _openProduct(product, accent),
       child: Container(
-        color: kBg.withValues(alpha: 0.80),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: _kDark16,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+            Expanded(child: _photo(product['image_url'] as String?)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product['name']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(child: Text(_eur(product['price_cents']),
+                        style: GoogleFonts.manrope(color: accent, fontWeight: FontWeight.w800))),
+                      if (out)
+                        const Text('Εξαντλήθηκε', style: TextStyle(color: AppColors.textSecondary, fontSize: 11))
+                      else
+                        GestureDetector(
+                          onTap: () => _add(product),
+                          child: CircleAvatar(
+                            radius: 14,
+                            backgroundColor: accent,
+                            child: Icon(Icons.add, size: 16, color: AppColors.onFill(accent)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
-              child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 20)),
-            ),
-            Text('MARKETPLACE', style: GoogleFonts.spaceGrotesk(
-              fontSize: 20, fontWeight: FontWeight.w800,
-              color: Colors.white, letterSpacing: 2.0)),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: _kDark16,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-                  ),
-                  child: const Center(child: Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 18)),
-                ),
-                Positioned(
-                  top: -4, right: -4,
-                  child: Container(
-                    width: 20, height: 20,
-                    decoration: const BoxDecoration(color: kCyan, shape: BoxShape.circle),
-                    child: Center(
-                      child: Text('3', style: GoogleFonts.manrope(
-                        fontSize: 10, fontWeight: FontWeight.w700, color: kBg)),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -101,282 +286,466 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
-  Widget _buildSearchAndFilters() {
-    return Column(
-      children: [
-        Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: _kDark16,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: 16),
-              const Icon(Icons.search, color: Color(0xFF9CA3AF), size: 18),
-              const SizedBox(width: 12),
-              Text('Search gear, supplements...', style: GoogleFonts.manrope(
-                fontSize: 14, color: _kGray9C)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 38,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _filters.length,
-            separatorBuilder: (context2, index2) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              final active = _activeFilter == i;
-              return GestureDetector(
-                onTap: () => setState(() => _activeFilter = i),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: active ? kLime : _kDark16,
-                    borderRadius: BorderRadius.circular(9999),
-                    border: active ? null : Border.all(color: Colors.white.withValues(alpha: 0.10)),
-                    boxShadow: active ? [BoxShadow(
-                      color: kLime.withValues(alpha: 0.20), blurRadius: 10)] : null,
-                  ),
-                  child: Text(_filters[i], style: GoogleFonts.manrope(
-                    fontSize: 11, fontWeight: FontWeight.w700,
-                    color: active ? kBg : _kGray9C, letterSpacing: 0.55)),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
+  Widget _photo(String? url) {
+    if (url == null || url.isEmpty) {
+      return const ColoredBox(
+        color: Color(0xFF121214),
+        child: Center(child: Icon(Icons.inventory_2_outlined, color: AppColors.textSecondary)),
+      );
+    }
+    return Image.network(url, fit: BoxFit.cover, width: double.infinity,
+      errorBuilder: (context, error, stack) => const ColoredBox(
+        color: Color(0xFF121214),
+        child: Center(child: Icon(Icons.broken_image_outlined, color: AppColors.textSecondary)),
+      ));
   }
 
-  Widget _buildProductGrid() {
-    final products = [
-      _Product('Iso-Whey Pro\nMax 2.2kg', 'SUPPLEMENTS', '€45.00', true),
-      _Product('Signature Elite\nTech Tee', 'APPAREL', '€25.00', false),
-      _Product('Stealth Shaker\n700ml', 'ACCESSORIES', '€12.00', false),
-      _Product('Pro-Series\nLeather Belt', 'EQUIPMENT', '€55.00', false),
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 0.62,
-      ),
-      itemCount: products.length,
-      itemBuilder: (_, i) => _buildProductCard(products[i]),
-    );
-  }
-
-  Widget _buildProductCard(_Product p) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0x66262626), Color(0x99161616)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Container(
-                height: 176,
-                color: const Color(0xFF161616),
-                child: Center(
-                  child: Icon(Icons.inventory_2_outlined,
-                    color: _kBorder26, size: 48),
-                ),
-              ),
-              if (p.isBestseller)
-                Positioned(
-                  top: 12, left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: kCyan.withValues(alpha: 0.20),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: kCyan.withValues(alpha: 0.30)),
-                    ),
-                    child: Text('Bestseller', style: GoogleFonts.manrope(
-                      fontSize: 9, fontWeight: FontWeight.w700,
-                      color: kCyan, letterSpacing: -0.45)),
-                  ),
-                ),
-            ],
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(p.category, style: GoogleFonts.manrope(
-                    fontSize: 10, fontWeight: FontWeight.w700, color: _kGray6B)),
-                  const SizedBox(height: 4),
-                  Text(p.name, style: GoogleFonts.manrope(
-                    fontSize: 14, fontWeight: FontWeight.w700,
-                    color: Colors.white, height: 1.25)),
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(p.price, style: GoogleFonts.spaceGrotesk(
-                        fontSize: 18, fontWeight: FontWeight.w700, color: kLime)),
-                      Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-                        ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 16),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: _kDark16,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-                    ),
-                    child: Text('VIEW', style: GoogleFonts.manrope(
-                      fontSize: 10, fontWeight: FontWeight.w700,
-                      color: Colors.white, letterSpacing: 1.0),
-                      textAlign: TextAlign.center),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPromoBanner() {
-    return Container(
-      height: 128,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0A1A00), Color(0xFF1A2A00)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                color: kBg.withValues(alpha: 0.40),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
+  void _openProduct(Map<String, dynamic> product, Color accent) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        var qty = 1;
+        final stock = product['stock'];
+        final out = stock is num && stock <= 0;
+        return StatefulBuilder(builder: (ctx, setLocal) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.viewInsetsOf(ctx).bottom),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('20% OFF ALL\nPROTEIN THIS WEEK', style: GoogleFonts.spaceGrotesk(
-                  fontSize: 20, fontWeight: FontWeight.w700,
-                  color: Colors.white, height: 1.25)),
-                const SizedBox(height: 4),
-                Text('USE CODE: OMNIPLEX20', style: GoogleFonts.manrope(
-                  fontSize: 10, fontWeight: FontWeight.w700,
-                  color: kLime, letterSpacing: 1.0)),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(height: 180, width: double.infinity, child: _photo(product['image_url'] as String?)),
+                ),
+                const SizedBox(height: 14),
+                Text(product['name']?.toString() ?? '', style: GoogleFonts.manrope(
+                  color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Text(_eur(product['price_cents']), style: GoogleFonts.manrope(
+                  color: accent, fontSize: 18, fontWeight: FontWeight.w800)),
+                if ((product['description'] as String?)?.isNotEmpty == true) ...[
+                  const SizedBox(height: 10),
+                  Text(product['description'].toString(), style: const TextStyle(color: AppColors.textSecondary)),
+                ],
+                if ((product['ingredients'] as String?)?.isNotEmpty == true) ...[
+                  const SizedBox(height: 8),
+                  Text('Συστατικά: ${product['ingredients']}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                ],
+                if ((product['usage_instructions'] as String?)?.isNotEmpty == true) ...[
+                  const SizedBox(height: 8),
+                  Text(product['usage_instructions'].toString(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    _qtyButton(Icons.remove, () { if (qty > 1) setLocal(() => qty--); }),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('$qty', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                    ),
+                    _qtyButton(Icons.add, () {
+                      if (stock is num && qty >= stock) return;
+                      setLocal(() => qty++);
+                    }),
+                    const Spacer(),
+                    FilledButton(
+                      onPressed: out ? null : () {
+                        _add(product, qty: qty);
+                        Navigator.pop(ctx);
+                      },
+                      style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: AppColors.onFill(accent)),
+                      child: Text(out ? 'Εξαντλήθηκε' : 'Στο καλάθι'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Widget _qtyButton(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 32, height: 32,
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
+        child: Icon(icon, color: Colors.white, size: 16),
+      ),
+    );
+  }
+
+  void _openCart(Color accent) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
+        final lines = _cart.entries.map((e) => (e.key, e.value, _productById(e.key))).where((e) => e.$3 != null).toList();
+        var cents = 0;
+        for (final line in lines) {
+          cents += ((line.$3!['price_cents'] as num?)?.toInt() ?? 0) * line.$2;
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Καλάθι', style: GoogleFonts.manrope(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              for (final line in lines)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(line.$3!['name']?.toString() ?? '', style: const TextStyle(color: Colors.white))),
+                      _qtyButton(Icons.remove, () { _setQty(line.$1, line.$2 - 1); setSheet(() {}); }),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('${line.$2}', style: const TextStyle(color: Colors.white)),
+                      ),
+                      _qtyButton(Icons.add, () { _add(line.$3!); setSheet(() {}); }),
+                    ],
+                  ),
+                ),
+              const Divider(color: AppColors.border),
+              Row(
+                children: [
+                  const Text('Σύνολο', style: TextStyle(color: AppColors.textSecondary)),
+                  const Spacer(),
+                  Text(_eur(cents), style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 18)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: lines.isEmpty ? null : () {
+                    Navigator.pop(ctx);
+                    _openCheckout(accent, cents);
+                  },
+                  style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: AppColors.onFill(accent)),
+                  child: const Text('Ολοκλήρωση'),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  void _openCheckout(Color accent, int subtotal) {
+    final user = context.read<AuthService>().user;
+    final name = TextEditingController(text: user?.fullName ?? '');
+    final phone = TextEditingController(text: user?.phone ?? '');
+    final address = TextEditingController();
+    final notes = TextEditingController();
+    final methods = _enabledMethods();
+    var method = methods.isEmpty ? 'cash' : methods.first;
+    final shipping = _settings['shipping'] is Map ? Map<String, dynamic>.from(_settings['shipping'] as Map) : <String, dynamic>{};
+    final shipOn = shipping['enabled'] == true;
+    var delivery = 'pickup';
+    var busy = false;
+
+    int shippingCents() {
+      if (delivery != 'shipping') return 0;
+      final rate = (shipping['flat_rate_cents'] as num?)?.toInt() ?? 0;
+      final threshold = (shipping['free_threshold_cents'] as num?)?.toInt() ?? 0;
+      if (threshold > 0 && subtotal >= threshold) return 0;
+      return rate;
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) {
+        final total = subtotal + shippingCents();
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.viewInsetsOf(ctx).bottom),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Παραγγελία', style: GoogleFonts.manrope(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 12),
+                _field(name, 'Ονοματεπώνυμο'),
+                _field(phone, 'Τηλέφωνο', type: TextInputType.phone),
+                const SizedBox(height: 8),
+                const Text('Παραλαβή', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                RadioListTile<String>(
+                  value: 'pickup', groupValue: delivery, activeColor: accent,
+                  title: const Text('Παραλαβή από το γυμναστήριο', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  onChanged: (v) => setLocal(() => delivery = v!),
+                ),
+                if (shipOn)
+                  RadioListTile<String>(
+                    value: 'shipping', groupValue: delivery, activeColor: accent,
+                    title: Text('Αποστολή · ${_eur(shippingCents())}', style: const TextStyle(color: Colors.white, fontSize: 14)),
+                    subtitle: (shipping['estimated_days'] ?? '').toString().isEmpty
+                        ? null
+                        : Text('Παράδοση ${shipping['estimated_days']}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    onChanged: (v) => setLocal(() => delivery = v!),
+                  ),
+                if (delivery == 'shipping') _field(address, 'Διεύθυνση'),
+                const SizedBox(height: 8),
+                const Text('Πληρωμή', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                for (final key in (methods.isEmpty ? ['cash'] : methods))
+                  RadioListTile<String>(
+                    value: key, groupValue: method, activeColor: accent,
+                    title: Text(_methodLabel(key), style: const TextStyle(color: Colors.white, fontSize: 14)),
+                    onChanged: (v) => setLocal(() => method = v!),
+                  ),
+                _field(notes, 'Σημειώσεις'),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text('Πληρωτέο', style: TextStyle(color: AppColors.textSecondary)),
+                    const Spacer(),
+                    Text(_eur(total), style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 18)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: busy ? null : () async {
+                      if (name.text.trim().isEmpty || phone.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Συμπλήρωσε όνομα και τηλέφωνο')));
+                        return;
+                      }
+                      setLocal(() => busy = true);
+                      final ok = await _place(
+                        method: method,
+                        delivery: delivery,
+                        name: name.text.trim(),
+                        phone: phone.text.trim(),
+                        address: address.text.trim(),
+                        notes: notes.text.trim(),
+                      );
+                      if (!ctx.mounted) return;
+                      setLocal(() => busy = false);
+                      if (ok) Navigator.pop(ctx);
+                    },
+                    style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: AppColors.onFill(accent)),
+                    child: Text(busy ? 'Αποστολή…' : 'Καταχώρηση'),
+                  ),
+                ),
               ],
             ),
           ),
-        ],
+        );
+      }),
+    );
+  }
+
+  Widget _field(TextEditingController c, String label, {TextInputType? type}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: c,
+        keyboardType: type,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: AppColors.textSecondary),
+          filled: true,
+          fillColor: const Color(0xFF121214),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        ),
       ),
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        color: kBg.withValues(alpha: 0.95),
-        border: const Border(top: BorderSide(color: Color(0xFF262626))),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavItem(Icons.home_rounded, 'HOME', false),
-          _buildNavItem(Icons.storefront_outlined, 'SHOP', true),
-          _buildNavItem(Icons.calendar_today, 'SCHEDULE', false),
-          _buildNavItem(Icons.fitness_center_outlined, 'WORKOUTS', false),
-          _buildProfileNav(),
-        ],
-      ),
-    );
+  List<String> _enabledMethods() {
+    final raw = _settings['payment_methods'];
+    if (raw is! Map) return ['cash', 'card'];
+    const order = ['cash', 'card', 'bank_transfer', 'stripe'];
+    return order.where((k) => raw[k] == true).toList();
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool active) {
-    return SizedBox(
-      width: 60,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: active ? kLime : _kGray6B, size: 22),
-          const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
-            fontSize: 9, fontWeight: FontWeight.w700,
-            color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
-        ],
-      ),
-    );
+  String _methodLabel(String key) {
+    switch (key) {
+      case 'card': return 'Κάρτα στο κατάστημα';
+      case 'stripe': return 'Κάρτα online';
+      case 'bank_transfer': return 'Τραπεζική κατάθεση';
+      default: return 'Μετρητά στο κατάστημα';
+    }
   }
 
-  Widget _buildProfileNav() {
-    return SizedBox(
-      width: 60,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 24, height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: _kGray6B),
-              color: const Color(0xFF3A3C42),
-            ),
-            child: const Icon(Icons.person, color: Colors.white, size: 14),
+  Future<bool> _place({
+    required String method,
+    required String delivery,
+    required String name,
+    required String phone,
+    required String address,
+    required String notes,
+  }) async {
+    try {
+      final api = context.read<AuthService>().api;
+      final items = _cart.entries.map((e) => {'product_id': e.key, 'qty': e.value}).toList();
+      final result = await api.placeMarketplaceOrder(
+        items,
+        notes: notes,
+        paymentMethod: method,
+        customerName: name,
+        customerPhone: phone,
+        shippingAddress: delivery == 'shipping' ? address : null,
+        deliveryMethod: delivery,
+      );
+      final payment = result['payment'];
+      if (payment is Map && payment['client_secret'] != null) {
+        Stripe.publishableKey = payment['publishable_key']?.toString() ?? '';
+        await Stripe.instance.initPaymentSheet(
+          paymentSheetParameters: SetupPaymentSheetParameters(
+            paymentIntentClientSecret: payment['client_secret'].toString(),
+            merchantDisplayName: 'OmniPlex',
+            style: ThemeMode.dark,
           ),
-          const SizedBox(height: 4),
-          Text('PROFILE', style: GoogleFonts.manrope(
-            fontSize: 9, fontWeight: FontWeight.w700,
-            color: _kGray6B, letterSpacing: 0.9)),
-        ],
+        );
+        await Stripe.instance.presentPaymentSheet();
+      }
+      if (!mounted) return true;
+      setState(_cart.clear);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Η παραγγελία καταχωρήθηκε')),
+      );
+      return true;
+    } on StripeException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε. Η παραγγελία έμεινε σε εκκρεμότητα.')),
+        );
+      }
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e is ApiException ? e.message : 'Η παραγγελία δεν καταχωρήθηκε')),
+        );
+      }
+      return false;
+    }
+  }
+}
+
+class _MyOrdersPage extends StatefulWidget {
+  const _MyOrdersPage();
+
+  @override
+  State<_MyOrdersPage> createState() => _MyOrdersPageState();
+}
+
+class _MyOrdersPageState extends State<_MyOrdersPage> {
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _orders = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final rows = await context.read<AuthService>().api.fetchMyMarketplaceOrders();
+      if (!mounted) return;
+      setState(() { _orders = rows; _loading = false; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e is ApiException ? e.message : 'Δεν φορτώθηκαν οι παραγγελίες';
+        _loading = false;
+      });
+    }
+  }
+
+  String _status(String? raw) {
+    switch (raw) {
+      case 'paid': return 'Πληρώθηκε';
+      case 'processing': return 'Σε επεξεργασία';
+      case 'fulfilled': return 'Παραδόθηκε';
+      case 'cancelled': return 'Ακυρώθηκε';
+      case 'refunded': return 'Επιστράφηκε';
+      default: return 'Εκκρεμεί';
+    }
+  }
+
+  List<Map<String, dynamic>> _items(dynamic raw) {
+    dynamic value = raw;
+    if (value is String && value.isNotEmpty) {
+      try { value = jsonDecode(value); } catch (_) { return []; }
+    }
+    if (value is! List) return [];
+    return value.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.tenantPrimary;
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        foregroundColor: Colors.white,
+        title: const Text('Οι παραγγελίες μου'),
       ),
+      body: _loading
+          ? Center(child: CircularProgressIndicator(color: accent))
+          : _error != null
+              ? Center(child: Text(_error!, style: const TextStyle(color: AppColors.textSecondary)))
+              : _orders.isEmpty
+                  ? const Center(child: Text('Δεν έχεις παραγγελίες', style: TextStyle(color: AppColors.textSecondary)))
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _orders.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 10),
+                      itemBuilder: (_, i) {
+                        final order = _orders[i];
+                        final lines = _items(order['items']);
+                        return Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(_status(order['status']?.toString()),
+                                    style: TextStyle(color: accent, fontWeight: FontWeight.w800)),
+                                  const Spacer(),
+                                  Text(_eur(order['total_cents']), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              for (final line in lines)
+                                Text('${line['qty'] ?? 1} × ${line['name'] ?? ''}',
+                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
     );
   }
 }
 
-class _Product {
-  final String name;
-  final String category;
-  final String price;
-  final bool isBestseller;
-  const _Product(this.name, this.category, this.price, this.isBestseller);
+String _eur(dynamic cents) {
+  final n = (cents is num) ? cents.toInt() : int.tryParse('$cents') ?? 0;
+  return '€${(n / 100).toStringAsFixed(2)}';
 }
