@@ -1,10 +1,9 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
+const { r2Multer } = require('../lib/r2_upload');
 const { FITNESS_GOAL_LABELS, normalizeFitnessGoal } = require('../lib/client_profile');
 const { createUserNotification } = require('../lib/user_notifications');
 const { sqlActiveClients } = require('../lib/client_soft_delete');
@@ -215,25 +214,16 @@ router.put('/:bizId/health', requireMember, async (req, res) => {
   }
 });
 
-const upload = multer({
-  storage: multer.diskStorage({
-    destination(req, _file, cb) {
-      const bizId = req.params.bizId || req.bizId;
-      const userId = req.member?.userId || req.params.userId;
-      const dir = path.join(process.env.UPLOAD_DIR || './uploads', bizId, 'health', userId);
-      fs.mkdirSync(dir, { recursive: true });
-      cb(null, dir);
-    },
-    filename(_req, file, cb) {
-      const ext = path.extname(file.originalname || '').toLowerCase().slice(0, 8) || '.jpg';
-      cb(null, `${Date.now()}${ext}`);
-    },
-  }),
-  limits: { fileSize: 8 * 1024 * 1024 },
-  fileFilter(_req, file, cb) {
-    const ok = /^(image\/(jpeg|png|webp|heic)|application\/pdf)$/.test(file.mimetype);
-    cb(ok ? null : new Error('Μόνο φωτογραφία ή PDF'), ok);
+const healthUpload = r2Multer({
+  keyFn(req, file) {
+    const bizId = req.params.bizId || req.bizId;
+    const userId = req.member?.userId || req.params.userId;
+    const ext = path.extname(file.originalname || '').toLowerCase().replace(/[^.a-z0-9]/g, '').slice(0, 8) || '.jpg';
+    const kind = file.fieldname === 'document' ? 'document' : 'photo';
+    return `uploads/${bizId}/health/${userId}/${kind}-${Date.now()}${ext}`;
   },
+  allowedMimes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'],
+  maxSizeMb: 8,
 });
 
 function storeHealthUpload(field, urlCol, nameCol) {
@@ -242,16 +232,16 @@ function storeHealthUpload(field, urlCol, nameCol) {
     throw new Error('Invalid health upload column');
   }
   return (req, res) => {
-    upload.single(field)(req, res, async (err) => {
+    healthUpload.single(field)(req, res, async (err) => {
       if (err) return res.status(400).json({ error: err.message || 'Αποτυχία ανεβάσματος' });
-      if (!req.file) return res.status(400).json({ error: 'Δεν επιλέχθηκε αρχείο' });
+      if (!req.file?.publicUrl) return res.status(400).json({ error: 'Μόνο JPG, PNG, WEBP ή PDF' });
       if (req.bizId && !(await ownsUser(req.bizId, req.params.userId))) {
         return res.status(404).json({ error: 'Ο πελάτης δεν βρέθηκε' });
       }
       const bizId = req.params.bizId || req.bizId;
       const userId = req.member?.userId || req.params.userId;
-      const url = `/uploads/${bizId}/health/${userId}/${req.file.filename}`;
-      const name = req.file.originalname || req.file.filename;
+      const url = req.file.publicUrl;
+      const name = req.file.originalname || path.basename(req.file.key || 'file');
       const cols = nameCol ? `${urlCol}, ${nameCol}` : urlCol;
       const marks = nameCol ? '?, ?' : '?';
       const update = nameCol

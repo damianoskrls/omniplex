@@ -687,9 +687,7 @@ export default function ClientDetail() {
               )}
             </div>
           </div>
-          {memberFile.health?.photo_url && (
-            <img src={mediaUrl(memberFile.health.photo_url)} alt="" style={{ width: 96, height: 120, objectFit: 'cover', borderRadius: 10, marginBottom: 12 }} />
-          )}
+          <HealthPhoto url={memberFile.health?.photo_url} />
           {!memberFile.intake_completed ? (
             <div className="text-muted">Ο πελάτης δεν έχει συμπληρώσει ακόμα το ερωτηματολόγιο εγγραφής.</div>
           ) : (
@@ -1330,6 +1328,27 @@ export default function ClientDetail() {
         </div>
       )}
     </Layout>
+  );
+}
+
+function HealthPhoto({ url }) {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => { setBroken(false); }, [url]);
+  if (!url) return null;
+  if (broken) {
+    return (
+      <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)', color: '#b45309', fontSize: '0.86rem' }}>
+        Η φωτογραφία δεν φορτώνει. Ανέβασέ την ξανά από το κουμπί «Φωτογραφία πελάτη».
+      </div>
+    );
+  }
+  return (
+    <img
+      src={mediaUrl(url)}
+      alt=""
+      onError={() => setBroken(true)}
+      style={{ width: 96, height: 120, objectFit: 'cover', borderRadius: 10, marginBottom: 12, border: '1px solid var(--border)' }}
+    />
   );
 }
 

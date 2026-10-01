@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import BookingsGroupedView from '../components/BookingsGroupedView';
 import CreateBookingModal from '../components/CreateBookingModal';
 import TimeInput from '../components/ui/TimeInput';
 import TrialBookingModal from '../components/TrialBookingModal';
-import DropInBookingModal from '../components/DropInBookingModal';
 import api from '../api/client';
+import { displayClientName } from '../utils/clientName';
 import toast from 'react-hot-toast';
 import { Pencil, ChevronLeft, ChevronRight, Plus, CalendarOff, Trash2, MapPin, Search, X, FlaskConical, Zap, AlertCircle } from 'lucide-react';
 import { groupBookingsBySlot, slotKey } from '../utils/groupBookingsBySlot';
@@ -63,7 +63,6 @@ export default function Bookings() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [dropInOpen, setDropInOpen] = useState(false);
   const [showClosures, setShowClosures] = useState(false);
   const [closures, setClosures] = useState([]);
   const [closureForm, setClosureForm] = useState({ date_from: '', date_to: '', time_from: '', time_to: '', reason: '' });
@@ -555,7 +554,10 @@ export default function Bookings() {
                           }}
                         >
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{b.user_name}</div>
+                            <div style={{ fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {displayClientName(b.user_name)}
+                              {(b.is_trial === 1 || b.is_trial === true) && <span className="bk-trial-label">Δοκιμαστικό</span>}
+                            </div>
                             <div className="text-muted" style={{ fontSize: '0.78rem' }}>{b.staff_name}</div>
                           </div>
                           <button className="btn btn-secondary btn-sm" onClick={() => openEdit(b)}>
@@ -631,9 +633,9 @@ export default function Bookings() {
           <button type="button" className="btn btn-secondary" onClick={() => { setTrialPresetClient(null); setTrialModalOpen(true); }}>
             <FlaskConical size={16} /> Νέο Δοκιμαστικό
           </button>
-          <button type="button" className="btn btn-secondary" onClick={() => setDropInOpen(true)}>
+          <Link to="/dropin" className="btn btn-secondary">
             <Zap size={16} /> Drop-in
-          </button>
+          </Link>
           <button type="button" className="btn btn-primary" onClick={() => openCreate()}>
             <Plus size={16} /> Νέα κράτηση
           </button>
@@ -850,7 +852,10 @@ export default function Bookings() {
                       <div className="text-muted">{b.duration_mins} λεπτά</div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{b.user_name}</div>
+                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {displayClientName(b.user_name)}
+                        {(b.is_trial === 1 || b.is_trial === true) && <span className="bk-trial-label">Δοκιμαστικό</span>}
+                      </div>
                       <div className="text-muted">{b.user_phone || '—'}</div>
                     </td>
                     <td>{b.service_name}</td>
@@ -887,13 +892,6 @@ export default function Bookings() {
           )}
         </div>
       )}
-
-      <DropInBookingModal
-        open={dropInOpen}
-        onClose={() => setDropInOpen(false)}
-        onSuccess={load}
-        initialDate={date}
-      />
 
       <CreateBookingModal
         open={creating}

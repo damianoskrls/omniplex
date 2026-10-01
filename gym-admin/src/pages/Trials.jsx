@@ -9,6 +9,7 @@ import {
 import TimeInput from '../components/ui/TimeInput';
 import StoreFilter from '../components/StoreFilter';
 import TrialSlotPicker from '../components/TrialSlotPicker';
+import { displayClientName } from '../utils/clientName';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function toDateKey(d) { return d.toISOString().slice(0, 10); }
@@ -421,7 +422,7 @@ function TrialCard({ r, slotIndex, slotTotal, staffList, onEdit, onDelete, onRep
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Avatar name={r.user_name} size={32} color="#7C3AED" />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{r.user_name || '— Χωρίς πελάτη —'}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{displayClientName(r.user_name)}</div>
               {r.user_phone && <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{r.user_phone}</div>}
             </div>
           </div>

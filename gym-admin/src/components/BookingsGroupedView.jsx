@@ -3,6 +3,7 @@ import Avatar from './ui/Avatar';
 import { hashColor, initials, mediaUrl } from '../utils/media';
 import { groupBookingsBySlot, slotKey } from '../utils/groupBookingsBySlot';
 import { filterGymBookings, filterGymServices, isGymService } from '../utils/gym_services';
+import { displayClientName } from '../utils/clientName';
 
 function parseTime(startsAt) {
   const d = new Date(startsAt);
@@ -10,9 +11,8 @@ function parseTime(startsAt) {
 }
 
 function groupKey(booking, groupBy) {
-  if (groupBy === 'service') return booking.service_id;
   if (groupBy === 'staff') return booking.staff_id;
-  return booking.room_name || '__none__';
+  return booking.service_id;
 }
 
 function groupMeta(booking, groupBy, catalogs) {
@@ -36,13 +36,12 @@ function groupMeta(booking, groupBy, catalogs) {
       accent: booking.color_hex || member?.color_hex || '#607D8B',
     };
   }
-  const room = booking.room_name || 'Χωρίς αίθουσα';
   return {
-    id: booking.room_name || '__none__',
-    label: room,
-    image: null,
-    subtitle: 'Αίθουσα / χώρος',
-    accent: hashColor(room),
+    id: booking.service_id,
+    label: booking.service_name,
+    image: booking.service_image_url,
+    subtitle: booking.schedule_label || `${booking.duration_mins} λεπτά`,
+    accent: '#76C043',
   };
 }
 
@@ -118,11 +117,8 @@ function EntityAvatar({ groupBy, item, size = 48, large = false }) {
     return <img src={img} alt={item.label} style={style} />;
   }
 
-  const bg = groupBy === 'room'
-    ? `linear-gradient(135deg, ${item.accent}, ${hashColor(item.label, 45, 35)})`
-    : `linear-gradient(135deg, ${item.accent}, ${hashColor(item.label, 50, 55)})`;
-
-  const Icon = groupBy === 'room' ? MapPin : groupBy === 'staff' ? User : Dumbbell;
+  const bg = `linear-gradient(135deg, ${item.accent}, ${hashColor(item.label, 50, 55)})`;
+  const Icon = groupBy === 'staff' ? User : Dumbbell;
 
   return (
     <div
@@ -137,7 +133,7 @@ function EntityAvatar({ groupBy, item, size = 48, large = false }) {
         fontSize: large ? '1.5rem' : '1rem',
       }}
     >
-      {groupBy === 'staff' || groupBy === 'service' ? initials(item.label) : <Icon size={large ? 28 : 20} />}
+      {initials(item.label) || <Icon size={large ? 28 : 20} />}
     </div>
   );
 }
@@ -171,14 +167,16 @@ function needsAttendanceConfirm(booking) {
 function ParticipantChip({ booking, onEdit, onDelete, onConfirmAttendance, confirmingId }) {
   const showAttendance = needsAttendanceConfirm(booking) && onConfirmAttendance;
   const busy = confirmingId === booking.id;
+  const name = displayClientName(booking.user_name);
+  const trial = booking.is_trial === 1 || booking.is_trial === true;
 
   return (
-    <div className="bk-participant-chip">
-      <Avatar name={booking.user_name} image={booking.user_avatar_url} size={34} />
-      <span className="bk-participant-chip__name" title={booking.user_name}>
-        {booking.user_name}
+    <div className={`bk-participant-chip ${trial ? 'is-trial' : ''}`}>
+      <Avatar name={name} image={booking.user_avatar_url} size={34} />
+      <span className="bk-participant-chip__name" title={name}>
+        {name}
       </span>
-      {booking.is_trial ? <span className="badge badge-yellow bk-participant-chip__badge">Δοκ.</span> : null}
+      {trial ? <span className="bk-trial-label">Δοκιμαστικό</span> : null}
       {booking.attendance_confirmed ? (
         <span className="badge badge-green bk-participant-chip__badge" title="Παρουσία">
           <QrCode size={10} />
@@ -241,7 +239,7 @@ function SlotBlock({ slot, groupBy, onEdit, onDelete, locationName, onConfirmAtt
   const metaParts = [];
   if (groupBy !== 'service') metaParts.push(slot.service_name);
   if (groupBy !== 'staff') metaParts.push(slot.staff_name);
-  if (groupBy !== 'room' && slot.room_name) metaParts.push(slot.room_name);
+  if (slot.room_name) metaParts.push(slot.room_name);
   if (slot.schedule_label) metaParts.push(slot.schedule_label);
 
   return (
@@ -302,8 +300,9 @@ export default function BookingsGroupedView({
   }));
   const gymWaitlist = waitlist.filter((w) => isGymService({ name: w.service_name, category: w.service_category }));
   const gymCatalogs = { ...catalogs, services: filterGymServices(catalogs.services || []) };
-  const groups = buildGroups(gymBookings, groupBy, gymCatalogs);
-  const filterOptions = buildFilterOptions(gymBookings, groupBy, gymCatalogs);
+  const mode = groupBy === 'staff' ? 'staff' : 'service';
+  const groups = buildGroups(gymBookings, mode, gymCatalogs);
+  const filterOptions = buildFilterOptions(gymBookings, mode, gymCatalogs);
   const activeGroup = filterId
     ? filterOptions.find(g => String(g.id) === String(filterId))
     : null;
@@ -312,22 +311,20 @@ export default function BookingsGroupedView({
   const groupLabels = {
     service: 'Υπηρεσία',
     staff: 'Προσωπικό',
-    room: 'Αίθουσα',
   };
 
   return (
     <div className="bk-grouped">
       <div className="bk-group-tabs">
-        {(['service', 'staff', 'room']).map(key => (
+        {(['service', 'staff']).map(key => (
           <button
             key={key}
             type="button"
-            className={`bk-group-tab ${groupBy === key ? 'active' : ''}`}
+            className={`bk-group-tab ${mode === key ? 'active' : ''}`}
             onClick={() => onGroupByChange(key)}
           >
             {key === 'service' && <Dumbbell size={16} />}
             {key === 'staff' && <User size={16} />}
-            {key === 'room' && <MapPin size={16} />}
             {groupLabels[key]}
           </button>
         ))}
@@ -354,7 +351,7 @@ export default function BookingsGroupedView({
             className={`bk-filter-chip ${String(filterId) === String(item.id) ? 'active' : ''} ${!item.bookings.length ? 'empty' : ''}`}
             onClick={() => onFilterChange(item.id)}
           >
-            <EntityAvatar groupBy={groupBy} item={item} size={44} />
+            <EntityAvatar groupBy={mode} item={item} size={44} />
             <div>
               <div className="bk-filter-chip-label">{item.label}</div>
               <div className="bk-filter-chip-sub">
@@ -369,7 +366,7 @@ export default function BookingsGroupedView({
 
       {activeGroup && (
         <div className="bk-hero">
-          <EntityAvatar groupBy={groupBy} item={activeGroup} large />
+          <EntityAvatar groupBy={mode} item={activeGroup} large />
           <div>
             <div className="bk-hero-title">{activeGroup.label}</div>
             <div className="bk-hero-sub">
@@ -388,7 +385,7 @@ export default function BookingsGroupedView({
         <section key={group.id} className="bk-group-section">
           {!activeGroup && (
             <div className="bk-group-header">
-              <EntityAvatar groupBy={groupBy} item={group} size={52} />
+              <EntityAvatar groupBy={mode} item={group} size={52} />
               <div>
                 <div className="bk-group-title">{group.label}</div>
                 <div className="bk-group-sub">
@@ -406,7 +403,7 @@ export default function BookingsGroupedView({
               <SlotBlock
                 key={slotKey(slot)}
                 slot={{ ...slot, location_name: slotLocation }}
-                groupBy={groupBy}
+                groupBy={mode}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 locationName={slotLocation}
@@ -435,7 +432,7 @@ export default function BookingsGroupedView({
               />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700 }}>{parseTime(w.starts_at)} — {w.service_name}</div>
-                <div className="text-muted">{w.user_name} · θέση #{w.position}</div>
+                <div className="text-muted">{displayClientName(w.user_name)} · θέση #{w.position}</div>
               </div>
               <span className={`badge ${w.status === 'offered' ? 'badge-green' : 'badge-yellow'}`}>
                 {w.status === 'offered' ? 'Προσφέρθηκε' : 'Αναμονή'}

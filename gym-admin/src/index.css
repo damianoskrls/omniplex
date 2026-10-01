@@ -1613,6 +1613,26 @@ button.badge { cursor: pointer; }
   max-width: 130px;
 }
 
+.bk-participant-chip.is-trial {
+  background: #fff7ed;
+  border: 1.5px solid #f59e0b;
+  padding: 6px 10px 6px 5px;
+}
+.bk-participant-chip.is-trial .bk-participant-chip__name {
+  font-weight: 800;
+  max-width: 220px;
+}
+.bk-trial-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #451a03;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
 .bk-participant-chip__badge { padding: 2px 5px; font-size: 0.63rem; }
 .bk-participant-chip__meta { font-size: 0.7rem; color: var(--success); font-weight: 600; white-space: nowrap; }
 .bk-participant-chip__actions { display: none; align-items: center; gap: 3px; margin-left: 2px; }

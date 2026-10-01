@@ -15,6 +15,7 @@ import TrialBookingModal from '../components/TrialBookingModal';
 import CreateBookingModal from '../components/CreateBookingModal';
 import ExpiringMembershipsModal from '../components/ExpiringMembershipsModal';
 import StoreFilter from '../components/StoreFilter';
+import { displayClientName } from '../utils/clientName';
 
 const KPI_STYLES = [
   { glow: '#76C043', icon: Calendar },
@@ -334,7 +335,7 @@ export default function Dashboard() {
                   <div key={t.id} className="dash-trial-row">
                     <FlaskConical size={14} style={{ color: '#76C043', flexShrink: 0, marginTop: 2 }} />
                     <div className="dash-trial-row__info" style={{ flex: 1 }}>
-                      <span className="dash-trial-row__name">{t.user_name || '— Χωρίς πελάτη —'}</span>
+                      <span className="dash-trial-row__name">{displayClientName(t.user_name)}</span>
                       <span className="dash-trial-row__meta">
                         {new Date(t.starts_at).toLocaleDateString('el-GR', { day: 'numeric', month: 'short' })}
                         {' · '}
@@ -469,10 +470,11 @@ export default function Dashboard() {
                                 key={b.id}
                                 to={`/bookings?id=${b.id}`}
                                 className="dash-slot-person"
-                                title={b.user_name}
+                                title={displayClientName(b.user_name)}
                               >
-                                <Avatar name={b.user_name} image={b.user_avatar_url} size={32} />
-                                <span className="dash-slot-person__name">{b.user_name}</span>
+                                <Avatar name={displayClientName(b.user_name)} image={b.user_avatar_url} size={32} />
+                                <span className="dash-slot-person__name">{displayClientName(b.user_name)}</span>
+                                {(b.is_trial === 1 || b.is_trial === true) && <span className="bk-trial-label">Δοκιμαστικό</span>}
                                 <span className={`badge ${STATUS_BADGE[b.status] || 'badge-gray'}`}>
                                   {STATUS_LABEL[b.status] || b.status}
                                 </span>

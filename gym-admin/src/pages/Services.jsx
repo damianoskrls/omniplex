@@ -13,6 +13,7 @@ function ImageUploadBox({ label, accept, currentUrl, onUpload, onRemove, hint })
   const inputRef = useRef();
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(null);
+  useEffect(() => { setPreview(null); }, [currentUrl]);
 
   const handleFile = async (file) => {
     if (!file) return;
@@ -111,6 +112,7 @@ export default function Services() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiPreview, setAiPreview] = useState(null);
   const [aiImporting, setAiImporting] = useState(false);
+  const [generatingId, setGeneratingId] = useState(null);
   const aiInputRef = useRef();
 
   const WEEKDAY_NAMES = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
@@ -256,6 +258,22 @@ export default function Services() {
     }
   };
 
+  const generateImage = async (serviceId) => {
+    setGeneratingId(serviceId);
+    try {
+      const r = await api.post(`/client-admin/services/${serviceId}/generate-image`);
+      if (editingService?.id === serviceId) {
+        setEditingService(prev => prev ? { ...prev, image_url: r.data.image_url } : prev);
+      }
+      toast.success('Η εικόνα δημιουργήθηκε από το όνομα');
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Το AI δεν έφτιαξε εικόνα');
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
   const uploadImage = async (file, serviceId) => {
     const fd = new FormData();
     fd.append('image', file);
@@ -374,10 +392,10 @@ export default function Services() {
             {services.map(s => (
               <tr key={s.id} style={{ verticalAlign: 'middle' }}>
                 <td style={{ width: 48, verticalAlign: 'middle' }}>
-                  {s.icon_svg_url ? (
-                    <img src={mediaUrl(s.icon_svg_url)} alt="" style={{ width: 36, height: 36, display: 'block' }} />
-                  ) : s.image_url ? (
+                  {s.image_url ? (
                     <img src={mediaUrl(s.image_url)} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                  ) : s.icon_svg_url ? (
+                    <img src={mediaUrl(s.icon_svg_url)} alt="" style={{ width: 36, height: 36, display: 'block' }} />
                   ) : (
                     <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: 18 }}>
                       🏋️
@@ -408,6 +426,18 @@ export default function Services() {
                     <Link to={`/services/${s.id}/schedule`} className="btn btn-secondary btn-sm" title="AI Εισαγωγή προγράμματος από εικόνα" style={{ color: '#a855f7', borderColor: '#e9d5ff', background: '#faf5ff' }}>
                       <Sparkles size={14} /> AI
                     </Link>
+                    {!s.image_url && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        title="Δημιουργία εικόνας από το όνομα, χωρίς ανέβασμα"
+                        disabled={generatingId === s.id}
+                        onClick={() => generateImage(s.id)}
+                        style={{ color: '#7c3aed', borderColor: '#ddd6fe', background: '#f5f3ff' }}
+                      >
+                        <Sparkles size={14} /> {generatingId === s.id ? '...' : 'Εικόνα'}
+                      </button>
+                    )}
                     <button className="btn btn-secondary btn-sm" onClick={() => openEdit(s)}><Pencil size={14} /></button>
                     <button className="btn btn-danger btn-sm" onClick={() => remove(s.id)}><Trash2 size={14} /></button>
                   </div>
@@ -530,6 +560,20 @@ export default function Services() {
                         onRemove={() => removeSvg(editingService.id)}
                         hint="Upload δικό σου animated SVG"
                       />
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={generatingId === editingService.id}
+                        onClick={() => generateImage(editingService.id)}
+                        style={{ color: '#7c3aed', borderColor: '#ddd6fe', background: '#f5f3ff' }}
+                      >
+                        <Sparkles size={14} /> {generatingId === editingService.id ? 'Δημιουργία…' : 'Δημιούργησε εικόνα με AI'}
+                      </button>
+                      <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: 4 }}>
+                        Από το όνομα της υπηρεσίας, χωρίς να ανεβάσεις αρχείο.
+                      </div>
                     </div>
                   </div>
 
