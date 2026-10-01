@@ -197,6 +197,10 @@ class GlobalAuthService extends ChangeNotifier {
       );
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body) as Map<String, dynamic>;
+        if (body['user'] is Map) {
+          _user = GlobalUser.fromJson(body['user'] as Map<String, dynamic>);
+          await _storage.write(key: _kGlobalUser, value: jsonEncode(_user!.toJson()));
+        }
         final list = (body['gyms'] as List?) ?? [];
         _gyms = list.map((e) => GlobalGym.fromJson(e as Map<String, dynamic>)).toList();
         await _storage.write(key: _kGlobalGyms, value: jsonEncode(_gyms.map((g) => g.toJson()).toList()));
@@ -229,6 +233,30 @@ class GlobalAuthService extends ChangeNotifier {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 200) throw body['error'] ?? 'Link failed';
     await refreshGyms();
+  }
+
+  Future<Map<String, dynamic>> claimGym(String businessId) async {
+    if (_token == null) throw 'Not logged in';
+    final res = await http.post(
+      Uri.parse('$_apiBase/global/gyms/claim'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_token'},
+      body: jsonEncode({'business_id': businessId}),
+    );
+    final body = jsonDecode(res.body);
+    if (body is! Map<String, dynamic>) throw 'Η προσθήκη απέτυχε';
+    if (res.statusCode != 200) throw body['error'] ?? 'Η προσθήκη απέτυχε';
+    if (body['user'] is Map) {
+      _user = GlobalUser.fromJson(body['user'] as Map<String, dynamic>);
+      await _storage.write(key: _kGlobalUser, value: jsonEncode(_user!.toJson()));
+    }
+    if (body['gyms'] is List) {
+      _gyms = (body['gyms'] as List)
+          .map((e) => GlobalGym.fromJson(e as Map<String, dynamic>))
+          .toList();
+      await _storage.write(key: _kGlobalGyms, value: jsonEncode(_gyms.map((g) => g.toJson()).toList()));
+    }
+    notifyListeners();
+    return body;
   }
 
   Future<Map<String, dynamic>> submitJoinRequest({

@@ -26,10 +26,12 @@ class PhoneOtpLoginScreen extends StatefulWidget {
     super.key,
     required this.globalAuth,
     required this.onLoggedIn,
+    this.skipProfile = false,
   });
 
   final GlobalAuthService globalAuth;
   final VoidCallback onLoggedIn;
+  final bool skipProfile;
 
   @override
   State<PhoneOtpLoginScreen> createState() => _PhoneOtpLoginScreenState();
@@ -182,7 +184,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     // Treat empty name or the default "Χρήστης XXXX" pattern as missing
     final hasName = name.isNotEmpty &&
         !RegExp(r'^Χρήστης\s+\d+$').hasMatch(name);
-    if (isNew || !hasName) {
+    if (!widget.skipProfile && (isNew || !hasName)) {
       _goProfileDetails();
     } else {
       widget.onLoggedIn();

@@ -46,6 +46,7 @@ class GymProfileScreen extends StatefulWidget {
     this.onLoggedIn,
     this.onEnterGym,
     this.onRequestSent,
+    this.onGymAdded,
     this.onPurchaseComplete,
     this.initialTab = 0,
   });
@@ -57,6 +58,7 @@ class GymProfileScreen extends StatefulWidget {
   final VoidCallback? onLoggedIn;
   final void Function(TenantConfig)? onEnterGym;
   final VoidCallback? onRequestSent;
+  final VoidCallback? onGymAdded;
   final PurchaseComplete? onPurchaseComplete;
   final int initialTab;
 
@@ -160,9 +162,55 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     } catch (_) {}
   }
 
+  bool get _showAddGym => !_canEnter && !_memberPending && !_staffPending;
+
+  Future<void> _addToMyGyms() async {
+    if (widget.globalAuth == null || !widget.globalAuth!.isLoggedIn) {
+      _showLoginPrompt(
+        title: 'Προσθήκη στα γυμναστήριά μου',
+        body: 'Βάλε το κινητό σου και τον κωδικό OTP. Αν σε έχει ήδη περάσει ο διαχειριστής, το γυμναστήριο μπαίνει αμέσως στη λίστα σου.',
+        skipProfile: true,
+        afterLogin: _addToMyGyms,
+      );
+      return;
+    }
+    final bizId = _gym?['business_id'] as String?;
+    if (bizId == null) return;
+
+    setState(() => _joiningGym = true);
+    Map<String, dynamic> claim;
+    try {
+      claim = await widget.globalAuth!.claimGym(bizId);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _joiningGym = false);
+        _showError(e.toString());
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _joiningGym = false);
+    if (claim['status'] == 'linked') {
+      if (!_profileReady() && mounted) await _collectProfile();
+      if (!mounted) return;
+      widget.onGymAdded?.call();
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
+
+    if (!await _collectProfile() || !mounted) return;
+    await _requestJoin();
+  }
+
   Future<void> _requestJoin() async {
     if (widget.globalAuth == null || !widget.globalAuth!.isLoggedIn) {
-      _showLoginPrompt(); return;
+      _showLoginPrompt(
+        title: 'Προσθήκη στα γυμναστήριά μου',
+        body: 'Βάλε το κινητό σου και τον κωδικό OTP. Αν σε έχει ήδη περάσει ο διαχειριστής, το γυμναστήριο μπαίνει αμέσως στη λίστα σου.',
+        skipProfile: true,
+        afterLogin: _addToMyGyms,
+      );
+      return;
     }
     final bizId = _gym?['business_id'] as String?;
     if (bizId == null) return;
@@ -279,7 +327,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                _canEnter ? 'Φαίνονται μόνο ρόλοι που δεν έχεις ήδη' : 'Επέλεξε τον ρόλο σου σε αυτό το γυμναστήριο',
+                _canEnter ? 'Φαίνονται μόνο ρόλοι που δεν έχεις ήδη' : 'Διάλεξε τον ρόλο για το αίτημα προς τον διαχειριστή',
                 style: const TextStyle(fontSize: 13, color: Color(0xFF9A9CA3))),
             ),
             const SizedBox(height: 20),
@@ -355,7 +403,11 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         await _loadJoinStatus();
         await widget.globalAuth!.refreshGyms();
         if (!mounted) return;
-        widget.onRequestSent?.call();
+        if (body['status'] == 'linked') {
+          widget.onGymAdded?.call();
+        } else {
+          widget.onRequestSent?.call();
+        }
         Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
         final err = body['message'] ?? body['error'] ?? 'Σφάλμα';
@@ -527,6 +579,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         bizId: bizId,
         serviceId: serviceId,
         serviceName: offer['name'] as String? ?? 'Drop-in',
+        gymName: _gym?['app_name'] as String? ?? _gym?['name'] as String? ?? widget.gymName,
         locationId: locationId,
         priceCents: (offer['drop_in_price_cents'] as num?)?.toInt() ?? 0,
         globalAuth: widget.globalAuth!,
@@ -673,6 +726,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   void _showLoginPrompt({
     String title = 'Απαιτείται σύνδεση',
     String body = 'Συνδέσου ή δημιούργησε λογαριασμό για να στείλεις αίτημα εγγραφής.',
+    bool skipProfile = false,
     VoidCallback? afterLogin,
   }) {
     final navigator = Navigator.of(context);
@@ -700,6 +754,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
             navigator.push(MaterialPageRoute(
               builder: (_) => PhoneOtpLoginScreen(
                 globalAuth: widget.globalAuth!,
+                skipProfile: skipProfile,
                 onLoggedIn: () {
                   // Pop OTP/profile/role screens back to this gym profile
                   navigator.popUntil((route) => route == myRoute);
@@ -1568,10 +1623,18 @@ class _GymProfileScreenState extends State<GymProfileScreen>
             ],
             if (!_canEnter && !_memberPending && !_staffPending)
               Expanded(
-                child: _limeButton('Δες Πακέτα', () => _tabCtrl.animateTo(2)),
+                child: _outlineButton('Δες Πακέτα', () => _tabCtrl.animateTo(2)),
               ),
           ]),
-        if (_canRequest) ...[
+        if (_showAddGym) ...[
+          const SizedBox(height: 10),
+          _limeButton(
+            'Προσθήκη στα γυμναστήριά μου',
+            _joiningGym ? null : _addToMyGyms,
+            icon: Icons.add_circle_outline,
+          ),
+        ],
+        if (_canEnter && _canRequest) ...[
           const SizedBox(height: 10),
           GestureDetector(
             onTap: _joiningGym ? null : _requestJoin,
@@ -1583,16 +1646,9 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                 border: Border.all(color: _kBorder),
               ),
               alignment: Alignment.center,
-              child: _joiningGym
-                ? const SizedBox(width: 18, height: 18,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    const Icon(Icons.add_circle_outline, color: Colors.white, size: 16),
-                    const SizedBox(width: 6),
-                    Text('Αίτημα έγκρισης',
-                      style: GoogleFonts.manrope(
-                        fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                  ]),
+              child: Text('Αίτημα για νέο ρόλο',
+                style: GoogleFonts.manrope(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
             ),
           ),
         ],
@@ -1730,6 +1786,7 @@ class _DropInBookSheet extends StatefulWidget {
     required this.bizId,
     required this.serviceId,
     required this.serviceName,
+    required this.gymName,
     required this.locationId,
     required this.priceCents,
     required this.globalAuth,
@@ -1740,6 +1797,7 @@ class _DropInBookSheet extends StatefulWidget {
   final String bizId;
   final String serviceId;
   final String serviceName;
+  final String gymName;
   final String? locationId;
   final int priceCents;
   final GlobalAuthService globalAuth;
@@ -1752,10 +1810,14 @@ class _DropInBookSheet extends StatefulWidget {
 class _DropInBookSheetState extends State<_DropInBookSheet> {
   DateTime _date = DateTime.now();
   List<Map<String, dynamic>> _slots = [];
+  Map<String, dynamic>? _selected;
   bool _loading = true;
   bool _booking = false;
   String? _message;
   bool _sought = false;
+
+  static const _weekdays = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
+  static const _months = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
 
   @override
   void initState() {
@@ -1766,8 +1828,15 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
   String _ymd(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  String _slotTime(Map<String, dynamic> slot) {
+    final raw = slot['time']?.toString() ?? '';
+    return raw.length >= 5 ? raw.substring(0, 5) : raw;
+  }
+
+  String _dateLabel(DateTime d) => '${_weekdays[d.weekday - 1]} ${d.day} ${_months[d.month - 1]}';
+
   Future<void> _load({bool seek = false}) async {
-    setState(() { _loading = true; _message = null; _slots = []; });
+    setState(() { _loading = true; _message = null; _slots = []; _selected = null; });
     try {
       final uri = Uri.parse('${widget.apiBase}/booking/${widget.bizId}/slots').replace(
         queryParameters: {
@@ -1815,6 +1884,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
       }
       setState(() {
         _slots = slots;
+        _selected = null;
         _message = null;
       });
     } catch (_) {
@@ -1836,9 +1906,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ${gymToken ?? widget.globalAuth.token}',
       };
-      final time = (slot['time'] as String? ?? '').length >= 5
-          ? (slot['time'] as String).substring(0, 5)
-          : slot['time'];
+      final time = _slotTime(slot);
       final staff = slot['available_staff'];
       final staffId = staff is List && staff.isNotEmpty ? staff.first['id'] : null;
       String? intentId;
@@ -1912,15 +1980,17 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
   Widget build(BuildContext context) {
     final euros = (widget.priceCents / 100).toStringAsFixed(widget.priceCents % 100 == 0 ? 0 : 2);
     final days = List.generate(14, (i) => DateTime.now().add(Duration(days: i)));
+    final selectedTime = _selected == null ? null : _slotTime(_selected!);
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
         color: const Color(0xFF16171B),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFF2A2B30)),
       ),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         Center(child: Container(width: 36, height: 4,
           decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
         const SizedBox(height: 14),
@@ -1955,55 +2025,91 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
           ),
         ),
         const SizedBox(height: 12),
-        if (_booking)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-              SizedBox(width: 10),
-              Text('Ολοκλήρωση πληρωμής…', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-            ]),
-          )
-        else if (_loading)
+        if (_loading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(child: CircularProgressIndicator(color: Colors.white)),
           )
-        else ...[
-          if (_message != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(_message!, style: GoogleFonts.manrope(color: Color(0xFFF87171), height: 1.35)),
-            ),
-          if (_slots.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                _message == null ? 'Δεν υπάρχουν ώρες αυτή την ημέρα' : '',
-                style: GoogleFonts.manrope(color: const Color(0xFF9A9CA3)),
-              ),
-            )
-          else
+        else if (_slots.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('Δεν υπάρχουν ώρες αυτή την ημέρα',
+              style: GoogleFonts.manrope(color: const Color(0xFF9A9CA3))),
+          )
+        else
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final slot in _slots)
               GestureDetector(
-                onTap: _booking ? null : () => _confirm(slot),
+                onTap: _booking ? null : () => setState(() { _selected = slot; _message = null; }),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0A0A0A),
+                    gradient: _slotTime(slot) == selectedTime ? kBrandGradient : null,
+                    color: _slotTime(slot) == selectedTime ? null : const Color(0xFF0A0A0A),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF2A2B30)),
+                    border: Border.all(color: _slotTime(slot) == selectedTime
+                        ? Colors.transparent
+                        : const Color(0xFF2A2B30)),
                   ),
-                  child: Text((slot['time'] as String? ?? '').length >= 5
-                      ? (slot['time'] as String).substring(0, 5)
-                      : (slot['time']?.toString() ?? ''),
+                  child: Text(_slotTime(slot),
                     style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
               ),
           ]),
+        if (_selected != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0A0A),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF2A2B30)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Σύνοψη', style: GoogleFonts.manrope(
+                fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9A9CA3))),
+              const SizedBox(height: 8),
+              Text('Drop-in · ${widget.serviceName}', style: GoogleFonts.manrope(
+                fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+              const SizedBox(height: 4),
+              Text(widget.gymName, style: GoogleFonts.manrope(fontSize: 14, color: Colors.white)),
+              const SizedBox(height: 4),
+              Text('${_dateLabel(_date)} · $selectedTime', style: GoogleFonts.manrope(
+                fontSize: 14, color: const Color(0xFF9A9CA3))),
+              const SizedBox(height: 4),
+              Text('€$euros', style: GoogleFonts.manrope(
+                fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+            ]),
+          ),
+          if (_message != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(_message!, style: GoogleFonts.manrope(color: const Color(0xFFF87171), height: 1.35)),
+            ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: _booking ? null : () => _confirm(_selected!),
+            child: Container(
+              height: 52,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: _booking ? null : kBrandGradient,
+                color: _booking ? Colors.white24 : null,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: _booking
+                ? const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                    SizedBox(width: 10),
+                    Text('Ολοκλήρωση πληρωμής…', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                  ])
+                : Text('Πληρωμή €$euros', style: GoogleFonts.manrope(
+                    fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+          ),
         ],
-      ]),
+      ])),
     );
   }
 }

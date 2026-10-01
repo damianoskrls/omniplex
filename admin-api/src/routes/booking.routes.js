@@ -2126,12 +2126,16 @@ async function linkGlobalBuyer(conn, req, bizId, locationId) {
       await replaceUserLocations(conn, userId, [locationId]);
     }
   }
-  await conn.query(
-    `UPDATE gym_join_requests
-     SET status = 'approved', resolved_at = NOW()
-     WHERE global_user_id = ? AND business_id = ? AND role = 'member' AND status = 'pending'`,
-    [globalUserId, bizId],
-  );
+  try {
+    await conn.query(
+      `UPDATE gym_join_requests
+       SET status = 'approved'
+       WHERE global_user_id = ? AND business_id = ? AND role = 'member' AND status = 'pending'`,
+      [globalUserId, bizId],
+    );
+  } catch (err) {
+    console.warn('dropin join approve skipped:', err.message);
+  }
   req.user.userId = userId;
   req.user.businessId = bizId;
   req.user.fullName = gu.full_name || req.user.fullName;

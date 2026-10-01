@@ -27,6 +27,7 @@ class DiscoveryLandingScreen extends StatefulWidget {
     required this.onLoggedIn,
     this.onEnterGym,
     this.onRequestSent,
+    this.onGymAdded,
     this.onPurchaseComplete,
     this.hideHeader = false,
   });
@@ -35,6 +36,7 @@ class DiscoveryLandingScreen extends StatefulWidget {
   final VoidCallback onLoggedIn;
   final void Function(TenantConfig)? onEnterGym;
   final VoidCallback? onRequestSent;
+  final VoidCallback? onGymAdded;
   final PurchaseComplete? onPurchaseComplete;
   final bool hideHeader;
 
@@ -226,6 +228,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         onLoggedIn: widget.onLoggedIn,
         onEnterGym: widget.onEnterGym,
         onRequestSent: widget.onRequestSent,
+        onGymAdded: widget.onGymAdded,
         onPurchaseComplete: widget.onPurchaseComplete,
       ),
     ));

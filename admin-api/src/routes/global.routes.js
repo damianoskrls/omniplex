@@ -744,9 +744,82 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
 // ============================================================
 // NOTE: the earlier /auth/register handler above handles creation.
 // This extra route handles POST-registration gym linking after creation:
+function placeholderName(name) {
+  const value = String(name || '').trim();
+  return !value || /^Χρήστης\s+\d+$/.test(value);
+}
+
+async function claimExistingGym(globalUserId, businessId) {
+  const [[gu]] = await db.query(
+    'SELECT id, phone, email, full_name FROM global_users WHERE id = ?',
+    [globalUserId],
+  );
+  if (!gu) return null;
+  const digits = String(gu.phone || '').replace(/\D/g, '');
+  if (digits.length < 10) return null;
+
+  const [members] = await db.query(
+    `SELECT id, full_name, email, phone FROM users
+     WHERE business_id = ? AND deleted_at IS NULL
+       AND (global_user_id IS NULL OR global_user_id = ?)
+       AND ${phoneLast10Eq('phone')}`,
+    [businessId, globalUserId, digits],
+  );
+  const [staffRows] = await db.query(
+    `SELECT id, full_name, phone FROM staff
+     WHERE business_id = ? AND is_active = 1
+       AND (global_user_id IS NULL OR global_user_id = ?)
+       AND ${phoneLast10Eq('phone')}`,
+    [businessId, globalUserId, digits],
+  );
+  if (!members.length && !staffRows.length) return null;
+
+  for (const member of members) {
+    await db.query(
+      'UPDATE users SET global_user_id = ? WHERE id = ?',
+      [globalUserId, member.id],
+    );
+  }
+  for (const staff of staffRows) {
+    await db.query(
+      'UPDATE staff SET global_user_id = ? WHERE id = ?',
+      [globalUserId, staff.id],
+    );
+  }
+
+  await copyStoredProfile(globalUserId);
+  await db.query(
+    `UPDATE gym_join_requests SET status = 'approved'
+     WHERE global_user_id = ? AND business_id = ? AND status = 'pending'`,
+    [globalUserId, businessId],
+  );
+
+  const [[user]] = await db.query(
+    'SELECT id, email, full_name, phone FROM global_users WHERE id = ?',
+    [globalUserId],
+  );
+  const gyms = await getGymsForGlobalUser(globalUserId);
+  return { status: 'linked', user, gyms, message: 'Το γυμναστήριο προστέθηκε με τα στοιχεία που έχει ήδη ο διαχειριστής.' };
+}
+
+// POST /api/global/gyms/claim  (auth)
+// If this phone already exists as a client or staff member, link it now.
+router.post('/gyms/claim', requireGlobal, async (req, res) => {
+  const businessId = req.body?.business_id;
+  if (!businessId) return res.status(400).json({ error: 'business_id required' });
+  try {
+    const claimed = await claimExistingGym(req.globalUser.globalUserId, businessId);
+    if (!claimed) return res.json({ status: 'not_found' });
+    return res.json(claimed);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/global/join-requests  (auth)
 // Body: { business_id }
-// Creates a join request or auto-links if matching phone/email exists
+// Creates a join request, or links an existing admin-created record.
 // ============================================================
 router.post('/join-requests', requireGlobal, async (req, res) => {
   const { business_id, role = 'member', location_id, full_name: formName, phone: formPhone, email: formEmail, date_of_birth, specialty } = req.body;
@@ -1483,13 +1556,13 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
 
     if (existJR.length) {
       await conn.query(
-        "UPDATE gym_join_requests SET status='approved', role='member', resolved_at=NOW(), location_id=COALESCE(?, location_id) WHERE id=?",
+        "UPDATE gym_join_requests SET status='approved', role='member', location_id=COALESCE(?, location_id) WHERE id=?",
         [location_id || null, existJR[0].id],
       );
     } else {
       await conn.query(
-        `INSERT INTO gym_join_requests (id, global_user_id, business_id, status, role, location_id, resolved_at)
-         VALUES (?,?,?,'approved','member',?,NOW())`,
+        `INSERT INTO gym_join_requests (id, global_user_id, business_id, status, role, location_id)
+         VALUES (?,?,?,'approved','member',?)`,
         [require('uuid').v4(), globalUser.id, biz.id, location_id || null],
       );
     }
@@ -1549,6 +1622,50 @@ async function autoLinkGlobalUser(globalUserId, phone, email) {
          AND LOWER(TRIM(email)) = LOWER(TRIM(?))`,
       [globalUserId, email],
     );
+  }
+  await copyStoredProfile(globalUserId);
+}
+
+async function copyStoredProfile(globalUserId) {
+  try {
+    const [[gu]] = await db.query('SELECT full_name, email FROM global_users WHERE id = ?', [globalUserId]);
+    if (!gu) return;
+    const nameDone = !placeholderName(gu.full_name);
+    const emailDone = String(gu.email || '').trim().length > 0;
+    if (nameDone && emailDone) return;
+    const [members] = await db.query(
+      `SELECT full_name, email FROM users
+       WHERE global_user_id = ? AND deleted_at IS NULL`,
+      [globalUserId],
+    );
+    let staffRows = [];
+    try {
+      [staffRows] = await db.query(
+        `SELECT full_name, portal_email AS email FROM staff
+         WHERE global_user_id = ? AND is_active = 1`,
+        [globalUserId],
+      );
+    } catch (err) {
+      if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+      [staffRows] = await db.query(
+        `SELECT full_name, NULL AS email FROM staff
+         WHERE global_user_id = ? AND is_active = 1`,
+        [globalUserId],
+      );
+    }
+    const source = [...members, ...staffRows].find((row) => String(row.full_name || '').trim());
+    if (!source) return;
+    if (!nameDone && String(source.full_name || '').trim()) {
+      await db.query('UPDATE global_users SET full_name = ? WHERE id = ?', [source.full_name.trim(), globalUserId]);
+    }
+    if (!emailDone && String(source.email || '').trim()) {
+      await db.query(
+        `UPDATE global_users SET email = ? WHERE id = ? AND (email IS NULL OR email = '')`,
+        [source.email.trim(), globalUserId],
+      );
+    }
+  } catch (err) {
+    console.warn('profile copy skipped:', err.message);
   }
 }
 

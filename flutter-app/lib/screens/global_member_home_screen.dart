@@ -118,6 +118,14 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     );
   }
 
+  void _onGymAdded() {
+    _loadDashboard();
+    _openTab(3);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Το γυμναστήριο προστέθηκε στα Gyms σου, με τα στοιχεία που έχει ο διαχειριστής.')),
+    );
+  }
+
   Future<void> _onPurchaseComplete({
     required String message,
     required String businessId,
@@ -361,6 +369,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
           _DiscoverTab(
             globalAuth: widget.globalAuth,
             onRequestSent: _onJoinRequestSent,
+            onGymAdded: _onGymAdded,
             onPurchaseComplete: _onPurchaseComplete,
           ),
           _ScheduleTab(
@@ -1816,10 +1825,12 @@ class _DiscoverTab extends StatelessWidget {
   const _DiscoverTab({
     required this.globalAuth,
     required this.onRequestSent,
+    required this.onGymAdded,
     required this.onPurchaseComplete,
   });
   final GlobalAuthService globalAuth;
   final VoidCallback onRequestSent;
+  final VoidCallback onGymAdded;
   final PurchaseComplete onPurchaseComplete;
 
   @override
@@ -1828,6 +1839,7 @@ class _DiscoverTab extends StatelessWidget {
       globalAuth: globalAuth,
       onLoggedIn: () {},
       onRequestSent: onRequestSent,
+      onGymAdded: onGymAdded,
       onPurchaseComplete: onPurchaseComplete,
       hideHeader: true,
     );
