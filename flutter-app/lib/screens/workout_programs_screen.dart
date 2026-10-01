@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../l10n/app_strings.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/health_workout_service.dart';
 import '../theme/app_colors.dart';
 
 bool _isVideoUrl(String? url) {
@@ -99,10 +100,11 @@ class _MediaThumbState extends State<_MediaThumb> {
   }
 }
 
-/// Full-size media: plays video with controls, or shows image.
+/// Full-size media. Video starts only after a tap and stops when disposed.
 class _MediaFull extends StatefulWidget {
-  const _MediaFull({required this.url});
+  const _MediaFull({super.key, required this.url, this.paused = false});
   final String url;
+  final bool paused;
   @override
   State<_MediaFull> createState() => _MediaFullState();
 }
@@ -110,24 +112,50 @@ class _MediaFull extends StatefulWidget {
 class _MediaFullState extends State<_MediaFull> {
   VideoPlayerController? _ctrl;
   bool _initialized = false;
+  bool _started = false;
 
   @override
-  void initState() {
-    super.initState();
-    if (_isVideoUrl(widget.url)) {
-      _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-        ..initialize().then((_) {
-          if (mounted) {
-            _ctrl!.setLooping(true);
-            _ctrl!.play();
-            setState(() => _initialized = true);
-          }
-        });
+  void didUpdateWidget(_MediaFull oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.paused && _ctrl?.value.isPlaying == true) {
+      _ctrl?.pause();
     }
+    if (oldWidget.url != widget.url) {
+      _ctrl?.pause();
+      _ctrl?.dispose();
+      _ctrl = null;
+      _initialized = false;
+      _started = false;
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (!_isVideoUrl(widget.url)) return;
+    if (_ctrl == null) {
+      final ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      _ctrl = ctrl;
+      setState(() => _started = true);
+      await ctrl.initialize();
+      if (!mounted || _ctrl != ctrl) {
+        ctrl.dispose();
+        return;
+      }
+      ctrl.setLooping(true);
+      if (!widget.paused) await ctrl.play();
+      setState(() => _initialized = true);
+      return;
+    }
+    if (_ctrl!.value.isPlaying) {
+      await _ctrl!.pause();
+    } else if (!widget.paused) {
+      await _ctrl!.play();
+    }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _ctrl?.pause();
     _ctrl?.dispose();
     super.dispose();
   }
@@ -135,19 +163,30 @@ class _MediaFullState extends State<_MediaFull> {
   @override
   Widget build(BuildContext context) {
     if (_isVideoUrl(widget.url)) {
+      final playing = _ctrl?.value.isPlaying == true;
       return GestureDetector(
-        onTap: () => _ctrl?.value.isPlaying == true ? _ctrl?.pause() : _ctrl?.play(),
+        onTap: _toggle,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Container(
             width: double.infinity, height: 220, color: Colors.black,
-            child: _initialized && _ctrl != null
-              ? FittedBox(fit: BoxFit.contain, child: SizedBox(
-                  width: _ctrl!.value.size.width,
-                  height: _ctrl!.value.size.height,
-                  child: VideoPlayer(_ctrl!),
-                ))
-              : const Center(child: CircularProgressIndicator(color: Colors.white)),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (_initialized && _ctrl != null)
+                  FittedBox(fit: BoxFit.contain, child: SizedBox(
+                    width: _ctrl!.value.size.width,
+                    height: _ctrl!.value.size.height,
+                    child: VideoPlayer(_ctrl!),
+                  ))
+                else if (_started)
+                  const CircularProgressIndicator(color: Colors.white)
+                else
+                  const Icon(Icons.play_circle_fill, color: Colors.white70, size: 64),
+                if (_initialized && !playing)
+                  const Icon(Icons.play_circle_fill, color: Colors.white70, size: 64),
+              ],
+            ),
           ),
         ),
       );
@@ -229,12 +268,11 @@ int? _asInt(dynamic value) {
 }
 
 String _formatSecs(int s) {
-  if (s >= 60) {
-    final m = s ~/ 60;
-    final rem = s % 60;
-    return rem == 0 ? '${m}λ' : '${m}λ${rem}δ';
-  }
-  return '${s}δ';
+  final minutes = s ~/ 60;
+  final seconds = s % 60;
+  if (minutes > 0 && seconds == 0) return "$minutes'";
+  if (minutes > 0) return "$minutes:${seconds.toString().padLeft(2, '0')}";
+  return '$seconds"';
 }
 
 String _clock(Duration d) {
@@ -243,16 +281,6 @@ String _clock(Duration d) {
   final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
   if (h > 0) return '$h:$m:$s';
   return '$m:$s';
-}
-
-/// Indicative kcal for moderate weight training, 70 kg, MET 4.5–6.5.
-(int, int) _kcalRange(Duration d) {
-  final hours = d.inSeconds / 3600;
-  const kg = 70.0;
-  final low = (4.5 * kg * hours).round();
-  final high = (6.5 * kg * hours).round();
-  if (high <= 0) return (low, low < 1 ? 1 : low);
-  return (low, high < low ? low : high);
 }
 
 class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
@@ -275,9 +303,12 @@ class _WorkoutProgramsScreenState extends State<WorkoutProgramsScreen> {
     }
     try {
       final all = await auth.api.fetchMyPrograms(userId);
-      final filtered = widget.serviceId != null
+      final filtered = (widget.serviceId != null
           ? all.where((p) => _programMatchesService(p, widget.serviceId)).toList()
-          : all;
+          : all).where((p) {
+            final cat = p['service_category']?.toString();
+            return cat != 'nutrition' && cat != 'nutrition_consultation';
+          }).toList();
       if (mounted) setState(() { _programs = _mergePrograms(filtered); _loading = false; });
     } catch (e) {
       if (mounted) setState(() {
@@ -441,9 +472,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   late final Set<String> _done;
   bool _busy = false;
   bool _changed = false;
+  bool _stopped = false;
+  bool _syncWatch = false;
   DateTime? _startedAt;
   DateTime? _endedAt;
+  DateTime? _pauseMark;
+  Duration _pausedFor = Duration.zero;
   Timer? _ticker;
+  Map<String, int> _kcalByExercise = {};
+  int? _totalKcal;
+  int? _watchKcal;
+  int? _watchHr;
 
   @override
   void initState() {
@@ -463,13 +502,44 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     setState(() {
       _startedAt = DateTime.now();
       _endedAt = null;
+      _pauseMark = null;
+      _pausedFor = Duration.zero;
+      _stopped = false;
     });
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && _endedAt == null) setState(() {});
+      if (mounted && _endedAt == null && _pauseMark == null) setState(() {});
     });
+    _loadCalories();
+  }
+
+  void _togglePause() {
+    if (_startedAt == null || _endedAt != null) return;
+    if (_pauseMark != null) {
+      _pausedFor += DateTime.now().difference(_pauseMark!);
+      _pauseMark = null;
+      _ticker?.cancel();
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted && _endedAt == null && _pauseMark == null) setState(() {});
+      });
+    } else {
+      _pauseMark = DateTime.now();
+      _ticker?.cancel();
+    }
+    setState(() {});
+  }
+
+  void _stopSession() {
+    _stopClock();
+    setState(() => _stopped = true);
+    _loadCalories();
+    _loadWatch();
   }
 
   void _stopClock() {
+    if (_pauseMark != null) {
+      _pausedFor += DateTime.now().difference(_pauseMark!);
+      _pauseMark = null;
+    }
     _endedAt ??= DateTime.now();
     _ticker?.cancel();
   }
@@ -477,7 +547,63 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   Duration get _elapsed {
     final start = _startedAt;
     if (start == null) return Duration.zero;
-    return (_endedAt ?? DateTime.now()).difference(start);
+    final end = _endedAt ?? _pauseMark ?? DateTime.now();
+    final d = end.difference(start) - _pausedFor;
+    return d.isNegative ? Duration.zero : d;
+  }
+
+  List<Map<String, dynamic>> get _caloriePayload => _exercises.map((ex) => {
+    'id': ex['id']?.toString(),
+    'name': ex['exercise_name']?.toString(),
+    'sets': _asInt(ex['exercise_sets']),
+    'reps': ex['exercise_reps']?.toString(),
+    'duration_secs': _asInt(ex['duration_secs']),
+    'rest_secs': _asInt(ex['rest_secs']),
+  }).toList();
+
+  Future<void> _loadCalories() async {
+    final userId = context.read<AuthService>().user?.id;
+    if (userId == null) return;
+    try {
+      final res = await context.read<AuthService>().api.estimateWorkoutCalories(
+        userId,
+        exercises: _caloriePayload,
+        durationSecs: _elapsed.inSeconds,
+      );
+      if (!mounted) return;
+      final map = <String, int>{};
+      for (final row in (res['exercises'] as List? ?? [])) {
+        if (row is! Map) continue;
+        final id = row['id']?.toString();
+        final kcal = _asInt(row['kcal']);
+        if (id != null && kcal != null) map[id] = kcal;
+      }
+      setState(() {
+        _kcalByExercise = map;
+        _totalKcal = _asInt(res['total_kcal']);
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _enableWatch() async {
+    final ok = await HealthWorkoutService.instance.requestPermissions();
+    if (!mounted) return;
+    setState(() => _syncWatch = ok);
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Δεν δόθηκε πρόσβαση στο ρολόι')),
+      );
+    }
+  }
+
+  Future<void> _loadWatch() async {
+    if (!_syncWatch || _startedAt == null || _endedAt == null) return;
+    final window = await HealthWorkoutService.instance.loadWindow(_startedAt!, _endedAt!);
+    if (!mounted) return;
+    setState(() {
+      _watchKcal = window.calories;
+      _watchHr = window.avgHeartRate;
+    });
   }
 
   String? get _programId => widget.program['program_id']?.toString();
@@ -502,7 +628,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       await context.read<AuthService>().api.checkProgramExercise(userId, programId, id);
       if (!mounted) return;
       final finishedNow = _done.length + 1 >= _exercises.length;
-      if (finishedNow) _stopClock();
+      if (finishedNow) {
+        _stopClock();
+        _loadCalories();
+        _loadWatch();
+      }
       setState(() {
         _done.add(id);
         _changed = true;
@@ -565,6 +695,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         _done.clear();
         _startedAt = null;
         _endedAt = null;
+        _pauseMark = null;
+        _pausedFor = Duration.zero;
+        _stopped = false;
+        _watchKcal = null;
+        _watchHr = null;
         _changed = true;
         _busy = false;
       });
@@ -603,7 +738,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         ),
         body: _exercises.isEmpty
             ? const Center(child: Text('Αυτό το πρόγραμμα δεν έχει ασκήσεις', style: TextStyle(color: AppColors.textSecondary)))
-            : finished
+            : (finished || _stopped)
                 ? _doneView(primary, onFill)
                 : _startedAt == null
                     ? _startView(name, primary, onFill)
@@ -629,11 +764,29 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Με το ναι ξεκινάει ο χρόνος. Οι ασκήσεις περνάνε μία-μία και στο τέλος βλέπεις ενδεικτικές θερμίδες.',
+            'Με το ναι ξεκινάει ο χρόνος. Οι ασκήσεις περνάνε μία-μία και στο τέλος βλέπεις ενδεικτικές θερμίδες από το προφίλ σου.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textSecondary, height: 1.4),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _syncWatch ? null : _enableWatch,
+              icon: Icon(_syncWatch ? Icons.watch_rounded : Icons.watch_outlined, color: primary),
+              label: Text(
+                _syncWatch ? 'Το ρολόι θα συγχρονιστεί' : 'Συγχρονισμός με ρολόι',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: _syncWatch ? primary : AppColors.border),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: FilledButton(
@@ -665,6 +818,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     final reps = exercise['exercise_reps'];
     final dur = _asInt(exercise['duration_secs']);
     final rest = _asInt(exercise['rest_secs']);
+    final kcal = _kcalByExercise[exercise['id']?.toString()];
+    final paused = _pauseMark != null;
 
     return Column(
       children: [
@@ -694,26 +849,38 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             children: [
-              if (media != null) _MediaFull(url: media),
+              if (media != null)
+                _MediaFull(
+                  key: ValueKey('${exercise['id']}-$media'),
+                  url: media,
+                  paused: paused,
+                ),
               if (media != null) const SizedBox(height: 16),
               Text(title, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),
               if (muscle != null && muscle.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(muscle, style: TextStyle(color: primary, fontWeight: FontWeight.w600)),
               ],
+              if (kcal != null) ...[
+                const SizedBox(height: 6),
+                Text('περίπου $kcal kcal', style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              ],
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Row(
                 children: [
-                  if (sets != null && reps != null) _Chip(label: '$sets × $reps', color: primary),
-                  if (dur != null) _Chip(label: _formatSecs(dur), color: AppColors.teal),
-                  if (rest != null) _Chip(label: 'ξεκούραση ${_formatSecs(rest)}', color: AppColors.orange),
+                  if (sets != null && reps != null)
+                    Expanded(child: _StatBox(label: 'Επαναλήψεις', value: '$sets×$reps', color: primary)),
+                  if (sets != null && reps != null && (rest != null || dur != null))
+                    const SizedBox(width: 10),
+                  if (rest != null)
+                    Expanded(child: _StatBox(label: 'Ξεκούραση', value: _formatSecs(rest), color: primary))
+                  else if (dur != null)
+                    Expanded(child: _StatBox(label: 'Διάρκεια', value: _formatSecs(dur), color: primary)),
                 ],
               ),
               if (desc != null && desc.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(desc, style: const TextStyle(color: AppColors.textSecondary, height: 1.4)),
+                const SizedBox(height: 14),
+                Text(desc, style: const TextStyle(color: AppColors.textSecondary, height: 1.45, fontSize: 15)),
               ],
               if (notes != null && notes.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -726,6 +893,36 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           child: Column(
             children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _togglePause,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: Text(paused ? 'Συνέχεια' : 'Παύση', style: const TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _confirmStop,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: const Text('Στοπ', style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -749,51 +946,84 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     );
   }
 
+  Future<void> _confirmStop() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Στοπ προπόνησης;', style: TextStyle(color: Colors.white)),
+        content: const Text('Ο χρόνος σταματάει και βλέπεις τη σύνοψη.', style: TextStyle(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Όχι')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Στοπ')),
+        ],
+      ),
+    );
+    if (ok == true) _stopSession();
+  }
+
   Widget _doneView(Color primary, Color onFill) {
     final timed = _startedAt != null;
     final elapsed = _elapsed;
-    final kcal = _kcalRange(elapsed);
-    return Padding(
+    final kcal = _totalKcal;
+    return ListView(
       padding: const EdgeInsets.all(28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle_rounded, color: primary, size: 72),
-          const SizedBox(height: 16),
-          const Text('Τελείωσες το πρόγραμμα',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 16),
-          if (timed) ...[
-            _SummaryRow(label: 'Χρόνος', value: _clock(elapsed)),
-            _SummaryRow(label: 'Ασκήσεις', value: '${_done.length}'),
-            _SummaryRow(label: 'Θερμίδες', value: 'περίπου ${kcal.$1}–${kcal.$2} kcal'),
-            const SizedBox(height: 10),
+      children: [
+        const SizedBox(height: 12),
+        Center(child: Icon(_stopped ? Icons.stop_circle_outlined : Icons.check_circle_rounded, color: primary, size: 72)),
+        const SizedBox(height: 16),
+        Text(_stopped ? 'Σταμάτησες την προπόνηση' : 'Τελείωσες το πρόγραμμα',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 16),
+        if (timed) ...[
+          _SummaryRow(label: 'Χρόνος', value: _clock(elapsed)),
+          _SummaryRow(label: 'Ασκήσεις', value: '${_done.length} από ${_exercises.length}'),
+          if (kcal != null) _SummaryRow(label: 'Θερμίδες', value: 'περίπου $kcal kcal'),
+          if (_watchKcal != null) _SummaryRow(label: 'Ρολόι', value: '$_watchKcal kcal'),
+          if (_watchHr != null) _SummaryRow(label: 'Παλμοί', value: '$_watchHr bpm'),
+          if (_syncWatch && _watchKcal == null && _watchHr == null) ...[
+            const SizedBox(height: 8),
             const Text(
-              'Ενδεικτική εκτίμηση για μέτρια προπόνηση με βάρη. Δεν είναι μέτρηση από ρολόι.',
+              'Δεν βρέθηκαν μετρήσεις από το ρολόι για αυτό το διάστημα.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textSecondary, height: 1.4, fontSize: 13),
             ),
-          ] else
-            const Text('Οι ασκήσεις σημειώθηκαν για σήμερα. Αύριο ξεκινάς ξανά από την αρχή.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary, height: 1.4)),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _busy ? null : _restart,
-              style: FilledButton.styleFrom(
-                backgroundColor: primary,
-                foregroundColor: onFill,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: const Text('Ξανά από την αρχή', style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
+          ],
+          const SizedBox(height: 10),
+          const Text(
+            'Οι θερμίδες είναι ενδεικτικές, από το βάρος και τον στόχο σου. Οι μετρήσεις ρολογιού φαίνονται χωριστά.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textSecondary, height: 1.4, fontSize: 13),
           ),
-        ],
-      ),
+          if (_kcalByExercise.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            ..._exercises.map((ex) {
+              final id = ex['id']?.toString();
+              final n = id == null ? null : _kcalByExercise[id];
+              if (n == null) return const SizedBox.shrink();
+              return _SummaryRow(label: ex['exercise_name']?.toString() ?? 'Άσκηση', value: '$n kcal');
+            }),
+          ],
+        ] else
+          const Text('Οι ασκήσεις σημειώθηκαν για σήμερα. Αύριο ξεκινάς ξανά από την αρχή.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary, height: 1.4)),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _busy ? null : _restart,
+            style: FilledButton.styleFrom(
+              backgroundColor: primary,
+              foregroundColor: onFill,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: const Text('Ξανά από την αρχή', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -818,23 +1048,28 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.color});
+class _StatBox extends StatelessWidget {
+  const _StatBox({required this.label, required this.value, required this.color});
   final String label;
+  final String value;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.35)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+        ],
       ),
     );
   }

@@ -1416,6 +1416,22 @@ class ApiService {
         'x-user-id': userId,
       };
 
+  Future<Map<String, dynamic>> estimateWorkoutCalories(
+    String userId, {
+    required List<Map<String, dynamic>> exercises,
+    required int durationSecs,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$_base/api/client-admin/my-programs/estimate-calories'),
+      headers: _programHeaders(userId),
+      body: jsonEncode({
+        'duration_secs': durationSecs,
+        'exercises': exercises,
+      }),
+    ).timeout(const Duration(seconds: 25));
+    return Map<String, dynamic>.from(_decode(res) as Map);
+  }
+
   Future<void> checkProgramExercise(String userId, String programId, String exerciseRowId) async {
     final res = await _withTimeout(http.post(
       Uri.parse('$_base/api/client-admin/my-programs/$programId/check'),

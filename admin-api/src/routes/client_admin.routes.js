@@ -7577,6 +7577,8 @@ router.get('/my-programs', async (req, res) => {
               links.service_id
        FROM workout_programs wp
        JOIN (${PROGRAM_LINKS_SQL}) links ON links.program_id = (wp.id COLLATE utf8mb4_unicode_ci)
+       JOIN services sv ON (sv.id COLLATE utf8mb4_unicode_ci) = links.service_id
+         AND ${sqlGymServiceCategories('sv')}
        WHERE wp.business_id = ? AND wp.is_active = 1
          AND EXISTS (
            SELECT 1
@@ -7608,11 +7610,25 @@ router.get('/my-programs', async (req, res) => {
 
   const serviceIds = [...new Set(combined.map(r => r.service_id).filter(Boolean))];
   const serviceNames = new Map();
+  const serviceCategories = new Map();
   if (serviceIds.length) {
-    const [svcs] = await db.query('SELECT id, name FROM services WHERE id IN (?)', [serviceIds]);
-    for (const svc of svcs) serviceNames.set(svc.id, svc.name);
+    const [svcs] = await db.query('SELECT id, name, category FROM services WHERE id IN (?)', [serviceIds]);
+    for (const svc of svcs) {
+      serviceNames.set(svc.id, svc.name);
+      serviceCategories.set(svc.id, svc.category);
+    }
   }
-  const allProgramIds = [...new Set(combined.map(r => r.program_id))];
+  const nutritionCategories = new Set(['nutrition', 'nutrition_consultation']);
+  const visible = combined.flatMap((row) => {
+    if (!row.service_id) return [row];
+    const category = serviceCategories.get(row.service_id);
+    if (!nutritionCategories.has(category)) return [row];
+    // A program tied only to nutrition is not one of the member's training services.
+    // Keep a personal assignment, but never label it as the nutrition visit.
+    if (!row.assignment_id) return [];
+    return [{ ...row, service_id: null, service_ids: [] }];
+  });
+  const allProgramIds = [...new Set(visible.map(r => r.program_id))];
   const doneMap = new Map();
   if (allProgramIds.length) {
     try {
@@ -7632,11 +7648,12 @@ router.get('/my-programs', async (req, res) => {
   }
 
   const result = [];
-  for (const a of combined) {
+  for (const a of visible) {
     const exs = await loadProgramExercises(a.program_id);
     result.push({
       ...a,
       service_name: serviceNames.get(a.service_id) || null,
+      service_category: serviceCategories.get(a.service_id) || null,
       done_exercise_ids: doneMap.get(a.program_id) || [],
       exercises: exs,
     });
@@ -7645,6 +7662,118 @@ router.get('/my-programs', async (req, res) => {
   } catch (err) {
     console.error('my-programs', err);
     if (!res.headersSent) res.status(500).json({ error: err.message || 'Δεν φορτώθηκαν τα προγράμματα' });
+  }
+});
+
+function localWorkoutCalories(exercises, durationSecs, weightKg) {
+  const kg = weightKg > 30 && weightKg < 250 ? weightKg : 70;
+  const shares = exercises.map((ex) => {
+    const sets = Number(ex.sets) || 3;
+    const reps = parseInt(String(ex.reps || '10').replace(/[^\d]/g, ''), 10) || 10;
+    const dur = Number(ex.duration_secs) || 0;
+    const workSecs = dur > 0 ? dur : sets * Math.max(reps, 8) * 3;
+    return Math.max(1, Math.round(6 * kg * (workSecs / 3600)));
+  });
+  const fromWork = shares.reduce((a, b) => a + b, 0);
+  const fromClock = durationSecs > 0 ? Math.round(5 * kg * (durationSecs / 3600)) : 0;
+  const total = Math.max(fromWork, fromClock, 1);
+  const sum = fromWork || 1;
+  return {
+    total_kcal: total,
+    weight_kg: Math.round(kg * 10) / 10,
+    exercises: exercises.map((ex, i) => ({
+      id: ex.id || null,
+      kcal: Math.max(1, Math.round(total * (shares[i] || 1) / sum)),
+    })),
+  };
+}
+
+router.post('/my-programs/estimate-calories', async (req, res) => {
+  const bizId = req.headers['x-business-id'];
+  const userId = req.headers['x-user-id'];
+  if (!bizId || !userId) return res.status(400).json({ error: 'Missing headers' });
+  const exercises = Array.isArray(req.body?.exercises) ? req.body.exercises.slice(0, 40) : [];
+  const durationSecs = Math.max(0, Number(req.body?.duration_secs) || 0);
+  let weight = null;
+  let height = null;
+  let goal = null;
+  let nutrition = false;
+  try {
+    const [[user]] = await db.query(
+      'SELECT weight_kg, height_cm, fitness_goal FROM users WHERE id = ? AND business_id = ?',
+      [userId, bizId],
+    );
+    if (user?.weight_kg) weight = Number(user.weight_kg);
+    if (user?.height_cm) height = Number(user.height_cm);
+    goal = user?.fitness_goal || null;
+  } catch (_) {}
+  try {
+    const [[card]] = await db.query(
+      'SELECT weight_kg, height_cm, fitness_status FROM member_health_cards WHERE user_id = ? AND business_id = ?',
+      [userId, bizId],
+    );
+    if (card?.weight_kg) weight = Number(card.weight_kg);
+    if (card?.height_cm) height = Number(card.height_cm);
+  } catch (_) {}
+  try {
+    const [[row]] = await db.query(
+      `SELECT 1 AS ok
+       FROM user_memberships um
+       JOIN services s ON (s.id COLLATE utf8mb4_unicode_ci) = (um.service_id COLLATE utf8mb4_unicode_ci)
+       WHERE um.user_id = ? AND um.business_id = ?
+         AND s.category IN ('nutrition', 'nutrition_consultation')
+         AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
+       LIMIT 1`,
+      [userId, bizId],
+    );
+    nutrition = !!row;
+  } catch (_) {}
+
+  const fallback = localWorkoutCalories(exercises, durationSecs, weight || 70);
+  fallback.nutrition = nutrition;
+  fallback.goal = goal;
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.json({ ...fallback, source: 'profile' });
+  }
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const lines = exercises.map((ex) =>
+      `- id ${ex.id || ''}: ${ex.name || 'άσκηση'}, σετ ${ex.sets || '-'}, επαναλήψεις ${ex.reps || '-'}, διάρκεια ${ex.duration_secs || 0}s, ξεκούραση ${ex.rest_secs || 0}s`
+    ).join('\n');
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 700,
+      messages: [{
+        role: 'user',
+        content: `Εκτίμησε ενδεικτικές θερμίδες προπόνησης με βάρη. Μην υπερβάλλεις.
+Προφίλ: βάρος ${weight || 'άγνωστο'} kg, ύψος ${height || 'άγνωστο'} cm, στόχος ${goal || 'γενικός'}, διατροφή στο γυμναστήριο: ${nutrition ? 'ναι' : 'όχι'}.
+Διάρκεια συνεδρίας: ${durationSecs || 'άγνωστη'} δευτερόλεπτα.
+Ασκήσεις:
+${lines || '(χωρίς λίστα)'}
+Απάντησε ΜΟΝΟ JSON:
+{"total_kcal": αριθμός, "exercises": [{"id": "...", "kcal": αριθμός}]}
+Τα id να είναι ίδια με την είσοδο. Το άθροισμα των ασκήσεων να είναι κοντά στο total_kcal.`,
+      }],
+    });
+    const text = response.content?.[0]?.text || '';
+    const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim());
+    const total = Math.max(1, Math.round(Number(parsed.total_kcal) || fallback.total_kcal));
+    const byId = new Map((parsed.exercises || []).map((row) => [String(row.id), Math.max(1, Math.round(Number(row.kcal) || 0))]));
+    return res.json({
+      total_kcal: total,
+      weight_kg: weight,
+      nutrition,
+      goal,
+      source: 'ai',
+      exercises: exercises.map((ex) => ({
+        id: ex.id || null,
+        kcal: byId.get(String(ex.id)) || fallback.exercises.find((row) => row.id === ex.id)?.kcal || 1,
+      })),
+    });
+  } catch (err) {
+    console.error('estimate-calories fallback:', err.message);
+    return res.json({ ...fallback, source: 'profile' });
   }
 });
 

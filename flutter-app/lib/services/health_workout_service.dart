@@ -163,6 +163,19 @@ class HealthWorkoutService {
     );
   }
 
+  /// Calories and heart rate recorded between [from] and [to].
+  Future<({int? calories, int? avgHeartRate})> loadWindow(DateTime from, DateTime to) async {
+    if (!isSupported || !to.isAfter(from)) {
+      return (calories: null, avgHeartRate: null);
+    }
+    final granted = await requestPermissions();
+    if (!granted) return (calories: null, avgHeartRate: null);
+    final health = await _client();
+    final calories = await _activeEnergyBetween(health, from, to);
+    final avgHeartRate = await _avgHeartRateBetween(health, from, to);
+    return (calories: calories, avgHeartRate: avgHeartRate);
+  }
+
   Future<int?> _activeEnergyBetween(Health health, DateTime from, DateTime to) async {
     final points = await health.getHealthDataFromTypes(
       types: [HealthDataType.ACTIVE_ENERGY_BURNED],

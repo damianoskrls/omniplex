@@ -68,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _unreadCount = 0;
   int _messageUnreadCount = 0;
   bool _hasNutritionAccess = false;
+  bool _hasWorkoutPrograms = true;
   bool _switchingRole = false;
   Timer? _unreadTimer;
 
@@ -338,12 +339,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         label: config.label('book_cta', 'Κράτηση'),
         screen: const ServicesScreen(),
       ),
-      _TabItem(
-        key: 'workout',
-        icon: Icons.fitness_center_rounded,
-        label: 'Προπόνηση',
-        screen: const WorkoutProgramsScreen(),
-      ),
+      if (_hasWorkoutPrograms)
+        _TabItem(
+          key: 'workout',
+          icon: Icons.fitness_center_rounded,
+          label: 'Προπόνηση',
+          screen: const WorkoutProgramsScreen(),
+        )
+      else
+        _TabItem(
+          key: 'appointments',
+          icon: Icons.calendar_month_outlined,
+          label: config.label('appointment_noun', 'Ραντεβού'),
+          screen: const MyBookingsScreen(),
+        ),
       // ── Primary (visible, 1 right of QR before overflow) ────
       _TabItem(
         key: 'goals',
@@ -352,12 +361,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         screen: const GoalsScreen(),
       ),
       // ── Overflow ─────────────────────────────────────────────
-      _TabItem(
-        key: 'appointments',
-        icon: Icons.calendar_month_outlined,
-        label: config.label('appointment_noun', 'Ραντεβού'),
-        screen: const MyBookingsScreen(),
-      ),
+      if (_hasWorkoutPrograms)
+        _TabItem(
+          key: 'appointments',
+          icon: Icons.calendar_month_outlined,
+          label: config.label('appointment_noun', 'Ραντεβού'),
+          screen: const MyBookingsScreen(),
+        ),
       _TabItem(
         key: 'community',
         icon: Icons.people_outline_rounded,
@@ -424,6 +434,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshUnread();
       _loadNutritionAccess();
+      _loadWorkoutNav();
       MemberIntakeScreen.promptIfNeeded(context);
     });
     _unreadTimer = Timer.periodic(const Duration(seconds: 45), (_) => _refreshUnread());
@@ -433,6 +444,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _loadNutritionAccess();
+      _loadWorkoutNav();
       _refreshUnread();
       NotificationService.instance.clearBadge();
     }
@@ -444,6 +456,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _unreadTimer?.cancel();
     if (_active == this) _active = null;
     super.dispose();
+  }
+
+  bool _countsAsTrainingProgram(Map<String, dynamic> program) {
+    final category = program['service_category']?.toString();
+    if (category == 'nutrition' || category == 'nutrition_consultation') return false;
+    final name = (program['service_name'] ?? '').toString().trim().toLowerCase();
+    if (name == 'συνεδρία διατροφολόγου') return false;
+    return true;
+  }
+
+  Future<void> _loadWorkoutNav() async {
+    final auth = context.read<AuthService>();
+    final user = auth.user;
+    if (user == null || user.isStaff) return;
+    try {
+      final rows = await auth.api.fetchMyPrograms(user.id);
+      if (!mounted) return;
+      final has = rows.any(_countsAsTrainingProgram);
+      if (has == _hasWorkoutPrograms) return;
+      final currentKey = _index >= 0 && _index < _tabItems.length ? _tabItems[_index].key : null;
+      setState(() => _hasWorkoutPrograms = has);
+      if (!mounted || currentKey == null) return;
+      final next = _tabItems.indexWhere((tab) => tab.key == currentKey);
+      if (next >= 0 && next != _index) setState(() => _index = next);
+    } on ApiException catch (_) {}
   }
 
   Future<void> _loadNutritionAccess() async {
