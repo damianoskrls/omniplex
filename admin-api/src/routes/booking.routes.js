@@ -2087,6 +2087,57 @@ router.post('/:bizId/messages', softAuth, requireActiveCustomer, async (req, res
   }
 });
 
+async function linkGlobalBuyer(conn, req, bizId, locationId) {
+  if (req.user?.userId) return req.user.userId;
+  if (req.user?.role !== 'global_user' || !req.user.globalUserId) return null;
+  const globalUserId = req.user.globalUserId;
+  const [[gu]] = await conn.query(
+    'SELECT full_name, email, phone FROM global_users WHERE id = ?',
+    [globalUserId],
+  );
+  if (!gu) return null;
+  const [existing] = await conn.query(
+    `SELECT id FROM users
+     WHERE business_id = ? AND deleted_at IS NULL AND global_user_id = ?
+     LIMIT 1`,
+    [bizId, globalUserId],
+  );
+  let userId = existing[0]?.id;
+  if (userId) {
+    await conn.query(
+      `UPDATE users SET account_status = 'active' WHERE id = ? AND business_id = ?`,
+      [userId, bizId],
+    );
+  } else {
+    userId = uuidv4();
+    await conn.query(
+      `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, account_status, created_at)
+       VALUES (?,?,?,?,?,?,'active',NOW())`,
+      [userId, bizId, globalUserId, gu.full_name || '', gu.email || '', gu.phone || ''],
+    );
+  }
+  if (locationId) {
+    const [[loc]] = await conn.query(
+      'SELECT id FROM locations WHERE id = ? AND business_id = ? AND is_active = 1',
+      [locationId, bizId],
+    );
+    if (loc) {
+      const { replaceUserLocations } = require('../lib/locations');
+      await replaceUserLocations(conn, userId, [locationId]);
+    }
+  }
+  await conn.query(
+    `UPDATE gym_join_requests
+     SET status = 'approved', resolved_at = NOW()
+     WHERE global_user_id = ? AND business_id = ? AND role = 'member' AND status = 'pending'`,
+    [globalUserId, bizId],
+  );
+  req.user.userId = userId;
+  req.user.businessId = bizId;
+  req.user.fullName = gu.full_name || req.user.fullName;
+  return userId;
+}
+
 // ============================================================
 // DROP-IN ENDPOINTS
 // ============================================================
@@ -2171,7 +2222,8 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
   if (!service_id || !date || !time) {
     return res.status(400).json({ error: 'Απαιτούνται υπηρεσία, ημερομηνία και ώρα' });
   }
-  const isGuest = !req.user;
+  const isGlobal = req.user?.role === 'global_user' && !!req.user.globalUserId;
+  const isGuest = !req.user?.userId && !isGlobal;
   if (isGuest && !guest_name) {
     return res.status(400).json({ error: 'Απαιτείται όνομα για guests' });
   }
@@ -2241,6 +2293,10 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
         return res.status(402).json({ error: 'Η πληρωμή δεν ολοκληρώθηκε' });
       }
       paymentStatus = 'paid';
+    }
+
+    if (isGlobal) {
+      await linkGlobalBuyer(conn, req, bizId, location_id || null);
     }
 
     // Find staff name for this slot

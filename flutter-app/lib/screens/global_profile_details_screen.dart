@@ -91,7 +91,7 @@ class _GlobalProfileDetailsScreenState
 
               const SizedBox(height: 32),
 
-              Text('Βήμα 1 από 2',
+              Text('ΤΑ ΣΤΟΙΧΕΙΑ ΣΟΥ',
                 style: GoogleFonts.manrope(
                   fontSize: 11, fontWeight: FontWeight.w600,
                   color: _kGray, letterSpacing: 1.5)),

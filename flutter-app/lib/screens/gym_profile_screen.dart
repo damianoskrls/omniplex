@@ -7,6 +7,7 @@ import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../config/tenant_config.dart';
 import '../theme/brand.dart';
+import 'global_profile_details_screen.dart';
 import 'gym_entry_splash.dart';
 import 'phone_otp_login_screen.dart';
 
@@ -15,6 +16,14 @@ const _kCard   = Color(0xFF16171B);
 const _kBorder = Color(0xFF2A2B30);
 const _kGray   = Color(0xFF9A9CA3);
 const _kLime   = Color(0xFFC6FF3D);
+
+String _checkoutError(Object raw) {
+  final text = raw.toString().replaceFirst('Exception: ', '');
+  if (text.toLowerCase().contains('api key')) {
+    return 'Οι online πληρωμές δεν είναι ρυθμισμένες για αυτό το γυμναστήριο.';
+  }
+  return text;
+}
 
 class GymProfileScreen extends StatefulWidget {
   const GymProfileScreen({
@@ -26,6 +35,7 @@ class GymProfileScreen extends StatefulWidget {
     this.onLoggedIn,
     this.onEnterGym,
     this.onRequestSent,
+    this.onPurchaseComplete,
     this.initialTab = 0,
   });
 
@@ -36,6 +46,7 @@ class GymProfileScreen extends StatefulWidget {
   final VoidCallback? onLoggedIn;
   final void Function(TenantConfig)? onEnterGym;
   final VoidCallback? onRequestSent;
+  final void Function(String message)? onPurchaseComplete;
   final int initialTab;
 
   @override
@@ -434,11 +445,47 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     }
   }
 
+  bool _profileReady() {
+    final name = (widget.globalAuth?.user?.fullName ?? '').trim();
+    return name.isNotEmpty && !RegExp(r'^Χρήστης\s+\d+$').hasMatch(name);
+  }
+
+  Future<bool> _collectProfile() async {
+    final auth = widget.globalAuth;
+    if (auth == null || !auth.isLoggedIn) return false;
+    if (_profileReady()) return true;
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => GlobalProfileDetailsScreen(
+          globalAuth: auth,
+          onDone: () => Navigator.of(context).pop(true),
+        ),
+      ),
+    );
+    return saved == true && _profileReady();
+  }
+
+  Future<String?> _chooseStore(List<Map<String, dynamic>> locations) async {
+    if (locations.length > 1) return _showLocationPicker(locations);
+    if (locations.length == 1) return locations.first['id'] as String?;
+    return null;
+  }
+
+  void _finishPurchase(String message) {
+    widget.onPurchaseComplete?.call(message);
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
   Future<void> _bookDropIn(Map<String, dynamic> offer) async {
     if (widget.globalAuth == null || !widget.globalAuth!.isLoggedIn) {
-      _showLoginPrompt();
+      _showLoginPrompt(
+        title: 'Σύνδεση για αγορά',
+        body: 'Βάλε το κινητό σου και τον κωδικό OTP. Μετά συμπληρώνεις όνομα και email, διαλέγεις κατάστημα και πληρώνεις.',
+        afterLogin: () => _bookDropIn(offer),
+      );
       return;
     }
+    if (!await _collectProfile() || !mounted) return;
     final bizId = _gym?['business_id'] as String?;
     final serviceId = offer['id'] as String?;
     if (bizId == null || serviceId == null) return;
@@ -448,11 +495,10 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         .map((e) => Map<String, dynamic>.from(e))
         .where((loc) => offer['location_id'] == null || loc['id'] == offer['location_id'])
         .toList();
-    var locationId = offer['location_id'] as String? ??
-        (locations.length == 1 ? locations.first['id'] as String? : null);
-    if (locations.length > 1 && locationId == null) {
-      final picked = await _showLocationPicker(locations);
-      if (picked == null || !mounted) return;
+    var locationId = offer['location_id'] as String?;
+    if (locationId == null) {
+      final picked = await _chooseStore(locations);
+      if (locations.length > 1 && (picked == null || !mounted)) return;
       locationId = picked;
     }
 
@@ -472,18 +518,28 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       ),
     );
     if (booked == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Η drop-in κράτηση καταχωρήθηκε.'),
-        backgroundColor: Color(0xFF16171B),
-      ));
+      await widget.globalAuth!.refreshGyms();
+      if (!mounted) return;
+      _finishPurchase('Η drop-in κράτηση είναι στα Gyms σου.');
     }
   }
 
   Future<void> _purchasePlan(Map<String, dynamic> plan) async {
     if (widget.globalAuth == null || !widget.globalAuth!.isLoggedIn) {
-      _showLoginPrompt();
+      _showLoginPrompt(
+        title: 'Σύνδεση για αγορά',
+        body: 'Βάλε το κινητό σου και τον κωδικό OTP. Μετά συμπληρώνεις όνομα και email, διαλέγεις κατάστημα και πληρώνεις με κάρτα.',
+        afterLogin: () => _purchasePlan(plan),
+      );
       return;
     }
+    if (!await _collectProfile() || !mounted) return;
+    final locations = ((_gym?['locations'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    final locationId = await _chooseStore(locations);
+    if (locations.length > 1 && (locationId == null || !mounted)) return;
     final slug = _slug;
     if (slug == null) return;
 
@@ -504,6 +560,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                    'Authorization': 'Bearer ${widget.globalAuth!.token}'},
         body: jsonEncode({
           'plan_id': planId,
+          if (locationId != null) 'location_id': locationId,
           'user_info': {
             'full_name': user.fullName,
             'email':     user.email,
@@ -517,7 +574,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
       if (res.statusCode != 200) {
         final err = (jsonDecode(res.body) as Map?)?['error'] ?? 'Σφάλμα';
-        _showError(err.toString());
+        _showError(_checkoutError(err));
         return;
       }
 
@@ -547,8 +604,8 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       );
 
       await Stripe.instance.presentPaymentSheet();
+      if (!mounted) return;
 
-      // Payment succeeded — confirm on backend
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -562,6 +619,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         body: jsonEncode({
           'intent_id': intentId,
           'plan_id':   planId,
+          if (locationId != null) 'location_id': locationId,
           'user_info': {'full_name': user.fullName, 'email': user.email, 'phone': user.phone},
         }),
       );
@@ -571,25 +629,30 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
       if (confirm.statusCode == 200) {
         await widget.globalAuth!.refreshGyms();
-        _showSuccess(plan['name'] as String);
+        if (!mounted) return;
+        _finishPurchase('Το πακέτο «${plan['name']}» είναι στα Gyms σου. Μπορείς να κάνεις κράτηση.');
       } else {
         final err = (jsonDecode(confirm.body) as Map?)?['error'] ?? 'Σφάλμα';
-        _showError(err.toString());
+        _showError(_checkoutError(err));
       }
     } on StripeException catch (e) {
       if (!mounted) return;
       if (Navigator.of(context).canPop()) Navigator.of(context).pop();
       if (e.error.code != FailureCode.Canceled) {
-        _showError(e.error.localizedMessage ?? 'Η πληρωμή απέτυχε');
+        _showError(_checkoutError(e.error.localizedMessage ?? 'Η πληρωμή απέτυχε'));
       }
     } catch (e) {
       if (!mounted) return;
       if (Navigator.of(context).canPop()) Navigator.of(context).pop();
-      _showError(e.toString());
+      _showError(_checkoutError(e));
     }
   }
 
-  void _showLoginPrompt() {
+  void _showLoginPrompt({
+    String title = 'Απαιτείται σύνδεση',
+    String body = 'Συνδέσου ή δημιούργησε λογαριασμό για να στείλεις αίτημα εγγραφής.',
+    VoidCallback? afterLogin,
+  }) {
     final navigator = Navigator.of(context);
     final myRoute   = ModalRoute.of(context);
 
@@ -604,10 +667,10 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           Container(width: 40, height: 4, decoration: BoxDecoration(
             color: _kBorder, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
-          Text('Απαιτείται σύνδεση',
+          Text(title,
             style: GoogleFonts.manrope(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 8),
-          Text('Συνδέσου ή δημιούργησε λογαριασμό για να στείλεις αίτημα εγγραφής.',
+          Text(body,
             style: GoogleFonts.manrope(fontSize: 14, color: _kGray), textAlign: TextAlign.center),
           const SizedBox(height: 24),
           _limeButton('Σύνδεση / Εγγραφή', () {
@@ -618,8 +681,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                 onLoggedIn: () {
                   // Pop OTP/profile/role screens back to this gym profile
                   navigator.popUntil((route) => route == myRoute);
-                  // Re-trigger join now that user is logged in
-                  if (mounted) Future.microtask(_requestJoin);
+                  if (mounted) Future.microtask(afterLogin ?? _requestJoin);
                 },
               ),
             ));
@@ -632,32 +694,6 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700));
-  }
-
-  void _showSuccess(String planName) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: _kCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 64, height: 64,
-            decoration: BoxDecoration(color: _kLime.withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: const Icon(Icons.check_circle_rounded, color: _kLime, size: 36)),
-          const SizedBox(height: 16),
-          Text('Επιτυχής αγορά!',
-            style: GoogleFonts.manrope(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-          const SizedBox(height: 8),
-          Text('Το πακέτο "$planName" ενεργοποιήθηκε στον λογαριασμό σου.',
-            style: GoogleFonts.manrope(fontSize: 14, color: _kGray), textAlign: TextAlign.center),
-          const SizedBox(height: 24),
-          _limeButton('Ωραία!', () => Navigator.pop(context)),
-        ]),
-      ),
-    );
   }
 
   // ─── BUILD ───
@@ -1531,7 +1567,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                 : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     const Icon(Icons.add_circle_outline, color: Colors.white, size: 16),
                     const SizedBox(width: 6),
-                    Text('Αίτημα συμμετοχής',
+                    Text('Αίτημα έγκρισης',
                       style: GoogleFonts.manrope(
                         fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                   ]),
@@ -1776,7 +1812,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
       final user = widget.globalAuth.user;
       final headers = {
         'Content-Type': 'application/json',
-        if (gymToken != null) 'Authorization': 'Bearer $gymToken',
+        'Authorization': 'Bearer ${gymToken ?? widget.globalAuth.token}',
       };
       final time = (slot['time'] as String? ?? '').length >= 5
           ? (slot['time'] as String).substring(0, 5)
@@ -1790,13 +1826,14 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
           headers: headers,
           body: jsonEncode({
             'service_id': widget.serviceId,
+            if (widget.locationId != null) 'location_id': widget.locationId,
             if (gymToken == null) 'guest_name': user?.fullName,
           }),
         );
         final intentBody = jsonDecode(intentRes.body);
         if (intentRes.statusCode != 200 || intentBody is! Map) {
           final err = intentBody is Map ? (intentBody['error'] ?? 'Η πληρωμή με κάρτα δεν είναι διαθέσιμη') : 'Η πληρωμή με κάρτα δεν είναι διαθέσιμη';
-          throw Exception(err.toString());
+          throw Exception(_checkoutError(err.toString()));
         }
         final secret = intentBody['client_secret'] as String?;
         final key = intentBody['publishable_key'] as String?;
@@ -1838,7 +1875,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
       final body = jsonDecode(res.body);
       final err = body is Map ? (body['error'] ?? 'Η κράτηση απέτυχε') : 'Η κράτηση απέτυχε';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(err.toString()), backgroundColor: Colors.red.shade700),
+        SnackBar(content: Text(_checkoutError(err.toString())), backgroundColor: Colors.red.shade700),
       );
     } on StripeException catch (e) {
       if (!mounted || e.error.code == FailureCode.Canceled) return;
@@ -1847,7 +1884,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      final text = e.toString().replaceFirst('Exception: ', '');
+      final text = _checkoutError(e.toString().replaceFirst('Exception: ', ''));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(text), backgroundColor: Colors.red.shade700),
       );

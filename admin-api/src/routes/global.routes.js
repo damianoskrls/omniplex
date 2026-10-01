@@ -268,7 +268,24 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
           [bizIds],
         )
       : [[]];
-    return res.json({ gyms, upcoming_bookings: bookings, locations });
+
+    let memberships = [];
+    if (memberIds.length) {
+      const [rows] = await db.query(
+        `SELECT um.user_id, um.business_id,
+                COALESCE(bp.name, um.notes, 'Πακέτο') AS plan_name,
+                um.total_sessions, um.used_sessions, um.valid_until
+         FROM user_memberships um
+         LEFT JOIN business_plans bp ON bp.id = um.plan_id
+         WHERE um.user_id IN (?)
+           AND (um.valid_until IS NULL OR um.valid_until >= CURDATE())
+           AND (um.membership_status IS NULL OR um.membership_status IN ('active', 'trial'))
+         ORDER BY um.valid_from DESC`,
+        [memberIds],
+      );
+      memberships = rows;
+    }
+    return res.json({ gyms, upcoming_bookings: bookings, locations, memberships });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
@@ -1287,9 +1304,13 @@ router.post('/purchase/:slug/intent', async (req, res) => {
     if (!provRow) return res.status(400).json({ error: 'Οι online πληρωμές δεν είναι διαθέσιμες για αυτό το γυμναστήριο' });
 
     const cfg = typeof provRow.config === 'string' ? JSON.parse(provRow.config) : (provRow.config || {});
+    const { assertStripeKeys, hideStripeKeyError } = require('../lib/online_payments');
+    assertStripeKeys(cfg);
     const stripe = require('stripe')(cfg.secret_key);
 
-    const intent = await stripe.paymentIntents.create({
+    let intent;
+    try {
+      intent = await stripe.paymentIntents.create({
       amount:   plan.price_cents,
       currency: 'eur',
       metadata: {
@@ -1304,6 +1325,9 @@ router.post('/purchase/:slug/intent', async (req, res) => {
       },
       automatic_payment_methods: { enabled: true },
     });
+    } catch (err) {
+      throw hideStripeKeyError(err);
+    }
 
     return res.json({
       client_secret:   intent.client_secret,
@@ -1315,7 +1339,7 @@ router.post('/purchase/:slug/intent', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message });
+    return res.status(err.status || 500).json({ error: err.message });
   } finally {
     conn.release();
   }
@@ -1327,7 +1351,7 @@ router.post('/purchase/:slug/intent', async (req, res) => {
 // Body: { intent_id, user_info: { full_name, email, phone, password }, plan_id }
 // ============================================================
 router.post('/purchase/:slug/confirm', async (req, res) => {
-  const { intent_id, user_info, plan_id } = req.body;
+  const { intent_id, user_info, plan_id, location_id } = req.body;
   if (!intent_id || !plan_id || !user_info?.phone)
     return res.status(400).json({ error: 'Απαιτούνται intent_id, plan_id, user_info.phone' });
 
@@ -1346,8 +1370,15 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
       [biz.id],
     );
     const cfg = typeof provRow?.config === 'string' ? JSON.parse(provRow.config) : (provRow?.config || {});
+    const { assertStripeKeys, hideStripeKeyError } = require('../lib/online_payments');
+    assertStripeKeys(cfg);
     const stripe = require('stripe')(cfg.secret_key);
-    const intent = await stripe.paymentIntents.retrieve(intent_id);
+    let intent;
+    try {
+      intent = await stripe.paymentIntents.retrieve(intent_id);
+    } catch (err) {
+      throw hideStripeKeyError(err);
+    }
     if (intent.status !== 'succeeded') {
       return res.status(402).json({ error: 'Η πληρωμή δεν ολοκληρώθηκε' });
     }
@@ -1439,16 +1470,27 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
       'SELECT id FROM gym_join_requests WHERE global_user_id = ? AND business_id = ?',
       [globalUser.id, biz.id],
     );
+    if (location_id) {
+      const [[loc]] = await conn.query(
+        'SELECT id FROM locations WHERE id = ? AND business_id = ? AND is_active = 1',
+        [location_id, biz.id],
+      );
+      if (loc) {
+        const { replaceUserLocations } = require('../lib/locations');
+        await replaceUserLocations(conn, gymUserId, [location_id]);
+      }
+    }
+
     if (existJR.length) {
       await conn.query(
-        "UPDATE gym_join_requests SET status='approved', resolved_at=NOW() WHERE id=?",
-        [existJR[0].id],
+        "UPDATE gym_join_requests SET status='approved', role='member', resolved_at=NOW(), location_id=COALESCE(?, location_id) WHERE id=?",
+        [location_id || null, existJR[0].id],
       );
     } else {
       await conn.query(
-        `INSERT INTO gym_join_requests (id, global_user_id, business_id, status, resolved_at)
-         VALUES (?,?,?,'approved',NOW())`,
-        [require('uuid').v4(), globalUser.id, biz.id],
+        `INSERT INTO gym_join_requests (id, global_user_id, business_id, status, role, location_id, resolved_at)
+         VALUES (?,?,?,'approved','member',?,NOW())`,
+        [require('uuid').v4(), globalUser.id, biz.id, location_id || null],
       );
     }
 
@@ -1467,7 +1509,8 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message });
+    try { await conn.rollback(); } catch (_) {}
+    return res.status(err.status || 500).json({ error: err.message });
   } finally {
     conn.release();
   }

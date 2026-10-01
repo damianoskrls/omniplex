@@ -118,6 +118,29 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     );
   }
 
+  void _onPurchaseComplete(String message) {
+    _loadDashboard();
+    _openTab(3);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String? _packageLine(String businessId) {
+    final rows = _dashboard?['memberships'];
+    if (rows is! List) return null;
+    for (final raw in rows) {
+      if (raw is! Map || raw['business_id']?.toString() != businessId) continue;
+      final name = (raw['plan_name'] ?? 'Πακέτο').toString();
+      final total = raw['total_sessions'];
+      final used = raw['used_sessions'];
+      if (total is num && total > 0 && total < 9000) {
+        final left = (total - (used is num ? used : 0)).clamp(0, total).toInt();
+        return '$name · $left συνεδρίες';
+      }
+      return name;
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     widget.globalAuth.removeListener(_onAuthChanged);
@@ -313,10 +336,13 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             onTabChange: _openTab,
             onOpenBooking: _openBooking,
             parseColor: _parseColor,
+            packageLine: _packageLine,
+            onPurchaseComplete: _onPurchaseComplete,
           ),
           _DiscoverTab(
             globalAuth: widget.globalAuth,
             onRequestSent: _onJoinRequestSent,
+            onPurchaseComplete: _onPurchaseComplete,
           ),
           _ScheduleTab(
             globalAuth: widget.globalAuth,
@@ -344,6 +370,8 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
               }
             },
             parseColor: _parseColor,
+            packageLine: _packageLine,
+            onPurchaseComplete: _onPurchaseComplete,
           ),
           _ProfileTab(
             globalAuth: widget.globalAuth,
@@ -488,6 +516,8 @@ class _HomeTab extends StatelessWidget {
     required this.onTabChange,
     required this.onOpenBooking,
     required this.parseColor,
+    required this.packageLine,
+    required this.onPurchaseComplete,
   });
 
   final GlobalAuthService globalAuth;
@@ -499,6 +529,8 @@ class _HomeTab extends StatelessWidget {
   final void Function(int) onTabChange;
   final void Function(Map<String, dynamic>) onOpenBooking;
   final Color Function(String?) parseColor;
+  final String? Function(String businessId) packageLine;
+  final void Function(String message) onPurchaseComplete;
 
   String get _greeting {
     final h = DateTime.now().hour;
@@ -521,9 +553,10 @@ class _HomeTab extends StatelessWidget {
     final homeGroups = <List<GlobalGym>>[];
     final seenBiz = <String>{};
     for (final gym in gyms) {
-      if (seenBiz.add(gym.businessId)) {
-        homeGroups.add(_rolesFirst(gyms.where((g) => g.businessId == gym.businessId).toList()));
-      }
+      if (!seenBiz.add(gym.businessId)) continue;
+      final roles = _rolesFirst(gyms.where((g) => g.businessId == gym.businessId).toList());
+      final active = roles.where((g) => g.isStaff || g.userStatus != 'pending').toList();
+      if (active.isNotEmpty) homeGroups.add(active);
     }
     final upcoming = (dashboard?['upcoming_bookings'] as List?)
         ?.cast<Map<String, dynamic>>() ?? [];
@@ -576,11 +609,13 @@ class _HomeTab extends StatelessWidget {
                           parseColor: parseColor,
                           onEnter: onEnterGym,
                           onOpenBooking: onOpenBooking,
+                          packageLine: packageLine,
                           onAddRole: (gym) {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (_) => GymProfileScreen(
                                 slug: gym.slug,
                                 globalAuth: globalAuth,
+                                onPurchaseComplete: onPurchaseComplete,
                               ),
                             ));
                           },
@@ -687,6 +722,7 @@ class _HomeGymCarousel extends StatefulWidget {
     required this.parseColor,
     required this.onEnter,
     required this.onOpenBooking,
+    required this.packageLine,
     required this.onAddRole,
   });
 
@@ -696,6 +732,7 @@ class _HomeGymCarousel extends StatefulWidget {
   final Color Function(String?) parseColor;
   final Future<void> Function(GlobalGym) onEnter;
   final void Function(Map<String, dynamic>) onOpenBooking;
+  final String? Function(String businessId) packageLine;
   final void Function(GlobalGym) onAddRole;
 
   @override
@@ -720,7 +757,8 @@ class _HomeGymCarouselState extends State<_HomeGymCarousel> {
 
   double get _height {
     final maxRoles = widget.groups.fold<int>(1, (max, roles) => roles.length > max ? roles.length : max);
-    return 92 + maxRoles * 118 + 72;
+    final withPackage = widget.groups.any((roles) => widget.packageLine(roles.first.businessId) != null);
+    return 92 + maxRoles * 118 + 72 + (withPackage ? 52 : 0);
   }
 
   @override
@@ -745,6 +783,7 @@ class _HomeGymCarouselState extends State<_HomeGymCarousel> {
                 globalAuth: widget.globalAuth,
                 onEnter: widget.onEnter,
                 onOpenBooking: widget.onOpenBooking,
+                packageLine: widget.packageLine(roles.first.businessId),
                 onAddRole: () => widget.onAddRole(roles.first),
               ),
             );
@@ -779,6 +818,7 @@ class _HomeGymSlide extends StatelessWidget {
     required this.globalAuth,
     required this.onEnter,
     required this.onOpenBooking,
+    required this.packageLine,
     required this.onAddRole,
   });
 
@@ -789,6 +829,7 @@ class _HomeGymSlide extends StatelessWidget {
   final GlobalAuthService globalAuth;
   final Future<void> Function(GlobalGym) onEnter;
   final void Function(Map<String, dynamic>) onOpenBooking;
+  final String? packageLine;
   final VoidCallback onAddRole;
 
   Map<String, dynamic>? _nextFor(GlobalGym role) {
@@ -920,6 +961,15 @@ class _HomeGymSlide extends StatelessWidget {
                     tone: _tone(role),
                     onTap: () => onEnter(role),
                   ),
+                  if (!role.isStaff && packageLine != null) ...[
+                    const SizedBox(height: 8),
+                    Text('Πακέτο', style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+                    const SizedBox(height: 2),
+                    Text(packageLine!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                  ],
                   const SizedBox(height: 8),
                   _NextAppointment(
                     booking: _nextFor(role),
@@ -1102,6 +1152,7 @@ class _GymEntryCard extends StatefulWidget {
     required this.accentColor,
     required this.onEnter,
     required this.onAddRole,
+    this.packageLine,
     this.nextBooking,
     this.onBookingTap,
     this.onRemove,
@@ -1113,6 +1164,7 @@ class _GymEntryCard extends StatefulWidget {
   final Color accentColor;
   final Future<void> Function(GlobalGym) onEnter;
   final VoidCallback onAddRole;
+  final String? packageLine;
   final Map<String, dynamic>? nextBooking;
   final VoidCallback? onBookingTap;
   final VoidCallback? onRemove;
@@ -1258,6 +1310,13 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                   const SizedBox(height: 2),
                   Text(_typeLabel(gym),
                     style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                  if (!isPending && widget.packageLine != null) ...[
+                    const SizedBox(height: 2),
+                    Text(widget.packageLine!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                  ],
                 ]),
               ),
               if (widget.onRemove != null)
@@ -1735,9 +1794,14 @@ class _WeekStrip extends StatelessWidget {
 // ─────────────────────────────────────────
 
 class _DiscoverTab extends StatelessWidget {
-  const _DiscoverTab({required this.globalAuth, required this.onRequestSent});
+  const _DiscoverTab({
+    required this.globalAuth,
+    required this.onRequestSent,
+    required this.onPurchaseComplete,
+  });
   final GlobalAuthService globalAuth;
   final VoidCallback onRequestSent;
+  final void Function(String message) onPurchaseComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -1745,6 +1809,7 @@ class _DiscoverTab extends StatelessWidget {
       globalAuth: globalAuth,
       onLoggedIn: () {},
       onRequestSent: onRequestSent,
+      onPurchaseComplete: onPurchaseComplete,
       hideHeader: true,
     );
   }
@@ -2628,6 +2693,8 @@ class _MyGymsTab extends StatefulWidget {
     required this.onAddGym,
     required this.onRemoveGym,
     required this.parseColor,
+    required this.packageLine,
+    required this.onPurchaseComplete,
   });
 
   final int listVersion;
@@ -2637,6 +2704,8 @@ class _MyGymsTab extends StatefulWidget {
   final VoidCallback onAddGym;
   final Future<void> Function(GlobalGym) onRemoveGym;
   final Color Function(String?) parseColor;
+  final String? Function(String businessId) packageLine;
+  final void Function(String message) onPurchaseComplete;
 
   @override
   State<_MyGymsTab> createState() => _MyGymsTabState();
@@ -2746,12 +2815,14 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                           roles: roles,
                           accentColor: widget.parseColor(roles.first.primaryColor),
                           margin: const EdgeInsets.only(bottom: 12),
+                          packageLine: widget.packageLine(gym.businessId),
                           onEnter: widget.onEnterGym,
                           onAddRole: () {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (_) => GymProfileScreen(
                                 slug: gym.slug,
                                 globalAuth: widget.globalAuth,
+                                onPurchaseComplete: widget.onPurchaseComplete,
                               ),
                             ));
                           },

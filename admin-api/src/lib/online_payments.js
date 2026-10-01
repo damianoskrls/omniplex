@@ -39,25 +39,53 @@ function getProviderModule(providerName) {
  * Create a payment intent for a given amount.
  * Returns { client_secret, intent_id, provider, publishable_key }
  */
+function paymentsNotConfigured() {
+  const err = new Error('Οι online πληρωμές δεν είναι ρυθμισμένες για αυτό το γυμναστήριο');
+  err.status = 400;
+  return err;
+}
+
+function assertStripeKeys(cfg) {
+  const secret = String(cfg?.secret_key || '').trim();
+  const pub = String(cfg?.publishable_key || '').trim();
+  if (!/^sk_(test|live)_/.test(secret) || !/^pk_(test|live)_/.test(pub)) {
+    throw paymentsNotConfigured();
+  }
+}
+
+function hideStripeKeyError(err) {
+  const msg = String(err?.message || '');
+  if (/api key/i.test(msg) || err?.type === 'StripeAuthenticationError') {
+    return paymentsNotConfigured();
+  }
+  return err;
+}
+
 async function createPaymentIntent(conn, bizId, { amountCents, currency = 'eur', metadata = {}, userId, userEmail, userName }) {
   const provCfg = await getProviderConfig(conn, bizId);
   const mod     = getProviderModule(provCfg.provider);
+  if (provCfg.provider === 'stripe') assertStripeKeys(provCfg);
 
   let customerId;
-  if (provCfg.provider === 'stripe' && userId) {
-    customerId = await mod.ensureCustomer({
-      secretKey: provCfg.secret_key,
-      userId, email: userEmail, name: userName,
-    });
-  }
+  let result;
+  try {
+    if (provCfg.provider === 'stripe' && userId) {
+      customerId = await mod.ensureCustomer({
+        secretKey: provCfg.secret_key,
+        userId, email: userEmail, name: userName,
+      });
+    }
 
-  const result = await mod.createIntent({
-    secretKey:    provCfg.secret_key,
-    amountCents,
-    currency,
-    metadata:     { ...metadata, business_id: bizId, user_id: userId || '' },
-    customerId,
-  });
+    result = await mod.createIntent({
+      secretKey:    provCfg.secret_key,
+      amountCents,
+      currency,
+      metadata:     { ...metadata, business_id: bizId, user_id: userId || '' },
+      customerId,
+    });
+  } catch (err) {
+    throw hideStripeKeyError(err);
+  }
 
   return {
     ...result,
@@ -73,7 +101,12 @@ async function createPaymentIntent(conn, bizId, { amountCents, currency = 'eur',
 async function confirmPayment(conn, bizId, intentId) {
   const provCfg = await getProviderConfig(conn, bizId);
   const mod     = getProviderModule(provCfg.provider);
-  return mod.retrieveIntent({ secretKey: provCfg.secret_key, intentId });
+  if (provCfg.provider === 'stripe') assertStripeKeys(provCfg);
+  try {
+    return await mod.retrieveIntent({ secretKey: provCfg.secret_key, intentId });
+  } catch (err) {
+    throw hideStripeKeyError(err);
+  }
 }
 
 /**
@@ -162,4 +195,13 @@ async function refundPayment(conn, bizId, paymentId) {
   return { refund_id };
 }
 
-module.exports = { createPaymentIntent, confirmPayment, parseWebhook, markPaymentPaid, refundPayment };
+module.exports = {
+  createPaymentIntent,
+  confirmPayment,
+  parseWebhook,
+  markPaymentPaid,
+  refundPayment,
+  assertStripeKeys,
+  hideStripeKeyError,
+  paymentsNotConfigured,
+};
