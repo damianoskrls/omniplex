@@ -969,7 +969,7 @@ router.post('/clients/add-global', requireClientAdmin, async (req, res) => {
     await db.query(
       `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, account_status)
        VALUES (?, ?, ?, ?, ?, ?, 'active')`,
-      [newId, bizId, global_user_id, gu.full_name, gu.email || '', gu.phone || ''],
+      [newId, bizId, global_user_id, gu.full_name, String(gu.email || '').trim() || null, gu.phone || null],
     );
     // Approve any existing join_request
     await db.query(

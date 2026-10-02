@@ -13,6 +13,14 @@ async function bootstrapSchema() {
   }
 
   try {
+    await db.query('ALTER TABLE users MODIFY email VARCHAR(255) NULL');
+    await db.query(`UPDATE users SET email = NULL WHERE email IS NOT NULL AND TRIM(email) = ''`);
+    console.log('✓ Schema: users.email allows missing email');
+  } catch (err) {
+    console.warn('users.email nullable skipped:', err.message);
+  }
+
+  try {
     await db.query(
       'CREATE INDEX idx_users_biz_deleted ON users (business_id, deleted_at)',
     );

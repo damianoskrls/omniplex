@@ -1664,7 +1664,7 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
       await conn.query(
         `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, account_status, created_at)
          VALUES (?,?,?,?,?,?,'active',NOW())`,
-        [gymUserId, biz.id, globalUser.id, user_info.full_name || '', user_info.email || '', phone],
+        [gymUserId, biz.id, globalUser.id, user_info.full_name || '', String(user_info.email || '').trim() || null, phone],
       );
     }
 

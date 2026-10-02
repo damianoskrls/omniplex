@@ -2130,6 +2130,11 @@ router.post('/:bizId/messages', softAuth, requireActiveCustomer, async (req, res
   }
 });
 
+function blankToNull(value) {
+  const text = String(value || '').trim();
+  return text || null;
+}
+
 async function linkGlobalBuyer(conn, req, bizId, locationId) {
   if (req.user?.userId) return req.user.userId;
   if (req.user?.role !== 'global_user' || !req.user.globalUserId) return null;
@@ -2139,6 +2144,8 @@ async function linkGlobalBuyer(conn, req, bizId, locationId) {
     [globalUserId],
   );
   if (!gu) return null;
+  const email = blankToNull(gu.email);
+  const phone = blankToNull(gu.phone);
   const [existing] = await conn.query(
     `SELECT id FROM users
      WHERE business_id = ? AND deleted_at IS NULL AND global_user_id = ?
@@ -2146,17 +2153,40 @@ async function linkGlobalBuyer(conn, req, bizId, locationId) {
     [bizId, globalUserId],
   );
   let userId = existing[0]?.id;
+  if (!userId && phone) {
+    const [byPhone] = await conn.query(
+      `SELECT id, global_user_id FROM users
+       WHERE business_id = ? AND deleted_at IS NULL AND ${phoneLast10Eq('phone')}
+       LIMIT 1`,
+      [bizId, phone],
+    );
+    const row = byPhone[0];
+    if (row && (!row.global_user_id || row.global_user_id === globalUserId)) userId = row.id;
+  }
+  if (!userId && email) {
+    const [byEmail] = await conn.query(
+      `SELECT id, global_user_id FROM users
+       WHERE business_id = ? AND deleted_at IS NULL AND email = ?
+       LIMIT 1`,
+      [bizId, email],
+    );
+    const row = byEmail[0];
+    if (row && (!row.global_user_id || row.global_user_id === globalUserId)) userId = row.id;
+  }
   if (userId) {
     await conn.query(
-      `UPDATE users SET account_status = 'active' WHERE id = ? AND business_id = ?`,
-      [userId, bizId],
+      `UPDATE users
+       SET account_status = 'active',
+           global_user_id = COALESCE(global_user_id, ?)
+       WHERE id = ? AND business_id = ?`,
+      [globalUserId, userId, bizId],
     );
   } else {
     userId = uuidv4();
     await conn.query(
       `INSERT INTO users (id, business_id, global_user_id, full_name, email, phone, account_status, created_at)
        VALUES (?,?,?,?,?,?,'active',NOW())`,
-      [userId, bizId, globalUserId, gu.full_name || '', gu.email || '', gu.phone || ''],
+      [userId, bizId, globalUserId, gu.full_name || 'Μέλος', email, phone],
     );
   }
   if (locationId) {
@@ -2416,7 +2446,11 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
     });
   } catch (err) {
     await conn.rollback();
-    return res.status(500).json({ error: err.message });
+    const raw = String(err.message || '');
+    const friendly = /duplicate entry/i.test(raw)
+      ? 'Υπάρχει ήδη λογαριασμός με αυτά τα στοιχεία. Δοκίμασε ξανά.'
+      : raw;
+    return res.status(500).json({ error: friendly });
   } finally {
     conn.release();
   }
