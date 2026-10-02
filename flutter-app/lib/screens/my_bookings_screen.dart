@@ -86,7 +86,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     return list;
   }
 
-  bool _inStore(Booking b) => _locationId == null || b.locationId == _locationId;
+  bool _inStore(Booking b) =>
+      _locationId == null || b.locationId == null || b.locationId == _locationId;
 
   List<Booking> get _gymBookings =>
       _sortedActive(_bookings.where((b) => !b.isNutritionConsultation && b.status != 'pending' && _inStore(b)).toList());

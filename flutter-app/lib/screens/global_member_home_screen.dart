@@ -131,9 +131,6 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     required String businessId,
     required String tabKey,
   }) async {
-    await widget.globalAuth.refreshGyms();
-    await _loadDashboard();
-    if (!mounted) return;
     GlobalGym? gym;
     for (final candidate in widget.globalAuth.gyms) {
       if (candidate.businessId == businessId && !candidate.isStaff) {
@@ -142,12 +139,24 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
       }
     }
     if (gym == null) {
+      await widget.globalAuth.refreshGyms();
+      for (final candidate in widget.globalAuth.gyms) {
+        if (candidate.businessId == businessId && !candidate.isStaff) {
+          gym = candidate;
+          break;
+        }
+      }
+    }
+    if (!mounted) return;
+    if (gym == null) {
       _openTab(3);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
     GymLaunch.tabKey = tabKey;
     GymLaunch.message = message;
+    unawaited(widget.globalAuth.refreshGyms());
+    unawaited(_loadDashboard());
     await _enterGym(gym);
   }
 
@@ -199,13 +208,16 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
       if (mounted) setState(() => _loading = false);
       return;
     }
-    setState(() => _loading = true);
+    if (_dashboard == null) setState(() => _loading = true);
     try {
-      await widget.globalAuth.refreshGyms();
-      final res = await http.get(
-        Uri.parse('$_apiBase/global/me/dashboard'),
-        headers: {'Authorization': 'Bearer ${widget.globalAuth.token}'},
-      );
+      final results = await Future.wait([
+        widget.globalAuth.refreshGyms(),
+        http.get(
+          Uri.parse('$_apiBase/global/me/dashboard'),
+          headers: {'Authorization': 'Bearer ${widget.globalAuth.token}'},
+        ),
+      ]);
+      final res = results[1] as http.Response;
       if (res.statusCode == 200 && mounted) {
         setState(() => _dashboard = jsonDecode(res.body) as Map<String, dynamic>);
       }
@@ -323,21 +335,16 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     }
   }
 
-  Future<TenantConfig> _configForGym(GlobalGym gym) async {
+  Future<TenantConfig> _configForGym(GlobalGym gym) {
     const api = 'https://passionate-grace-production-98ad.up.railway.app';
-    try {
-      return await TenantConfig.loadFromApi(slug: gym.slug, apiBaseUrl: api);
-    } catch (e) {
-      debugPrint('[MemberHome._enterGym] config fallback: $e');
-      return TenantConfig.knownGym(
-        businessId: gym.businessId,
-        slug: gym.slug,
-        appName: gym.appName,
-        apiBaseUrl: api,
-        primaryColor: gym.primaryColor,
-        logoUrl: gym.logoUrl,
-      );
-    }
+    return TenantConfig.openFast(
+      businessId: gym.businessId,
+      slug: gym.slug,
+      appName: gym.appName,
+      apiBaseUrl: api,
+      primaryColor: gym.primaryColor,
+      logoUrl: gym.logoUrl,
+    );
   }
 
   Color _parseColor(String? hex) {
@@ -574,6 +581,29 @@ class _HomeTab extends StatelessWidget {
   final String? Function(String businessId) packageLine;
   final PurchaseComplete onPurchaseComplete;
 
+  Map<String, dynamic>? _soonestBooking(List<Map<String, dynamic>> rows) {
+    final now = DateTime.now();
+    Map<String, dynamic>? next;
+    DateTime? nextAt;
+    Map<String, dynamic>? latest;
+    DateTime? latestAt;
+    for (final row in rows) {
+      final at = DateTime.tryParse(
+        '${row['booking_date'] ?? ''}T${row['booking_time'] ?? '00:00:00'}',
+      );
+      if (at == null) continue;
+      if (!at.isBefore(now) && (nextAt == null || at.isBefore(nextAt))) {
+        next = row;
+        nextAt = at;
+      }
+      if (latestAt == null || at.isAfter(latestAt)) {
+        latest = row;
+        latestAt = at;
+      }
+    }
+    return next ?? latest;
+  }
+
   String get _greeting {
     final h = DateTime.now().hour;
     if (h < 12) return 'Καλημέρα';
@@ -601,8 +631,10 @@ class _HomeTab extends StatelessWidget {
       if (active.isNotEmpty) homeGroups.add(active);
     }
     final upcoming = (dashboard?['upcoming_bookings'] as List?)
-        ?.cast<Map<String, dynamic>>() ?? [];
-    final nextBooking = upcoming.isNotEmpty ? upcoming.first : null;
+        ?.whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList() ?? [];
+    final nextBooking = _soonestBooking(upcoming);
 
     return Stack(
       children: [
@@ -1913,17 +1945,30 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     final all = _scoped;
     if (all.isEmpty) return;
     final todayKey = _dateKey(DateTime.now());
-    final todayHasBooking = all.any((b) => (b['booking_date'] as String? ?? '') == todayKey);
-    if (!todayHasBooking) {
-      final firstDate = DateTime.tryParse(all.first['booking_date'] as String? ?? '');
-      if (firstDate != null) {
-        final now = DateTime.now();
-        final monday = now.subtract(Duration(days: now.weekday - 1));
-        final daysFromMonday = firstDate.difference(monday).inDays;
-        final weekOffset = daysFromMonday ~/ 7;
-        if (mounted) setState(() { _selected = firstDate; _weekOffset = weekOffset; });
-      }
+    if (all.any((b) => (b['booking_date'] as String? ?? '') == todayKey)) return;
+    final today = DateTime.now();
+    final startOfToday = DateTime(today.year, today.month, today.day);
+    DateTime? pick;
+    for (final b in all) {
+      final date = DateTime.tryParse(b['booking_date'] as String? ?? '');
+      if (date == null) continue;
+      final day = DateTime(date.year, date.month, date.day);
+      if (day.isBefore(startOfToday)) continue;
+      if (pick == null || day.isBefore(pick)) pick = day;
     }
+    pick ??= () {
+      DateTime? latest;
+      for (final b in all) {
+        final date = DateTime.tryParse(b['booking_date'] as String? ?? '');
+        if (date == null) continue;
+        if (latest == null || date.isAfter(latest)) latest = date;
+      }
+      return latest;
+    }();
+    if (pick == null) return;
+    final monday = startOfToday.subtract(Duration(days: startOfToday.weekday - 1));
+    final weekOffset = pick.difference(monday).inDays ~/ 7;
+    if (mounted) setState(() { _selected = pick!; _weekOffset = weekOffset; });
   }
 
   List<Map<String, dynamic>> get _all =>

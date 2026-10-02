@@ -104,20 +104,43 @@ class GlobalAuthService extends ChangeNotifier {
   bool get isLoggedIn => _token != null && _user != null;
 
   Future<void> init() async {
+    if (isLoggedIn) return;
     try {
-      _token = await _storage.read(key: _kGlobalToken);
+      final token = await _storage.read(key: _kGlobalToken);
       final uJson = await _storage.read(key: _kGlobalUser);
       final gJson = await _storage.read(key: _kGlobalGyms);
       _preferredRole = await _storage.read(key: _kPreferredRole);
-      if (_token != null && uJson != null) {
+      if (token != null && uJson != null) {
+        _token = token;
         _user  = GlobalUser.fromJson(jsonDecode(uJson) as Map<String, dynamic>);
         if (gJson != null) {
           final list = jsonDecode(gJson) as List;
           _gyms = list.map((e) => GlobalGym.fromJson(e as Map<String, dynamic>)).toList();
         }
       }
-    } catch (_) {
-      await clear();
+    } catch (e) {
+      debugPrint('global auth read failed: $e');
+    }
+  }
+
+  /// The gym login is still valid, but the OmniPlex session was lost.
+  /// Ask the API to issue it again from that gym token.
+  Future<bool> restoreFromGymToken(String gymToken) async {
+    if (isLoggedIn) return true;
+    if (gymToken.isEmpty) return false;
+    try {
+      final res = await http.post(
+        Uri.parse('$_apiBase/global/auth/from-gym'),
+        headers: {'Authorization': 'Bearer $gymToken'},
+      ).timeout(const Duration(seconds: 8));
+      if (res.statusCode != 200) return false;
+      final body = jsonDecode(res.body);
+      if (body is! Map) return false;
+      await _persist(Map<String, dynamic>.from(body));
+      return isLoggedIn;
+    } catch (e) {
+      debugPrint('restore OmniPlex session failed: $e');
+      return false;
     }
   }
 
@@ -372,11 +395,25 @@ class GlobalAuthService extends ChangeNotifier {
   }
 
   Future<void> _persist(Map<String, dynamic> body) async {
-    _token = body['token'] as String;
-    _user  = GlobalUser.fromJson(body['user'] as Map<String, dynamic>);
-    _gyms  = ((body['gyms'] as List?) ?? [])
-        .map((e) => GlobalGym.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final token = body['token']?.toString() ?? '';
+    if (token.isEmpty) throw 'Η σύνδεση δεν αποθηκεύτηκε';
+    final userRaw = body['user'];
+    final user = userRaw is Map
+        ? GlobalUser.fromJson(Map<String, dynamic>.from(userRaw))
+        : const GlobalUser(id: '', email: '', fullName: '');
+    final gyms = <GlobalGym>[];
+    final rawGyms = body['gyms'];
+    if (rawGyms is List) {
+      for (final raw in rawGyms) {
+        if (raw is! Map) continue;
+        try {
+          gyms.add(GlobalGym.fromJson(Map<String, dynamic>.from(raw)));
+        } catch (_) {}
+      }
+    }
+    _token = token;
+    _user = user;
+    _gyms = gyms;
     await _storage.write(key: _kGlobalToken, value: _token);
     await _storage.write(key: _kGlobalUser,  value: jsonEncode(_user!.toJson()));
     await _storage.write(key: _kGlobalGyms,  value: jsonEncode(_gyms.map((g) => g.toJson()).toList()));

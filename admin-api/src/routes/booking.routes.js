@@ -9,6 +9,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
+const { phoneLast10Eq } = require('../lib/phone_sql');
 const {
   computeAvailableSlots,
   buildSlotsPayload,
@@ -1005,7 +1006,49 @@ router.get('/:bizId/my-bookings', softAuth, requireActiveCustomer, async (req, r
         business_id: req.params.bizId,
       }));
     }
-    return res.json(enriched);
+    let dropins = [];
+    try {
+      const [[member]] = await db.query(
+        'SELECT phone FROM users WHERE id = ? AND business_id = ?',
+        [req.user.userId, req.params.bizId],
+      );
+      const digits = String(member?.phone || '').replace(/\D/g, '');
+      const phoneMatch = digits.length >= 10 ? `OR ${phoneLast10Eq('db.guest_phone')}` : '';
+      const dropinParams = [req.params.bizId, req.user.userId];
+      if (digits.length >= 10) dropinParams.push(digits);
+      dropinParams.push(req.user.userId);
+      [dropins] = await db.query(`
+        SELECT
+          db.id, COALESCE(db.service_id, db.id) AS service_id,
+          NULL AS staff_id, NULL AS location_id,
+          DATE_FORMAT(TIMESTAMP(db.booking_date, db.booking_time), '%Y-%m-%dT%H:%i:%s') AS starts_at,
+          DATE_FORMAT(
+            DATE_ADD(TIMESTAMP(db.booking_date, db.booking_time), INTERVAL COALESCE(sv.duration_mins, 60) MINUTE),
+            '%Y-%m-%dT%H:%i:%s'
+          ) AS ends_at,
+          db.status,
+          NULL AS feedback_rating, NULL AS feedback_note, 0 AS attendance_confirmed,
+          COALESCE(sv.name, db.service_name) AS service_name,
+          CAST(COALESCE(sv.duration_mins, 60) AS UNSIGNED) AS duration_mins,
+          sv.category AS service_category,
+          db.staff_name, NULL AS color_hex, NULL AS avatar_url,
+          NULL AS location_name
+        FROM dropin_bookings db
+        LEFT JOIN services sv ON sv.id = db.service_id
+        WHERE db.business_id = ?
+          AND (db.user_id = ? ${phoneMatch})
+          AND db.status IN ('pending','confirmed','attended')
+          AND db.payment_status IN ('paid','pending')
+          AND (db.booking_id IS NULL OR NOT EXISTS (
+            SELECT 1 FROM bookings b WHERE b.id = db.booking_id AND b.user_id = ?
+          ))
+        ORDER BY db.booking_date DESC, db.booking_time DESC
+        LIMIT 30
+      `, dropinParams);
+    } catch (err) {
+      console.warn('dropin bookings list skipped:', err.message);
+    }
+    return res.json([...enriched, ...dropins]);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

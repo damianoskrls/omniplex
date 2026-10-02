@@ -27,7 +27,7 @@ class MemberIntakeScreen extends StatefulWidget {
       final res = await http.get(
         Uri.parse('$base/api/member/${auth.config.businessId}'),
         headers: {'Authorization': 'Bearer ${auth.api.token ?? ''}'},
-      );
+      ).timeout(const Duration(seconds: 6));
       if (!context.mounted || res.statusCode != 200) return;
       final body = jsonDecode(res.body);
       final signed = body is Map && body['health'] is Map && body['health']['signed_at'] != null;

@@ -452,8 +452,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _refreshUnread();
       _loadNutritionAccess();
       _loadWorkoutNav();
+      final openedFromPurchase = GymLaunch.tabKey != null;
       _openLaunchTab();
-      MemberIntakeScreen.promptIfNeeded(context);
+      if (!openedFromPurchase) MemberIntakeScreen.promptIfNeeded(context);
     });
     _unreadTimer = Timer.periodic(const Duration(seconds: 45), (_) => _refreshUnread());
   }

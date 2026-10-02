@@ -73,26 +73,22 @@ class TenantConfig {
     final resolved = await _resolveApiBaseUrl(apiBaseUrl);
     final prefs = await SharedPreferences.getInstance();
 
-    Object? lastError;
-    for (var attempt = 0; attempt < 2; attempt++) {
-      try {
-        final url = '$resolved/api/tenants/public/$slug';
-        final response = await http.get(Uri.parse(url))
-            .timeout(const Duration(seconds: 20));
-        if (response.statusCode == 200) {
-          final json = jsonDecode(response.body) as Map<String, dynamic>;
-          json['api_base_url'] = resolved;
-          await prefs.setString(_prefKeyConfig, jsonEncode(json));
-          await prefs.setString(_prefKeySlug, slug);
-          await prefs.setString(_prefKeyApiUrl, resolved);
-          return TenantConfig.fromJson(json);
-        }
-        lastError = 'HTTP ${response.statusCode}';
-      } catch (e) {
-        lastError = e;
+    try {
+      final url = '$resolved/api/tenants/public/$slug';
+      final response = await http.get(Uri.parse(url))
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        json['api_base_url'] = resolved;
+        await prefs.setString(_prefKeyConfig, jsonEncode(json));
+        await prefs.setString(_prefKeySlug, slug);
+        await prefs.setString(_prefKeyApiUrl, resolved);
+        return TenantConfig.fromJson(json);
       }
+      debugPrint('tenant config $slug failed: HTTP ${response.statusCode}');
+    } catch (e) {
+      debugPrint('tenant config $slug failed: $e');
     }
-    debugPrint('tenant config $slug failed: $lastError');
 
     // Use cached config if fetch fails
     final cached = prefs.getString(_prefKeyConfig);
@@ -106,6 +102,53 @@ class TenantConfig {
     }
 
     throw Exception('Δεν βρέθηκε config για "$slug". Έλεγξε το slug και τη σύνδεση.');
+  }
+
+  /// Opens a gym without waiting on the network. Uses the last saved config
+  /// for this slug, otherwise a working fallback, and refreshes in the background.
+  static Future<TenantConfig> openFast({
+    required String businessId,
+    required String slug,
+    required String appName,
+    required String apiBaseUrl,
+    String primaryColor = '#00b33e',
+    String? logoUrl,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString(_prefKeyConfig);
+    if (cached != null) {
+      try {
+        final json = jsonDecode(cached) as Map<String, dynamic>;
+        if ((json['slug'] as String? ?? '') == slug) {
+          json['api_base_url'] = apiBaseUrl;
+          unawaited(refreshInBackground(slug: slug, apiBaseUrl: apiBaseUrl));
+          return TenantConfig.fromJson(json);
+        }
+      } catch (_) {}
+    }
+    unawaited(refreshInBackground(slug: slug, apiBaseUrl: apiBaseUrl));
+    return TenantConfig.knownGym(
+      businessId: businessId,
+      slug: slug,
+      appName: appName,
+      apiBaseUrl: apiBaseUrl,
+      primaryColor: primaryColor,
+      logoUrl: logoUrl,
+    );
+  }
+
+  static Future<String?> cachedBusinessId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_prefKeyConfig);
+    if (raw == null) return null;
+    try {
+      final json = jsonDecode(raw);
+      if (json is! Map) return null;
+      final id = json['business_id']?.toString() ?? '';
+      return id.isEmpty ? null : id;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Returns the cached slug/apiUrl if a tenant was previously configured, null otherwise.

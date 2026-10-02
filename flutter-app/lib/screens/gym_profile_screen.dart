@@ -480,19 +480,14 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           : await widget.globalAuth!.getTrainerToken(bizId, asKind: staffHere?.staffKind);
       await BiometricAuthService.instance.saveToken(bizId, gymToken);
       final api = 'https://passionate-grace-production-98ad.up.railway.app';
-      TenantConfig config;
-      try {
-        config = await TenantConfig.loadFromApi(slug: _slug!, apiBaseUrl: api);
-      } catch (_) {
-        config = TenantConfig.knownGym(
-          businessId: bizId,
-          slug: _slug!,
-          appName: _gym?['app_name'] as String? ?? _gym?['name'] as String? ?? 'Γυμναστήριο',
-          apiBaseUrl: api,
-          primaryColor: _gym?['primary_color'] as String? ?? '#00b33e',
-          logoUrl: _gym?['logo_url'] as String?,
-        );
-      }
+      final config = await TenantConfig.openFast(
+        businessId: bizId,
+        slug: _slug!,
+        appName: _gym?['app_name'] as String? ?? _gym?['name'] as String? ?? 'Γυμναστήριο',
+        apiBaseUrl: api,
+        primaryColor: _gym?['primary_color'] as String? ?? '#00b33e',
+        logoUrl: _gym?['logo_url'] as String?,
+      );
       if (!mounted) return;
       await showGymEntrySplash(
         context,
@@ -710,7 +705,12 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       Navigator.of(context).pop();
 
       if (confirm.statusCode == 200) {
-        await widget.globalAuth!.refreshGyms();
+        final confirmBody = jsonDecode(confirm.body);
+        if (confirmBody is Map && confirmBody['token'] != null) {
+          await widget.globalAuth!.persistFromPurchase(Map<String, dynamic>.from(confirmBody));
+        } else {
+          await widget.globalAuth!.refreshGyms();
+        }
         if (!mounted) return;
         _finishPurchase(
           'Το πακέτο «${plan['name']}» είναι ενεργό. Μπορείς να κάνεις κράτηση.',

@@ -40,6 +40,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
   bool _gymSplashActive = false;
   bool _wasLoggedIn = false;
   bool _guestExplore = false; // true after user taps "Συνέχεια ως επισκέπτης"
+  bool _handedBack = false;
   Timer? _splashTimer;
 
   @override
@@ -234,6 +235,16 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                         gAuth.clear();
                         if (mounted) setState(() => _guestExplore = false);
                       },
+                    );
+                  }
+                  if (widget.onSwitchGym != null && !_handedBack) {
+                    _handedBack = true;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      widget.onSwitchGym?.call();
+                    });
+                    return const Scaffold(
+                      backgroundColor: Color(0xFF0A0A0A),
+                      body: Center(child: CircularProgressIndicator(color: Color(0xFFC52473))),
                     );
                   }
                   return GlobalAuthGateScreen(

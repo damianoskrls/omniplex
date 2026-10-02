@@ -80,15 +80,22 @@ class Booking {
     return raw.map((e) => e.toString()).toList();
   }
 
+  static int? _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
   factory Booking.fromJson(Map<String, dynamic> json) => Booking(
-        id: json['id'] as String,
-        serviceId: json['service_id'] as String,
-        serviceName: json['service_name'] as String,
+        id: json['id'].toString(),
+        serviceId: (json['service_id'] ?? json['id']).toString(),
+        serviceName: (json['service_name'] ?? 'Υπηρεσία').toString(),
         staffName: json['staff_name'] as String? ?? '',
-        startsAt: DateTime.parse(json['starts_at'] as String).toLocal(),
-        endsAt: DateTime.parse(json['ends_at'] as String).toLocal(),
-        status: json['status'] as String,
-        durationMins: json['duration_mins'] as int?,
+        startsAt: DateTime.parse(json['starts_at'].toString()).toLocal(),
+        endsAt: DateTime.parse(json['ends_at'].toString()).toLocal(),
+        status: (json['status'] ?? 'confirmed').toString(),
+        durationMins: _asInt(json['duration_mins']),
         staffId: json['staff_id'] as String?,
         locationId: json['location_id'] as String?,
         locationName: json['location_name'] as String?,

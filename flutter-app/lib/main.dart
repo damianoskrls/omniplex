@@ -123,9 +123,21 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
       ),
     );
 
-    // Load global auth state
+    // Load global auth state. A saved gym login can rebuild the OmniPlex
+    // session if the global token was lost.
     await _globalAuth.init();
+    if (!_globalAuth.isLoggedIn) await _restoreGlobalFromCachedGym();
     unawaited(_armNotifications());
+
+    if (_globalAuth.isLoggedIn) {
+      await _waitRemainingSplash(splashStarted);
+      if (!mounted) return;
+      setState(() {
+        _needsTenantSelection = true;
+        _showExplore = false;
+      });
+      return;
+    }
 
     // Dynamic mode: check for a cached tenant config first
     final cached = await TenantConfig.getCachedTenant();
@@ -245,14 +257,38 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
     SchedulerBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
 
-  void _resetToSelector() {
+  Future<void> _restoreGlobalFromCachedGym() async {
+    if (_globalAuth.isLoggedIn) return;
+    try {
+      final bizId = await TenantConfig.cachedBusinessId();
+      if (bizId == null) return;
+      final gymToken = await BiometricAuthService.instance.readToken(bizId);
+      if (gymToken == null || gymToken.isEmpty) return;
+      await _globalAuth.restoreFromGymToken(gymToken);
+    } catch (_) {}
+  }
+
+  Future<void> _resetToSelector() async {
+    final bizId = _config?.businessId;
+    try {
+      if (!_globalAuth.isLoggedIn && bizId != null) {
+        final gymToken = await BiometricAuthService.instance.readToken(bizId);
+        if (gymToken != null && gymToken.isNotEmpty) {
+          await _globalAuth.restoreFromGymToken(gymToken);
+        }
+      }
+    } catch (_) {}
+    if (!mounted) return;
     setState(() {
       _config = null;
       _auth = null;
       _error = null;
       _needsTenantSelection = true;
       _showAuthGate = false;
-      _showExplore  = false;
+      _showGlobalDashboard = false;
+      // Back to the shell they already use. The cold login wall is only for
+      // a fresh launch with no session at all.
+      _showExplore = !_globalAuth.isLoggedIn;
     });
   }
 
@@ -270,18 +306,14 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
       if (_config != null && _config!.businessId == gym.businessId) {
         config = _config!;
       } else {
-        try {
-          config = await TenantConfig.loadFromApi(slug: gym.slug, apiBaseUrl: api);
-        } catch (_) {
-          config = TenantConfig.knownGym(
-            businessId: gym.businessId,
-            slug: gym.slug,
-            appName: gym.appName,
-            apiBaseUrl: api,
-            primaryColor: gym.primaryColor,
-            logoUrl: gym.logoUrl,
-          );
-        }
+        config = await TenantConfig.openFast(
+          businessId: gym.businessId,
+          slug: gym.slug,
+          appName: gym.appName,
+          apiBaseUrl: api,
+          primaryColor: gym.primaryColor,
+          logoUrl: gym.logoUrl,
+        );
       }
       await _bootstrapWithConfig(config, quick: true);
     } finally {

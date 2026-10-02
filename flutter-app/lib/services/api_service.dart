@@ -1131,7 +1131,14 @@ class ApiService {
   Future<List<Booking>> fetchMyBookings() async {
     final res = await _get('/api/booking/$bizId/my-bookings');
     final data = _decode(res) as List;
-    return data.map((e) => Booking.fromJson(e as Map<String, dynamic>)).toList();
+    final bookings = <Booking>[];
+    for (final raw in data) {
+      if (raw is! Map) continue;
+      try {
+        bookings.add(Booking.fromJson(Map<String, dynamic>.from(raw)));
+      } catch (_) {}
+    }
+    return bookings;
   }
 
   Future<void> cancelBooking(String bookingId) async {

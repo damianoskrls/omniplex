@@ -67,19 +67,14 @@ class _GlobalDashboardScreenState extends State<GlobalDashboardScreen> {
       await BiometricAuthService.instance.setBiometricEnabled(gym.businessId, false);
       await BiometricAuthService.instance.saveToken(gym.businessId, gymToken);
       const api = 'https://passionate-grace-production-98ad.up.railway.app';
-      TenantConfig config;
-      try {
-        config = await TenantConfig.loadFromApi(slug: gym.slug, apiBaseUrl: api);
-      } catch (_) {
-        config = TenantConfig.knownGym(
-          businessId: gym.businessId,
-          slug: gym.slug,
-          appName: gym.appName,
-          apiBaseUrl: api,
-          primaryColor: gym.primaryColor,
-          logoUrl: gym.logoUrl,
-        );
-      }
+      final config = await TenantConfig.openFast(
+        businessId: gym.businessId,
+        slug: gym.slug,
+        appName: gym.appName,
+        apiBaseUrl: api,
+        primaryColor: gym.primaryColor,
+        logoUrl: gym.logoUrl,
+      );
       if (!mounted) return;
       widget.onEnterGym(config);
     } catch (e) {

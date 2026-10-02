@@ -77,11 +77,18 @@ function makeGlobalToken(user) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────
+const autoLinkAt = new Map();
+
 async function getGymsForGlobalUser(globalUserId) {
   const [[gu]] = await db.query('SELECT phone, email FROM global_users WHERE id = ?', [globalUserId]);
-  if (gu) {
+  const lastLink = autoLinkAt.get(globalUserId) || 0;
+  if (gu && Date.now() - lastLink > 120000) {
+    autoLinkAt.set(globalUserId, Date.now());
     try { await autoLinkGlobalUser(globalUserId, gu.phone, gu.email); }
-    catch (err) { console.warn('auto-link skipped:', err.message); }
+    catch (err) {
+      autoLinkAt.delete(globalUserId);
+      console.warn('auto-link skipped:', err.message);
+    }
   }
 
   const [memberRows] = await db.query(`
@@ -293,6 +300,42 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
       parts.push(`${selectSql}, 'staff' AS role ${fromSql}
         WHERE b.staff_id IN (?) ${windowSql}`);
       params.push(staffIds);
+    }
+    if (memberIds.length) {
+      const [[gu]] = await db.query(
+        'SELECT phone FROM global_users WHERE id = ?',
+        [req.globalUser.globalUserId],
+      );
+      const digits = String(gu?.phone || '').replace(/\D/g, '');
+      const phoneMatch = digits.length >= 10 ? `OR ${phoneLast10Eq('db.guest_phone')}` : '';
+      parts.push(`
+        SELECT db.id,
+               DATE_FORMAT(db.booking_date, '%Y-%m-%d') AS booking_date,
+               DATE_FORMAT(db.booking_time, '%H:%i:%s') AS booking_time,
+               db.status,
+               COALESCE(s.name, db.service_name) AS service_name,
+               CAST(COALESCE(s.duration_mins, 60) AS UNSIGNED) AS duration_mins,
+               s.image_url AS service_image_url,
+               db.staff_name,
+               COALESCE(u.full_name, db.guest_name) AS client_name,
+               biz.id AS business_id, biz.name AS business_name,
+               NULL AS location_id, NULL AS location_name,
+               COALESCE(bc.app_name, biz.name) AS app_name, bc.primary_color, bc.logo_url,
+               'member' AS role
+        FROM dropin_bookings db
+        LEFT JOIN services s ON s.id = db.service_id
+        LEFT JOIN users u ON u.id = db.user_id
+        JOIN businesses biz ON biz.id = db.business_id
+        LEFT JOIN business_configs bc ON bc.business_id = db.business_id
+        WHERE (db.user_id IN (?) ${phoneMatch})
+          AND db.booking_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+          AND db.status IN ('pending','confirmed')
+          AND db.payment_status IN ('paid','pending')
+          AND (db.booking_id IS NULL OR NOT EXISTS (
+            SELECT 1 FROM bookings b WHERE b.id = db.booking_id
+          ))`);
+      params.push(memberIds);
+      if (digits.length >= 10) params.push(digits);
     }
     if (!parts.length) return res.json({ gyms, upcoming_bookings: [] });
 
@@ -1864,6 +1907,48 @@ router.delete('/debug/clear-otps', async (req, res) => {
   const digits = String(phone).replace(/\D/g, '');
   await db.query(`DELETE FROM global_otps WHERE phone = ?`, [digits]);
   res.json({ ok: true, cleared: digits });
+});
+
+// ============================================================
+// POST /api/global/auth/from-gym
+// Bearer = gym member or staff JWT. Restores the OmniPlex session
+// when the app still has the gym login but lost the global one.
+// ============================================================
+router.post('/auth/from-gym', async (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  let decoded;
+  try { decoded = jwt.verify(token, process.env.JWT_SECRET); }
+  catch { return res.status(401).json({ error: 'Invalid token' }); }
+
+  try {
+    let globalUserId = decoded.globalUserId || null;
+    if (!globalUserId && decoded.userId) {
+      const [[member]] = await db.query(
+        'SELECT global_user_id FROM users WHERE id = ? AND deleted_at IS NULL',
+        [decoded.userId],
+      );
+      globalUserId = member?.global_user_id || null;
+    }
+    if (!globalUserId && decoded.staffId) {
+      const [[staff]] = await db.query(
+        'SELECT global_user_id FROM staff WHERE id = ? AND is_active = 1',
+        [decoded.staffId],
+      );
+      globalUserId = staff?.global_user_id || null;
+    }
+    if (!globalUserId) return res.status(404).json({ error: 'Δεν υπάρχει λογαριασμός OmniPlex' });
+
+    const [[user]] = await db.query(
+      'SELECT id, email, full_name, phone FROM global_users WHERE id = ?',
+      [globalUserId],
+    );
+    if (!user) return res.status(404).json({ error: 'Δεν υπάρχει λογαριασμός OmniPlex' });
+    const gyms = await getGymsForGlobalUser(user.id);
+    return res.json({ token: makeGlobalToken(user), user, gyms });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 // ============================================================

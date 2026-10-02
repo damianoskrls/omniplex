@@ -111,6 +111,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   @override
   void initState() {
     super.initState();
+    _loadFeatured();
     _initLocation();
     _searchFocus.addListener(_onFocusChanged);
   }
@@ -124,11 +125,12 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
         final pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
-        );
-        if (mounted) setState(() { _userLat = pos.latitude; _userLng = pos.longitude; });
+        ).timeout(const Duration(seconds: 4));
+        if (!mounted) return;
+        setState(() { _userLat = pos.latitude; _userLng = pos.longitude; });
+        _loadFeatured();
       }
     } catch (_) {}
-    _loadFeatured();
   }
 
   @override
@@ -156,7 +158,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         params['lng'] = _userLng!.toString();
       }
       final uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: params.isEmpty ? null : params);
-      final res = await http.get(uri);
+      final res = await http.get(uri).timeout(const Duration(seconds: 8));
       if (res.statusCode == 200 && mounted) {
         setState(() {
           _featured = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
@@ -201,7 +203,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       if (_filterOpenNow) params['open_now'] = 'true';
       if (_filterAmenities.isNotEmpty) params['amenities'] = _filterAmenities.join(',');
       final uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: params);
-      final res = await http.get(uri);
+      final res = await http.get(uri).timeout(const Duration(seconds: 8));
       if (res.statusCode == 200 && mounted) {
         setState(() => _results = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>());
       }
