@@ -22,29 +22,74 @@ function mobileAuth(req, res, next) {
 }
 const { createOneBooking } = require('../lib/create_booking');
 const { computeAvailableSlots, buildSlotsPayload } = require('../lib/slots');
+const { listLocationsForService } = require('../lib/locations');
 
 const router = express.Router();
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
+function athensToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Athens',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 }
 
+function today() {
+  return athensToday();
+}
+
+function addDaysIso(iso, days) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return dt.toISOString().slice(0, 10);
+}
+
+function weekdayOf(iso) {
+  return new Date(`${iso}T12:00:00+03:00`).getDay();
+}
+
+function plainGreek(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/ς/g, 'σ')
+    .trim();
+}
+
+const GR_WEEKDAYS = {
+  κυριακη: 0,
+  δευτερα: 1,
+  τριτη: 2,
+  τεταρτη: 3,
+  πεμπτη: 4,
+  παρασκευη: 5,
+  σαββατο: 6,
+};
+
 function dateFromRelative(expr) {
-  // Parses "αύριο", "tomorrow", "σήμερα", "today", or YYYY-MM-DD
-  const d = new Date();
-  const lower = (expr || '').toLowerCase().trim();
-  if (lower === 'αύριο' || lower === 'tomorrow') {
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
-  }
-  if (lower === 'σήμερα' || lower === 'today') {
-    return d.toISOString().slice(0, 10);
-  }
-  // YYYY-MM-DD passthrough
-  if (/^\d{4}-\d{2}-\d{2}$/.test(lower)) return lower;
-  return null;
+  const raw = String(expr || '').trim();
+  if (!raw) return null;
+  const plain = plainGreek(raw);
+  const base = athensToday();
+  if (plain === 'σημερα' || plain === 'today') return base;
+  if (plain === 'αυριο' || plain === 'tomorrow') return addDaysIso(base, 1);
+  if (plain === 'μεθαυριο') return addDaysIso(base, 2);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const target = GR_WEEKDAYS[plain];
+  if (target == null) return null;
+  const delta = (target - weekdayOf(base) + 7) % 7;
+  return addDaysIso(base, delta);
+}
+
+function endTime(time, durationMins) {
+  const [h, m] = String(time).slice(0, 5).split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m) || !durationMins) return null;
+  const endMins = h * 60 + m + durationMins;
+  return `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
 }
 
 // ── tool definitions ──────────────────────────────────────────────────────────
@@ -63,29 +108,31 @@ const TOOLS = [
   },
   {
     name: 'check_availability',
-    description: 'Returns available time slots for a given service on a given date. Use this before booking to show the user their options.',
+    description: 'Returns real bookable slots for a service, across the member locations. If that day is empty, returns the next openings within 14 days. Always call this before saying there are no times.',
     input_schema: {
       type: 'object',
       properties: {
         service_id: { type: 'string', description: 'The service id (from get_services)' },
-        date: { type: 'string', description: 'ISO date YYYY-MM-DD. You may also pass "today" or "tomorrow" and the server resolves it.' },
+        date: { type: 'string', description: 'YYYY-MM-DD, today, tomorrow, αύριο, or a Greek weekday. If omitted, the server uses today and then the next open days.' },
+        location_id: { type: 'string', description: 'Optional gym location id. Omit to search every location the member can use.' },
       },
-      required: ['service_id', 'date'],
+      required: ['service_id'],
     },
   },
   {
     name: 'create_booking',
-    description: 'Creates a booking for the user. Only call this after the user has explicitly confirmed the slot they want.',
+    description: 'Creates the booking. Call it when the member asks you to book. If they did not name a time, pass the first slot from check_availability. If date and time are omitted, the server books the soonest opening.',
     input_schema: {
       type: 'object',
       properties: {
         service_id: { type: 'string', description: 'Service id' },
         date: { type: 'string', description: 'YYYY-MM-DD' },
         time: { type: 'string', description: 'HH:MM (24h)' },
-        staff_id: { type: 'string', description: 'Optional staff/trainer id from the slot' },
+        staff_id: { type: 'string', description: 'Staff id from the chosen slot, when the slot has one' },
+        location_id: { type: 'string', description: 'Location id from the chosen slot' },
         use_credit: { type: 'boolean', description: 'Whether to deduct a credit. Default true.' },
       },
-      required: ['service_id', 'date', 'time'],
+      required: ['service_id'],
     },
   },
   {
@@ -171,56 +218,140 @@ async function execGetServices(bizId, userId, input) {
   }));
 }
 
-async function execCheckAvailability(bizId, userId, input) {
-  const date = dateFromRelative(input.date) || input.date;
-  try {
-    const computed = await computeAvailableSlots(db, bizId, input.service_id, date, null, null);
-    if (!computed) return { date, slots: [], error: 'Service not found' };
-    if (computed.closedReason) return { date, slots: [], message: 'Gym is closed on this day.' };
+async function locationsFor(bizId, userId, serviceId, locationId) {
+  const rows = await listLocationsForService(db, bizId, serviceId, { userId });
+  const list = rows.length ? rows : [{ id: null, name: null }];
+  if (!locationId) return list;
+  const match = list.filter((row) => row.id === locationId);
+  return match.length ? match : list;
+}
 
-    const payload = buildSlotsPayload(computed, { featureWaitlist: false, date });
-    const durationMins = payload.duration_mins;
+async function slotsOnDate(bizId, serviceId, date, locationId, locationName) {
+  const computed = await computeAvailableSlots(db, bizId, serviceId, date, null, locationId);
+  if (!computed || computed.closedReason) return [];
+  const payload = buildSlotsPayload(computed, { featureWaitlist: false, date });
+  const durationMins = payload.duration_mins || 0;
+  return (payload.slots || [])
+    .filter((slot) => !slot.is_full && ((slot.available_staff || []).length > 0 || slot.available_count > 0))
+    .map((slot) => {
+      const staff = slot.available_staff?.[0] || null;
+      const time = String(slot.time).slice(0, 5);
+      return {
+        date,
+        time,
+        end_time: endTime(time, durationMins),
+        staff_id: staff?.id || null,
+        staff_name: staff?.full_name || null,
+        location_id: locationId,
+        location_name: locationName,
+        spots_left: slot.remaining_spots ?? slot.available_count,
+      };
+    });
+}
+
+async function execCheckAvailability(bizId, userId, input) {
+  const requested = dateFromRelative(input.date) || athensToday();
+  try {
+    const [[service]] = await db.query(
+      'SELECT id, name FROM services WHERE id = ? AND business_id = ? AND is_active = 1',
+      [input.service_id, bizId],
+    );
+    if (!service) return { date: requested, slots: [], error: 'Η υπηρεσία δεν βρέθηκε' };
+
+    const locations = await locationsFor(bizId, userId, input.service_id, input.location_id);
+    const collect = async (date) => {
+      const found = [];
+      for (const loc of locations) {
+        const slots = await slotsOnDate(bizId, input.service_id, date, loc.id, loc.name);
+        found.push(...slots);
+      }
+      return found;
+    };
+
+    let slots = await collect(requested);
+    let searchedAhead = false;
+    if (!slots.length) {
+      searchedAhead = true;
+      for (let day = 1; day <= 14 && slots.length < 8; day += 1) {
+        const next = await collect(addDaysIso(requested, day));
+        slots.push(...next.slice(0, 4));
+      }
+      slots = slots.slice(0, 8);
+    }
+
     return {
-      date,
       service_id: input.service_id,
-      slots: (payload.slots || []).map(s => {
-        const firstStaff = s.available_staff?.[0] || null;
-        return {
-          time: s.time,
-          end_time: s.time && durationMins
-            ? (() => {
-                const [h, m] = s.time.split(':').map(Number);
-                const endMins = h * 60 + m + durationMins;
-                return `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
-              })()
-            : null,
-          staff_id: firstStaff?.id || null,
-          staff_name: firstStaff?.name || null,
-          spots_left: s.remaining_spots ?? s.capacity,
-        };
-      }),
-      available_count: (payload.slots || []).length,
+      service_name: service.name,
+      requested_date: requested,
+      slots,
+      available_count: slots.length,
+      searched_ahead: searchedAhead,
+      message: slots.length
+        ? (searchedAhead
+          ? 'Δεν έχει ώρα την ημέρα που ζητήθηκε. Αυτές είναι οι επόμενες διαθέσιμες.'
+          : 'Υπάρχουν διαθέσιμες ώρες.')
+        : 'Δεν βρέθηκαν ώρες τις επόμενες 14 μέρες για αυτή την υπηρεσία.',
     };
   } catch (err) {
-    return { date, slots: [], error: err.message };
+    return { date: requested, slots: [], error: err.message };
   }
 }
 
+async function findSlot(bizId, userId, input) {
+  const date = dateFromRelative(input.date) || input.date || athensToday();
+  const wantTime = input.time ? String(input.time).slice(0, 5) : null;
+  const locations = await locationsFor(bizId, userId, input.service_id, input.location_id);
+  const dates = wantTime ? [date] : [date, ...Array.from({ length: 14 }, (_, i) => addDaysIso(date, i + 1))];
+  for (const day of dates) {
+    for (const loc of locations) {
+      const slots = await slotsOnDate(bizId, input.service_id, day, loc.id, loc.name);
+      const match = wantTime
+        ? slots.find((slot) => slot.time === wantTime)
+        : slots[0];
+      if (match) return match;
+    }
+    if (wantTime) break;
+  }
+  return null;
+}
+
 async function execCreateBooking(bizId, userId, input) {
-  const date = dateFromRelative(input.date) || input.date;
+  const slot = await findSlot(bizId, userId, input);
+  if (!slot && input.time) {
+    return { success: false, error: 'Αυτή η ώρα δεν είναι διαθέσιμη. Κάλεσε check_availability και διάλεξε ώρα από τη λίστα.' };
+  }
+  if (!slot) {
+    return { success: false, error: 'Δεν βρέθηκε ελεύθερη ώρα τις επόμενες 14 μέρες.' };
+  }
+  const date = slot.date;
+  const time = input.time ? String(input.time).slice(0, 5) : slot.time;
   const conn = await db.getConnection();
   try {
+    await conn.beginTransaction();
     const result = await createOneBooking(conn, {
       bizId,
       userId,
       service_id: input.service_id,
       date,
-      time: input.time,
-      staff_id: input.staff_id || null,
+      time,
+      staff_id: input.staff_id || slot.staff_id || null,
+      location_id: input.location_id || slot.location_id || null,
       use_credit: input.use_credit !== false,
       source: 'ai_agent',
     });
-    return { success: true, booking_id: result.booking_id, service: result.service, date, time: input.time };
+    await conn.commit();
+    return {
+      success: true,
+      booking_id: result.booking_id,
+      service: result.service,
+      date,
+      time,
+      location_name: slot.location_name || null,
+      staff_name: slot.staff_name || null,
+    };
+  } catch (err) {
+    await conn.rollback();
+    return { success: false, error: err.message || 'Η κράτηση δεν ολοκληρώθηκε' };
   } finally {
     conn.release();
   }
@@ -328,10 +459,14 @@ PERSONALITY:
 - After creating or cancelling a booking, confirm with a brief summary.
 - If an action fails, explain clearly and suggest alternatives.
 
-IMPORTANT:
-- Never invent slots or services — always call the relevant tool first.
-- Do not call create_booking until the user explicitly picks a time/slot.
-- When presenting slots, use a clean readable format: "1. 10:00 – 11:00 (με τον/την Γιώργο, 3 θέσεις)"
+BOOKING:
+- When the member asks you to make a booking, make it. Do not stop at "there are no times" if a tool returned slots.
+- Call get_services when you do not already know the service id. Prefer a service with has_plan_access true. If several match and they did not name one, ask once which service.
+- Call check_availability before create_booking. Trust its slots. If searched_ahead is true, those slots are the next real openings — use them.
+- If they asked you to book and did not pick a time, call create_booking with the first slot's date, time, staff_id and location_id. Then tell them exactly what you booked.
+- If they named a time, book that time. Pass staff_id and location_id from the matching slot.
+- Never invent a slot. Never say there are no available times when slots is not empty.
+- After a successful create_booking, confirm service, date, time and location in one short message.
 `;
 }
 
