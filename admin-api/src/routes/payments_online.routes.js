@@ -390,6 +390,83 @@ router.post('/:bizId/bank-transfer', softAuth, requireActiveCustomer, async (req
   }
 });
 
+// POST /api/payments-online/:bizId/pay-in-store
+// Member asks for a short extension and will pay at the gym.
+router.post('/:bizId/pay-in-store', softAuth, requireActiveCustomer, async (req, res) => {
+  const { payment_id } = req.body;
+  if (!payment_id) return res.status(400).json({ error: 'Απαιτείται payment_id' });
+
+  try {
+    const [[payment]] = await db.query(`
+      SELECT id, user_id, membership_id, service_id, description, amount_cents, paid_amount_cents, status, notes
+      FROM payments WHERE id = ? AND business_id = ? AND user_id = ?
+    `, [payment_id, req.params.bizId, req.user.userId]);
+    if (!payment) return res.status(404).json({ error: 'Πληρωμή δεν βρέθηκε' });
+    if (payment.status === 'paid') return res.status(409).json({ error: 'Έχει ήδη πληρωθεί' });
+    if (String(payment.notes || '').includes('[Πληρωμή στο κατάστημα')) {
+      return res.json({ ok: true, message: 'Το αίτημα έχει ήδη σταλεί. Πλήρωσε στο κατάστημα.' });
+    }
+
+    await db.query(
+      `UPDATE payments
+       SET method = 'in_store',
+           notes = CONCAT(COALESCE(notes,''), '\n[Πληρωμή στο κατάστημα: ', NOW(), ']')
+       WHERE id = ?`,
+      [payment_id],
+    );
+
+    let extendedUntil = null;
+    {
+      let membershipId = payment.membership_id;
+      if (!membershipId && payment.service_id) {
+        const [[mem]] = await db.query(
+          `SELECT id FROM user_memberships
+           WHERE user_id = ? AND business_id = ? AND service_id = ?
+             AND membership_status <> 'cancelled'
+           ORDER BY valid_until DESC LIMIT 1`,
+          [payment.user_id, req.params.bizId, payment.service_id],
+        );
+        membershipId = mem?.id || null;
+      }
+      if (membershipId) {
+        await db.query(`
+          UPDATE user_memberships
+          SET membership_status = 'active',
+              valid_until = GREATEST(COALESCE(valid_until, CURDATE()), DATE_ADD(CURDATE(), INTERVAL 7 DAY))
+          WHERE id = ? AND business_id = ? AND membership_status <> 'cancelled'
+        `, [membershipId, req.params.bizId]);
+        const [[mem]] = await db.query(
+          'SELECT valid_until FROM user_memberships WHERE id = ?',
+          [membershipId],
+        );
+        extendedUntil = mem?.valid_until || null;
+      }
+    }
+
+    const { createAdminNotification } = require('../lib/notifications');
+    const [[user]] = await db.query(
+      'SELECT full_name FROM users WHERE id = ?',
+      [payment.user_id],
+    );
+    const balance = (payment.amount_cents || 0) - (payment.paid_amount_cents || 0);
+    await createAdminNotification(db, {
+      businessId: req.params.bizId,
+      type: 'pay_in_store',
+      title: 'Πληρωμή στο κατάστημα',
+      body: `${user?.full_name || 'Μέλος'} θα πληρώσει από κοντά${payment.description ? ` · ${payment.description}` : ''} (€${(balance / 100).toFixed(2)})`,
+      payload: { payment_id, user_id: payment.user_id },
+    });
+
+    return res.json({
+      ok: true,
+      extended_until: extendedUntil,
+      message: 'Το αίτημα στάλθηκε. Μπορείς να πληρώσεις στο κατάστημα.',
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/payments-online/:bizId/bank-details
 // Admin: save bank account details for bank transfer payments
 router.put('/:bizId/bank-details', authenticate, async (req, res) => {

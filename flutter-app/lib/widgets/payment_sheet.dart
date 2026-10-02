@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import '../models/user_stats.dart';
 import '../services/api_service.dart';
@@ -15,8 +16,9 @@ void showPaymentSheet(
   required VoidCallback onPaid,
 }) {
   final methods = (paymentOptions['methods'] as List? ?? [])
-      .cast<Map<String, dynamic>>();
-  if (methods.isEmpty) return;
+      .whereType<Map>()
+      .map((m) => Map<String, dynamic>.from(m))
+      .toList();
 
   showModalBottomSheet(
     context: context,
@@ -49,8 +51,74 @@ class _PaymentSheetState extends State<PaymentSheet> {
   String? _selected;
   bool _submitting = false;
   bool _bankDeclared = false;
+  bool _storeRequested = false;
+  String? _storeMessage;
 
   String _eur(int cents) => '€${(cents / 100).toStringAsFixed(2)}';
+
+  Future<void> _payWithCard() async {
+    setState(() => _submitting = true);
+    try {
+      final api = context.read<AuthService>().api;
+      final intent = await api.startPaymentIntent(widget.payment.id);
+      final secret = intent['client_secret'] as String?;
+      final publishable = intent['publishable_key'] as String?;
+      final intentId = intent['intent_id'] as String?;
+      if (secret == null || publishable == null || intentId == null) {
+        throw ApiException('Η πληρωμή με κάρτα δεν είναι διαθέσιμη');
+      }
+      Stripe.publishableKey = publishable;
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: secret,
+          merchantDisplayName: 'OmniPlex',
+          style: ThemeMode.dark,
+        ),
+      );
+      await Stripe.instance.presentPaymentSheet();
+      await api.confirmOnlinePayment(paymentId: widget.payment.id, intentId: intentId);
+      if (!mounted) return;
+      widget.onPaid();
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Η πληρωμή ολοκληρώθηκε')),
+      );
+    } on StripeException catch (e) {
+      if (e.error.code == FailureCode.Canceled) return;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε')),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _requestPayInStore() async {
+    setState(() => _submitting = true);
+    try {
+      final api = context.read<AuthService>().api;
+      final result = await api.requestPayInStore(widget.payment.id);
+      if (!mounted) return;
+      setState(() {
+        _storeRequested = true;
+        _storeMessage = result['message'] as String? ??
+            'Το αίτημα στάλθηκε. Μπορείς να πληρώσεις στο κατάστημα.';
+      });
+      widget.onPaid();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
 
   Future<void> _declareBankTransfer() async {
     setState(() => _submitting = true);
@@ -110,8 +178,17 @@ class _PaymentSheetState extends State<PaymentSheet> {
               onTap: () => setState(() => _selected = 'card'),
             ),
 
+          const SizedBox(height: 12),
+          PaymentMethodTile(
+            icon: Icons.storefront_outlined,
+            title: 'Θα πληρώσω στο κατάστημα',
+            subtitle: 'Ζήτα παράταση και πλήρωσε από κοντά',
+            selected: _selected == 'in_store',
+            onTap: () => setState(() => _selected = 'in_store'),
+          ),
+
           if (hasBank) ...[
-            if (hasCard) const SizedBox(height: 12),
+            const SizedBox(height: 12),
             PaymentMethodTile(
               icon: Icons.account_balance,
               title: 'Τραπεζική κατάθεση',
@@ -174,22 +251,56 @@ class _PaymentSheetState extends State<PaymentSheet> {
 
           if (_selected == 'card') ...[
             const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.bg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _submitting ? null : _payWithCard,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.lime,
+                  foregroundColor: AppColors.bg,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: _submitting
+                    ? const SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
+                    : Text('Πληρωμή ${_eur(widget.payment.balanceCents)}'),
               ),
-              child: const Row(children: [
-                const Icon(Icons.info_outline, color: AppColors.lime, size: 20),
-                SizedBox(width: 10),
-                Expanded(child: Text(
-                  'Η πληρωμή με κάρτα θα ολοκληρωθεί μέσω του ασφαλούς περιβάλλοντος Stripe.',
-                  style: TextStyle(fontSize: 13, height: 1.4),
-                )),
-              ]),
             ),
+          ],
+
+          if (_selected == 'in_store') ...[
+            const SizedBox(height: 20),
+            if (_storeRequested)
+              Row(children: [
+                const Icon(Icons.check_circle, color: AppColors.lime, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(
+                  _storeMessage ?? 'Το αίτημα στάλθηκε. Μπορείς να πληρώσεις στο κατάστημα.',
+                  style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w600),
+                )),
+              ])
+            else ...[
+              const Text(
+                'Το γυμναστήριο θα δει ότι θα πληρώσεις από κοντά. Το πακέτο μένει ανοιχτό για 7 μέρες μέχρι να περάσεις.',
+                style: TextStyle(fontSize: 13, height: 1.4, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _submitting ? null : _requestPayInStore,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.lime,
+                    foregroundColor: AppColors.bg,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: _submitting
+                      ? const SizedBox(width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
+                      : const Text('Αίτημα παράτασης'),
+                ),
+              ),
+            ],
           ],
         ],
       ),

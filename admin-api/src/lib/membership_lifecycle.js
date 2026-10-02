@@ -103,6 +103,80 @@ async function getGracePeriodDays(dbConn, bizId) {
   return row?.grace_period_days ?? 15;
 }
 
+/**
+ * Sessions booked before the next package is paid (max 2) count against it
+ * once that payment is marked paid. A new pack of 10 with 2 borrowed
+ * sessions leaves 8.
+ */
+async function settleAdvanceBookings(conn, bizId, paymentId) {
+  const [[payment]] = await conn.query(
+    `SELECT user_id, service_id, membership_id, payment_type
+     FROM payments WHERE id = ? AND business_id = ?`,
+    [paymentId, bizId],
+  );
+  if (!payment?.user_id) return { applied: 0 };
+  if (payment.payment_type === 'registration_fee') return { applied: 0 };
+
+  let serviceId = payment.service_id;
+  if (!serviceId && payment.membership_id) {
+    const [[linked]] = await conn.query(
+      'SELECT service_id FROM user_memberships WHERE id = ?',
+      [payment.membership_id],
+    );
+    serviceId = linked?.service_id || null;
+  }
+  if (!serviceId) return { applied: 0 };
+
+  const params = [payment.user_id, bizId, serviceId];
+  const serviceSql = ' AND service_id = ?';
+  const [rows] = await conn.query(
+    `SELECT id FROM bookings
+     WHERE user_id = ? AND business_id = ? AND is_advance = 1
+       AND membership_id IS NULL
+       AND status NOT IN ('cancelled')
+       ${serviceSql}
+     ORDER BY starts_at ASC
+     LIMIT 2`,
+    params,
+  );
+  if (!rows.length) return { applied: 0 };
+
+  let membershipId = payment.membership_id;
+  if (!membershipId) {
+    const [[mem]] = await conn.query(
+      `SELECT id FROM user_memberships
+       WHERE user_id = ? AND business_id = ? AND service_id = ?
+         AND membership_status <> 'cancelled'
+       ORDER BY valid_until DESC
+       LIMIT 1`,
+      [payment.user_id, bizId, serviceId],
+    );
+    membershipId = mem?.id || null;
+  }
+  if (!membershipId) return { applied: 0 };
+
+  const [[mem]] = await conn.query(
+    'SELECT total_sessions, membership_status FROM user_memberships WHERE id = ?',
+    [membershipId],
+  );
+  if (!mem || mem.membership_status === 'cancelled') return { applied: 0 };
+
+  const total = Number(mem.total_sessions) || 0;
+  const unlimited = total >= 9999 || total === 0;
+  if (!unlimited) {
+    const nextUsed = Math.min(total, rows.length);
+    await conn.query(
+      'UPDATE user_memberships SET used_sessions = ? WHERE id = ?',
+      [nextUsed, membershipId],
+    );
+  }
+  await conn.query(
+    'UPDATE bookings SET membership_id = ?, is_advance = 0 WHERE id IN (?)',
+    [membershipId, rows.map((row) => row.id)],
+  );
+  return { applied: rows.length, membership_id: membershipId };
+}
+
 module.exports = {
   todayStr,
   addDaysToDateStr,
@@ -112,4 +186,5 @@ module.exports = {
   computeRenewalPeriod,
   enrichMembershipLifecycle,
   getGracePeriodDays,
+  settleAdvanceBookings,
 };

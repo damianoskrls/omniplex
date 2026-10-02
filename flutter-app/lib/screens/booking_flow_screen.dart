@@ -731,6 +731,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               preparationTips: prepTips.isNotEmpty
                   ? prepTips
                   : (_selectedSlot?.preparationTips ?? []),
+              note: result['advance'] == true ? result['message'] as String? : null,
             ),
             transitionsBuilder: (_, animation, _, child) {
               return FadeTransition(

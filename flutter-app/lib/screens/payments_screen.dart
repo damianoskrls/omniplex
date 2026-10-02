@@ -64,16 +64,16 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   void _showPaymentSheet(PaymentRecord p) {
-    final opts = _paymentOptions;
-    if (opts == null || opts['enabled'] != true) return;
-    showPaymentSheet(context, payment: p, paymentOptions: opts, onPaid: _load);
+    showPaymentSheet(
+      context,
+      payment: p,
+      paymentOptions: _paymentOptions ?? const {},
+      onPaid: _load,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasOnline = _paymentOptions?['enabled'] == true &&
-        (_paymentOptions!['methods'] as List? ?? []).isNotEmpty;
-
     return Scaffold(
       appBar: AppBar(title: Text(AppStrings.of(context).paymentsTitle)),
       body: _loading
@@ -123,7 +123,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       else
                         ..._payments.map((p) {
                           final date = p.paymentDate ?? p.dueDate;
-                          final canPay = hasOnline && p.balanceCents > 0 && p.status != 'paid';
+                          final canPay = p.balanceCents > 0 && p.status != 'paid';
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: SurfaceCard(

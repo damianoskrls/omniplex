@@ -17,6 +17,7 @@ class BookingSuccessScreen extends StatefulWidget {
     required this.time,
     this.staffName,
     this.preparationTips = const [],
+    this.note,
   });
 
   final String serviceName;
@@ -24,6 +25,7 @@ class BookingSuccessScreen extends StatefulWidget {
   final String time;
   final String? staffName;
   final List<String> preparationTips;
+  final String? note;
 
   @override
   State<BookingSuccessScreen> createState() => _BookingSuccessScreenState();
@@ -178,6 +180,17 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                                   ],
                                 ),
                               ),
+                              if (widget.note != null && widget.note!.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                Text(
+                                  widget.note!,
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: AppColors.lime,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
                               if (widget.preparationTips.isNotEmpty) ...[
                                 const SizedBox(height: 20),
                                 PreparationTipsCard(tips: widget.preparationTips),

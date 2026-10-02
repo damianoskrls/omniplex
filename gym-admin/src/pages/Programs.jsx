@@ -1023,6 +1023,14 @@ export default function Programs() {
   const [aiForm, setAiForm] = useState({ user_id: '', goals: '', level: 'Μέτριο', equipment: 'Γυμναστήριο', sessions_per_week: '3', duration_mins: '60', notes: '' });
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
+  const [exAiOpen, setExAiOpen] = useState(false);
+  const [exAiLoading, setExAiLoading] = useState(false);
+  const [exAiForm, setExAiForm] = useState({
+    prompt: '',
+    count: '8',
+    muscle_group: '',
+    equipment: 'Γυμναστήριο',
+  });
 
   const load = async () => {
     setLoading(true);
@@ -1077,6 +1085,27 @@ export default function Programs() {
     }
   };
 
+  const runExerciseAi = async () => {
+    if (exAiForm.prompt.trim().length < 2) return toast.error('Γράψε τι ασκήσεις θέλεις');
+    setExAiLoading(true);
+    try {
+      const r = await api.post('/client-admin/exercises/ai-generate', {
+        prompt: exAiForm.prompt.trim(),
+        count: Number(exAiForm.count),
+        muscle_group: exAiForm.muscle_group,
+        equipment: exAiForm.equipment,
+      });
+      toast.success(`Προστέθηκαν ${r.data.count} ασκήσεις`);
+      setExAiOpen(false);
+      setTab('exercises');
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα AI');
+    } finally {
+      setExAiLoading(false);
+    }
+  };
+
   const deleteProgram = async (id) => {
     if (!confirm('Διαγραφή προγράμματος;')) return;
     await api.delete(`/client-admin/programs/${id}`);
@@ -1105,15 +1134,13 @@ export default function Programs() {
             <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: 2 }}>Δημιούργησε προγράμματα για τους πελάτες σου</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            {tab === 'programs' && (
-              <button
-                className="btn"
-                style={{ background: '#7C5CFC', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
-                onClick={openAiModal}
-              >
-                <Sparkles size={15} /> AI Δημιουργία
-              </button>
-            )}
+            <button
+              className="btn"
+              style={{ background: '#7C5CFC', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+              onClick={() => (tab === 'exercises' ? setExAiOpen(true) : openAiModal())}
+            >
+              <Sparkles size={15} /> {tab === 'exercises' ? 'AI Ασκήσεις' : 'AI Δημιουργία'}
+            </button>
             <button className="btn btn-primary" onClick={() => setModal({ type: tab === 'exercises' ? 'exercise' : 'program', data: null })}>
               <Plus size={16} /> {tab === 'exercises' ? 'Νέα άσκηση' : 'Νέο πρόγραμμα'}
             </button>
@@ -1217,9 +1244,14 @@ export default function Programs() {
             {exercises.length === 0 && (
               <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, border: '2px dashed #e2e8f0', borderRadius: 14 }}>
                 <div style={{ fontWeight: 700, color: '#475569' }}>Δεν υπάρχουν ασκήσεις ακόμα</div>
-                <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModal({ type: 'exercise', data: null })}>
-                  <Plus size={14} /> Νέα άσκηση
-                </button>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
+                  <button className="btn" style={{ background: '#7C5CFC', color: '#fff', border: 'none' }} onClick={() => setExAiOpen(true)}>
+                    <Sparkles size={14} /> AI Ασκήσεις
+                  </button>
+                  <button className="btn btn-primary" onClick={() => setModal({ type: 'exercise', data: null })}>
+                    <Plus size={14} /> Νέα άσκηση
+                  </button>
+                </div>
               </div>
             )}
             {exercises.map(ex => (
@@ -1400,6 +1432,83 @@ export default function Programs() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {exAiOpen && (
+        <div className="modal-overlay" onClick={() => { if (!exAiLoading) setExAiOpen(false); }}>
+          <div className="modal" style={{ maxWidth: 560, width: '95vw', padding: 0, overflow: 'hidden', borderRadius: 16 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f1f5f9', background: 'linear-gradient(135deg,#7C5CFC,#5B4FCF)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#fff' }}>
+                <Sparkles size={18} />
+                <span style={{ fontWeight: 800, fontSize: '1rem' }}>AI Ασκήσεις</span>
+              </div>
+              <button type="button" style={{ background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, color: '#fff' }} onClick={() => setExAiOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Τι θέλεις να φτιάξει</label>
+                <textarea
+                  className="form-input"
+                  rows={3}
+                  placeholder="π.χ. 8 βασικές ασκήσεις πλάτης με τροχαλία και αλτήρες"
+                  value={exAiForm.prompt}
+                  onChange={e => setExAiForm(f => ({ ...f, prompt: e.target.value }))}
+                />
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {[
+                  'Βασικές ασκήσεις γυμναστηρίου για όλες τις μυϊκές ομάδες',
+                  'Ασκήσεις πλάτης',
+                  'Ασκήσεις στήθους',
+                  'Ασκήσεις ποδιών',
+                  'Κοιλιακοί και core',
+                ].map(preset => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setExAiForm(f => ({ ...f, prompt: preset }))}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Πλήθος</label>
+                  <select className="form-select" value={exAiForm.count} onChange={e => setExAiForm(f => ({ ...f, count: e.target.value }))}>
+                    {[4, 6, 8, 10, 12].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Μυϊκή ομάδα</label>
+                  <select className="form-select" value={exAiForm.muscle_group} onChange={e => setExAiForm(f => ({ ...f, muscle_group: e.target.value }))}>
+                    <option value="">Όλες</option>
+                    {MUSCLE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Εξοπλισμός</label>
+                  <select className="form-select" value={exAiForm.equipment} onChange={e => setExAiForm(f => ({ ...f, equipment: e.target.value }))}>
+                    <option>Γυμναστήριο</option>
+                    <option>Σπίτι (χωρίς εξοπλισμό)</option>
+                    <option>Σπίτι (με αλτήρες)</option>
+                    <option>Μηχανήματα μόνο</option>
+                  </select>
+                </div>
+              </div>
+              <button
+                className="btn"
+                style={{ width: '100%', background: '#7C5CFC', color: '#fff', border: 'none', padding: '12px', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                disabled={exAiLoading}
+                onClick={runExerciseAi}
+              >
+                {exAiLoading ? 'Δημιουργία…' : <><Sparkles size={16} /> Δημιούργησε ασκήσεις</>}
+              </button>
             </div>
           </div>
         </div>

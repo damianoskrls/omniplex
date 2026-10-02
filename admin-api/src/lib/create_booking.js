@@ -295,7 +295,7 @@ async function createOneBooking(conn, {
           [userId, bizId, service_id]
         );
         if (cnt >= 2) {
-          throw new Error('Έχεις ήδη 2 προκαταβολικές κρατήσεις χωρίς ανανέωση. Ανανέωσε το πακέτο σου για να κλείσεις νέο μάθημα.');
+          throw new Error('Έχεις ήδη 2 συνεδρίες από τον επόμενο μήνα. Πλήρωσε το πακέτο για να κλείσεις κι άλλες.');
         }
         isAdvanceBooking = true;
         membershipId = null;
@@ -404,6 +404,10 @@ async function createOneBooking(conn, {
     ends_at: endsAt,
     status: bookingStatus,
     credit_used: !!membershipId,
+    advance: isAdvanceBooking,
+    message: isAdvanceBooking
+      ? 'Η συνεδρία είναι από τον επόμενο μήνα. Όταν πληρώσεις το πακέτο, θα αφαιρεθεί από αυτό.'
+      : null,
     preparation_tips: tipsRow.preparation_tips,
     post_workout_tips: tipsRow.post_workout_tips,
     schedule_label: tipsRow.schedule_label,

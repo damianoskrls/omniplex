@@ -75,6 +75,7 @@ const {
   getGracePeriodDays,
   bookingBlockMessage,
   canBookWithMembership,
+  settleAdvanceBookings,
 } = require('../lib/membership_lifecycle');
 const {
   normalizePromoRules,
@@ -1761,6 +1762,10 @@ router.post('/clients/:userId/credits/:membershipId/renewal-payment', requireCli
         WHERE id = ?
       `, [period.period_end, membershipId]);
 
+      if (status === 'paid') {
+        await settleAdvanceBookings(conn, bizId, payId);
+      }
+
       await conn.commit();
       return res.status(201).json({
         id: payId,
@@ -2414,6 +2419,10 @@ router.post('/clients/:userId/payments', requireClientAdmin, async (req, res) =>
       }
     }
 
+    if (finalStatus === 'paid') {
+      await settleAdvanceBookings(conn, bizId, id);
+    }
+
     await conn.commit();
     return res.status(201).json({
       id,
@@ -2499,6 +2508,10 @@ router.patch('/payments/:id', requireClientAdmin, async (req, res) => {
     payload.discount_cents, payload.registration_fee_cents,
     req.params.id, bizId,
   ]);
+  if (finalStatus === 'paid' && existing.status !== 'paid') {
+    try { await settleAdvanceBookings(db, bizId, req.params.id); }
+    catch (err) { console.warn('advance sessions not applied:', err.message); }
+  }
   return res.json({ ok: true });
 });
 
@@ -7132,6 +7145,112 @@ router.post('/exercises', requireClientAdmin, async (req, res) => {
     [id, req.admin.businessId, name, description||null, muscle_group||null, animation_url||null, thumbnail_url||null]
   );
   res.status(201).json({ id });
+});
+
+const EXERCISE_MUSCLE_GROUPS = [
+  'Στήθος', 'Πλάτη', 'Ώμοι', 'Δικέφαλοι', 'Τρικέφαλοι',
+  'Κοιλιακοί', 'Τετρακέφαλοι', 'Δικέφαλοι μηρού', 'Γλουτοί', 'Γάμπες',
+  'Ολόκληρο σώμα', 'Cardio', 'Ισορροπία & Ευλυγισία',
+];
+
+async function completeJson(prompt) {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!openaiKey && !anthropicKey) {
+    const err = new Error('Ο βοηθός δεν είναι ρυθμισμένος. Λείπει το API key.');
+    err.status = 503;
+    throw err;
+  }
+  if (anthropicKey) {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: anthropicKey });
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    return response.content?.[0]?.text || '';
+  }
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${openaiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'Απαντάς μόνο με JSON.' },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  });
+  const body = await res.json();
+  if (!res.ok) {
+    const err = new Error(body?.error?.message || 'Σφάλμα AI');
+    err.status = 502;
+    throw err;
+  }
+  return body.choices?.[0]?.message?.content || '';
+}
+
+router.post('/exercises/ai-generate', requireClientAdmin, async (req, res) => {
+  const promptText = String(req.body.prompt || '').trim();
+  if (promptText.length < 2) return res.status(400).json({ error: 'Γράψε τι ασκήσεις θέλεις' });
+  const count = Math.min(15, Math.max(1, Number(req.body.count) || 8));
+  const muscle = EXERCISE_MUSCLE_GROUPS.includes(req.body.muscle_group) ? req.body.muscle_group : '';
+  const equipment = String(req.body.equipment || '').trim();
+
+  try {
+    const [existing] = await db.query(
+      'SELECT name FROM exercises WHERE business_id=? AND is_active=1',
+      [req.admin.businessId],
+    );
+    const seen = new Set(existing.map((row) => String(row.name || '').trim().toLowerCase()).filter(Boolean));
+    const prompt = `Είσαι personal trainer. Δημιούργησε ${count} ασκήσεις για τη βιβλιοθήκη ενός γυμναστηρίου.
+
+ΖΗΤΗΜΑ: ${promptText}
+${muscle ? `ΜΥΪΚΗ ΟΜΑΔΑ: ${muscle}` : ''}
+${equipment ? `ΕΞΟΠΛΙΣΜΟΣ: ${equipment}` : ''}
+
+Μυϊκή ομάδα, μία από: ${EXERCISE_MUSCLE_GROUPS.join(', ')}.
+Μην επαναλάβεις αυτές που υπάρχουν ήδη: ${[...seen].slice(0, 80).join(', ') || 'καμία'}.
+
+Απάντησε ΜΟΝΟ με JSON:
+{"exercises":[{"name":"...","muscle_group":"...","description":"2-3 προτάσεις στα ελληνικά: στάση, κίνηση, αναπνοή"}]}`;
+
+    const raw = await completeJson(prompt);
+    let parsed;
+    try {
+      parsed = JSON.parse(String(raw).replace(/```json\n?|\n?```/g, '').trim());
+    } catch {
+      return res.status(500).json({ error: 'Σφάλμα ανάλυσης AI απόκρισης' });
+    }
+    const list = Array.isArray(parsed) ? parsed : (parsed.exercises || []);
+    const created = [];
+    for (const item of list) {
+      if (created.length >= count) break;
+      const name = String(item?.name || '').trim().slice(0, 120);
+      if (!name || seen.has(name.toLowerCase())) continue;
+      const group = EXERCISE_MUSCLE_GROUPS.includes(item?.muscle_group) ? item.muscle_group : (muscle || null);
+      const description = String(item?.description || '').trim().slice(0, 800) || null;
+      const id = uuidv4();
+      await db.query(
+        'INSERT INTO exercises (id,business_id,name,description,muscle_group,animation_url,thumbnail_url) VALUES (?,?,?,?,?,?,?)',
+        [id, req.admin.businessId, name, description, group, null, null],
+      );
+      seen.add(name.toLowerCase());
+      created.push({ id, name, muscle_group: group, description });
+    }
+    if (!created.length) {
+      return res.status(422).json({ error: 'Δεν προέκυψαν νέες ασκήσεις. Δοκίμασε άλλη περιγραφή.' });
+    }
+    return res.status(201).json({ exercises: created, count: created.length });
+  } catch (err) {
+    console.error('AI exercise generation error:', err.message);
+    return res.status(err.status || 500).json({ error: err.message || 'Σφάλμα AI' });
+  }
 });
 
 router.patch('/exercises/:id', requireClientAdmin, async (req, res) => {

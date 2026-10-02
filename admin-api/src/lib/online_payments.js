@@ -166,6 +166,13 @@ async function markPaymentPaid(conn, bizId, paymentId, {
       console.error('[myDATA] markPaymentPaid:', err.message);
     }
   }
+
+  try {
+    const { settleAdvanceBookings } = require('./membership_lifecycle');
+    await settleAdvanceBookings(conn, bizId, paymentId);
+  } catch (err) {
+    console.warn('advance sessions not applied:', err.message);
+  }
 }
 
 /**

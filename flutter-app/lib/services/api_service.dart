@@ -1128,6 +1128,27 @@ class ApiService {
     return _decode(res) as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> startPaymentIntent(String paymentId) async {
+    final res = await _post('/api/payments-online/$bizId/intent', {'payment_id': paymentId});
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> confirmOnlinePayment({
+    required String paymentId,
+    required String intentId,
+  }) async {
+    final res = await _post('/api/payments-online/$bizId/confirm', {
+      'payment_id': paymentId,
+      'intent_id': intentId,
+    });
+    return _decode(res) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> requestPayInStore(String paymentId) async {
+    final res = await _post('/api/payments-online/$bizId/pay-in-store', {'payment_id': paymentId});
+    return _decode(res) as Map<String, dynamic>;
+  }
+
   Future<List<Booking>> fetchMyBookings() async {
     final res = await _get('/api/booking/$bizId/my-bookings');
     final data = _decode(res) as List;
