@@ -180,32 +180,59 @@ class TenantConfig {
     }
   }
 
+  static bool _isLocalApi(String apiBaseUrl) {
+    final host = Uri.tryParse(apiBaseUrl)?.host.toLowerCase() ?? '';
+    return host == 'localhost' ||
+        host == '127.0.0.1' ||
+        host.startsWith('192.168.') ||
+        host.startsWith('10.') ||
+        host.endsWith('.local');
+  }
+
   /// Quick check that the device can reach admin-api.
+  /// A cold Railway reply can take longer than a local server, so production
+  /// gets a longer wait and one retry before the app gives up.
   static Future<String?> verifyApiReachable(String apiBaseUrl) async {
     if (kIsWeb) return null;
+    final local = _isLocalApi(apiBaseUrl);
+    final timeout = local ? const Duration(seconds: 4) : const Duration(seconds: 12);
+    final attempts = local ? 1 : 2;
+    for (var i = 0; i < attempts; i++) {
+      final err = await _pingHealth(apiBaseUrl, timeout);
+      if (err == null) return null;
+      if (i == attempts - 1) return err;
+    }
+    return _unreachableMessage(apiBaseUrl);
+  }
+
+  static Future<String?> _pingHealth(String apiBaseUrl, Duration timeout) async {
     final base = apiBaseUrl.replaceAll(RegExp(r'/$'), '');
     final uri = Uri.tryParse('$base/api/health');
     if (uri == null) return 'Μη έγκυρο api_base_url: $apiBaseUrl';
 
+    final client = HttpClient();
     try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 4);
+      client.connectionTimeout = timeout;
       final request = await client.getUrl(uri);
-      final response = await request.close().timeout(const Duration(seconds: 4));
+      final response = await request.close().timeout(timeout);
       await response.drain();
-      client.close();
       if (response.statusCode >= 200 && response.statusCode < 300) return null;
       return 'Ο server απάντησε με σφάλμα (${response.statusCode}).';
     } on TimeoutException {
       return _unreachableMessage(apiBaseUrl);
     } on SocketException {
       return _unreachableMessage(apiBaseUrl);
-    } catch (e) {
+    } catch (_) {
       return _unreachableMessage(apiBaseUrl);
+    } finally {
+      client.close(force: true);
     }
   }
 
   static String _unreachableMessage(String apiBaseUrl) {
+    if (!_isLocalApi(apiBaseUrl)) {
+      return 'Δεν υπάρχει σύνδεση. Έλεγξε το ίντερνετ και δοκίμασε ξανά.';
+    }
     return 'Δεν συνδέεται στο $apiBaseUrl\n\n'
         '• iPhone και Mac στο ίδιο Wi‑Fi (όχι μόνο 5G)\n'
         '• Στο Mac: ipconfig getifaddr en0 → βάλε το IP στο tenant_config.json\n'
