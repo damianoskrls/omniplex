@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
+import '../l10n/tr.dart';
+
 
 typedef NotificationTapHandler = void Function(String? payload);
 
@@ -43,10 +45,10 @@ class NotificationService {
     await _plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(
-          const AndroidNotificationChannel(
+          AndroidNotificationChannel(
             'bookup_push',
-            'Push ειδοποιήσεις',
-            description: 'Ειδοποιήσεις από το γυμναστήριο',
+            tr('Push ειδοποιήσεις'),
+            description: tr('Ειδοποιήσεις από το γυμναστήριο'),
             importance: Importance.high,
           ),
         );
@@ -82,8 +84,8 @@ class NotificationService {
       await _schedule(
         id: notificationId,
         when: prepTime,
-        title: 'Προετοιμασία — $serviceName',
-        body: tipsPreview.isNotEmpty ? tipsPreview : 'Έτοιμασου για την προπόνησή σου!',
+        title: tr('Προετοιμασία — $serviceName'),
+        body: tipsPreview.isNotEmpty ? tipsPreview : tr('Έτοιμασου για την προπόνησή σου!'),
         payload: 'prep:$bookingId',
       );
     }
@@ -92,8 +94,8 @@ class NotificationService {
       await _schedule(
         id: notificationId + 100000,
         when: endsAt,
-        title: 'Τέλος προπόνησης — $serviceName',
-        body: 'Πάτα για recovery tips και αξιολόγηση.',
+        title: tr('Τέλος προπόνησης — $serviceName'),
+        body: tr('Πάτα για recovery tips και αξιολόγηση.'),
         payload: 'complete:$bookingId',
       );
     }
@@ -112,11 +114,11 @@ class NotificationService {
         title,
         body,
         tz.TZDateTime.from(when, tz.local),
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'bookup_bookings',
-            'Κρατήσεις',
-            channelDescription: 'Υπενθυμίσεις και tips προπόνησης',
+            tr('Κρατήσεις'),
+            channelDescription: tr('Υπενθυμίσεις και tips προπόνησης'),
             importance: Importance.high,
             priority: Priority.high,
           ),
@@ -141,10 +143,10 @@ class NotificationService {
       DateTime.now().millisecondsSinceEpoch % 100000,
       title,
       body,
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
           'bookup_push',
-          'Push ειδοποιήσεις',
+          tr('Push ειδοποιήσεις'),
           importance: Importance.high,
           priority: Priority.high,
         ),

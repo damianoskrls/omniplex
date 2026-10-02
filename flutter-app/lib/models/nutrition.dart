@@ -1,3 +1,4 @@
+import '../l10n/tr.dart';
 class NutritionPortion {
   const NutritionPortion({
     required this.ingredient,
@@ -40,7 +41,7 @@ class MealPlanOption {
   factory MealPlanOption.fromJson(Map<String, dynamic> json) {
     return MealPlanOption(
       id: json['id'] as String?,
-      title: json['title'] as String? ?? json['description'] as String? ?? '',
+      title: tr(json['title'] as String? ?? json['description'] as String? ?? ''),
       description: json['description'] as String?,
       notes: json['notes'] as String?,
       portions: (json['portions'] as List? ?? [])
@@ -364,7 +365,7 @@ class MealPlanItem {
       dayOfWeek: json['day_of_week'] as int,
       mealType: json['meal_type'] as String,
       mealTypeLabel: json['meal_type_label'] as String? ?? json['meal_type'] as String,
-      title: json['title'] as String?,
+      title: tr((json['title'] as String?) ?? ''),
       description: json['description'] as String? ?? json['title'] as String? ?? '',
       notes: json['notes'] as String?,
       portions: (json['portions'] as List? ?? [])
@@ -500,7 +501,7 @@ class MealTypeOption {
   factory MealTypeOption.fromJson(Map<String, dynamic> json) {
     return MealTypeOption(
       id: json['id'] as String,
-      label: json['label'] as String,
+      label: tr(json['label'] as String),
     );
   }
 }

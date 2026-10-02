@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class TrialOutcomeScreen extends StatefulWidget {
   const TrialOutcomeScreen({super.key});
@@ -93,10 +95,10 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('POST-SESSION REPORT', style: GoogleFonts.manrope(
+              Text(tr('POST-SESSION REPORT'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700,
                 color: kCyan, letterSpacing: 1.0)),
-              Text('Trial Outcome', style: GoogleFonts.spaceGrotesk(
+              Text(tr('Trial Outcome'), style: GoogleFonts.inter(
                 fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
             ],
           ),
@@ -130,9 +132,9 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Sarah Jenkins', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Sarah Jenkins'), style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text('Yoga Trial • Oct 24, 14:30', style: GoogleFonts.manrope(
+                Text(tr('Yoga Trial • Oct 24, 14:30'), style: GoogleFonts.inter(
                   fontSize: 14, color: _kGray71)),
               ],
             ),
@@ -140,10 +142,10 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('DURATION', style: GoogleFonts.manrope(
+              Text(tr('DURATION'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700,
                 color: kLime, letterSpacing: 0.09)),
-              Text('62m', style: GoogleFonts.spaceGrotesk(
+              Text(tr('62m'), style: GoogleFonts.inter(
                 fontSize: 16, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: 0.47)),
             ],
@@ -164,7 +166,7 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('MEMBERSHIP INTEREST', style: GoogleFonts.manrope(
+        Text(tr('MEMBERSHIP INTEREST'), style: GoogleFonts.inter(
           fontSize: 10, fontWeight: FontWeight.w700,
           color: _kGray71, letterSpacing: 1.0)),
         const SizedBox(height: 16),
@@ -187,7 +189,7 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(options[i], style: GoogleFonts.manrope(
+                    Text(tr(options[i]), style: GoogleFonts.inter(
                       fontSize: 16, fontWeight: FontWeight.w600,
                       color: disabled ? _kGrayA1 : Colors.white)),
                     selected
@@ -218,7 +220,7 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('FOLLOW-UP ACTION', style: GoogleFonts.manrope(
+        Text(tr('FOLLOW-UP ACTION'), style: GoogleFonts.inter(
           fontSize: 10, fontWeight: FontWeight.w700,
           color: _kGray71, letterSpacing: 1.0)),
         const SizedBox(height: 16),
@@ -236,9 +238,9 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
                         ? kCyan.withValues(alpha: 0.50)
                         : _kDark1F),
                 ),
-                child: Text('Contact\nTomorrow',
+                child: Text(tr('Contact\nTomorrow'),
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.manrope(
+                  style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700,
                     color: _selectedFollowup == 0 ? kCyan : _kGrayA1)),
               ),
@@ -256,9 +258,9 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
                         ? kCyan.withValues(alpha: 0.50)
                         : _kDark1F),
                 ),
-                child: Text('Follow-up in 3d',
+                child: Text(tr('Follow-up in 3d'),
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.manrope(
+                  style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700,
                     color: _selectedFollowup == 1 ? kCyan : _kGrayA1)),
               ),
@@ -273,7 +275,7 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('SESSION NOTES', style: GoogleFonts.manrope(
+        Text(tr('SESSION NOTES'), style: GoogleFonts.inter(
           fontSize: 10, fontWeight: FontWeight.w700,
           color: _kGray71, letterSpacing: 1.0)),
         const SizedBox(height: 16),
@@ -285,8 +287,8 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
             border: Border.all(color: _kDark1F),
           ),
           child: Text(
-            'Sarah was very receptive to the balance work. She mentioned being interested in the unlimited yoga & sauna package. Needs a custom quote for corporate membership...',
-            style: GoogleFonts.manrope(fontSize: 14, color: _kGrayD4, height: 1.5)),
+            tr('Sarah was very receptive to the balance work. She mentioned being interested in the unlimited yoga & sauna package. Needs a custom quote for corporate membership...'),
+            style: GoogleFonts.inter(fontSize: 14, color: _kGrayD4, height: 1.5)),
         ),
       ],
     );
@@ -303,7 +305,7 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
           blurRadius: 15, offset: const Offset(0, 10))],
       ),
       child: Center(
-        child: Text('SAVE TRIAL OUTCOME', style: GoogleFonts.manrope(
+        child: Text(tr('SAVE TRIAL OUTCOME'), style: GoogleFonts.inter(
           fontSize: 18, fontWeight: FontWeight.w700,
           color: kBg, letterSpacing: 1.8)),
       ),
@@ -346,10 +348,10 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('OMNIPLEX ADMIN', style: GoogleFonts.manrope(
+              Text(tr('OMNIPLEX ADMIN'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700,
                 color: kLime, letterSpacing: 1.0)),
-              Text('Gym Overview', style: GoogleFonts.spaceGrotesk(
+              Text(tr('Gym Overview'), style: GoogleFonts.inter(
                 fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white)),
             ],
           ),
@@ -407,11 +409,11 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
         ),
         child: Column(
           children: [
-            Text(label, style: GoogleFonts.manrope(
+            Text(tr(label), style: GoogleFonts.inter(
               fontSize: 9, fontWeight: FontWeight.w700,
               color: labelColor, letterSpacing: -0.23), textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text(value, style: GoogleFonts.spaceGrotesk(
+            Text(tr(value), style: GoogleFonts.inter(
               fontSize: 24, fontWeight: FontWeight.w700,
               color: valueColor), textAlign: TextAlign.center),
           ],
@@ -424,14 +426,14 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('ALL TRIALS', style: GoogleFonts.manrope(
+        Text(tr('ALL TRIALS'), style: GoogleFonts.inter(
           fontSize: 10, fontWeight: FontWeight.w700,
           color: _kGray71, letterSpacing: 1.0)),
         Row(
           children: [
             const Icon(Icons.tune, color: kCyan, size: 12),
             const SizedBox(width: 8),
-            Text('Filters', style: GoogleFonts.manrope(
+            Text(tr('Filters'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700, color: kCyan)),
           ],
         ),
@@ -455,7 +457,7 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
           ),
           child: Row(
             children: [
-              Text(chips[i], style: GoogleFonts.manrope(
+              Text(tr(chips[i]), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
               const SizedBox(width: 8),
               const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 8),
@@ -547,9 +549,9 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: GoogleFonts.manrope(
+                      Text(tr(name), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                      Text(sub, style: GoogleFonts.manrope(
+                      Text(tr(sub), style: GoogleFonts.inter(
                         fontSize: 10, color: _kGray71)),
                     ],
                   ),
@@ -561,7 +563,7 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
                   color: badgeBg,
                   borderRadius: BorderRadius.circular(9999),
                 ),
-                child: Text(badgeText.toUpperCase(), style: GoogleFonts.manrope(
+                child: Text(tr(badgeText.toUpperCase()), style: GoogleFonts.inter(
                   fontSize: 9, fontWeight: FontWeight.w700,
                   color: badgeColor)),
               ),
@@ -588,12 +590,12 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
                   const SizedBox(width: 8),
                   trainerName != null
                       ? RichText(text: TextSpan(children: [
-                          TextSpan(text: 'Trainer: ', style: GoogleFonts.manrope(
+                          TextSpan(text: 'Trainer: ', style: GoogleFonts.inter(
                             fontSize: 10, color: _kGrayA1)),
-                          TextSpan(text: trainerName, style: GoogleFonts.manrope(
+                          TextSpan(text: trainerName, style: GoogleFonts.inter(
                             fontSize: 10, color: Colors.white)),
                         ]))
-                      : Text('Unassigned', style: GoogleFonts.manrope(
+                      : Text(tr('Unassigned'), style: GoogleFonts.inter(
                           fontSize: 10, color: _kGray71,
                           fontStyle: FontStyle.italic)),
                 ],
@@ -605,12 +607,12 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
                     color: kCyan,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text('ASSIGN', style: GoogleFonts.manrope(
+                  child: Text(tr('ASSIGN'), style: GoogleFonts.inter(
                     fontSize: 9, fontWeight: FontWeight.w700,
                     color: kBg, letterSpacing: -0.45)),
                 )
               else if (timeText != null)
-                Text(timeText, style: GoogleFonts.manrope(
+                Text(tr(timeText), style: GoogleFonts.inter(
                   fontSize: 10, color: _kGray71)),
             ],
           ),
@@ -649,7 +651,7 @@ class _TrialOutcomeScreenState extends State<TrialOutcomeScreen> {
       children: [
         Icon(icon, color: active ? kCyan : const Color(0xFF71717A), size: 20),
         const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.manrope(
+        Text(tr(label), style: GoogleFonts.inter(
           fontSize: 10, fontWeight: FontWeight.w700,
           color: active ? kCyan : const Color(0xFF71717A))),
       ],

@@ -3,15 +3,17 @@ import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
 
-const _days = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ', 'Κυρ'];
-const _meals = [
-  ('breakfast', 'Πρωινό'),
-  ('lunch', 'Μεσημεριανό'),
-  ('dinner', 'Βραδινό'),
-  ('snack', 'Σνακ'),
+
+final _days = [tr('Δευ'), tr('Τρί'), tr('Τετ'), tr('Πέμ'), tr('Παρ'), tr('Σάβ'), tr('Κυρ')];
+final _meals = [
+  ('breakfast', tr('Πρωινό')),
+  ('lunch', tr('Μεσημεριανό')),
+  ('dinner', tr('Βραδινό')),
+  ('snack', tr('Σνακ')),
 ];
-const _units = ['g', 'kg', 'ml', 'l', 'cup', 'κ.σ.', 'κ.γ.', 'τεμ', 'φέτες'];
+final _units = ['g', 'kg', 'ml', 'l', 'cup', tr('κ.σ.'), tr('κ.γ.'), tr('τεμ'), tr('φέτες')];
 
 class NutritionistClientScreen extends StatefulWidget {
   const NutritionistClientScreen({super.key, required this.userId, required this.name});
@@ -149,7 +151,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
           unit: p['unit']?.toString() ?? 'g',
         )).toList();
         return _MealOption(
-          title: o['title']?.toString() ?? o['description']?.toString() ?? '',
+          title: tr(o['title']?.toString() ?? o['description']?.toString() ?? ''),
           notes: o['notes']?.toString() ?? '',
           portions: portions.isEmpty ? [_Portion()] : portions,
         );
@@ -199,7 +201,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
       _visceral.clear();
       _notes.clear();
       await _load();
-      if (mounted) _toast('Η μέτρηση καταχωρήθηκε');
+      if (mounted) _toast(tr('Η μέτρηση καταχωρήθηκε'));
     } on ApiException catch (e) {
       _toast(e.message);
     }
@@ -212,7 +214,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
         'target_body_fat_pct': _targetFat.text.trim(),
         'height_cm': _goalHeight.text.trim(),
       });
-      _toast('Οι στόχοι αποθηκεύτηκαν');
+      _toast(tr('Οι στόχοι αποθηκεύτηκαν'));
     } on ApiException catch (e) {
       _toast(e.message);
     }
@@ -231,7 +233,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
         _applyPlan(plan);
         _versions = versions;
       });
-      _toast('Το πρόγραμμα αποθηκεύτηκε');
+      _toast(tr('Το πρόγραμμα αποθηκεύτηκε'));
     } on ApiException catch (e) {
       _toast(e.message);
     }
@@ -243,7 +245,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
       final plan = await context.read<AuthService>().api.fetchNutritionMealPlanAdmin(widget.userId, date: _effectiveFrom);
       if (!mounted) return;
       setState(() => _applyPlan(plan));
-      _toast('Το πρότυπο εφαρμόστηκε');
+      _toast(tr('Το πρότυπο εφαρμόστηκε'));
     } on ApiException catch (e) {
       _toast(e.message);
     }
@@ -254,11 +256,11 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Αποθήκευση ως πρότυπο'),
-        content: TextField(controller: name, decoration: const InputDecoration(labelText: 'Όνομα προτύπου')),
+        title: Text(tr('Αποθήκευση ως πρότυπο')),
+        content: TextField(controller: name, decoration: InputDecoration(labelText: tr('Όνομα προτύπου'))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Άκυρο')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Αποθήκευση')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Άκυρο'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Αποθήκευση'))),
         ],
       ),
     );
@@ -269,7 +271,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
         'notes': _planNotes.text.trim(),
         'slots': _slotPayload(),
       });
-      _toast('Το πρότυπο αποθηκεύτηκε');
+      _toast(tr('Το πρότυπο αποθηκεύτηκε'));
     } on ApiException catch (e) {
       _toast(e.message);
     }
@@ -289,9 +291,9 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
             controller: scroll,
             padding: const EdgeInsets.all(16),
             children: [
-              const Text('Λίστα αγορών', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+              Text(tr('Λίστα αγορών'), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
               const SizedBox(height: 12),
-              if (items.isEmpty) const Text('Δεν υπάρχουν υλικά στο πρόγραμμα.'),
+              if (items.isEmpty) Text(tr('Δεν υπάρχουν υλικά στο πρόγραμμα.')),
               ...items.map((item) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(item['ingredient']?.toString() ?? ''),
@@ -312,11 +314,11 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Ειδοποίηση πελάτη'),
-        content: TextField(controller: body, maxLines: 3, decoration: const InputDecoration(labelText: 'Μήνυμα')),
+        title: Text(tr('Ειδοποίηση πελάτη')),
+        content: TextField(controller: body, maxLines: 3, decoration: InputDecoration(labelText: tr('Μήνυμα'))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Άκυρο')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Αποστολή')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Άκυρο'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Αποστολή'))),
         ],
       ),
     );
@@ -324,10 +326,10 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
     try {
       await context.read<AuthService>().api.notifyNutritionClient(
         widget.userId,
-        title: 'Υπενθύμιση διατροφής',
+        title: tr('Υπενθύμιση διατροφής'),
         body: body.text.trim(),
       );
-      _toast('Η ειδοποίηση στάλθηκε');
+      _toast(tr('Η ειδοποίηση στάλθηκε'));
     } on ApiException catch (e) {
       _toast(e.message);
     }
@@ -364,7 +366,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(message))));
   }
 
   @override
@@ -375,23 +377,23 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
         backgroundColor: AppColors.bg,
         title: Text(widget.name),
         actions: [
-          IconButton(onPressed: _notify, icon: const Icon(Icons.notifications_outlined), tooltip: 'Ειδοποίηση'),
+          IconButton(onPressed: _notify, icon: const Icon(Icons.notifications_outlined), tooltip: tr('Ειδοποίηση')),
         ],
         bottom: TabBar(
           controller: _tabs,
           isScrollable: true,
-          tabs: const [
-            Tab(text: 'Μετρήσεις'),
-            Tab(text: 'Πρόγραμμα'),
-            Tab(text: 'Ημέρα'),
-            Tab(text: 'Στόχοι'),
+          tabs: [
+            Tab(text: tr('Μετρήσεις')),
+            Tab(text: tr('Πρόγραμμα')),
+            Tab(text: tr('Ημέρα')),
+            Tab(text: tr('Στόχοι')),
           ],
         ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
           : _error != null
-              ? Center(child: Text(_error!))
+              ? Center(child: Text(tr(_error!)))
               : TabBarView(
                   controller: _tabs,
                   children: [
@@ -414,7 +416,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
         border: Border.all(color: AppColors.border),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text(tr(title), style: const TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 10),
         ...children,
       ]),
@@ -428,7 +430,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
         controller: c,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         decoration: InputDecoration(
-          hintText: label,
+          hintText: tr(label),
           floatingLabelBehavior: FloatingLabelBehavior.never,
         ),
       ),
@@ -436,14 +438,14 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
   }
 
   Widget _measurementsTab() {
-    const times = {'morning': 'Πρωί', 'noon': 'Μεσημέρι', 'afternoon': 'Απόγευμα', 'evening': 'Βράδυ'};
+    final times = {'morning': tr('Πρωί'), 'noon': tr('Μεσημέρι'), 'afternoon': tr('Απόγευμα'), 'evening': tr('Βράδυ')};
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
-        _card('Νέα μέτρηση επίσκεψης', [
+        _card(tr('Νέα μέτρηση επίσκεψης'), [
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Ημερομηνία'),
+            title: Text(tr('Ημερομηνία')),
             subtitle: Text(_measuredOn),
             trailing: const Icon(Icons.calendar_today_outlined),
             onTap: () async {
@@ -457,53 +459,53 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
             },
           ),
           const SizedBox(height: 4),
-          const Text('Στιγμή ημέρας', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          Text(tr('Στιγμή ημέρας'), style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             value: _timeOfDay,
             decoration: const InputDecoration(floatingLabelBehavior: FloatingLabelBehavior.never),
-            items: times.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+            items: times.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(tr(e.value)))).toList(),
             onChanged: (v) => setState(() => _timeOfDay = v ?? 'morning'),
           ),
           const SizedBox(height: 18),
-          const Text('Βασικές μετρήσεις', style: TextStyle(fontWeight: FontWeight.w700)),
-          _num(_weight, 'Βάρος kg'),
-          _num(_height, 'Ύψος cm'),
-          _num(_fat, 'Λίπος %'),
+          Text(tr('Βασικές μετρήσεις'), style: TextStyle(fontWeight: FontWeight.w700)),
+          _num(_weight, tr('Βάρος kg')),
+          _num(_height, tr('Ύψος cm')),
+          _num(_fat, tr('Λίπος %')),
           _num(_bmi, 'BMI'),
           const SizedBox(height: 18),
-          const Text('Σύνθεση σώματος', style: TextStyle(fontWeight: FontWeight.w700)),
-          _num(_muscle, 'Μυϊκή μάζα kg'),
-          _num(_fatMass, 'Λιπώδης μάζα kg'),
-          _num(_visceral, 'Σπλαχνικό λίπος'),
+          Text(tr('Σύνθεση σώματος'), style: TextStyle(fontWeight: FontWeight.w700)),
+          _num(_muscle, tr('Μυϊκή μάζα kg')),
+          _num(_fatMass, tr('Λιπώδης μάζα kg')),
+          _num(_visceral, tr('Σπλαχνικό λίπος')),
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: TextField(
               controller: _notes,
-              decoration: const InputDecoration(
-                hintText: 'Σημειώσεις, π.χ. μετά από InBody',
+              decoration: InputDecoration(
+                hintText: tr('Σημειώσεις, π.χ. μετά από InBody'),
                 floatingLabelBehavior: FloatingLabelBehavior.never,
               ),
             ),
           ),
           const SizedBox(height: 10),
-          FilledButton(onPressed: _saveMeasurement, child: const Text('Καταχώρηση μέτρησης')),
+          FilledButton(onPressed: _saveMeasurement, child: Text(tr('Καταχώρηση μέτρησης'))),
         ]),
-        _card('Ιστορικό επισκέψεων', [
-          if (_measurements.isEmpty) const Text('Δεν υπάρχουν μετρήσεις.'),
+        _card(tr('Ιστορικό επισκέψεων'), [
+          if (_measurements.isEmpty) Text(tr('Δεν υπάρχουν μετρήσεις.')),
           ..._measurements.map((m) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${m['measured_on'] ?? ''} · ${times[m['time_of_day']] ?? m['time_of_day'] ?? ''}',
+              Text(tr('${m['measured_on'] ?? ''} · ${times[m['time_of_day']] ?? m['time_of_day'] ?? ''}'),
                 style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text([
+              Text(tr([
                 if (m['weight_kg'] != null) '${m['weight_kg']} kg',
-                if (m['body_fat_pct'] != null) 'λίπος ${m['body_fat_pct']}%',
-                if (m['muscle_mass_kg'] != null) 'μυς ${m['muscle_mass_kg']} kg',
+                if (m['body_fat_pct'] != null) tr('λίπος ${m['body_fat_pct']}%'),
+                if (m['muscle_mass_kg'] != null) tr('μυς ${m['muscle_mass_kg']} kg'),
                 if (m['bmi'] != null) 'BMI ${m['bmi']}',
-              ].join(' · ')),
+              ].join(' · '))),
               if ((m['notes']?.toString() ?? '').isNotEmpty)
-                Text(m['notes'].toString(), style: const TextStyle(color: AppColors.textSecondary)),
+                Text(tr(m['notes'].toString()), style: const TextStyle(color: AppColors.textSecondary)),
             ]),
           )),
         ]),
@@ -515,15 +517,15 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
-        Text('Ισχύει από $_effectiveFrom', style: const TextStyle(fontWeight: FontWeight.w700)),
+        Text(tr('Ισχύει από $_effectiveFrom'), style: const TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
-        const Text('Το πρόγραμμα επαναλαμβάνεται κάθε εβδομάδα μέχρι νέα έκδοση.',
+        Text(tr('Το πρόγραμμα επαναλαμβάνεται κάθε εβδομάδα μέχρι νέα έκδοση.'),
           style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final v in _versions)
             ActionChip(
-              label: Text(v['effective_from']?.toString() ?? 'έκδοση'),
+              label: Text(v['effective_from']?.toString() ?? tr('έκδοση')),
               onPressed: () async {
                 final date = v['effective_from']?.toString();
                 if (date == null) return;
@@ -543,9 +545,9 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
             );
             if (picked == null) return;
             setState(() => _effectiveFrom = picked.toIso8601String().substring(0, 10));
-            _toast('Νέα έκδοση από $_effectiveFrom. Αποθήκευσε για να ισχύσει.');
+            _toast(tr('Νέα έκδοση από $_effectiveFrom. Αποθήκευσε για να ισχύσει.'));
           },
-          child: const Text('Νέα έκδοση'),
+          child: Text(tr('Νέα έκδοση')),
         ),
         const SizedBox(height: 8),
         SingleChildScrollView(
@@ -564,7 +566,7 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
         ),
         const SizedBox(height: 12),
         for (final meal in _meals) ...[
-          Text(meal.$2, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(tr(meal.$2), style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           ...(_slots[_key(_day, meal.$1)] ?? const <_MealOption>[]).map((option) => ListTile(
             contentPadding: EdgeInsets.zero,
@@ -582,20 +584,20 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
           TextButton.icon(
             onPressed: () => _editOption(_day, meal.$1, null),
             icon: const Icon(Icons.add),
-            label: const Text('Γεύμα'),
+            label: Text(tr('Γεύμα')),
           ),
           const Divider(),
         ],
-        TextField(controller: _planNotes, decoration: const InputDecoration(labelText: 'Σημειώσεις προγράμματος'), maxLines: 2),
+        TextField(controller: _planNotes, decoration: InputDecoration(labelText: tr('Σημειώσεις προγράμματος')), maxLines: 2),
         const SizedBox(height: 10),
-        FilledButton(onPressed: _savePlan, child: const Text('Αποθήκευση προγράμματος')),
+        FilledButton(onPressed: _savePlan, child: Text(tr('Αποθήκευση προγράμματος'))),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          OutlinedButton(onPressed: _shopping, child: const Text('Λίστα αγορών')),
-          OutlinedButton(onPressed: _saveAsTemplate, child: const Text('Αποθήκευση ως πρότυπο')),
+          OutlinedButton(onPressed: _shopping, child: Text(tr('Λίστα αγορών'))),
+          OutlinedButton(onPressed: _saveAsTemplate, child: Text(tr('Αποθήκευση ως πρότυπο'))),
           for (final t in _templates)
             ActionChip(
-              label: Text('Πρότυπο: ${t['name'] ?? ''}'),
+              label: Text(tr('Πρότυπο: ${t['name'] ?? ''}')),
               onPressed: () => _applyTemplate(t['id'].toString()),
             ),
         ]),
@@ -612,29 +614,29 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
       children: [
         Row(children: [
           IconButton(onPressed: () => _loadDay(_logDate.subtract(const Duration(days: 1))), icon: const Icon(Icons.chevron_left)),
-          Expanded(child: Text(label, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text(tr(label), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800))),
           IconButton(onPressed: () => _loadDay(_logDate.add(const Duration(days: 1))), icon: const Icon(Icons.chevron_right)),
         ]),
-        TextButton(onPressed: () => _loadDay(DateTime.now()), child: const Text('Σήμερα')),
-        _card('Πρόγραμμα', [
-          if (planned.isEmpty) const Text('Δεν υπάρχει πρόγραμμα για αυτή την ημέρα.'),
+        TextButton(onPressed: () => _loadDay(DateTime.now()), child: Text(tr('Σήμερα'))),
+        _card(tr('Πρόγραμμα'), [
+          if (planned.isEmpty) Text(tr('Δεν υπάρχει πρόγραμμα για αυτή την ημέρα.')),
           ...planned.map((slot) {
             final options = ((slot['options'] as List?) ?? []).cast<Map<String, dynamic>>();
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(slot['meal_type_label']?.toString() ?? slot['meal_type']?.toString() ?? '',
+                Text(tr(slot['meal_type_label']?.toString() ?? slot['meal_type']?.toString() ?? ''),
                   style: const TextStyle(fontWeight: FontWeight.w700)),
-                ...options.map((o) => Text(o['title']?.toString() ?? '')),
+                ...options.map((o) => Text(tr(o['title']?.toString() ?? ''))),
               ]),
             );
           }),
         ]),
-        _card('Καταγραφή', [
-          if (logs.isEmpty) const Text('Δεν έχει καταγράψει γεύματα αυτή την ημέρα.'),
+        _card(tr('Καταγραφή'), [
+          if (logs.isEmpty) Text(tr('Δεν έχει καταγράψει γεύματα αυτή την ημέρα.')),
           ...logs.map((log) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text('${log['meal_type_label'] ?? log['meal_type'] ?? ''} · ${log['description'] ?? ''}'),
+            child: Text(tr('${log['meal_type_label'] ?? log['meal_type'] ?? ''} · ${log['description'] ?? ''}')),
           )),
         ]),
       ],
@@ -645,12 +647,12 @@ class _NutritionistClientScreenState extends State<NutritionistClientScreen>
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
-        _card('Στόχοι ασκούμενου', [
-          _num(_targetWeight, 'Στόχος βάρους kg'),
-          _num(_targetFat, 'Στόχος λίπους %'),
-          _num(_goalHeight, 'Ύψος cm'),
+        _card(tr('Στόχοι ασκούμενου'), [
+          _num(_targetWeight, tr('Στόχος βάρους kg')),
+          _num(_targetFat, tr('Στόχος λίπους %')),
+          _num(_goalHeight, tr('Ύψος cm')),
           const SizedBox(height: 10),
-          FilledButton(onPressed: _saveGoals, child: const Text('Αποθήκευση στόχων')),
+          FilledButton(onPressed: _saveGoals, child: Text(tr('Αποθήκευση στόχων'))),
         ]),
       ],
     );
@@ -717,30 +719,30 @@ class _MealEditorSheetState extends State<_MealEditorSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Γεύμα', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-            TextField(controller: _title, decoration: const InputDecoration(labelText: 'Τίτλος')),
-            TextField(controller: _notes, decoration: const InputDecoration(labelText: 'Σημειώσεις')),
+            Text(tr('Γεύμα'), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+            TextField(controller: _title, decoration: InputDecoration(labelText: tr('Τίτλος'))),
+            TextField(controller: _notes, decoration: InputDecoration(labelText: tr('Σημειώσεις'))),
             const SizedBox(height: 8),
-            const Text('Υλικά', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text(tr('Υλικά'), style: TextStyle(fontWeight: FontWeight.w700)),
             for (var i = 0; i < _portions.length; i++)
               Row(children: [
                 Expanded(flex: 3, child: TextField(
                   controller: _ingredients[i],
-                  decoration: const InputDecoration(labelText: 'Υλικό'),
+                  decoration: InputDecoration(labelText: tr('Υλικό')),
                 )),
                 const SizedBox(width: 8),
                 Expanded(child: TextField(
                   controller: _amounts[i],
-                  decoration: const InputDecoration(labelText: 'Ποσ.'),
+                  decoration: InputDecoration(labelText: tr('Ποσ.')),
                   keyboardType: TextInputType.number,
                 )),
                 DropdownButton<String>(
                   value: _units.contains(_portions[i].unit) ? _portions[i].unit : 'g',
-                  items: _units.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
+                  items: _units.map((u) => DropdownMenuItem(value: u, child: Text(tr(u)))).toList(),
                   onChanged: (v) => setState(() => _portions[i].unit = v ?? 'g'),
                 ),
               ]),
-            TextButton(onPressed: _addPortion, child: const Text('Υλικό')),
+            TextButton(onPressed: _addPortion, child: Text(tr('Υλικό'))),
             FilledButton(
               onPressed: () {
                 final portions = <_Portion>[];
@@ -752,12 +754,12 @@ class _MealEditorSheetState extends State<_MealEditorSheet> {
                   ));
                 }
                 Navigator.pop(context, _MealOption(
-                  title: _title.text.trim(),
+                  title: tr(_title.text.trim()),
                   notes: _notes.text.trim(),
                   portions: portions,
                 ));
               },
-              child: const Text('Εντάξει'),
+              child: Text(tr('Εντάξει')),
             ),
           ],
         ),

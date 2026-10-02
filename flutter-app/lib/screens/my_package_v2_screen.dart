@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class MyPackageV2Screen extends StatelessWidget {
   const MyPackageV2Screen({super.key});
@@ -62,7 +64,7 @@ class MyPackageV2Screen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildCircleBtn(const Icon(Icons.chevron_left, color: Colors.white, size: 20)),
-          Text('MY PACKAGE', style: GoogleFonts.spaceGrotesk(
+          Text(tr('MY PACKAGE'), style: GoogleFonts.inter(
             fontSize: 18, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: 1.8)),
           _buildCircleBtn(const Icon(Icons.more_vert, color: Colors.white, size: 18)),
@@ -124,16 +126,16 @@ class MyPackageV2Screen extends StatelessWidget {
                     color: kLime,
                     borderRadius: BorderRadius.circular(9999),
                   ),
-                  child: Text('PREMIUM TIER', style: GoogleFonts.manrope(
+                  child: Text(tr('PREMIUM TIER'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kBg, letterSpacing: -0.5)),
                 ),
                 const SizedBox(height: 8),
-                Text('10 CLASS PACK', style: GoogleFonts.spaceGrotesk(
+                Text(tr('10 CLASS PACK'), style: GoogleFonts.inter(
                   fontSize: 36, fontWeight: FontWeight.w800,
                   color: Colors.white, height: 1.0)),
                 const SizedBox(height: 4),
-                Text('Fitness Club Athens', style: GoogleFonts.manrope(
+                Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w500, color: kCyan)),
               ],
             ),
@@ -165,9 +167,9 @@ class MyPackageV2Screen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('7', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('7'), style: GoogleFonts.inter(
                       fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
-                    Text('LEFT', style: GoogleFonts.manrope(
+                    Text(tr('LEFT'), style: GoogleFonts.inter(
                       fontSize: 8, fontWeight: FontWeight.w700,
                       color: _kGray9C, letterSpacing: 0.18)),
                   ],
@@ -180,12 +182,12 @@ class MyPackageV2Screen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('7 Sessions\nremaining', style: GoogleFonts.manrope(
+                Text(tr('7 Sessions\nremaining'), style: GoogleFonts.inter(
                   fontSize: 20, fontWeight: FontWeight.w700,
                   color: Colors.white, height: 1.2)),
                 const SizedBox(height: 4),
-                Text("You've used 3 out of 10 sessions from your current pack.",
-                  style: GoogleFonts.manrope(fontSize: 12, color: _kGray9C)),
+                Text(tr("You've used 3 out of 10 sessions from your current pack."),
+                  style: GoogleFonts.inter(fontSize: 12, color: _kGray9C)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -194,7 +196,7 @@ class MyPackageV2Screen extends StatelessWidget {
                       decoration: BoxDecoration(color: kLime, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 8),
-                    Text('READY TO BOOK', style: GoogleFonts.manrope(
+                    Text(tr('READY TO BOOK'), style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w700,
                       color: kLime, letterSpacing: 1.0)),
                   ],
@@ -213,7 +215,7 @@ class MyPackageV2Screen extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text('PACKAGE LOGISTICS', style: GoogleFonts.spaceGrotesk(
+            Text(tr('PACKAGE LOGISTICS'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700,
               color: _kGray6B, letterSpacing: 2.4)),
             const SizedBox(width: 16),
@@ -251,7 +253,7 @@ class MyPackageV2Screen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label.toUpperCase(), style: GoogleFonts.manrope(
+          Text(tr(label.toUpperCase()), style: GoogleFonts.inter(
             fontSize: 10, fontWeight: FontWeight.w700, color: _kGray6B)),
           const SizedBox(height: 4),
           if (highlight)
@@ -259,13 +261,13 @@ class MyPackageV2Screen extends StatelessWidget {
               children: [
                 const Icon(Icons.check_circle, color: kLime, size: 12),
                 const SizedBox(width: 8),
-                Text(value, style: GoogleFonts.manrope(
+                Text(tr(value), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: Colors.white)),
               ],
             )
           else
-            Text(value, style: GoogleFonts.manrope(
+            Text(tr(value), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700,
               color: Colors.white)),
         ],
@@ -295,7 +297,7 @@ class MyPackageV2Screen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('INCLUDED BENEFITS', style: GoogleFonts.manrope(
+          Text(tr('INCLUDED BENEFITS'), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w700,
             color: kCyan, letterSpacing: 1.2)),
           const SizedBox(height: 16),
@@ -314,7 +316,7 @@ class MyPackageV2Screen extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(b, style: GoogleFonts.manrope(
+                  child: Text(tr(b), style: GoogleFonts.inter(
                     fontSize: 14, color: const Color(0xFFD1D5DB))),
                 ),
               ],
@@ -342,7 +344,7 @@ class MyPackageV2Screen extends StatelessWidget {
             children: [
               const Icon(Icons.calendar_month_outlined, color: kBg, size: 18),
               const SizedBox(width: 8),
-              Text('BOOK A SESSION', style: GoogleFonts.manrope(
+              Text(tr('BOOK A SESSION'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w800,
                 color: kBg, letterSpacing: 1.4)),
             ],
@@ -356,7 +358,7 @@ class MyPackageV2Screen extends StatelessWidget {
             border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
           ),
           child: Center(
-            child: Text('VIEW PACKAGE DETAILS', style: GoogleFonts.manrope(
+            child: Text(tr('VIEW PACKAGE DETAILS'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: 1.4)),
           ),
@@ -395,7 +397,7 @@ class MyPackageV2Screen extends StatelessWidget {
                   child: const Icon(Icons.person, color: Colors.white, size: 14),
                 ),
                 const SizedBox(height: 4),
-                Text('PROFILE', style: GoogleFonts.manrope(
+                Text(tr('PROFILE'), style: GoogleFonts.inter(
                   fontSize: 9, fontWeight: FontWeight.w700,
                   color: _kGray6B, letterSpacing: 0.9)),
               ],
@@ -414,7 +416,7 @@ class MyPackageV2Screen extends StatelessWidget {
         children: [
           Icon(icon, color: active ? kLime : _kGray6B, size: 22),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
         ],

@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class StaffClientsScreen extends StatefulWidget {
   const StaffClientsScreen({super.key});
@@ -47,7 +49,7 @@ class _StaffClientsScreenState extends State<StaffClientsScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Text('Πελάτες', style: GoogleFonts.spaceGrotesk(
+              child: Text(tr('Πελάτες'), style: GoogleFonts.inter(
                 fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
             Expanded(
@@ -60,15 +62,15 @@ class _StaffClientsScreenState extends State<StaffClientsScreen> {
                         ? ListView(children: [
                             Padding(
                               padding: const EdgeInsets.all(24),
-                              child: Text(_error!, style: const TextStyle(color: Colors.white70)),
+                              child: Text(tr(_error!), style: const TextStyle(color: Colors.white70)),
                             ),
                           ])
                         : _clients.isEmpty
-                            ? ListView(children: const [
+                            ? ListView(children: [
                                 Padding(
                                   padding: EdgeInsets.all(24),
                                   child: Text(
-                                    'Δεν έχεις ακόμα πελάτες με κρατήσεις μαζί σου.',
+                                    tr('Δεν έχεις ακόμα πελάτες με κρατήσεις μαζί σου.'),
                                     style: TextStyle(color: kGray),
                                   ),
                                 ),
@@ -83,19 +85,19 @@ class _StaffClientsScreenState extends State<StaffClientsScreen> {
                                   final goal = c['fitness_goal_label'] as String?;
                                   return ListTile(
                                     title: Text(c['full_name'] as String? ?? '',
-                                      style: GoogleFonts.manrope(
+                                      style: GoogleFonts.inter(
                                         color: Colors.white, fontWeight: FontWeight.w700)),
                                     subtitle: Text(
                                       [
                                         if (goal != null && goal.isNotEmpty) goal,
                                         if (c['phone'] != null) c['phone'],
                                         if (next != null)
-                                          'Επόμενη: ${DateFormat('d/M HH:mm').format(next.toLocal())}',
+                                          tr('Επόμενη: ${DateFormat('d/M HH:mm').format(next.toLocal())}'),
                                       ].join(' · '),
                                       style: const TextStyle(color: kGray),
                                     ),
-                                    trailing: Text('$upcoming',
-                                      style: GoogleFonts.spaceGrotesk(
+                                    trailing: Text(tr('$upcoming'),
+                                      style: GoogleFonts.inter(
                                         color: kCyan, fontWeight: FontWeight.w700, fontSize: 18)),
                                   );
                                 },

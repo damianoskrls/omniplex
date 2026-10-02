@@ -8,6 +8,8 @@ import '../theme/app_colors.dart';
 import '../widgets/preparation_tips_card.dart';
 import '../widgets/ui_kit.dart';
 import 'home_screen.dart';
+import '../l10n/tr.dart';
+
 
 class BookingSuccessScreen extends StatefulWidget {
   const BookingSuccessScreen({
@@ -148,7 +150,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                           child: Column(
                             children: [
                               Text(
-                                AppStrings.of(context).bookingSuccessTitle,
+                                tr(AppStrings.of(context).bookingSuccessTitle),
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                       fontWeight: FontWeight.w800,
@@ -156,7 +158,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                               ),
                               const SizedBox(height: 10),
                               Text(
-                                AppStrings.of(context).bookingSuccessSubtitle,
+                                tr(AppStrings.of(context).bookingSuccessSubtitle),
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
@@ -165,17 +167,17 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                                 child: Column(
                                   children: [
                                     Text(
-                                      widget.serviceName,
+                                      tr(widget.serviceName),
                                       style: Theme.of(context).textTheme.titleLarge,
                                       textAlign: TextAlign.center,
                                     ),
                                     const SizedBox(height: 14),
-                                    _SummaryRow(icon: Icons.calendar_today, label: dateLabel),
+                                    _SummaryRow(icon: Icons.calendar_today, label: tr(dateLabel)),
                                     const SizedBox(height: 8),
-                                    _SummaryRow(icon: Icons.schedule, label: widget.time),
+                                    _SummaryRow(icon: Icons.schedule, label: tr(widget.time)),
                                     if (widget.staffName != null && widget.staffName!.isNotEmpty) ...[
                                       const SizedBox(height: 8),
-                                      _SummaryRow(icon: Icons.person_outline, label: widget.staffName!),
+                                      _SummaryRow(icon: Icons.person_outline, label: tr(widget.staffName!)),
                                     ],
                                   ],
                                 ),
@@ -183,7 +185,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                               if (widget.note != null && widget.note!.isNotEmpty) ...[
                                 const SizedBox(height: 16),
                                 Text(
-                                  widget.note!,
+                                  tr(widget.note!),
                                   textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                         color: AppColors.lime,
@@ -197,7 +199,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                               ],
                               const SizedBox(height: 28),
                               Text(
-                                AppStrings.of(context).bookingSuccessRedirect,
+                                tr(AppStrings.of(context).bookingSuccessRedirect),
                                 textAlign: TextAlign.center,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: AppColors.textSecondary,
@@ -208,7 +210,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> with Ticker
                                 width: double.infinity,
                                 child: ElevatedButton(
                                   onPressed: _goToBookings,
-                                  child: Text(AppStrings.of(context).bookingSuccessViewBtn),
+                                  child: Text(tr(AppStrings.of(context).bookingSuccessViewBtn)),
                                 ),
                               ),
                             ],
@@ -237,7 +239,7 @@ class _SummaryRow extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: AppColors.lime),
         const SizedBox(width: 10),
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
+        Expanded(child: Text(tr(label), style: Theme.of(context).textTheme.bodyLarge)),
       ],
     );
   }

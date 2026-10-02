@@ -39,6 +39,8 @@ import '../services/notification_service.dart';
 import '../widgets/qr_checkin_sheet.dart';
 import 'ai_agent_screen.dart';
 import 'member_intake_screen.dart';
+import '../l10n/tr.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialTab = 0, this.onSwitchGym, this.onRemoveGym, this.globalAuth, this.onEnterAsRole});
@@ -126,17 +128,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   String _roleLabelForUser(AppUser user) {
-    if (user.isNutritionist || user.staffKind == 'nutritionist') return 'Διατροφολόγος';
-    if (user.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    if (user.isNutritionist || user.staffKind == 'nutritionist') return tr('Διατροφολόγος');
+    if (user.staffKind == 'physiotherapist') return tr('Φυσιοθεραπευτής');
     if (user.isStaff) return 'Trainer';
-    return 'Ασκούμενος';
+    return tr('Ασκούμενος');
   }
 
   String _roleBlurb(GlobalGym gym) {
-    if (!gym.isStaff) return 'My Gym, κρατήσεις και προπόνηση';
-    if (gym.staffKind == 'nutritionist') return 'Πελάτες, πρόγραμμα και ραντεβού';
-    if (gym.staffKind == 'physiotherapist') return 'Πελάτες και πρόγραμμα';
-    return 'Πρόγραμμα, μηνύματα και πελάτες';
+    if (!gym.isStaff) return tr('My Gym, κρατήσεις και προπόνηση');
+    if (gym.staffKind == 'nutritionist') return tr('Πελάτες, πρόγραμμα και ραντεβού');
+    if (gym.staffKind == 'physiotherapist') return tr('Πελάτες και πρόγραμμα');
+    return tr('Πρόγραμμα, μηνύματα και πελάτες');
   }
 
   void _openRoleSheet(AppUser user) {
@@ -160,9 +162,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Ρόλος', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              Text(tr('Ρόλος'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              Text('Τώρα: ${_roleLabelForUser(user)}', style: const TextStyle(color: AppColors.textSecondary)),
+              Text(tr('Τώρα: ${_roleLabelForUser(user)}'), style: const TextStyle(color: AppColors.textSecondary)),
               const SizedBox(height: 14),
               if (_leaveToOmniplex != null)
                 Padding(
@@ -175,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         _leaveToOmniplex!();
                       },
                       icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                      label: const Text('Πίσω στο OmniPlex'),
+                      label: Text(tr('Πίσω στο OmniPlex')),
                     ),
                   ),
                 ),
@@ -198,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               for (final role in roles)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('${_sheetRoleLabel(role)} · ${_roleBlurb(role)}',
+                  child: Text(tr('${_sheetRoleLabel(role)} · ${_roleBlurb(role)}'),
                     style: TextStyle(
                       fontSize: 13,
                       color: _sheetIsCurrent(role, user) ? primary : AppColors.textSecondary,
@@ -213,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     Navigator.pop(ctx);
                     _openProfile();
                   },
-                  child: const Text('Προφίλ'),
+                  child: Text(tr('Προφίλ')),
                 ),
               ),
             ],
@@ -224,9 +226,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   String _sheetRoleLabel(GlobalGym gym) {
-    if (!gym.isStaff) return 'Ασκούμενος';
-    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
-    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    if (!gym.isStaff) return tr('Ασκούμενος');
+    if (gym.staffKind == 'nutritionist') return tr('Διατροφολόγος');
+    if (gym.staffKind == 'physiotherapist') return tr('Φυσιοθεραπευτής');
     return 'Trainer';
   }
 
@@ -245,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(content: Text(tr(e.toString().replaceFirst('Exception: ', '')))),
       );
     } finally {
       if (mounted) setState(() => _switchingRole = false);
@@ -265,30 +267,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<_TabItem> get _tabItems {
     final config = context.read<TenantConfig>();
     final user = context.read<AuthService>().user;
+    final s = AppStrings.of(context);
     if (user?.isNutritionist == true && user?.staffKind == 'nutritionist') {
       return [
         _TabItem(
           key: 'nutrition_bookings',
           icon: Icons.calendar_today_outlined,
-          label: 'Ραντεβού',
+          label: tr(s.navAppointments),
           screen: const NutritionistBookingsScreen(),
         ),
         _TabItem(
           key: 'nutrition_clients',
           icon: Icons.people_outline_rounded,
-          label: 'Πελάτες',
+          label: tr(s.navClients),
           screen: const NutritionistClientsScreen(),
         ),
         _TabItem(
           key: 'nutrition_templates',
           icon: Icons.menu_book_outlined,
-          label: 'Προγράμματα',
+          label: tr(s.programs),
           screen: const NutritionistTemplatesScreen(),
         ),
         _TabItem(
           key: 'nutrition_schedule',
           icon: Icons.schedule_rounded,
-          label: 'Ωράριο',
+          label: tr(s.navHours),
           screen: const NutritionistScheduleScreen(),
         ),
       ];
@@ -298,130 +301,127 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _TabItem(
           key: 'schedule',
           icon: Icons.calendar_today_outlined,
-          label: 'Πρόγραμμα',
+          label: tr(s.staffScheduleTab),
           screen: const StaffScheduleScreen(),
         ),
         _TabItem(
           key: 'messages',
           icon: Icons.chat_bubble_outline_rounded,
-          label: 'Μηνύματα',
+          label: tr(s.navMessages),
           screen: const StaffMessagesScreen(),
         ),
         _TabItem(
           key: 'community',
           icon: Icons.people_outline_rounded,
-          label: 'Κοινότητα',
+          label: tr(s.community),
           screen: const CommunityScreen(),
         ),
         if (user?.staffKind == 'physiotherapist')
           _TabItem(
             key: 'clients',
             icon: Icons.people_outline_rounded,
-            label: 'Πελάτες',
+            label: tr(s.navClients),
             screen: const StaffClientsScreen(),
           )
         else
           _TabItem(
             key: 'trials',
             icon: Icons.person_search_outlined,
-            label: 'Δοκιμαστικά',
+            label: tr(s.navTrials),
             screen: const StaffTrialsScreen(),
           ),
         _TabItem(
           key: 'leave',
           icon: Icons.flight_takeoff_outlined,
-          label: 'Άδειες',
+          label: tr(s.staffLeavesTab),
           screen: const StaffLeavesScreen(),
         ),
         if (config.featureQrCheckin)
           _TabItem(
             key: 'qr',
             icon: Icons.qr_code_2_rounded,
-            label: 'QR',
+            label: tr('QR'),
             screen: const MyQrScreen(),
           ),
       ];
     }
     return [
-      // ── Primary (always visible, 2 left of QR) ──────────────
       _TabItem(
         key: 'gym_dashboard',
         icon: Icons.home_outlined,
-        label: 'My Gym',
+        label: tr(s.navMyGym),
         screen: const GymDashboardScreen(),
       ),
       _TabItem(
         key: 'booking',
         icon: Icons.fitness_center_outlined,
-        label: config.label('book_cta', 'Κράτηση'),
+        label: tr(s.navBook),
         screen: const ServicesScreen(),
       ),
       if (_hasWorkoutPrograms)
         _TabItem(
           key: 'workout',
           icon: Icons.fitness_center_rounded,
-          label: 'Προπόνηση',
+          label: tr(s.navWorkout),
           screen: const WorkoutProgramsScreen(),
         )
       else
         _TabItem(
           key: 'appointments',
           icon: Icons.calendar_month_outlined,
-          label: config.label('appointment_noun', 'Ραντεβού'),
+          label: tr(s.navAppointments),
           screen: const MyBookingsScreen(),
         ),
-      // ── Primary (visible, 1 right of QR before overflow) ────
       _TabItem(
         key: 'goals',
         icon: Icons.track_changes_outlined,
-        label: 'Στόχοι',
+        label: tr(s.goals),
         screen: const GoalsScreen(),
       ),
-      // ── Overflow ─────────────────────────────────────────────
       if (_hasWorkoutPrograms)
         _TabItem(
           key: 'appointments',
           icon: Icons.calendar_month_outlined,
-          label: config.label('appointment_noun', 'Ραντεβού'),
+          label: tr(s.navAppointments),
           screen: const MyBookingsScreen(),
         ),
       _TabItem(
         key: 'community',
         icon: Icons.people_outline_rounded,
-        label: 'Κοινότητα',
+        label: tr(s.community),
         screen: const CommunityScreen(),
       ),
       _TabItem(
         key: 'packages',
         icon: Icons.card_membership_outlined,
-        label: 'Πακέτα',
+        label: tr(s.packages),
         screen: const CreditsScreen(),
       ),
       if (config.featureQrCheckin)
         _TabItem(
           key: 'qr',
           icon: Icons.qr_code_2_rounded,
-          label: 'QR',
+          label: tr('QR'),
           screen: const MyQrScreen(),
         ),
       if (config.featureNutrition && _hasNutritionAccess)
         _TabItem(
           key: 'nutrition',
           icon: Icons.restaurant_menu_outlined,
-          label: AppStrings.of(context).nutrition,
+          label: tr(s.nutrition),
           screen: const NutritionScreen(),
         ),
       if (config.featureMarketplace)
         _TabItem(
           key: 'marketplace',
           icon: Icons.storefront_outlined,
-          label: AppStrings.of(context).marketplace,
+          label: tr(s.marketplace),
           screen: const MarketplaceScreen(),
         ),
       _TabItem(
         key: 'payments',
         icon: Icons.payment_outlined,
-        label: 'Πληρωμές',
+        label: tr(s.navPayments),
         screen: const PaymentsScreen(),
       ),
     ];
@@ -516,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (msg == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(msg))));
     });
   }
 
@@ -612,7 +612,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await showGymInfoSheet(context, info: info);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
@@ -665,7 +665,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             GreetingHeader(
               greeting: greetingForHour(),
               name: firstName,
-              subtitle: config.appName,
+              subtitle: tr(config.appName),
               avatarLetter: user.fullName.isNotEmpty ? user.fullName[0] : '?',
               roleLabel: _roleLabelForUser(user),
               onLogoTap: _openGymInfo,
@@ -719,7 +719,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           }
         },
         items: [
-          ...visibleTabs.map((t) => FloatingNavItem(icon: t.icon, label: t.label)),
+          ...visibleTabs.map((t) => FloatingNavItem(icon: t.icon, label: tr(t.label))),
           if (hasOverflow)
             FloatingNavItem(icon: Icons.grid_view_rounded, label: AppStrings.of(context).more),
         ],
@@ -822,9 +822,9 @@ class _InGymRoleBar extends StatelessWidget {
   }
 
   String _label(GlobalGym gym) {
-    if (!gym.isStaff) return 'Ασκούμενος';
-    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
-    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    if (!gym.isStaff) return tr('Ασκούμενος');
+    if (gym.staffKind == 'nutritionist') return tr('Διατροφολόγος');
+    if (gym.staffKind == 'physiotherapist') return tr('Φυσιοθεραπευτής');
     return 'Trainer';
   }
 
@@ -863,7 +863,7 @@ class _InGymRoleBar extends StatelessWidget {
                                 width: 16, height: 16,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: primary),
                               )
-                            : Text(_label(role),
+                            : Text(tr(_label(role)),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -888,7 +888,7 @@ class _InGymRoleBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),
-            child: const Text('Νέος ρόλος', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            child: Text(tr('Νέος ρόλος'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
           ),
         ),
       ]),

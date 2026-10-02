@@ -12,6 +12,8 @@ import '../services/language_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 const _minLeadMinutes = 15;
 
@@ -212,7 +214,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
   Future<void> _save() async {
     if (_selectedTime == null) return;
     if (_needsStaffChoice && _selectedStaff == null) {
-      setState(() => _error = 'Επίλεξε ${_config.label('staff_noun', 'γυμναστή')}');
+      setState(() => _error = tr('Επίλεξε ${_config.label('staff_noun', 'γυμναστή')}'));
       return;
     }
 
@@ -243,7 +245,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] as String? ?? 'Η κράτηση ενημερώθηκε')),
+        SnackBar(content: Text(tr(result['message'] as String? ?? tr('Η κράτηση ενημερώθηκε')))),
       );
       Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -257,7 +259,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
   Widget build(BuildContext context) {
     final locale = LanguageService.instance.isGreek ? 'el_GR' : 'en_US';
     final dateFmt = DateFormat('EEE d MMM, HH:mm', locale);
-    final staffNoun = _config.label('staff_noun', 'Γυμναστής');
+    final staffNoun = _config.label('staff_noun', tr('Γυμναστής'));
     final s = AppStrings.of(context);
 
     return Scaffold(
@@ -269,17 +271,17 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.booking.serviceName, style: Theme.of(context).textTheme.titleMedium),
+                Text(tr(widget.booking.serviceName), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 6),
                 Text(
-                  s.rescheduleCurrentDate(dateFmt.format(widget.booking.startsAt)),
+                  tr(s.rescheduleCurrentDate(dateFmt.format(widget.booking.startsAt))),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          Text(s.rescheduleNewDate, style: Theme.of(context).textTheme.titleMedium),
+          Text(tr(s.rescheduleNewDate), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
           SurfaceCard(
             padding: EdgeInsets.zero,
@@ -291,7 +293,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          Text(s.rescheduleNewTime, style: Theme.of(context).textTheme.titleMedium),
+          Text(tr(s.rescheduleNewTime), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           if (_loadingSlots)
             const Center(
@@ -317,7 +319,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
                       children: [
                         if (_dayStatus == 'closed') ...[
                           Text(
-                            s.rescheduleClosedDay,
+                            tr(s.rescheduleClosedDay),
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.orange,
@@ -326,7 +328,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
                           const SizedBox(height: 4),
                         ],
                         Text(
-                          _slotsMessage ?? _error ?? s.rescheduleNoSlots,
+                          tr(_slotsMessage ?? _error ?? s.rescheduleNoSlots),
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -356,7 +358,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
           if (_selectedTime != null && _staffForTime.isNotEmpty && !_hideStaffSelection) ...[
             const SizedBox(height: 24),
             Text(
-              _needsStaffChoice ? 'Επίλεξε $staffNoun' : staffNoun,
+              tr(_needsStaffChoice ? 'Επίλεξε $staffNoun' : staffNoun),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 10),
@@ -381,7 +383,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
           ],
           if (_error != null) ...[
             const SizedBox(height: 16),
-            Text(_error!, style: const TextStyle(color: AppColors.orange)),
+            Text(tr(_error!), style: const TextStyle(color: AppColors.orange)),
           ],
           const SizedBox(height: 28),
           SizedBox(
@@ -394,7 +396,7 @@ class _RescheduleBookingScreenState extends State<RescheduleBookingScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                     )
-                  : Text(s.rescheduleSave),
+                  : Text(tr(s.rescheduleSave)),
             ),
           ),
         ],

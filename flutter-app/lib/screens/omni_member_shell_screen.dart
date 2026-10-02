@@ -8,6 +8,8 @@ import 'unified_schedule_screen.dart';
 import 'qr_access_screen.dart';
 import 'messages_screen.dart';
 import 'member_profile_screen.dart';
+import '../l10n/tr.dart';
+
 
 class OmniMemberShellScreen extends StatefulWidget {
   const OmniMemberShellScreen({super.key});
@@ -98,8 +100,8 @@ class _OmniMemberShellScreenState extends State<OmniMemberShellScreen> {
             ),
             const SizedBox(height: 3),
             Text(
-              label,
-              style: GoogleFonts.manrope(
+              tr(label),
+              style: GoogleFonts.inter(
                 fontSize: 9,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                 color: active ? kLime : const Color(0xFF6B7280),

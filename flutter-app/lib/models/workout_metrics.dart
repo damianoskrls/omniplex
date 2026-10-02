@@ -1,4 +1,6 @@
 import 'workout_health.dart';
+import '../l10n/tr.dart';
+
 
 class WorkoutMetricEntry {
   const WorkoutMetricEntry({
@@ -27,7 +29,7 @@ class WorkoutMetricEntry {
   final String? activityLabel;
   final String? source;
 
-  String get displayTitle => serviceName ?? activityLabel ?? activityType ?? 'Προπόνηση';
+  String get displayTitle => serviceName ?? activityLabel ?? activityType ?? tr('Προπόνηση');
 
   factory WorkoutMetricEntry.fromJson(Map<String, dynamic> json) {
     final startedRaw = json['started_at'] ?? json['starts_at'];
@@ -62,7 +64,7 @@ class ActivityBreakdown {
   final int durationMins;
 
   factory ActivityBreakdown.fromJson(Map<String, dynamic> json) => ActivityBreakdown(
-        label: json['label'] as String? ?? 'Άλλο',
+        label: tr(json['label'] as String? ?? tr('Άλλο')),
         sessions: json['sessions'] as int? ?? 0,
         calories: json['calories'] as int? ?? 0,
         durationMins: json['duration_mins'] as int? ?? 0,
@@ -193,10 +195,10 @@ class WorkoutMetricsData {
 
     final byActivityMap = <String, ActivityBreakdown>{};
     for (final w in workouts) {
-      final key = w.activityLabel ?? w.activityType ?? 'Άλλο';
+      final key = w.activityLabel ?? w.activityType ?? tr('Άλλο');
       final prev = byActivityMap[key];
       byActivityMap[key] = ActivityBreakdown(
-        label: key,
+        label: tr(key),
         sessions: (prev?.sessions ?? 0) + 1,
         calories: (prev?.calories ?? 0) + (w.caloriesKcal ?? 0),
         durationMins: (prev?.durationMins ?? 0) + w.durationMins,

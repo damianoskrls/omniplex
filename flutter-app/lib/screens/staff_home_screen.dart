@@ -9,6 +9,8 @@ import 'staff_clients_screen.dart';
 import 'staff_leaves_screen.dart';
 import 'staff_messages_screen.dart';
 import 'staff_schedule_screen.dart';
+import '../l10n/tr.dart';
+
 
 class StaffHomeScreen extends StatefulWidget {
   const StaffHomeScreen({super.key, this.onSwitchGym, this.onRemoveGym});
@@ -80,7 +82,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
 
   Widget _buildHomeTab(user, TenantConfig config) {
     final now = DateTime.now();
-    final greeting = now.hour < 12 ? 'Καλημέρα' : now.hour < 18 ? 'Καλό απόγευμα' : 'Καλό βράδυ';
+    final greeting = now.hour < 12 ? 'Καλημέρα' : now.hour < 18 ? 'Καλό απόγευμα' : tr('Καλό βράδυ');
     final gymName  = config.appName.toUpperCase();
 
     return Stack(
@@ -133,9 +135,9 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(greeting, style: GoogleFonts.manrope(fontSize: 14, color: _kGray9C)),
+              Text(tr(greeting), style: GoogleFonts.inter(fontSize: 14, color: _kGray9C)),
               const SizedBox(height: 3),
-              Text(name, style: GoogleFonts.spaceGrotesk(
+              Text(tr(name), style: GoogleFonts.inter(
                 fontSize: 24, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.6)),
               const SizedBox(height: 3),
@@ -143,7 +145,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                 onTap: widget.onSwitchGym,
                 child: Row(
                   children: [
-                    Text(gymName, style: GoogleFonts.manrope(
+                    Text(tr(gymName), style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w700,
                       color: kCyan, letterSpacing: 1.1)),
                     if (widget.onSwitchGym != null) ...[
@@ -215,16 +217,16 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('ΣΗΜΕΡΑ', style: GoogleFonts.manrope(
+                Text(tr('ΣΗΜΕΡΑ'), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: _kGray6B, letterSpacing: -0.5)),
-                Text(dateStr, style: GoogleFonts.manrope(
+                Text(tr(dateStr), style: GoogleFonts.inter(
                   fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(height: 4),
                 Row(children: [
                   Container(width: 8, height: 8, decoration: const BoxDecoration(color: kLime, shape: BoxShape.circle)),
                   const SizedBox(width: 8),
-                  Text('ΕΝΕΡΓΟΣ', style: GoogleFonts.manrope(
+                  Text(tr('ΕΝΕΡΓΟΣ'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kLime, letterSpacing: 1.0)),
                 ]),
@@ -234,13 +236,13 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('ΚΡΑΤΗΣΕΙΣ', style: GoogleFonts.manrope(
+              Text(tr('ΚΡΑΤΗΣΕΙΣ'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700,
                 color: _kGray6B, letterSpacing: -0.5)),
               const SizedBox(height: 4),
               _loadingSchedule
                   ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: kCyan))
-                  : Text('$pending', style: GoogleFonts.spaceGrotesk(
+                  : Text(tr('$pending'), style: GoogleFonts.inter(
                       fontSize: 28, fontWeight: FontWeight.w800, color: kCyan)),
             ],
           ),
@@ -251,17 +253,17 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
 
   Widget _buildQuickActionsSection() {
     final actions = [
-      _QuickAction(Icons.calendar_today_outlined, 'ΠΡΟΓΡΑΜΜΑ', null, () => setState(() => _tab = 1)),
-      _QuickAction(Icons.send_outlined, 'ΜΗΝΥΜΑΤΑ', kCyan, () => setState(() => _tab = 2)),
-      _QuickAction(Icons.flight_takeoff_outlined, 'ΑΔΕΙΑ', null, () => setState(() => _tab = 3)),
-      _QuickAction(Icons.people_outline_rounded, 'ΠΕΛΑΤΕΣ', null, () => setState(() => _tab = 4)),
-      _QuickAction(Icons.person_outline_rounded, 'ΠΡΟΦΙΛ', null, () => setState(() => _tab = 5)),
+      _QuickAction(Icons.calendar_today_outlined, tr('ΠΡΟΓΡΑΜΜΑ'), null, () => setState(() => _tab = 1)),
+      _QuickAction(Icons.send_outlined, tr('ΜΗΝΥΜΑΤΑ'), kCyan, () => setState(() => _tab = 2)),
+      _QuickAction(Icons.flight_takeoff_outlined, tr('ΑΔΕΙΑ'), null, () => setState(() => _tab = 3)),
+      _QuickAction(Icons.people_outline_rounded, tr('ΠΕΛΑΤΕΣ'), null, () => setState(() => _tab = 4)),
+      _QuickAction(Icons.person_outline_rounded, tr('ΠΡΟΦΙΛ'), null, () => setState(() => _tab = 5)),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('ΓΡΗΓΟΡΕΣ ΕΝΕΡΓΕΙΕΣ', style: GoogleFonts.spaceGrotesk(
+        Text(tr('ΓΡΗΓΟΡΕΣ ΕΝΕΡΓΕΙΕΣ'), style: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w700, color: kCyan, letterSpacing: 1.4)),
         const SizedBox(height: 16),
         Row(
@@ -290,7 +292,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                     ),
                 ]),
                 const SizedBox(height: 8),
-                Text(a.label, style: GoogleFonts.manrope(
+                Text(tr(a.label), style: GoogleFonts.inter(
                   fontSize: 8, fontWeight: FontWeight.w700,
                   color: _kGray9C, letterSpacing: -0.2),
                   textAlign: TextAlign.center),
@@ -309,11 +311,11 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("ΠΡΟΓΡΑΜΜΑ ΣΗΜΕΡΑ", style: GoogleFonts.spaceGrotesk(
+            Text(tr("ΠΡΟΓΡΑΜΜΑ ΣΗΜΕΡΑ"), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700, color: kCyan, letterSpacing: 1.4)),
             Text(
-              DateFormat('EEE, d MMM', 'el_GR').format(DateTime.now()).toUpperCase(),
-              style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w700,
+              tr(DateFormat('EEE, d MMM', 'el_GR').format(DateTime.now()).toUpperCase()),
+              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700,
                 color: _kGray6B, letterSpacing: 1.0)),
           ],
         ),
@@ -343,8 +345,8 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
         child: Column(children: [
           Icon(Icons.event_available_outlined, color: _kGray6B, size: 32),
           const SizedBox(height: 8),
-          Text('Δεν υπάρχουν κρατήσεις σήμερα',
-            style: GoogleFonts.manrope(fontSize: 13, color: _kGray6B)),
+          Text(tr('Δεν υπάρχουν κρατήσεις σήμερα'),
+            style: GoogleFonts.inter(fontSize: 13, color: _kGray6B)),
         ]),
       ),
     );
@@ -372,8 +374,8 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
 
       items.add(_buildTimelineItem(
         time: time, sub: dur,
-        title: service,
-        detail: isTrial ? 'Trial • $client' : client.isNotEmpty ? client : 'Ομαδικό',
+        title: tr(service),
+        detail: tr(isTrial ? 'Trial • $client' : client.isNotEmpty ? client : tr('Ομαδικό')),
         isActive: isActive, isDone: isDone, isLast: isLast,
         isTrial: isTrial,
       ));
@@ -425,10 +427,10 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(time, style: GoogleFonts.manrope(
+                        Text(tr(time), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w700,
                           color: isActive ? kLime : Colors.white)),
-                        Text(sub, style: GoogleFonts.manrope(
+                        Text(tr(sub), style: GoogleFonts.inter(
                           fontSize: 9, fontWeight: FontWeight.w700,
                           color: isActive ? kLime : _kGray6B, letterSpacing: 0.27)),
                       ],
@@ -441,7 +443,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                       children: [
                         Row(children: [
                           Expanded(
-                            child: Text(title, style: GoogleFonts.manrope(
+                            child: Text(tr(title), style: GoogleFonts.inter(
                               fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
                           ),
                           if (isTrial)
@@ -452,12 +454,12 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(color: kCyan.withValues(alpha: 0.4)),
                               ),
-                              child: Text('TRIAL', style: GoogleFonts.manrope(
+                              child: Text(tr('TRIAL'), style: GoogleFonts.inter(
                                 fontSize: 8, fontWeight: FontWeight.w800,
                                 color: kCyan, letterSpacing: 0.5)),
                             ),
                         ]),
-                        Text(detail, style: GoogleFonts.manrope(fontSize: 10, color: _kGray9C)),
+                        Text(tr(detail), style: GoogleFonts.inter(fontSize: 10, color: _kGray9C)),
                       ],
                     ),
                   ),
@@ -481,7 +483,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('ΠΡΟΦΙΛ', style: GoogleFonts.spaceGrotesk(
+            Text(tr('ΠΡΟΦΙΛ'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700, color: kCyan, letterSpacing: 1.4)),
             const SizedBox(height: 24),
             Container(
@@ -505,16 +507,16 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                 Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user?.fullName ?? '', style: GoogleFonts.spaceGrotesk(
+                    Text(tr(user?.fullName ?? ''), style: GoogleFonts.inter(
                       fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                     const SizedBox(height: 4),
                     Text(
-                      '${user?.staffRole?.isNotEmpty == true ? user!.staffRole : 'Trainer'} · ${config.appName}',
-                      style: GoogleFonts.manrope(fontSize: 12, color: _kGray9C),
+                      tr('${user?.staffRole?.isNotEmpty == true ? user!.staffRole : 'Trainer'} · ${config.appName}'),
+                      style: GoogleFonts.inter(fontSize: 12, color: _kGray9C),
                     ),
                     if ((user?.email ?? '').isNotEmpty) ...[
                       const SizedBox(height: 2),
-                      Text(user!.email, style: GoogleFonts.manrope(fontSize: 12, color: _kGray6B)),
+                      Text(tr(user!.email), style: GoogleFonts.inter(fontSize: 12, color: _kGray6B)),
                     ],
                   ],
                 )),
@@ -530,7 +532,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _kBorder26),
                 ),
-                child: Text(user!.bio!.trim(), style: GoogleFonts.manrope(
+                child: Text(tr(user!.bio!.trim()), style: GoogleFonts.inter(
                   fontSize: 13, color: Colors.white70, height: 1.4)),
               ),
             ],
@@ -538,7 +540,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
             if (widget.onSwitchGym != null)
               _profileAction(
                 icon: Icons.swap_horiz_rounded,
-                label: 'Αλλαγή γυμναστηρίου',
+                label: tr('Αλλαγή γυμναστηρίου'),
                 color: kCyan,
                 onTap: widget.onSwitchGym!,
               ),
@@ -546,27 +548,27 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
               const SizedBox(height: 12),
               _profileAction(
                 icon: Icons.remove_circle_outline_rounded,
-                label: 'Αφαίρεση ως trainer',
+                label: tr('Αφαίρεση ως trainer'),
                 color: Colors.redAccent,
                 onTap: () async {
                   final confirmed = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
                       backgroundColor: const Color(0xFF161616),
-                      title: const Text('Αφαίρεση γυμναστηρίου',
+                      title: Text(tr('Αφαίρεση γυμναστηρίου'),
                         style: TextStyle(color: Colors.white)),
                       content: Text(
-                        'Θα αφαιρεθείς ως trainer από το ${config.appName}. Η σύνδεσή σου ως ασκούμενος, αν υπάρχει, μένει.',
+                        tr('Θα αφαιρεθείς ως trainer από το ${config.appName}. Η σύνδεσή σου ως ασκούμενος, αν υπάρχει, μένει.'),
                         style: const TextStyle(color: Colors.white70),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Άκυρο'),
+                          child: Text(tr('Άκυρο')),
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Αφαίρεση', style: TextStyle(color: Colors.redAccent)),
+                          child: Text(tr('Αφαίρεση'), style: TextStyle(color: Colors.redAccent)),
                         ),
                       ],
                     ),
@@ -579,7 +581,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
             const SizedBox(height: 12),
             _profileAction(
               icon: Icons.logout_rounded,
-              label: 'Αποσύνδεση από γυμναστήριο',
+              label: tr('Αποσύνδεση από γυμναστήριο'),
               color: Colors.redAccent,
               onTap: () async {
                 await auth.logout();
@@ -604,7 +606,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
         child: Row(children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 12),
-          Text(label, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+          Text(tr(label), style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
           const Spacer(),
           Icon(Icons.chevron_right_rounded, color: _kGray6B, size: 20),
         ]),
@@ -616,12 +618,12 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
 
   Widget _buildBottomNav() {
     final items = [
-      (Icons.home_filled, 'ΑΡΧΙΚΗ'),
-      (Icons.calendar_today, 'ΠΡΟΓΡΑΜΜΑ'),
-      (Icons.send_outlined, 'ΜΗΝΥΜΑΤΑ'),
-      (Icons.flight_takeoff_outlined, 'ΑΔΕΙΑ'),
-      (Icons.people_outline_rounded, 'ΠΕΛΑΤΕΣ'),
-      (Icons.person_outline_rounded, 'ΠΡΟΦΙΛ'),
+      (Icons.home_filled, tr('ΑΡΧΙΚΗ')),
+      (Icons.calendar_today, tr('ΠΡΟΓΡΑΜΜΑ')),
+      (Icons.send_outlined, tr('ΜΗΝΥΜΑΤΑ')),
+      (Icons.flight_takeoff_outlined, tr('ΑΔΕΙΑ')),
+      (Icons.people_outline_rounded, tr('ΠΕΛΑΤΕΣ')),
+      (Icons.person_outline_rounded, tr('ΠΡΟΦΙΛ')),
     ];
 
     return Container(
@@ -644,7 +646,7 @@ class _StaffHomeScreenState extends State<StaffHomeScreen> {
                     children: [
                       Icon(e.value.$1, color: active ? kLime : _kGray6B, size: 20),
                       const SizedBox(height: 4),
-                      Text(e.value.$2, style: GoogleFonts.manrope(
+                      Text(tr(e.value.$2), style: GoogleFonts.inter(
                         fontSize: 8, fontWeight: FontWeight.w700,
                         color: active ? kLime : _kGray6B, letterSpacing: 0.9),
                         textAlign: TextAlign.center),

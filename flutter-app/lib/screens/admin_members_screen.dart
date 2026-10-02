@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../widgets/omni_design.dart';
 import '../services/auth_service.dart';
+import '../l10n/tr.dart';
+
 
 const _kAmber = Color(0xFFFFB93D);
 const _kAmberBg = Color(0xFF2A210F);
@@ -115,10 +117,10 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Admin Dashboard', style: GoogleFonts.manrope(
+                                  Text(tr('Admin Dashboard'), style: GoogleFonts.inter(
                                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                                   const SizedBox(height: 4),
-                                  Text('Members', style: GoogleFonts.spaceGrotesk(
+                                  Text(tr('Members'), style: GoogleFonts.inter(
                                     fontSize: 20, fontWeight: FontWeight.w700,
                                     color: Colors.white, letterSpacing: -0.5)),
                                 ],
@@ -150,7 +152,7 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
                                 const SizedBox(width: 16),
                                 const Icon(Icons.search, color: kGray, size: 14),
                                 const SizedBox(width: 12),
-                                Text('Search members', style: GoogleFonts.manrope(
+                                Text(tr('Search members'), style: GoogleFonts.inter(
                                   fontSize: 14, color: kGray)),
                               ],
                             ),
@@ -175,10 +177,10 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('All Members', style: GoogleFonts.spaceGrotesk(
+                              Text(tr('All Members'), style: GoogleFonts.inter(
                                 fontSize: 16, fontWeight: FontWeight.w700,
                                 color: Colors.white, letterSpacing: -0.4)),
-                              Text('128 total', style: GoogleFonts.manrope(
+                              Text(tr('128 total'), style: GoogleFonts.inter(
                                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                             ],
                           ),
@@ -222,10 +224,10 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
           border: active ? null : Border.all(color: kBorder),
         ),
         child: Center(
-          child: Text(label, style: active
-            ? GoogleFonts.spaceGrotesk(
+          child: Text(tr(label), style: active
+            ? GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700, color: kBg)
-            : GoogleFonts.manrope(
+            : GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
         ),
       ),
@@ -298,7 +300,7 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Flexible(
-                          child: Text(member.name, style: GoogleFonts.manrope(
+                          child: Text(tr(member.name), style: GoogleFonts.inter(
                             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                         ),
                         const SizedBox(width: 8),
@@ -310,17 +312,17 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
                             borderRadius: BorderRadius.circular(9999),
                             border: Border.all(color: statusBorderColor),
                           ),
-                          child: Text(member.status, style: GoogleFonts.spaceGrotesk(
+                          child: Text(tr(member.status), style: GoogleFonts.inter(
                             fontSize: 10, fontWeight: FontWeight.w700,
                             color: statusTextColor)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 3),
-                    Text(member.package, style: GoogleFonts.manrope(
+                    Text(tr(member.package), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                     const SizedBox(height: 2),
-                    Text(member.lastVisit, style: GoogleFonts.manrope(
+                    Text(tr(member.lastVisit), style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w600, color: kDim)),
                   ],
                 ),
@@ -339,7 +341,7 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
                 children: [
                   Expanded(child: _buildActionButton(
                     icon: Icons.visibility_outlined,
-                    label: 'View',
+                    label: tr('View'),
                     bg: const Color(0xFF1F2024),
                     borderColor: kBorder2,
                     textColor: Colors.white,
@@ -347,7 +349,7 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: _buildActionButton(
                     icon: Icons.edit_outlined,
-                    label: 'Edit',
+                    label: tr('Edit'),
                     bg: const Color(0xFF1F2024),
                     borderColor: kBorder2,
                     textColor: Colors.white,
@@ -355,7 +357,7 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: _buildActionButton(
                     icon: Icons.power_settings_new,
-                    label: 'Deactivate',
+                    label: tr('Deactivate'),
                     bg: _kRedBg,
                     borderColor: _kRed.withValues(alpha: 0.30),
                     textColor: _kRed,
@@ -388,7 +390,7 @@ class _AdminMembersScreenState extends State<AdminMembersScreen> {
         children: [
           Icon(icon, color: textColor, size: 12),
           const SizedBox(width: 6),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
         ],
       ),

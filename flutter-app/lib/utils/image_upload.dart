@@ -2,18 +2,20 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
+import '../l10n/tr.dart';
+
 
 /// Resize and re-encode gallery photos as JPEG bytes before chat upload.
 Future<Uint8List> prepareMessageImageBytes(String sourcePath) async {
   final source = File(sourcePath);
   if (!await source.exists()) {
-    throw StateError('Η εικόνα δεν βρέθηκε');
+    throw StateError(tr('Η εικόνα δεν βρέθηκε'));
   }
 
   final bytes = await source.readAsBytes();
   final decoded = img.decodeImage(bytes);
   if (decoded == null) {
-    throw StateError('Δεν ήταν δυνατή η επεξεργασία της εικόνας. Δοκίμασε άλλη φωτογραφία.');
+    throw StateError(tr('Δεν ήταν δυνατή η επεξεργασία της εικόνας. Δοκίμασε άλλη φωτογραφία.'));
   }
 
   const maxDim = 1200;

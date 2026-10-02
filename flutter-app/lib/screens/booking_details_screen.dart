@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kRed = Color(0xFFFF5C5C);
 
@@ -106,7 +108,7 @@ class BookingDetailsScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        Text('Booking Details', style: GoogleFonts.spaceGrotesk(
+        Text(tr('Booking Details'), style: GoogleFonts.inter(
           fontSize: 20, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.5)),
       ],
@@ -128,7 +130,7 @@ class BookingDetailsScreen extends StatelessWidget {
           children: [
             const Icon(Icons.check, color: kBg, size: 14),
             const SizedBox(width: 8),
-            Text('Confirmed', style: GoogleFonts.spaceGrotesk(
+            Text(tr('Confirmed'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700,
               color: kBg, letterSpacing: 0.3)),
           ],
@@ -148,7 +150,7 @@ class BookingDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(className, style: GoogleFonts.spaceGrotesk(
+          Text(tr(className), style: GoogleFonts.inter(
             fontSize: 24, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.6)),
           const SizedBox(height: 16),
@@ -170,9 +172,9 @@ class BookingDetailsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(gymName, style: GoogleFonts.manrope(
+                      Text(tr(gymName), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                      Text('View gym profile', style: GoogleFonts.manrope(
+                      Text(tr('View gym profile'), style: GoogleFonts.inter(
                         fontSize: 12, color: kGray)),
                     ],
                   ),
@@ -196,9 +198,9 @@ class BookingDetailsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(coachName, style: GoogleFonts.manrope(
+                      Text(tr(coachName), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                      Text(coachRole, style: GoogleFonts.manrope(
+                      Text(tr(coachRole), style: GoogleFonts.inter(
                         fontSize: 12, color: kGray)),
                     ],
                   ),
@@ -248,10 +250,10 @@ class BookingDetailsScreen extends StatelessWidget {
           children: [
             Icon(icon, color: kGray, size: 14),
             const SizedBox(height: 4),
-            Text(label, style: GoogleFonts.manrope(
+            Text(tr(label), style: GoogleFonts.inter(
               fontSize: 10, fontWeight: FontWeight.w600, color: kGray)),
             const SizedBox(height: 2),
-            Text(value, style: GoogleFonts.spaceGrotesk(
+            Text(tr(value), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
           ],
         ),
@@ -283,11 +285,11 @@ class BookingDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ready for check-in', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Ready for check-in'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: kLime, letterSpacing: -0.35)),
                 const SizedBox(height: 3),
-                Text('Scan to enter when you arrive', style: GoogleFonts.manrope(
+                Text(tr('Scan to enter when you arrive'), style: GoogleFonts.inter(
                   fontSize: 12, color: kGray)),
               ],
             ),
@@ -310,7 +312,7 @@ class BookingDetailsScreen extends StatelessWidget {
         children: [
           const Icon(Icons.qr_code_scanner, color: kBg, size: 18),
           const SizedBox(width: 8),
-          Text('Scan to Enter', style: GoogleFonts.spaceGrotesk(
+          Text(tr('Scan to Enter'), style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w700,
             color: kBg, letterSpacing: 0.35)),
         ],
@@ -333,7 +335,7 @@ class BookingDetailsScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.calendar_month_outlined, color: Colors.white, size: 14),
                 const SizedBox(width: 8),
-                Text('Add to Calendar', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Add to Calendar'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: 0.3)),
               ],
@@ -353,7 +355,7 @@ class BookingDetailsScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.location_on_outlined, color: Colors.white, size: 14),
                 const SizedBox(width: 8),
-                Text('View Gym', style: GoogleFonts.spaceGrotesk(
+                Text(tr('View Gym'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: 0.3)),
               ],
@@ -378,7 +380,7 @@ class BookingDetailsScreen extends StatelessWidget {
             children: [
               const Icon(Icons.sync, color: kGray, size: 14),
               const SizedBox(width: 8),
-              Text('Reschedule', style: GoogleFonts.spaceGrotesk(
+              Text(tr('Reschedule'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700,
                 color: kGray, letterSpacing: 0.3)),
             ],
@@ -397,7 +399,7 @@ class BookingDetailsScreen extends StatelessWidget {
             children: [
               const Icon(Icons.close, color: _kRed, size: 14),
               const SizedBox(width: 8),
-              Text('Cancel Booking', style: GoogleFonts.spaceGrotesk(
+              Text(tr('Cancel Booking'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700,
                 color: _kRed, letterSpacing: 0.3)),
             ],

@@ -6,6 +6,8 @@ import '../services/auth_service.dart';
 import '../widgets/omni_design.dart';
 import 'my_gyms_screen.dart';
 import 'qr_checkin_screen.dart';
+import '../l10n/tr.dart';
+
 
 class MemberHomeScreen extends StatefulWidget {
   const MemberHomeScreen({super.key});
@@ -25,10 +27,10 @@ class _MemberHomeScreenState extends State<MemberHomeScreen> {
         index: _tab,
         children: [
           _HomeTab(onTabChange: (i) => setState(() => _tab = i)),
-          const _PlaceholderTab(label: 'Search'),
-          const _PlaceholderTab(label: 'Schedule'),
+          _PlaceholderTab(label: tr('Search')),
+          _PlaceholderTab(label: tr('Schedule')),
           MyGymsScreen(onTabChange: (i) => setState(() => _tab = i)),
-          const _PlaceholderTab(label: 'Profile'),
+          _PlaceholderTab(label: tr('Profile')),
         ],
       ),
       bottomNavigationBar: _BottomBar(
@@ -119,14 +121,14 @@ class _HomeTab extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(dateLabel, style: GoogleFonts.manrope(
+            Text(tr(dateLabel), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w600,
               color: kGray, letterSpacing: 0.05)),
             const SizedBox(height: 4),
-            Text('$greeting,', style: GoogleFonts.spaceGrotesk(
+            Text(tr('$greeting,'), style: GoogleFonts.inter(
               fontSize: 20, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: -0.5)),
-            Text('$firstName 👋', style: GoogleFonts.spaceGrotesk(
+            Text(tr('$firstName 👋'), style: GoogleFonts.inter(
               fontSize: 20, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: -0.5)),
           ],
@@ -181,7 +183,7 @@ class _HomeTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('My Gym', style: GoogleFonts.spaceGrotesk(
+        Text(tr('My Gym'), style: GoogleFonts.inter(
           fontSize: 16, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.4)),
         const SizedBox(height: 12),
@@ -233,9 +235,9 @@ class _HomeTab extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Fitness Club Athens', style: GoogleFonts.spaceGrotesk(
+                              Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                                 fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                              Text('24 Syngrou Avenue', style: GoogleFonts.manrope(
+                              Text(tr('24 Syngrou Avenue'), style: GoogleFonts.inter(
                                 fontSize: 12, color: kGray)),
                             ],
                           ),
@@ -257,7 +259,7 @@ class _HomeTab extends StatelessWidget {
                           children: [
                             const Icon(Icons.check, size: 10, color: kBg),
                             const SizedBox(width: 4),
-                            Text('Active', style: GoogleFonts.spaceGrotesk(
+                            Text(tr('Active'), style: GoogleFonts.inter(
                               fontSize: 11, fontWeight: FontWeight.w700,
                               color: kBg, letterSpacing: 0.3)),
                           ],
@@ -274,9 +276,9 @@ class _HomeTab extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text('Valid until ', style: GoogleFonts.manrope(
+                        Text(tr('Valid until '), style: GoogleFonts.inter(
                           fontSize: 12, color: kGray)),
-                        Text('Oct 28', style: GoogleFonts.manrope(
+                        Text(tr('Oct 28'), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                       ],
                     ),
@@ -287,7 +289,7 @@ class _HomeTab extends StatelessWidget {
                       children: [
                         const Icon(Icons.calendar_today_outlined, color: kGray, size: 12),
                         const SizedBox(width: 8),
-                        Text('Next booking: 18:30 · CrossFit', style: GoogleFonts.manrope(
+                        Text(tr('Next booking: 18:30 · CrossFit'), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                       ],
                     ),
@@ -306,7 +308,7 @@ class _HomeTab extends StatelessWidget {
                               children: [
                                 const Icon(Icons.open_in_new, color: Colors.white, size: 12),
                                 const SizedBox(width: 8),
-                                Text('Open Gym', style: GoogleFonts.spaceGrotesk(
+                                Text(tr('Open Gym'), style: GoogleFonts.inter(
                                   fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                               ],
                             ),
@@ -349,7 +351,7 @@ class _HomeTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('NEXT CLASS', style: GoogleFonts.manrope(
+          Text(tr('NEXT CLASS'), style: GoogleFonts.inter(
             fontSize: 11, fontWeight: FontWeight.w700,
             color: kCyan, letterSpacing: 1.1)),
           const SizedBox(height: 14),
@@ -359,14 +361,14 @@ class _HomeTab extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('18:30', style: GoogleFonts.spaceGrotesk(
+                  Text(tr('18:30'), style: GoogleFonts.inter(
                     fontSize: 36, fontWeight: FontWeight.w700,
                     color: Colors.white, letterSpacing: -0.9, height: 1)),
                   const SizedBox(height: 4),
-                  Text('CrossFit', style: GoogleFonts.spaceGrotesk(
+                  Text(tr('CrossFit'), style: GoogleFonts.inter(
                     fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text('Fitness Club Athens', style: GoogleFonts.manrope(
+                  Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                     fontSize: 12, color: kGray)),
                 ],
               ),
@@ -401,7 +403,7 @@ class _HomeTab extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text('Coach Maria', style: GoogleFonts.manrope(
+                  Text(tr('Coach Maria'), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                 ],
               ),
@@ -413,7 +415,7 @@ class _HomeTab extends StatelessWidget {
                   borderRadius: BorderRadius.circular(9999),
                 ),
                 child: Center(
-                  child: Text('View Booking', style: GoogleFonts.spaceGrotesk(
+                  child: Text(tr('View Booking'), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w700,
                     color: kBg, letterSpacing: 0.3)),
                 ),
@@ -436,7 +438,7 @@ class _HomeTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Quick Actions', style: GoogleFonts.spaceGrotesk(
+        Text(tr('Quick Actions'), style: GoogleFonts.inter(
           fontSize: 16, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.4)),
         const SizedBox(height: 12),
@@ -468,7 +470,7 @@ class _HomeTab extends StatelessWidget {
                     child: Icon(a.$1, color: Colors.white, size: 16),
                   ),
                   const Spacer(),
-                  Text(a.$2, style: GoogleFonts.manrope(
+                  Text(tr(a.$2), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                 ],
               ),
@@ -488,7 +490,7 @@ class _HomeTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('This Week', style: GoogleFonts.spaceGrotesk(
+        Text(tr('This Week'), style: GoogleFonts.inter(
           fontSize: 16, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.4)),
         const SizedBox(height: 12),
@@ -509,7 +511,7 @@ class _HomeTab extends StatelessWidget {
                   final isToday = d.day == now.day;
                   return Column(
                     children: [
-                      Text(days[i], style: GoogleFonts.manrope(
+                      Text(tr(days[i]), style: GoogleFonts.inter(
                         fontSize: 10,
                         fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
                         color: isToday ? kLime : kGray)),
@@ -524,7 +526,7 @@ class _HomeTab extends StatelessWidget {
                           ] : null,
                         ),
                         child: Center(
-                          child: Text('${d.day}', style: GoogleFonts.manrope(
+                          child: Text(tr('${d.day}'), style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
                             color: isToday ? kBg : kGray)),
@@ -550,7 +552,7 @@ class _HomeTab extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('View Full Schedule', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('View Full Schedule'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.35)),
                     const SizedBox(width: 8),
@@ -581,9 +583,9 @@ class _HomeTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: GoogleFonts.manrope(
+              Text(tr(title), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-              Text(subtitle, style: GoogleFonts.manrope(
+              Text(tr(subtitle), style: GoogleFonts.inter(
                 fontSize: 12, color: kGray)),
             ],
           ),
@@ -639,7 +641,7 @@ class _BottomBar extends StatelessWidget {
                           color: active ? kLime : kGray, size: 22),
                       ),
                       const SizedBox(height: 4),
-                      Text(items[i].$2, style: GoogleFonts.spaceGrotesk(
+                      Text(tr(items[i].$2), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: active ? kLime : kGray,
                         letterSpacing: 0.2)),
@@ -664,7 +666,7 @@ class _PlaceholderTab extends StatelessWidget {
     return Scaffold(
       backgroundColor: kBg,
       body: Center(
-        child: Text(label, style: GoogleFonts.spaceGrotesk(
+        child: Text(tr(label), style: GoogleFonts.inter(
           fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
       ),
     );

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import '../l10n/tr.dart';
+
 
 const _kGlobalToken      = 'global_auth_token';
 const _kGlobalUser       = 'global_user_json';
@@ -158,7 +160,7 @@ class GlobalAuthService extends ChangeNotifier {
       body: jsonEncode({'phone': phone}),
     ).timeout(const Duration(seconds: 15));
     final body = jsonDecode(res.body) as Map<String, dynamic>;
-    if (res.statusCode != 200) throw body['error'] ?? 'Αποτυχία αποστολής SMS';
+    if (res.statusCode != 200) throw body['error'] ?? tr('Αποτυχία αποστολής SMS');
   }
 
   /// Verify OTP and login/register
@@ -169,7 +171,7 @@ class GlobalAuthService extends ChangeNotifier {
       body: jsonEncode({'phone': phone, 'code': code, if (fullName != null) 'full_name': fullName}),
     ).timeout(const Duration(seconds: 15));
     final body = jsonDecode(res.body) as Map<String, dynamic>;
-    if (res.statusCode != 200) throw body['error'] ?? 'Λάθος κωδικός';
+    if (res.statusCode != 200) throw body['error'] ?? tr('Λάθος κωδικός');
     await _persist(body);
     return body;
   }
@@ -266,8 +268,8 @@ class GlobalAuthService extends ChangeNotifier {
       body: jsonEncode({'business_id': businessId}),
     );
     final body = jsonDecode(res.body);
-    if (body is! Map<String, dynamic>) throw 'Η προσθήκη απέτυχε';
-    if (res.statusCode != 200) throw body['error'] ?? 'Η προσθήκη απέτυχε';
+    if (body is! Map<String, dynamic>) throw tr('Η προσθήκη απέτυχε');
+    if (res.statusCode != 200) throw body['error'] ?? tr('Η προσθήκη απέτυχε');
     if (body['user'] is Map) {
       _user = GlobalUser.fromJson(body['user'] as Map<String, dynamic>);
       await _storage.write(key: _kGlobalUser, value: jsonEncode(_user!.toJson()));
@@ -306,9 +308,9 @@ class GlobalAuthService extends ChangeNotifier {
       }),
     );
     final body = jsonDecode(res.body);
-    if (body is! Map<String, dynamic>) throw 'Το αίτημα δεν στάλθηκε';
+    if (body is! Map<String, dynamic>) throw tr('Το αίτημα δεν στάλθηκε');
     if (res.statusCode != 200 && res.statusCode != 201) {
-      throw body['message'] ?? body['error'] ?? 'Το αίτημα δεν στάλθηκε';
+      throw body['message'] ?? body['error'] ?? tr('Το αίτημα δεν στάλθηκε');
     }
     return body;
   }
@@ -360,7 +362,7 @@ class GlobalAuthService extends ChangeNotifier {
       body: jsonEncode(body),
     );
     final resBody = jsonDecode(res.body) as Map<String, dynamic>;
-    if (res.statusCode != 200) throw resBody['error'] ?? 'Αποτυχία ενημέρωσης προφίλ';
+    if (res.statusCode != 200) throw resBody['error'] ?? tr('Αποτυχία ενημέρωσης προφίλ');
     if (resBody['user'] != null) {
       _user = GlobalUser.fromJson(resBody['user'] as Map<String, dynamic>);
       await _storage.write(key: _kGlobalUser, value: jsonEncode(_user!.toJson()));
@@ -396,7 +398,7 @@ class GlobalAuthService extends ChangeNotifier {
 
   Future<void> _persist(Map<String, dynamic> body) async {
     final token = body['token']?.toString() ?? '';
-    if (token.isEmpty) throw 'Η σύνδεση δεν αποθηκεύτηκε';
+    if (token.isEmpty) throw tr('Η σύνδεση δεν αποθηκεύτηκε');
     final userRaw = body['user'];
     final user = userRaw is Map
         ? GlobalUser.fromJson(Map<String, dynamic>.from(userRaw))
@@ -444,6 +446,21 @@ class GlobalAuthService extends ChangeNotifier {
     await _storage.write(key: _kGlobalUser,  value: jsonEncode({'id': '', 'email': '', 'full_name': fullName}));
     await _storage.write(key: _kGlobalGyms,  value: jsonEncode(_gyms.map((g) => g.toJson()).toList()));
     notifyListeners();
+  }
+
+  Future<void> deleteAccount() async {
+    if (_token == null) throw tr('Δεν είσαι συνδεδεμένος');
+    final res = await http.delete(
+      Uri.parse('$_apiBase/global/me'),
+      headers: {'Authorization': 'Bearer $_token'},
+    );
+    if (res.statusCode != 200) {
+      dynamic body;
+      try { body = jsonDecode(res.body); } catch (_) {}
+      final message = body is Map ? body['error']?.toString() : null;
+      throw message?.isNotEmpty == true ? message! : tr('Η διαγραφή δεν ολοκληρώθηκε');
+    }
+    await clear();
   }
 
   Future<void> clear() async {

@@ -1238,6 +1238,22 @@ async function bootstrapSchema() {
   } catch (err) {
     console.warn('member_workout_checks skipped:', err.message);
   }
+
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS ai_translations (
+        source_hash CHAR(64) NOT NULL,
+        target_lang VARCHAR(5) NOT NULL,
+        source_text MEDIUMTEXT NOT NULL,
+        translated_text MEDIUMTEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (source_hash, target_lang)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: ai_translations ready');
+  } catch (err) {
+    console.warn('ai_translations skipped:', err.message);
+  }
 }
 
 module.exports = { bootstrapSchema };

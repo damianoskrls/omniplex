@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
 import 'login_screen.dart';
+import '../l10n/tr.dart';
+
 
 class DiscoveryHomeScreen extends StatefulWidget {
   const DiscoveryHomeScreen({super.key});
@@ -13,7 +15,7 @@ class DiscoveryHomeScreen extends StatefulWidget {
 
 class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
   int _selectedFilter = 0;
-  final _filters = ['Όλα', 'CrossFit', 'Yoga', 'Pilates', 'Strength'];
+  final _filters = [tr('Όλα'), 'CrossFit', 'Yoga', 'Pilates', 'Strength'];
 
   final _gyms = [
     _GymData(
@@ -128,7 +130,7 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
             MaterialPageRoute(builder: (_) => const LoginScreen())),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Text('Log in', style: GoogleFonts.spaceGrotesk(
+            child: Text(tr('Log in'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700,
               color: kLime, letterSpacing: 0.35)),
           ),
@@ -141,12 +143,12 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Find your\nperfect gym.', style: GoogleFonts.spaceGrotesk(
+        Text(tr('Find your\nperfect gym.'), style: GoogleFonts.inter(
           fontSize: 32, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.8, height: 1.1)),
         const SizedBox(height: 10),
-        Text('Discover gyms, classes and memberships\nnear you.',
-          style: GoogleFonts.manrope(
+        Text(tr('Discover gyms, classes and memberships\nnear you.'),
+          style: GoogleFonts.inter(
             fontSize: 14, color: kGray, height: 1.625)),
       ],
     );
@@ -165,8 +167,8 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
         children: [
           const Icon(Icons.search, color: kGray, size: 18),
           const SizedBox(width: 12),
-          Text('Search gyms, classes or activities',
-            style: GoogleFonts.manrope(fontSize: 14, color: kGray)),
+          Text(tr('Search gyms, classes or activities'),
+            style: GoogleFonts.inter(fontSize: 14, color: kGray)),
         ],
       ),
     );
@@ -192,7 +194,7 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
                     color: active ? kCyan.withValues(alpha: 0.4) : kBorder),
                 ),
                 child: Center(
-                  child: Text(_filters[i], style: GoogleFonts.manrope(
+                  child: Text(tr(_filters[i]), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600,
                     color: active ? kCyan : Colors.white)),
                 ),
@@ -208,10 +210,10 @@ class _DiscoveryHomeScreenState extends State<DiscoveryHomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('Gyms near you', style: GoogleFonts.spaceGrotesk(
+        Text(tr('Gyms near you'), style: GoogleFonts.inter(
           fontSize: 18, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.45)),
-        Text('See all', style: GoogleFonts.spaceGrotesk(
+        Text(tr('See all'), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: kLime, letterSpacing: 0.3)),
       ],
@@ -292,14 +294,14 @@ class _GymCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(data.name, style: GoogleFonts.spaceGrotesk(
+                Text(tr(data.name), style: GoogleFonts.inter(
                   fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(height: 5),
                 Row(
                   children: [
                     const Icon(Icons.star, color: Colors.white, size: 12),
                     const SizedBox(width: 4),
-                    Text(data.rating, style: GoogleFonts.manrope(
+                    Text(tr(data.rating), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                     const SizedBox(width: 8),
                     Container(
@@ -308,23 +310,23 @@ class _GymCard extends StatelessWidget {
                         color: kBorder2, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 8),
-                    Text(data.distance, style: GoogleFonts.manrope(
+                    Text(tr(data.distance), style: GoogleFonts.inter(
                       fontSize: 12, color: kGray)),
                   ],
                 ),
                 const SizedBox(height: 5),
-                Text(data.categories, style: GoogleFonts.manrope(
+                Text(tr(data.categories), style: GoogleFonts.inter(
                   fontSize: 12, color: kGray)),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text.rich(TextSpan(children: [
-                      TextSpan(text: 'From ', style: GoogleFonts.manrope(
+                      TextSpan(text: 'From ', style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                      TextSpan(text: data.price, style: GoogleFonts.manrope(
+                      TextSpan(text: data.price, style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w600, color: kLime)),
-                      TextSpan(text: '/month', style: GoogleFonts.manrope(
+                      TextSpan(text: '/month', style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                     ])),
                     Container(
@@ -335,7 +337,7 @@ class _GymCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(9999),
                       ),
                       child: Center(
-                        child: Text('View Gym', style: GoogleFonts.spaceGrotesk(
+                        child: Text(tr('View Gym'), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w700,
                           color: kBg, letterSpacing: 0.3)),
                       ),

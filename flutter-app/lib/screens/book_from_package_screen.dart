@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class BookFromPackageScreen extends StatelessWidget {
   const BookFromPackageScreen({super.key});
@@ -62,7 +64,7 @@ class BookFromPackageScreen extends StatelessWidget {
                         child: Icon(Icons.chevron_left, color: Colors.white, size: 22)),
                     ),
                     const SizedBox(width: 16),
-                    Text('CONFIRM BOOKING', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('CONFIRM BOOKING'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: 2.8)),
                   ],
@@ -86,8 +88,8 @@ class BookFromPackageScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('DOUBLE CHECK DETAILS BEFORE CONFIRMING',
-                    style: GoogleFonts.manrope(
+                  Text(tr('DOUBLE CHECK DETAILS BEFORE CONFIRMING'),
+                    style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w700,
                       color: _kGray6B, letterSpacing: 1.0),
                     textAlign: TextAlign.center),
@@ -103,10 +105,10 @@ class BookFromPackageScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('CONFIRM BOOKING', style: GoogleFonts.spaceGrotesk(
+                        Text(tr('CONFIRM BOOKING'), style: GoogleFonts.inter(
                           fontSize: 18, fontWeight: FontWeight.w900,
                           color: kBg, letterSpacing: 4.0)),
-                        Text('SECURE CHECKOUT', style: GoogleFonts.manrope(
+                        Text(tr('SECURE CHECKOUT'), style: GoogleFonts.inter(
                           fontSize: 9, fontWeight: FontWeight.w900,
                           color: kBg.withValues(alpha: 0.70), letterSpacing: 0.9)),
                       ],
@@ -174,7 +176,7 @@ class BookFromPackageScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(9999),
                         border: Border.all(color: kCyan.withValues(alpha: 0.40)),
                       ),
-                      child: Text('INTERMEDIATE', style: GoogleFonts.manrope(
+                      child: Text(tr('INTERMEDIATE'), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w900,
                         color: kCyan, letterSpacing: 1.0)),
                     ),
@@ -189,11 +191,11 @@ class BookFromPackageScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('FITNESS CLUB ATHENS', style: GoogleFonts.manrope(
+                Text(tr('FITNESS CLUB ATHENS'), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: kLime, letterSpacing: 3.0)),
                 const SizedBox(height: 8),
-                Text('CROSSFIT', style: GoogleFonts.spaceGrotesk(
+                Text(tr('CROSSFIT'), style: GoogleFonts.inter(
                   fontSize: 36, fontWeight: FontWeight.w900,
                   color: Colors.white, letterSpacing: -1.8)),
                 Divider(color: Colors.white.withValues(alpha: 0.05), height: 32),
@@ -226,11 +228,11 @@ class BookFromPackageScreen extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: GoogleFonts.manrope(
+            Text(tr(label), style: GoogleFonts.inter(
               fontSize: 9, fontWeight: FontWeight.w700,
               color: _kGray6B, letterSpacing: 0.9)),
             const SizedBox(height: 2),
-            Text(value, style: GoogleFonts.manrope(
+            Text(tr(value), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
           ],
         ),
@@ -260,7 +262,7 @@ class BookFromPackageScreen extends StatelessWidget {
                 decoration: const BoxDecoration(color: kLime, shape: BoxShape.circle),
               ),
               const SizedBox(width: 12),
-              Text('TRANSACTION DETAILS', style: GoogleFonts.manrope(
+              Text(tr('TRANSACTION DETAILS'), style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w700,
                 color: _kGray9C, letterSpacing: 1.1)),
             ],
@@ -273,22 +275,22 @@ class BookFromPackageScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('PAYMENT METHOD', style: GoogleFonts.manrope(
+                  Text(tr('PAYMENT METHOD'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: _kGray6B, letterSpacing: 1.0)),
                   const SizedBox(height: 4),
-                  Text('10 Class Pack', style: GoogleFonts.manrope(
+                  Text(tr('10 Class Pack'), style: GoogleFonts.inter(
                     fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('DEDUCTION', style: GoogleFonts.manrope(
+                  Text(tr('DEDUCTION'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: _kGray6B, letterSpacing: 1.0)),
                   const SizedBox(height: 4),
-                  Text('-1 Session', style: GoogleFonts.spaceGrotesk(
+                  Text(tr('-1 Session'), style: GoogleFonts.inter(
                     fontSize: 20, fontWeight: FontWeight.w900, color: kLime)),
                 ],
               ),
@@ -313,10 +315,10 @@ class BookFromPackageScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('NEW BALANCE', style: GoogleFonts.manrope(
+                    Text(tr('NEW BALANCE'), style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w700,
                       color: kCyan, letterSpacing: 1.1)),
-                    Text('6', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('6'), style: GoogleFonts.inter(
                       fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
                   ],
                 ),
@@ -332,8 +334,8 @@ class BookFromPackageScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: GoogleFonts.manrope(fontSize: 14, color: _kGray9C)),
-        Text(value, style: GoogleFonts.manrope(
+        Text(tr(label), style: GoogleFonts.inter(fontSize: 14, color: _kGray9C)),
+        Text(tr(value), style: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w700, color: valueColor)),
       ],
     );
@@ -355,10 +357,10 @@ class BookFromPackageScreen extends StatelessWidget {
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: GoogleFonts.manrope(fontSize: 11, color: _kD1),
+                style: GoogleFonts.inter(fontSize: 11, color: _kD1),
                 children: [
                   const TextSpan(text: 'Cancellations made less than '),
-                  TextSpan(text: '12 hours', style: GoogleFonts.manrope(
+                  TextSpan(text: '12 hours', style: GoogleFonts.inter(
                     fontSize: 11, fontWeight: FontWeight.w700, color: kCyan)),
                   const TextSpan(
                     text: ' before the class starts will not be refunded to your package balance.'),

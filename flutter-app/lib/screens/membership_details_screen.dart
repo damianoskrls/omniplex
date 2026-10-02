@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class MembershipDetailsScreen extends StatelessWidget {
   const MembershipDetailsScreen({super.key,
@@ -112,7 +114,7 @@ class MembershipDetailsScreen extends StatelessWidget {
             child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
           ),
         ),
-        Text('Membership Details', style: GoogleFonts.spaceGrotesk(
+        Text(tr('Membership Details'), style: GoogleFonts.inter(
           fontSize: 18, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.45)),
         Container(
@@ -156,9 +158,9 @@ class MembershipDetailsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(gymName, style: GoogleFonts.manrope(
+                    Text(tr(gymName), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
-                    Text(planName, style: GoogleFonts.spaceGrotesk(
+                    Text(tr(planName), style: GoogleFonts.inter(
                       fontSize: 18, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.45)),
                   ],
@@ -175,7 +177,7 @@ class MembershipDetailsScreen extends StatelessWidget {
                   ],
                 ),
                 child: Center(
-                  child: Text('Active', style: GoogleFonts.spaceGrotesk(
+                  child: Text(tr('Active'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kBg, letterSpacing: 0.25)),
                 ),
@@ -205,9 +207,9 @@ class MembershipDetailsScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Classes Remaining', style: GoogleFonts.manrope(
+                    Text(tr('Classes Remaining'), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
-                    Text('$classesRemaining / $totalClasses', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('$classesRemaining / $totalClasses'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700, color: kLime)),
                   ],
                 ),
@@ -254,12 +256,12 @@ class MembershipDetailsScreen extends StatelessWidget {
             children: [
               Icon(icon, color: kGray, size: 12),
               const SizedBox(width: 8),
-              Text(label, style: GoogleFonts.manrope(
+              Text(tr(label), style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
             ],
           ),
           const SizedBox(height: 8),
-          Text(value, style: GoogleFonts.spaceGrotesk(
+          Text(tr(value), style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
         ],
       ),
@@ -267,7 +269,7 @@ class MembershipDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildSectionLabel(String label) {
-    return Text(label, style: GoogleFonts.manrope(
+    return Text(tr(label), style: GoogleFonts.inter(
       fontSize: 12, fontWeight: FontWeight.w600,
       color: kGray, letterSpacing: 0.3));
   }
@@ -299,7 +301,7 @@ class MembershipDetailsScreen extends StatelessWidget {
                 child: const Icon(Icons.check, color: kLime, size: 14),
               ),
               const SizedBox(width: 12),
-              Text(b, style: GoogleFonts.manrope(
+              Text(tr(b), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
             ],
           ),
@@ -343,10 +345,10 @@ class MembershipDetailsScreen extends StatelessWidget {
                 child: Icon(icon, color: kGray, size: 14),
               ),
               const SizedBox(width: 12),
-              Text(label, style: GoogleFonts.manrope(
+              Text(tr(label), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
               const Spacer(),
-              Text(value, style: GoogleFonts.spaceGrotesk(
+              Text(tr(value), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
             ],
           ),
@@ -378,7 +380,7 @@ class MembershipDetailsScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.sync, color: kBg, size: 16),
                 const SizedBox(width: 8),
-                Text('Renew', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Renew'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: kBg, letterSpacing: 0.35)),
               ],
@@ -396,7 +398,7 @@ class MembershipDetailsScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.location_on_outlined, color: Colors.white, size: 14),
                 const SizedBox(width: 8),
-                Text('View Gym', style: GoogleFonts.spaceGrotesk(
+                Text(tr('View Gym'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: 0.35)),
               ],

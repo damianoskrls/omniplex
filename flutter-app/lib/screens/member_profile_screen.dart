@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kRed = Color(0xFFFF5C5C);
 
@@ -103,7 +105,7 @@ class MemberProfileScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('Profile', style: GoogleFonts.spaceGrotesk(
+        Text(tr('Profile'), style: GoogleFonts.inter(
           fontSize: 24, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.6)),
         Container(
@@ -151,14 +153,14 @@ class MemberProfileScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        Text(name, style: GoogleFonts.spaceGrotesk(
+        Text(tr(name), style: GoogleFonts.inter(
           fontSize: 20, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.5)),
         const SizedBox(height: 4),
-        Text(email, style: GoogleFonts.manrope(
+        Text(tr(email), style: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w500, color: kGray)),
         const SizedBox(height: 2),
-        Text(phone, style: GoogleFonts.manrope(
+        Text(tr(phone), style: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w500, color: kGray)),
         const SizedBox(height: 16),
         // Badges row
@@ -176,7 +178,7 @@ class MemberProfileScreen extends StatelessWidget {
                 ],
               ),
               child: Center(
-                child: Text('MEMBER', style: GoogleFonts.spaceGrotesk(
+                child: Text(tr('MEMBER'), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: kBg, letterSpacing: 0.25)),
               ),
@@ -194,7 +196,7 @@ class MemberProfileScreen extends StatelessWidget {
                 children: [
                   const Icon(Icons.add, color: kGray, size: 12),
                   const SizedBox(width: 6),
-                  Text('Add Staff Role', style: GoogleFonts.spaceGrotesk(
+                  Text(tr('Add Staff Role'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kGray, letterSpacing: 0.25)),
                 ],
@@ -212,7 +214,7 @@ class MemberProfileScreen extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(label, style: GoogleFonts.manrope(
+          child: Text(tr(label), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w600,
             color: kGray, letterSpacing: 0.3)),
         ),
@@ -243,7 +245,7 @@ class MemberProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Text(item.$2, style: GoogleFonts.manrope(
+                          child: Text(tr(item.$2), style: GoogleFonts.inter(
                             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                         ),
                         const Icon(Icons.chevron_right, color: kGray, size: 14),
@@ -273,7 +275,7 @@ class MemberProfileScreen extends StatelessWidget {
         children: [
           const Icon(Icons.logout, color: _kRed, size: 16),
           const SizedBox(width: 8),
-          Text('Logout', style: GoogleFonts.spaceGrotesk(
+          Text(tr('Logout'), style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w700,
             color: _kRed, letterSpacing: 0.35)),
         ],
@@ -316,10 +318,10 @@ class MemberProfileScreen extends StatelessWidget {
                   )
                 : Icon(item.$1, color: kDim, size: 20),
               const SizedBox(height: 6),
-              Text(item.$2,
+              Text(tr(item.$2),
                 style: active
-                  ? GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
-                  : GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w600, color: kDim)),
+                  ? GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
+                  : GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: kDim)),
             ],
           );
         }).toList(),

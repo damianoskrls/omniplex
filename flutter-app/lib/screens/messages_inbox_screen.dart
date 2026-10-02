@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class MessagesInboxScreen extends StatelessWidget {
   const MessagesInboxScreen({super.key});
@@ -28,7 +30,7 @@ class MessagesInboxScreen extends StatelessWidget {
                     children: [
                       _buildConversation(
                         name: 'Trainer Maria',
-                        message: 'How was your workout today?',
+                        message: tr('How was your workout today?'),
                         time: 'JUST NOW',
                         tag: 'PERSONAL TRAINER',
                         tagColor: kLime,
@@ -42,7 +44,7 @@ class MessagesInboxScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       _buildConversation(
                         name: 'Coach Alex',
-                        message: 'See you at 18:30 for PT.',
+                        message: tr('See you at 18:30 for PT.'),
                         time: '2H AGO',
                         tag: 'CROSSFIT COACH',
                         tagColor: kCyan,
@@ -56,7 +58,7 @@ class MessagesInboxScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       _buildConversation(
                         name: 'Gym Admin',
-                        message: 'Your membership has been renewed.',
+                        message: tr('Your membership has been renewed.'),
                         time: 'YESTERDAY',
                         tag: 'SYSTEM',
                         tagColor: _kGray6B,
@@ -70,7 +72,7 @@ class MessagesInboxScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       _buildConversation(
                         name: 'Nutritionist Sarah',
-                        message: 'The new meal plan has been uploaded to your profile.',
+                        message: tr('The new meal plan has been uploaded to your profile.'),
                         time: 'OCT 19',
                         tag: 'HEALTH',
                         tagColor: kLime,
@@ -84,7 +86,7 @@ class MessagesInboxScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       _buildConversation(
                         name: 'Zen Studio Athens',
-                        message: 'You\'ve been moved from the waitlist to "Yoga Flow".',
+                        message: tr('You\'ve been moved from the waitlist to "Yoga Flow".'),
                         time: 'OCT 18',
                         tag: 'NOTIFICATION',
                         tagColor: kCyan,
@@ -128,7 +130,7 @@ class MessagesInboxScreen extends StatelessWidget {
                 child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 20)),
               ),
               const SizedBox(width: 16),
-              Text('MESSAGES', style: GoogleFonts.spaceGrotesk(
+              Text(tr('MESSAGES'), style: GoogleFonts.inter(
                 fontSize: 24, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.6)),
               const Spacer(),
@@ -154,7 +156,7 @@ class MessagesInboxScreen extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: 48),
-                Text('Search conversations...', style: GoogleFonts.manrope(
+                Text(tr('Search conversations...'), style: GoogleFonts.inter(
                   fontSize: 14, color: _kGray4B)),
               ],
             ),
@@ -203,17 +205,17 @@ class MessagesInboxScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(name, style: GoogleFonts.spaceGrotesk(
+                    Text(tr(name), style: GoogleFonts.inter(
                       fontSize: 16, fontWeight: FontWeight.w700,
                       color: isActive ? Colors.white : const Color(0xFFD1D5DB))),
-                    Text(time, style: GoogleFonts.manrope(
+                    Text(tr(time), style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w700,
                       color: timeColor, letterSpacing: 0.5)),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(message,
-                  style: GoogleFonts.manrope(
+                Text(tr(message),
+                  style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                     color: isActive ? Colors.white : _kGray6B),
                   maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -225,7 +227,7 @@ class MessagesInboxScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: tagBorder),
                   ),
-                  child: Text(tag, style: GoogleFonts.manrope(
+                  child: Text(tr(tag), style: GoogleFonts.inter(
                     fontSize: 9, fontWeight: FontWeight.w700,
                     color: tagColor, letterSpacing: 0.9)),
                 ),
@@ -336,7 +338,7 @@ class MessagesInboxScreen extends StatelessWidget {
         children: [
           Icon(icon, color: active ? kLime : _kGray6B, size: 20),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
         ],
@@ -360,7 +362,7 @@ class MessagesInboxScreen extends StatelessWidget {
             child: const Icon(Icons.person, color: Colors.white, size: 14),
           ),
           const SizedBox(height: 4),
-          Text('PROFILE', style: GoogleFonts.manrope(
+          Text(tr('PROFILE'), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: kLime, letterSpacing: 0.9)),
         ],

@@ -11,6 +11,8 @@ import '../config/tenant_config.dart';
 import 'global_register_screen.dart';
 import 'phone_otp_login_screen.dart';
 import 'gym_profile_screen.dart';
+import '../l10n/tr.dart';
+
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -73,38 +75,38 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   // Static recent searches
   final _recentSearches = ['CrossFit Athens', 'Yoga near me', '24h fitness clubs'];
 
-  static const _kProgramTypes = [
+  static final _kProgramTypes = [
     'CrossFit', 'Yoga', 'Pilates', 'Functional', 'HIIT', 'Boxing',
-    'Κολύμβηση', 'Personal Training', 'Δύναμη', 'Cardio',
+    tr('Κολύμβηση'), 'Personal Training', tr('Δύναμη'), 'Cardio',
   ];
   static const _kAmenityIcons = {
     'Parking': '🅿', 'Showers': '🚿', 'Locker rooms': '🔒',
     'Pool': '🏊', 'Cafe': '☕', 'Towel service': '👕',
   };
-  static const _kQuickChips = [
-    'CrossFit', 'Yoga', 'Pilates', 'Functional', 'HIIT', 'Boxing', 'Κοντά μου',
+  static final _kQuickChips = [
+    'CrossFit', 'Yoga', 'Pilates', 'Functional', 'HIIT', 'Boxing', tr('Κοντά μου'),
   ];
 
   // (label, apiKey, iconAsset, activeBorderColor)
-  static const _categories = [
+  static final _categories = [
     ('CrossFit', 'CrossFit', 'assets/icons/discovery_crossfit.svg', _kBorder),
     ('Yoga',     'Yoga',     'assets/icons/discovery_yoga.svg',     _kCyan),
     ('Pilates',  'Pilates',  'assets/icons/discovery_pilates.svg',  _kBorder),
-    ('Δύναμη',   'Strength', 'assets/icons/discovery_more.svg',     _kBorder),
+    (tr('Δύναμη'),   'Strength', 'assets/icons/discovery_more.svg',     _kBorder),
     ('HIIT',     'HIIT',     'assets/icons/discovery_more.svg',     _kBorder),
   ];
 
-  static const _popularSearches = [
-    'CrossFit', 'Yoga', 'Pilates', 'Boxing', 'Personal Training', '24ωρα γυμναστήρια',
+  static final _popularSearches = [
+    'CrossFit', 'Yoga', 'Pilates', 'Boxing', 'Personal Training', tr('24ωρα γυμναστήρια'),
   ];
 
-  static const _activities = [
+  static final _activities = [
     ('CrossFit',          'assets/icons/discovery_act_crossfit.svg',  Color(0xFF2A1E14), Color(0xFFC06A1E)),
     ('Yoga',              'assets/icons/discovery_act_yoga.svg',       Color(0xFF141A2A), Color(0xFF3EE6FF)),
     ('Pilates',           'assets/icons/discovery_act_pilates.svg',    Color(0xFF14261C), Color(0xFF4ADE80)),
-    ('Δύναμη',            'assets/icons/discovery_act_strength.svg',   Color(0xFF1A1420), Color(0xFFA78BFA)),
+    (tr('Δύναμη'),            'assets/icons/discovery_act_strength.svg',   Color(0xFF1A1420), Color(0xFFA78BFA)),
     ('Boxing',            'assets/icons/discovery_act_boxing.svg',     Color(0xFF2A1414), Color(0xFFF87171)),
-    ('Κολύμβηση',         'assets/icons/discovery_act_swimming.svg',   Color(0xFF14202A), Color(0xFF38BDF8)),
+    (tr('Κολύμβηση'),         'assets/icons/discovery_act_swimming.svg',   Color(0xFF14202A), Color(0xFF38BDF8)),
     ('Personal Training', 'assets/icons/discovery_act_pt.svg',         Color(0xFF261E14), Color(0xFFFBBF24)),
   ];
 
@@ -186,7 +188,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       ..._quickFilters.where((c) => c != 'Κοντά μου'),
     };
     if (q.isEmpty && allPrograms.isEmpty && !_hasActiveFilters &&
-        !_quickFilters.contains('Κοντά μου')) return;
+        !_quickFilters.contains(tr('Κοντά μου'))) return;
     setState(() { _searching = true; _searched = true; });
     try {
       final params = <String, String>{};
@@ -199,7 +201,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       if (_filterMaxDistanceKm < 50) {
         params['max_distance'] = _filterMaxDistanceKm.toStringAsFixed(0);
       }
-      if (_quickFilters.contains('Κοντά μου')) params['max_distance'] = '5';
+      if (_quickFilters.contains(tr('Κοντά μου'))) params['max_distance'] = '5';
       if (_filterOpenNow) params['open_now'] = 'true';
       if (_filterAmenities.isNotEmpty) params['amenities'] = _filterAmenities.join(',');
       final uri = Uri.parse('$_apiBase/global/discovery/gyms').replace(queryParameters: params);
@@ -344,11 +346,11 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                 children: [
                   Icon(Icons.location_off_outlined, color: _kGray, size: 40),
                   const SizedBox(height: 12),
-                  Text('Δεν βρέθηκαν γυμναστήρια κοντά σου',
-                    style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
+                  Text(tr('Δεν βρέθηκαν γυμναστήρια κοντά σου'),
+                    style: GoogleFonts.inter(color: _kGray, fontSize: 14)),
                   const SizedBox(height: 6),
-                  Text('Δοκίμασε αναζήτηση με όνομα ή πόλη',
-                    style: GoogleFonts.manrope(color: _kGray.withValues(alpha: 0.6), fontSize: 12)),
+                  Text(tr('Δοκίμασε αναζήτηση με όνομα ή πόλη'),
+                    style: GoogleFonts.inter(color: _kGray.withValues(alpha: 0.6), fontSize: 12)),
                 ],
               ),
             ),
@@ -388,8 +390,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          Text('OmniPlex',
-            style: GoogleFonts.manrope(
+          Text(tr('OmniPlex'),
+            style: GoogleFonts.inter(
               fontSize: 18, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: -0.45)),
         ]),
@@ -400,10 +402,10 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             alignment: Alignment.center,
             child: Text(
-              widget.globalAuth.isLoggedIn
-                ? (widget.globalAuth.user?.fullName.split(' ').first ?? 'Προφίλ')
-                : 'Σύνδεση',
-              style: GoogleFonts.manrope(
+              tr(widget.globalAuth.isLoggedIn
+                ? (widget.globalAuth.user?.fullName.split(' ').first ?? tr('Προφίλ'))
+                : tr('Σύνδεση')),
+              style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w700,
                 color: _kLime, letterSpacing: 0.35)),
           ),
@@ -416,13 +418,13 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Βρες το τέλειο\nγυμναστήριό σου.',
-          style: GoogleFonts.manrope(
+        Text(tr('Βρες το τέλειο\nγυμναστήριό σου.'),
+          style: GoogleFonts.inter(
             fontSize: 32, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.8, height: 1.1)),
         const SizedBox(height: 11),
-        Text('Ανακάλυψε γυμναστήρια, μαθήματα και\nσυνδρομές κοντά σου.',
-          style: GoogleFonts.manrope(
+        Text(tr('Ανακάλυψε γυμναστήρια, μαθήματα και\nσυνδρομές κοντά σου.'),
+          style: GoogleFonts.inter(
             fontSize: 14, color: _kGray, height: 1.625)),
       ],
     );
@@ -446,8 +448,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
           SvgPicture.asset('assets/icons/discovery_search.svg', width: 16, height: 16),
           const SizedBox(width: 12),
           Expanded(
-            child: Text('Αναζήτηση γυμναστηρίου, μαθήματος...',
-              style: GoogleFonts.manrope(fontSize: 14, color: _kGray)),
+            child: Text(tr('Αναζήτηση γυμναστηρίου, μαθήματος...'),
+              style: GoogleFonts.inter(fontSize: 14, color: _kGray)),
           ),
           const SizedBox(width: 16),
         ]),
@@ -483,8 +485,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                     ? const ColorFilter.mode(_kCyan, BlendMode.srcIn)
                     : null),
                 const SizedBox(width: 8),
-                Text(cat.$1,
-                  style: GoogleFonts.manrope(
+                Text(tr(cat.$1),
+                  style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600,
                     color: textColor, letterSpacing: 0.15)),
               ]),
@@ -496,8 +498,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
   }
 
   Widget _buildHomeSectionHeader() {
-    return Text('Γυμναστήρια κοντά σου',
-      style: GoogleFonts.manrope(
+    return Text(tr('Γυμναστήρια κοντά σου'),
+      style: GoogleFonts.inter(
         fontSize: 18, fontWeight: FontWeight.w700,
         color: Colors.white, letterSpacing: -0.45));
   }
@@ -572,11 +574,11 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                 controller: _searchCtrl,
                 focusNode: _searchFocus,
                 autofocus: true,
-                style: GoogleFonts.manrope(fontSize: 14, color: Colors.white),
+                style: GoogleFonts.inter(fontSize: 14, color: Colors.white),
                 cursorColor: _kLime,
                 decoration: InputDecoration(
-                  hintText: 'Αναζήτηση γυμναστηρίου, μαθήματος...',
-                  hintStyle: GoogleFonts.manrope(fontSize: 14, color: _kGray),
+                  hintText: tr('Αναζήτηση γυμναστηρίου, μαθήματος...'),
+                  hintStyle: GoogleFonts.inter(fontSize: 14, color: _kGray),
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
@@ -675,8 +677,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                     color: active ? _kCyan : _kGray),
                   const SizedBox(width: 6),
                 ],
-                Text(chip,
-                  style: GoogleFonts.manrope(
+                Text(tr(chip),
+                  style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600,
                     color: active ? color : Colors.white)),
               ]),
@@ -725,8 +727,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          _searched ? '$count γυμναστήρια βρέθηκαν' : 'Κοντά σου',
-          style: GoogleFonts.manrope(
+          tr(_searched ? '$count γυμναστήρια βρέθηκαν' : tr('Κοντά σου')),
+          style: GoogleFonts.inter(
             fontSize: 13, fontWeight: FontWeight.w600, color: _kGray)),
         if (_hasActiveFilters || _quickFilters.isNotEmpty)
           GestureDetector(
@@ -741,8 +743,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
               if (_searchCtrl.text.trim().isNotEmpty) _search();
               else setState(() { _results = []; _searched = false; });
             },
-            child: Text('Καθαρισμός όλων',
-              style: GoogleFonts.manrope(fontSize: 12, color: _kLime,
+            child: Text(tr('Καθαρισμός όλων'),
+              style: GoogleFonts.inter(fontSize: 12, color: _kLime,
                 decoration: TextDecoration.underline, decorationColor: _kLime)),
           ),
       ],
@@ -767,13 +769,13 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
               child: Icon(Icons.search_off_rounded, size: 36, color: _kGray),
             ),
             const SizedBox(height: 20),
-            Text('Δεν βρέθηκαν γυμναστήρια',
-              style: GoogleFonts.manrope(
+            Text(tr('Δεν βρέθηκαν γυμναστήρια'),
+              style: GoogleFonts.inter(
                 fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
             const SizedBox(height: 8),
-            Text('Δοκίμασε διαφορετικούς όρους ή αφαίρεσε κάποια φίλτρα.',
+            Text(tr('Δοκίμασε διαφορετικούς όρους ή αφαίρεσε κάποια φίλτρα.'),
               textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(fontSize: 13, color: _kGray, height: 1.5)),
+              style: GoogleFonts.inter(fontSize: 13, color: _kGray, height: 1.5)),
             if (_hasActiveFilters) ...[
               const SizedBox(height: 20),
               GestureDetector(
@@ -795,8 +797,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                     border: Border.all(color: _kBorder),
                   ),
                   alignment: Alignment.center,
-                  child: Text('Αφαίρεση φίλτρων',
-                    style: GoogleFonts.manrope(
+                  child: Text(tr('Αφαίρεση φίλτρων'),
+                    style: GoogleFonts.inter(
                       fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                 ),
               ),
@@ -877,14 +879,14 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Πρόσφατες αναζητήσεις',
-              style: GoogleFonts.manrope(
+            Text(tr('Πρόσφατες αναζητήσεις'),
+              style: GoogleFonts.inter(
                 fontSize: 13, fontWeight: FontWeight.w700,
                 color: Colors.white)),
             GestureDetector(
               onTap: () {},
-              child: Text('Διαγραφή',
-                style: GoogleFonts.manrope(
+              child: Text(tr('Διαγραφή'),
+                style: GoogleFonts.inter(
                   fontSize: 12, color: _kGray)),
             ),
           ],
@@ -909,8 +911,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
             colorFilter: const ColorFilter.mode(_kGray, BlendMode.srcIn)),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(query,
-              style: GoogleFonts.manrope(
+            child: Text(tr(query),
+              style: GoogleFonts.inter(
                 fontSize: 13, color: Colors.white)),
           ),
           SvgPicture.asset('assets/icons/discovery_x.svg',
@@ -925,8 +927,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Δημοφιλείς κατηγορίες',
-          style: GoogleFonts.manrope(
+        Text(tr('Δημοφιλείς κατηγορίες'),
+          style: GoogleFonts.inter(
             fontSize: 13, fontWeight: FontWeight.w700,
             color: Colors.white)),
         const SizedBox(height: 12),
@@ -945,8 +947,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                 borderRadius: BorderRadius.circular(9999),
                 border: Border.all(color: _kBorder),
               ),
-              child: Text(tag,
-                style: GoogleFonts.manrope(
+              child: Text(tr(tag),
+                style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w500,
                   color: Colors.white)),
             ),
@@ -961,8 +963,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Nearby Gyms',
-          style: GoogleFonts.manrope(
+        Text(tr('Nearby Gyms'),
+          style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w700,
             color: Colors.white)),
         const SizedBox(height: 12),
@@ -1008,8 +1010,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(
+                  Text(tr(name), maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w700,
                       color: Colors.white)),
                   if (rating != null) ...[
@@ -1018,8 +1020,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                       SvgPicture.asset('assets/icons/discovery_star.svg',
                         width: 9, height: 9),
                       const SizedBox(width: 3),
-                      Text(rating,
-                        style: GoogleFonts.manrope(
+                      Text(tr(rating),
+                        style: GoogleFonts.inter(
                           fontSize: 10, fontWeight: FontWeight.w600,
                           color: Colors.white)),
                     ]),
@@ -1037,8 +1039,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Popular Activities',
-          style: GoogleFonts.manrope(
+        Text(tr('Popular Activities'),
+          style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w700,
             color: Colors.white)),
         const SizedBox(height: 12),
@@ -1080,8 +1082,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(act.$1, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(
+                    child: Text(tr(act.$1), maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
                         fontSize: 12, fontWeight: FontWeight.w600,
                         color: Colors.white)),
                   ),
@@ -1098,26 +1100,26 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     final chips = <Widget>[];
     for (final t in _filterProgramTypes) {
       chips.add(_activeFilterChip(
-        label: t,
+        label: tr(t),
         onRemove: () { setState(() => _filterProgramTypes.remove(t)); _search(); },
       ));
     }
     if (_filterMaxDistanceKm < 50) {
       chips.add(_activeFilterChip(
-        label: 'Έως ${_filterMaxDistanceKm.toInt()} km',
+        label: tr('Έως ${_filterMaxDistanceKm.toInt()} km'),
         onRemove: () { setState(() => _filterMaxDistanceKm = 50); _search(); },
       ));
     }
     for (final a in _filterAmenities) {
       final icon = _kAmenityIcons[a] ?? '';
       chips.add(_activeFilterChip(
-        label: '$icon $a',
+        label: tr('$icon $a'),
         onRemove: () { setState(() => _filterAmenities.remove(a)); _search(); },
       ));
     }
     if (_filterOpenNow) {
       chips.add(_activeFilterChip(
-        label: '🟢 Ανοιχτό τώρα',
+        label: tr('🟢 Ανοιχτό τώρα'),
         onRemove: () { setState(() => _filterOpenNow = false); _search(); },
       ));
     }
@@ -1145,8 +1147,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
           border: Border.all(color: _kLime),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(label,
-            style: GoogleFonts.manrope(
+          Text(tr(label),
+            style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w600, color: _kLime)),
           const SizedBox(width: 6),
           const Icon(Icons.close_rounded, size: 12, color: _kLime),
@@ -1253,8 +1255,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                             ? _kCyan.withValues(alpha: 0.20)
                             : Colors.black.withValues(alpha: 0.50),
                           child: Text(
-                            hasDropIn ? 'Drop-in available' : 'Membership only',
-                            style: GoogleFonts.manrope(
+                            tr(hasDropIn ? 'Drop-in available' : 'Membership only'),
+                            style: GoogleFonts.inter(
                               fontSize: 10, fontWeight: FontWeight.w700,
                               color: hasDropIn ? _kCyan : Colors.white,
                               letterSpacing: 0.2),
@@ -1273,8 +1275,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Name
-                  Text(name,
-                    style: GoogleFonts.manrope(
+                  Text(tr(name),
+                    style: GoogleFonts.inter(
                       fontSize: 16, fontWeight: FontWeight.w700,
                       color: Colors.white)),
                   const SizedBox(height: 5),
@@ -1284,8 +1286,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                       SvgPicture.asset('assets/icons/discovery_star.svg',
                         width: 11, height: 10),
                       const SizedBox(width: 4),
-                      Text(rating,
-                        style: GoogleFonts.manrope(
+                      Text(tr(rating),
+                        style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w600,
                           color: Colors.white)),
                     ],
@@ -1299,8 +1301,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                       ],
                       const Icon(Icons.location_on_rounded, size: 10, color: _kLime),
                       const SizedBox(width: 2),
-                      Text(distLabel,
-                        style: GoogleFonts.manrope(fontSize: 12, color: _kLime, fontWeight: FontWeight.w600)),
+                      Text(tr(distLabel),
+                        style: GoogleFonts.inter(fontSize: 12, color: _kLime, fontWeight: FontWeight.w600)),
                     ] else if (city.isNotEmpty) ...[
                       if (rating != null) ...[
                         const SizedBox(width: 8),
@@ -1309,8 +1311,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                             color: _kDot, shape: BoxShape.circle)),
                         const SizedBox(width: 8),
                       ],
-                      Text(city,
-                        style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                      Text(tr(city),
+                        style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
                     ],
                   ]),
                   const SizedBox(height: 8),
@@ -1332,10 +1334,10 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    row.name == null || row.name!.isEmpty
+                                    tr(row.name == null || row.name!.isEmpty
                                         ? row.summary
-                                        : '${row.name} · ${row.summary}',
-                                    style: GoogleFonts.manrope(fontSize: 12, color: _kGray, height: 1.35),
+                                        : '${row.name} · ${row.summary}'),
+                                    style: GoogleFonts.inter(fontSize: 12, color: _kGray, height: 1.35),
                                   ),
                                 ),
                               ],
@@ -1352,14 +1354,14 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                     children: [
                       if (price != null)
                         Text.rich(TextSpan(
-                          style: GoogleFonts.manrope(
+                          style: GoogleFonts.inter(
                             fontSize: 14, fontWeight: FontWeight.w600,
                             color: Colors.white),
                           children: [
-                            const TextSpan(text: 'Από '),
+                            TextSpan(text: tr('Από ')),
                             TextSpan(text: '€$price',
                               style: const TextStyle(color: _kLime)),
-                            const TextSpan(text: '/μήνα'),
+                            TextSpan(text: tr('/μήνα')),
                           ],
                         ))
                       else
@@ -1374,8 +1376,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                               borderRadius: BorderRadius.circular(9999),
                             ),
                             alignment: Alignment.center,
-                            child: Text('Δες το γυμναστήριο',
-                              style: GoogleFonts.manrope(
+                            child: Text(tr('Δες το γυμναστήριο'),
+                              style: GoogleFonts.inter(
                                 fontSize: 12, fontWeight: FontWeight.w700,
                                 color: Colors.white, letterSpacing: 0.3)),
                           )
@@ -1426,7 +1428,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
       color: color.withValues(alpha: 0.12),
       alignment: Alignment.center,
       child: Text(
-        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        tr(name.isNotEmpty ? name[0].toUpperCase() : '?'),
         style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w800),
       ),
     );
@@ -1510,9 +1512,9 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
   late Set<String> _amenities;
   late bool        _openNow;
 
-  static const _kProgramTypes = [
+  static final _kProgramTypes = [
     'CrossFit', 'Yoga', 'Pilates', 'Functional', 'HIIT', 'Boxing',
-    'Κολύμβηση', 'Personal Training', 'Δύναμη', 'Cardio',
+    tr('Κολύμβηση'), 'Personal Training', tr('Δύναμη'), 'Cardio',
   ];
   static const _kAmenityIcons = {
     'Parking': '🅿', 'Showers': '🚿', 'Locker rooms': '🔒',
@@ -1568,15 +1570,15 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Φίλτρα',
-                  style: GoogleFonts.manrope(
+                Text(tr('Φίλτρα'),
+                  style: GoogleFonts.inter(
                     fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                 const Spacer(),
                 if (_hasAny)
                   GestureDetector(
                     onTap: _clearAll,
-                    child: Text('Καθαρισμός όλων',
-                      style: GoogleFonts.manrope(
+                    child: Text(tr('Καθαρισμός όλων'),
+                      style: GoogleFonts.inter(
                         fontSize: 13, fontWeight: FontWeight.w600, color: _kLime)),
                   ),
                 const SizedBox(width: 8),
@@ -1605,7 +1607,7 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ── Είδος Προγράμματος ──
-                  _sectionLabel('Είδος Προγράμματος'),
+                  _sectionLabel(tr('Είδος Προγράμματος')),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8, runSpacing: 8,
@@ -1627,8 +1629,8 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                             ),
                           ),
                           alignment: Alignment.center,
-                          child: Text(t,
-                            style: GoogleFonts.manrope(
+                          child: Text(tr(t),
+                            style: GoogleFonts.inter(
                               fontSize: 13, fontWeight: FontWeight.w600,
                               color: sel ? _kLime : _kGray)),
                         ),
@@ -1642,10 +1644,10 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _sectionLabel('Απόσταση'),
+                      _sectionLabel(tr('Απόσταση')),
                       Text(
-                        _maxDistance >= 50 ? 'Οποιαδήποτε' : 'Έως ${_maxDistance.toInt()} km',
-                        style: GoogleFonts.manrope(
+                        tr(_maxDistance >= 50 ? 'Οποιαδήποτε' : tr('Έως ${_maxDistance.toInt()} km')),
+                        style: GoogleFonts.inter(
                           fontSize: 13, fontWeight: FontWeight.w600,
                           color: _maxDistance < 50 ? _kLime : _kGray)),
                     ],
@@ -1669,7 +1671,7 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                   const SizedBox(height: 24),
 
                   // ── Παροχές ──
-                  _sectionLabel('Παροχές'),
+                  _sectionLabel(tr('Παροχές')),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8, runSpacing: 8,
@@ -1691,8 +1693,8 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                             ),
                           ),
                           alignment: Alignment.center,
-                          child: Text('${e.value} ${e.key}',
-                            style: GoogleFonts.manrope(
+                          child: Text(tr('${e.value} ${e.key}'),
+                            style: GoogleFonts.inter(
                               fontSize: 13, fontWeight: FontWeight.w600,
                               color: sel ? _kLime : _kGray)),
                         ),
@@ -1706,7 +1708,7 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _sectionLabel('Ανοιχτό τώρα'),
+                      _sectionLabel(tr('Ανοιχτό τώρα')),
                       Switch(
                         value: _openNow,
                         activeColor: _kLime,
@@ -1751,10 +1753,10 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      widget.currentResultCount > 0
+                      tr(widget.currentResultCount > 0
                         ? 'Δες ${widget.currentResultCount} γυμναστήρια'
-                        : 'Εφαρμογή Φίλτρων',
-                      style: GoogleFonts.manrope(
+                        : tr('Εφαρμογή Φίλτρων')),
+                      style: GoogleFonts.inter(
                         fontSize: 15, fontWeight: FontWeight.w700,
                         color: _kBg)),
                   ),
@@ -1766,8 +1768,8 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
                       Navigator.pop(context);
                       widget.onClearAll();
                     },
-                    child: Text('Καθαρισμός φίλτρων',
-                      style: GoogleFonts.manrope(
+                    child: Text(tr('Καθαρισμός φίλτρων'),
+                      style: GoogleFonts.inter(
                         fontSize: 13, fontWeight: FontWeight.w600,
                         color: _kGray,
                         decoration: TextDecoration.underline,
@@ -1782,8 +1784,8 @@ class _GymFilterSheetState extends State<_GymFilterSheet> {
     );
   }
 
-  Widget _sectionLabel(String text) => Text(text,
-    style: GoogleFonts.manrope(
+  Widget _sectionLabel(String text) => Text(tr(text),
+    style: GoogleFonts.inter(
       fontSize: 13, fontWeight: FontWeight.w700,
       color: Colors.white, letterSpacing: 0.3));
 }

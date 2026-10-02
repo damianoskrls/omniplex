@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../l10n/tr.dart';
+
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const kBg     = Color(0xFF0A0A0A);
@@ -79,7 +81,7 @@ class OmniLogo extends StatelessWidget {
         const SizedBox(width: 8),
         RichText(
           text: TextSpan(
-            style: GoogleFonts.spaceGrotesk(
+            style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: -0.35),
             children: const [
               TextSpan(text: 'OMNI', style: TextStyle(color: Colors.white)),
@@ -116,7 +118,7 @@ class OmniField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.spaceGrotesk(
+        Text(tr(label), style: GoogleFonts.inter(
           fontSize: 11, color: kGray, letterSpacing: 1.65)),
         const SizedBox(height: 8),
         AnimatedContainer(
@@ -157,7 +159,7 @@ class OmniPhonePrefix extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(code, style: GoogleFonts.manrope(
+          Text(tr(code), style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w600,
             color: Colors.white, letterSpacing: 1.07)),
           const SizedBox(width: 8),
@@ -197,7 +199,7 @@ class OmniLimeButton extends StatelessWidget {
               ? [const SizedBox(width: 20, height: 20,
                   child: CircularProgressIndicator(color: kBg, strokeWidth: 2))]
               : [
-                  Text(label, style: GoogleFonts.spaceGrotesk(
+                  Text(tr(label), style: GoogleFonts.inter(
                     fontSize: 16, fontWeight: FontWeight.w700,
                     color: kBg, letterSpacing: -0.4)),
                   const SizedBox(width: 8),
@@ -239,7 +241,7 @@ class OmniOutlineButton extends StatelessWidget {
             if (iconWidget != null) iconWidget!
             else if (icon != null) Icon(icon, color: Colors.white, size: 22),
             const SizedBox(width: 12),
-            Text(label, style: GoogleFonts.manrope(
+            Text(tr(label), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
           ],
         ),
@@ -266,7 +268,7 @@ class OmniErrorBanner extends StatelessWidget {
         children: [
           const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 16),
           const SizedBox(width: 10),
-          Expanded(child: Text(message, style: GoogleFonts.manrope(
+          Expanded(child: Text(tr(message), style: GoogleFonts.inter(
             fontSize: 13, color: const Color(0xFFEF4444)))),
         ],
       ),
@@ -382,7 +384,7 @@ class OmniLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text.toUpperCase(), style: GoogleFonts.spaceGrotesk(
+    return Text(tr(text.toUpperCase()), style: GoogleFonts.inter(
       fontSize: 11, color: kGray, letterSpacing: 1.65));
   }
 }
@@ -425,7 +427,7 @@ class OmniBottomNav extends StatelessWidget {
                     Icon(active ? item.activeIcon : item.icon,
                       color: active ? kLime : kGray, size: 22),
                     const SizedBox(height: 4),
-                    Text(item.label, style: GoogleFonts.spaceGrotesk(
+                    Text(tr(item.label), style: GoogleFonts.inter(
                       fontSize: 10,
                       color: active ? kLime : kGray,
                       letterSpacing: 0.5,
@@ -486,7 +488,7 @@ class OmniChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(9999),
           border: Border.all(color: active ? kLime.withValues(alpha: 0.5) : kBorder),
         ),
-        child: Text(label, style: GoogleFonts.spaceGrotesk(
+        child: Text(tr(label), style: GoogleFonts.inter(
           fontSize: 11,
           color: active ? kLime : kGray,
           fontWeight: active ? FontWeight.w600 : FontWeight.w400,

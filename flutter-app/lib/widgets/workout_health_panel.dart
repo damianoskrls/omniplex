@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../models/workout_health.dart';
 import '../theme/app_colors.dart';
 import 'ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 class WorkoutHealthPanel extends StatelessWidget {
   const WorkoutHealthPanel({
@@ -41,7 +43,7 @@ class WorkoutHealthPanel extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Δεδομένα από ρολόι / Health',
+                  tr('Δεδομένα από ρολόι / Health'),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -54,27 +56,27 @@ class WorkoutHealthPanel extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.sync, size: 16),
-                label: const Text('Συγχρονισμός'),
+                label: Text(tr('Συγχρονισμός')),
               ),
             ],
           ),
           Text(
-            'Συνδέσου με Apple Health ή Health Connect (Zepp Life, Apple Watch κ.λπ.)',
+            tr('Συνδέσου με Apple Health ή Health Connect (Zepp Life, Apple Watch κ.λπ.)'),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           if (unsupported)
             Text(
-              'Διαθέσιμο μόνο σε iPhone/Android',
+              tr('Διαθέσιμο μόνο σε iPhone/Android'),
               style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13),
             )
           else if (permissionDenied)
             Text(
-              'Δεν δόθηκαν δικαιώματα Health. Ενεργοποίησέ τα από Ρυθμίσεις.',
+              tr('Δεν δόθηκαν δικαιώματα Health. Ενεργοποίησέ τα από Ρυθμίσεις.'),
               style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13),
             )
           else if (error != null)
-            Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13))
+            Text(tr(error!), style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13))
           else if (loading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
@@ -95,7 +97,7 @@ class WorkoutHealthPanel extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          selected!.activityLabel,
+                          tr(selected!.activityLabel),
                           style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
@@ -106,8 +108,8 @@ class WorkoutHealthPanel extends StatelessWidget {
                             color: AppColors.lime.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(99),
                           ),
-                          child: const Text(
-                            'Auto-match',
+                          child: Text(
+                            tr('Auto-match'),
                             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
                           ),
                         ),
@@ -115,12 +117,12 @@ class WorkoutHealthPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${timeFmt.format(selected!.startedAt)} – ${timeFmt.format(selected!.endedAt)}',
+                    tr('${timeFmt.format(selected!.startedAt)} – ${timeFmt.format(selected!.endedAt)}'),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    selected!.summaryLine,
+                    tr(selected!.summaryLine),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -131,23 +133,23 @@ class WorkoutHealthPanel extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: () => _openPicker(context, timeFmt),
                 icon: const Icon(Icons.list_alt, size: 18),
-                label: Text('Επιλογή άλλης προπόνησης (${candidates.length})'),
+                label: Text(tr('Επιλογή άλλης προπόνησης (${candidates.length})')),
               ),
             ],
             TextButton(
               onPressed: () => onSelect(null),
-              child: const Text('Χωρίς δεδομένα ρολογιού'),
+              child: Text(tr('Χωρίς δεδομένα ρολογιού')),
             ),
           ] else if (candidates.isEmpty)
             Text(
-              'Δεν βρέθηκε workout στο Health για αυτή την ώρα. Βεβαιώσου ότι το ρολόι συγχρονίζει με Health.',
+              tr('Δεν βρέθηκε workout στο Health για αυτή την ώρα. Βεβαιώσου ότι το ρολόι συγχρονίζει με Health.'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
             )
           else
             OutlinedButton.icon(
               onPressed: () => _openPicker(context, timeFmt),
               icon: const Icon(Icons.list_alt, size: 18),
-              label: Text('Επίλεξε προπόνηση (${candidates.length})'),
+              label: Text(tr('Επίλεξε προπόνηση (${candidates.length})')),
             ),
         ],
       ),
@@ -168,7 +170,7 @@ class WorkoutHealthPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Προπόνηση από Health', style: Theme.of(ctx).textTheme.titleMedium),
+              Text(tr('Προπόνηση από Health'), style: Theme.of(ctx).textTheme.titleMedium),
               const SizedBox(height: 12),
               SizedBox(
                 height: 320,

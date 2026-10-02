@@ -1,4 +1,6 @@
 import 'package:intl/intl.dart';
+import '../l10n/tr.dart';
+
 
 class WorkoutShareDetails {
   WorkoutShareDetails({
@@ -33,12 +35,12 @@ class WorkoutShareDetails {
     if (mins < 60) return '$mins′';
     final h = mins ~/ 60;
     final m = mins % 60;
-    return m > 0 ? '${h}ώ $m′' : '${h}ώ';
+    return m > 0 ? '${h}ώ $m′' : tr('${h}ώ');
   }
 
   String? get trainerLine {
     final name = trainerName?.trim();
     if (name == null || name.isEmpty) return null;
-    return 'με $name';
+    return tr('με $name');
   }
 }

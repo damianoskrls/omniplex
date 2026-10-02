@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class NotificationDetailScreen extends StatelessWidget {
   const NotificationDetailScreen({
@@ -22,7 +24,7 @@ class NotificationDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('Ειδοποίηση'),
+        title: Text(tr('Ειδοποίηση')),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -60,27 +62,27 @@ class NotificationDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Σύσπασε ή κάνε pinch για zoom',
+              tr('Σύσπασε ή κάνε pinch για zoom'),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
             ),
             const SizedBox(height: 20),
           ],
           Text(
-            title,
+            tr(title),
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
           ),
           if (when != null) ...[
             const SizedBox(height: 8),
             Text(
-              DateFormat('d MMMM yyyy, HH:mm', 'el_GR').format(when!),
+              tr(DateFormat('d MMMM yyyy, HH:mm', 'el_GR').format(when!)),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
             ),
           ],
           if (body != null && body!.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(
-              body!,
+              tr(body!),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5),
             ),
           ],

@@ -10,6 +10,8 @@ import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class MemberIntakeScreen extends StatefulWidget {
   const MemberIntakeScreen({super.key, required this.apiBase, required this.token, required this.bizId});
@@ -128,7 +130,7 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
       final res = await http.get(Uri.parse(_root), headers: {'Authorization': 'Bearer ${widget.token}'});
       final body = jsonDecode(res.body);
       if (res.statusCode != 200) {
-        _error = body['error']?.toString() ?? 'Σφάλμα';
+        _error = body['error']?.toString() ?? tr('Σφάλμα');
       } else {
         final goals = (body['goals'] as List?) ?? [];
         _goals = goals.whereType<Map>().map((g) => {
@@ -181,7 +183,7 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
         if (intake is Map && intake['completed_at'] != null) _step = 1;
       }
     } catch (_) {
-      _error = 'Σφάλμα σύνδεσης';
+      _error = tr('Σφάλμα σύνδεσης');
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -202,12 +204,12 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
       );
       if (res.statusCode != 200) {
         final body = jsonDecode(res.body);
-        throw body['error']?.toString() ?? 'Αποτυχία';
+        throw body['error']?.toString() ?? tr('Αποτυχία');
       }
       if (mounted) setState(() => _step = 1);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('$e'))));
       }
     }
     if (mounted) setState(() => _saving = false);
@@ -230,22 +232,22 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
       ));
       final res = await http.Response.fromStream(await request.send());
       final body = jsonDecode(res.body);
-      if (res.statusCode != 200) throw body['error']?.toString() ?? 'Αποτυχία φωτογραφίας';
+      if (res.statusCode != 200) throw body['error']?.toString() ?? tr('Αποτυχία φωτογραφίας');
       final url = body['health']?['photo_url']?.toString();
       if (mounted) setState(() => _photoUrl = url);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('$e'))));
     }
     if (mounted) setState(() => _saving = false);
   }
 
   Future<void> _signAndClose() async {
     if (_photoUrl == null || _photoUrl!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Βάλε πρώτα μια φωτογραφία σου')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Βάλε πρώτα μια φωτογραφία σου'))));
       return;
     }
     if (!_agreed || _points.whereType<Offset>().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Υπόγραψε και αποδέξου την ηλεκτρονική υπογραφή')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Υπόγραψε και αποδέξου την ηλεκτρονική υπογραφή'))));
       return;
     }
     setState(() => _saving = true);
@@ -279,7 +281,7 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
       );
       if (saved.statusCode != 200) {
         final body = jsonDecode(saved.body);
-        throw body['error']?.toString() ?? 'Αποτυχία';
+        throw body['error']?.toString() ?? tr('Αποτυχία');
       }
       final boundary = _padKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 2);
@@ -291,10 +293,10 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
         body: jsonEncode({'signature_data': dataUrl}),
       );
       final body = jsonDecode(res.body);
-      if (res.statusCode != 200) throw body['error']?.toString() ?? 'Αποτυχία υπογραφής';
+      if (res.statusCode != 200) throw body['error']?.toString() ?? tr('Αποτυχία υπογραφής');
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('$e'))));
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -316,14 +318,14 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
       final res = await http.Response.fromStream(streamed);
       if (res.statusCode != 200) {
         final body = jsonDecode(res.body);
-        throw body['error']?.toString() ?? 'Αποτυχία ανεβάσματος';
+        throw body['error']?.toString() ?? tr('Αποτυχία ανεβάσματος');
       }
       final body = jsonDecode(res.body);
       final name = body['health']?['document_name']?.toString();
       if (mounted) setState(() => _documentName = name ?? file.name);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('$e'))));
       }
     }
     if (mounted) setState(() => _saving = false);
@@ -333,11 +335,11 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: Text(_step == 0 ? 'Πρώτη εγγραφή' : 'Κάρτα υγείας')),
+      appBar: AppBar(title: Text(_step == 0 ? 'Πρώτη εγγραφή' : tr('Κάρτα υγείας'))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.white70)))
+              ? Center(child: Text(tr(_error!), style: const TextStyle(color: Colors.white70)))
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: _step == 0 ? _intakeFields() : _healthFields(),
@@ -347,12 +349,12 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
 
   List<Widget> _intakeFields() {
     return [
-      const Text(
-        'Πες μας γιατί έρχεσαι και τι θέλεις να πετύχεις. Το βλέπει μόνο το γυμναστήριο.',
+      Text(
+        tr('Πες μας γιατί έρχεσαι και τι θέλεις να πετύχεις. Το βλέπει μόνο το γυμναστήριο.'),
         style: TextStyle(color: AppColors.textSecondary, height: 1.4),
       ),
       const SizedBox(height: 16),
-      const Text('Στόχος', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      Text(tr('Στόχος'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
       Wrap(
         spacing: 8,
@@ -371,9 +373,9 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
         controller: _motivation,
         style: const TextStyle(color: Colors.white),
         maxLines: 3,
-        decoration: const InputDecoration(
-          labelText: 'Γιατί έρχεσαι;',
-          hintText: 'π.χ. θέλω να ξεκινήσω γυμναστική μετά από καιρό',
+        decoration: InputDecoration(
+          labelText: tr('Γιατί έρχεσαι;'),
+          hintText: tr('π.χ. θέλω να ξεκινήσω γυμναστική μετά από καιρό'),
         ),
       ),
       const SizedBox(height: 12),
@@ -381,20 +383,20 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
         controller: _goalText,
         style: const TextStyle(color: Colors.white),
         maxLines: 3,
-        decoration: const InputDecoration(
-          labelText: 'Τι στόχο έχεις;',
-          hintText: 'π.χ. να χάσω 5 κιλά ή να τρέξω 5 χιλιόμετρα',
+        decoration: InputDecoration(
+          labelText: tr('Τι στόχο έχεις;'),
+          hintText: tr('π.χ. να χάσω 5 κιλά ή να τρέξω 5 χιλιόμετρα'),
         ),
       ),
       const SizedBox(height: 16),
-      const Text('Εμπειρία', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      Text(tr('Εμπειρία'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
       Wrap(
         spacing: 8,
-        children: const [
-          ('beginner', 'Αρχάριος'),
-          ('some', 'Κάποια εμπειρία'),
-          ('regular', 'Γυμνάζομαι τακτικά'),
+        children: [
+          ('beginner', tr('Αρχάριος')),
+          ('some', tr('Κάποια εμπειρία')),
+          ('regular', tr('Γυμνάζομαι τακτικά')),
         ].map((item) {
           return ChoiceChip(
             label: Text(item.$2),
@@ -404,19 +406,19 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
         }).toList(),
       ),
       const SizedBox(height: 16),
-      Text('Φορές την εβδομάδα: $_visits', style: const TextStyle(color: Colors.white)),
+      Text(tr('Φορές την εβδομάδα: $_visits'), style: const TextStyle(color: Colors.white)),
       Slider(
         value: _visits.toDouble(),
         min: 1,
         max: 7,
         divisions: 6,
-        label: '$_visits',
+        label: tr('$_visits'),
         onChanged: (v) => setState(() => _visits = v.round()),
       ),
       const SizedBox(height: 8),
       FilledButton(
         onPressed: _saving ? null : _saveIntake,
-        child: Text(_saving ? 'Αποθήκευση…' : 'Συνέχεια στην κάρτα υγείας'),
+        child: Text(tr(_saving ? 'Αποθήκευση…' : tr('Συνέχεια στην κάρτα υγείας'))),
       ),
     ];
   }
@@ -429,7 +431,7 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
 
   Widget _section(String title) => Padding(
         padding: const EdgeInsets.only(top: 18, bottom: 8),
-        child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        child: Text(tr(title), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
       );
 
   Widget _field(TextEditingController controller, String label, {int lines = 1, TextInputType? type}) {
@@ -440,7 +442,7 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
         style: const TextStyle(color: Colors.white),
         maxLines: lines,
         keyboardType: type,
-        decoration: InputDecoration(labelText: label),
+        decoration: InputDecoration(labelText: tr(label)),
       ),
     );
   }
@@ -464,31 +466,31 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
   }
 
   List<Widget> _healthFields() {
-    const conditions = [
-      ('cardiac', 'Καρδιολογικά προβλήματα'),
-      ('hypertension', 'Υπέρταση'),
-      ('diabetes', 'Διαβήτης'),
-      ('asthma', 'Άσθμα / αναπνευστικά'),
-      ('orthopedic', 'Ορθοπεδικά προβλήματα'),
-      ('injury', 'Τραυματισμοί'),
-      ('other', 'Άλλο'),
-      ('none', 'Κανένα'),
+    final conditions = [
+      ('cardiac', tr('Καρδιολογικά προβλήματα')),
+      ('hypertension', tr('Υπέρταση')),
+      ('diabetes', tr('Διαβήτης')),
+      ('asthma', tr('Άσθμα / αναπνευστικά')),
+      ('orthopedic', tr('Ορθοπεδικά προβλήματα')),
+      ('injury', tr('Τραυματισμοί')),
+      ('other', tr('Άλλο')),
+      ('none', tr('Κανένα')),
     ];
-    const statuses = [
-      ('fit', 'Κατάλληλος για άσκηση'),
-      ('restricted', 'Άσκηση με περιορισμούς'),
-      ('clearance', 'Χρειάζεται ιατρική έγκριση'),
+    final statuses = [
+      ('fit', tr('Κατάλληλος για άσκηση')),
+      ('restricted', tr('Άσκηση με περιορισμούς')),
+      ('clearance', tr('Χρειάζεται ιατρική έγκριση')),
     ];
     return [
-      const Text(
-        'Κάρτα υγείας ασκούμενου. Αν έχεις χαρτί γιατρού, ανέβασε φωτογραφία.',
+      Text(
+        tr('Κάρτα υγείας ασκούμενου. Αν έχεις χαρτί γιατρού, ανέβασε φωτογραφία.'),
         style: TextStyle(color: AppColors.textSecondary, height: 1.4),
       ),
-      _section('Προσωπικά στοιχεία'),
-      _field(_dob, 'Ημερομηνία γέννησης (ΕΕΕΕ-ΜΜ-ΗΗ)'),
+      _section(tr('Προσωπικά στοιχεία')),
+      _field(_dob, tr('Ημερομηνία γέννησης (ΕΕΕΕ-ΜΜ-ΗΗ)')),
       Wrap(
         spacing: 8,
-        children: const [('male', 'Άνδρας'), ('female', 'Γυναίκα'), ('other', 'Άλλο')].map((item) {
+        children: [('male', tr('Άνδρας')), ('female', tr('Γυναίκα')), ('other', tr('Άλλο'))].map((item) {
           return ChoiceChip(
             label: Text(item.$2),
             selected: _gender == item.$1,
@@ -497,9 +499,9 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
         }).toList(),
       ),
       const SizedBox(height: 8),
-      _field(_height, 'Ύψος (cm)', type: TextInputType.number),
-      _field(_weight, 'Βάρος (kg)', type: TextInputType.number),
-      _section('Κατάσταση'),
+      _field(_height, tr('Ύψος (cm)'), type: TextInputType.number),
+      _field(_weight, tr('Βάρος (kg)'), type: TextInputType.number),
+      _section(tr('Κατάσταση')),
       Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -511,7 +513,7 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
           );
         }).toList(),
       ),
-      _section('Παθήσεις'),
+      _section(tr('Παθήσεις')),
       ...conditions.map((item) => CheckboxListTile(
             value: _conditionKeys.contains(item.$1),
             onChanged: (v) => _toggleCondition(item.$1, v ?? false),
@@ -520,40 +522,40 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
             controlAffinity: ListTileControlAffinity.leading,
           )),
       if (_conditionKeys.contains('other'))
-        _field(_conditions, 'Άλλη πάθηση', lines: 2),
-      _section('Τραυματισμοί / περιορισμοί'),
-      _field(_injuryArea, 'Περιοχή σώματος'),
-      _field(_injuryProblem, 'Τι πρόβλημα υπάρχει', lines: 2),
-      _field(_injuryLimits, 'Περιορισμοί στην άσκηση', lines: 2),
-      _field(_injuryRecovery, 'Ημερομηνία / περίοδος αποκατάστασης'),
-      _section('Φαρμακευτική αγωγή'),
+        _field(_conditions, tr('Άλλη πάθηση'), lines: 2),
+      _section(tr('Τραυματισμοί / περιορισμοί')),
+      _field(_injuryArea, tr('Περιοχή σώματος')),
+      _field(_injuryProblem, tr('Τι πρόβλημα υπάρχει'), lines: 2),
+      _field(_injuryLimits, tr('Περιορισμοί στην άσκηση'), lines: 2),
+      _field(_injuryRecovery, tr('Ημερομηνία / περίοδος αποκατάστασης')),
+      _section(tr('Φαρμακευτική αγωγή')),
       SwitchListTile(
         value: _takesMedication,
         onChanged: (v) => setState(() => _takesMedication = v),
         contentPadding: EdgeInsets.zero,
-        title: const Text('Λαμβάνω φαρμακευτική αγωγή', style: TextStyle(color: Colors.white)),
+        title: Text(tr('Λαμβάνω φαρμακευτική αγωγή'), style: TextStyle(color: Colors.white)),
       ),
       if (_takesMedication)
-        _field(_medication, 'Περιγραφή (προαιρετικά)', lines: 2),
-      _section('Επαφή έκτακτης ανάγκης'),
-      _field(_emergencyName, 'Όνομα'),
-      _field(_emergencyRelation, 'Σχέση'),
-      _field(_emergencyPhone, 'Τηλέφωνο', type: TextInputType.phone),
-      _section('Ιατρικά στοιχεία έκτακτης ανάγκης'),
-      _field(_allergies, 'Αλλεργίες', lines: 2),
+        _field(_medication, tr('Περιγραφή (προαιρετικά)'), lines: 2),
+      _section(tr('Επαφή έκτακτης ανάγκης')),
+      _field(_emergencyName, tr('Όνομα')),
+      _field(_emergencyRelation, tr('Σχέση')),
+      _field(_emergencyPhone, tr('Τηλέφωνο'), type: TextInputType.phone),
+      _section(tr('Ιατρικά στοιχεία έκτακτης ανάγκης')),
+      _field(_allergies, tr('Αλλεργίες'), lines: 2),
       DropdownButtonFormField<String>(
         value: _blood.isEmpty ? null : _blood,
         dropdownColor: AppColors.bg,
         style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(labelText: 'Ομάδα αίματος (προαιρετικό)'),
+        decoration: InputDecoration(labelText: tr('Ομάδα αίματος (προαιρετικό)')),
         items: const ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-            .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+            .map((b) => DropdownMenuItem(value: b, child: Text(tr(b))))
             .toList(),
         onChanged: (v) => setState(() => _blood = v ?? ''),
       ),
       const SizedBox(height: 10),
-      _field(_emergencyInstructions, 'Ιατρικές οδηγίες έκτακτης ανάγκης', lines: 2),
-      _field(_otherInfo, 'Άλλες σημαντικές πληροφορίες', lines: 2),
+      _field(_emergencyInstructions, tr('Ιατρικές οδηγίες έκτακτης ανάγκης'), lines: 2),
+      _field(_otherInfo, tr('Άλλες σημαντικές πληροφορίες'), lines: 2),
       const SizedBox(height: 12),
       if (_photoUrl != null && _photoUrl!.isNotEmpty)
         ClipRRect(
@@ -567,7 +569,7 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
             child: OutlinedButton.icon(
               onPressed: _saving ? null : () => _pickPhoto(ImageSource.camera),
               icon: const Icon(Icons.photo_camera_outlined),
-              label: const Text('Βγάλε φωτο'),
+              label: Text(tr('Βγάλε φωτο')),
             ),
           ),
           const SizedBox(width: 8),
@@ -575,7 +577,7 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
             child: OutlinedButton.icon(
               onPressed: _saving ? null : () => _pickPhoto(ImageSource.gallery),
               icon: const Icon(Icons.photo_library_outlined),
-              label: const Text('Ανέβασε φωτο'),
+              label: Text(tr('Ανέβασε φωτο')),
             ),
           ),
         ],
@@ -587,11 +589,11 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
         label: Text(_documentName == null ? 'Φωτογραφία εγγράφου γιατρού' : _documentName!),
       ),
       const SizedBox(height: 16),
-      const Text('Ηλεκτρονική υπογραφή', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      Text(tr('Ηλεκτρονική υπογραφή'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
       if (_signedAt != null)
         Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 8),
-          child: Text('Υπάρχει ήδη υπογραφή. Μπορείς να την ανανεώσεις.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          child: Text(tr('Υπάρχει ήδη υπογραφή. Μπορείς να την ανανεώσεις.'), style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
         ),
       const SizedBox(height: 8),
       RepaintBoundary(
@@ -608,20 +610,20 @@ class _MemberIntakeScreenState extends State<MemberIntakeScreen> {
           ),
         ),
       ),
-      TextButton(onPressed: () => setState(_points.clear), child: const Text('Εκκαθάριση')),
+      TextButton(onPressed: () => setState(_points.clear), child: Text(tr('Εκκαθάριση'))),
       CheckboxListTile(
         value: _agreed,
         onChanged: (v) => setState(() => _agreed = v ?? false),
         contentPadding: EdgeInsets.zero,
-        title: const Text(
-          'Δηλώνω ότι τα στοιχεία είναι αληθή και αποδέχομαι την ηλεκτρονική υπογραφή της κάρτας υγείας.',
+        title: Text(
+          tr('Δηλώνω ότι τα στοιχεία είναι αληθή και αποδέχομαι την ηλεκτρονική υπογραφή της κάρτας υγείας.'),
           style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
         controlAffinity: ListTileControlAffinity.leading,
       ),
       FilledButton(
         onPressed: _saving ? null : _signAndClose,
-        child: Text(_saving ? 'Αποθήκευση…' : 'Υπογραφή και αποθήκευση'),
+        child: Text(tr(_saving ? 'Αποθήκευση…' : tr('Υπογραφή και αποθήκευση'))),
       ),
     ];
   }

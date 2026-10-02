@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class NutritionDashboardScreen extends StatelessWidget {
   const NutritionDashboardScreen({super.key});
@@ -65,10 +67,10 @@ class NutritionDashboardScreen extends StatelessWidget {
             ),
             Column(
               children: [
-                Text("TODAY'S NUTRITION", style: GoogleFonts.spaceGrotesk(
+                Text(tr("TODAY'S NUTRITION"), style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: 0.9)),
-                Text('MONDAY, 24 MAY', style: GoogleFonts.manrope(
+                Text(tr('MONDAY, 24 MAY'), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: kLime, letterSpacing: 1.0)),
               ],
@@ -110,7 +112,7 @@ class NutritionDashboardScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TOTAL CALORIES', style: GoogleFonts.manrope(
+                  Text(tr('TOTAL CALORIES'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: _kGray6B, letterSpacing: 1.0)),
                   const SizedBox(height: 4),
@@ -118,10 +120,10 @@ class NutritionDashboardScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      Text('1,840', style: GoogleFonts.spaceGrotesk(
+                      Text(tr('1,840'), style: GoogleFonts.inter(
                         fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white)),
                       const SizedBox(width: 4),
-                      Text('/ 2,400 kcal', style: GoogleFonts.spaceGrotesk(
+                      Text(tr('/ 2,400 kcal'), style: GoogleFonts.inter(
                         fontSize: 14, color: _kGray9C)),
                     ],
                   ),
@@ -130,10 +132,10 @@ class NutritionDashboardScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('REMAINING', style: GoogleFonts.manrope(
+                  Text(tr('REMAINING'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kCyan, letterSpacing: 1.0)),
-                  Text('560', style: GoogleFonts.spaceGrotesk(
+                  Text(tr('560'), style: GoogleFonts.inter(
                     fontSize: 18, fontWeight: FontWeight.w700, color: kCyan)),
                 ],
               ),
@@ -151,7 +153,7 @@ class NutritionDashboardScreen extends StatelessWidget {
                     size: const Size(180, 180),
                     painter: _DonutPainter(),
                   ),
-                  Text('76%', style: GoogleFonts.manrope(
+                  Text(tr('76%'), style: GoogleFonts.inter(
                     fontSize: 18, fontWeight: FontWeight.w700,
                     color: _kGray9C)),
                 ],
@@ -196,7 +198,7 @@ class NutritionDashboardScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(label, style: GoogleFonts.manrope(
+        Text(tr(label), style: GoogleFonts.inter(
           fontSize: 10, fontWeight: FontWeight.w700,
           color: _kGray9C, letterSpacing: 1.0),
           textAlign: TextAlign.center),
@@ -205,10 +207,10 @@ class NutritionDashboardScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(value, style: GoogleFonts.manrope(
+            Text(tr(value), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
             const SizedBox(width: 2),
-            Text(target, style: GoogleFonts.manrope(
+            Text(tr(target), style: GoogleFonts.inter(
               fontSize: 8, color: _kGray6B)),
           ],
         ),
@@ -223,10 +225,10 @@ class NutritionDashboardScreen extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('MEAL TIMELINE', style: GoogleFonts.spaceGrotesk(
+            Text(tr('MEAL TIMELINE'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700,
               color: _kGray6B, letterSpacing: 2.4)),
-            Text('+ LOG MACRO', style: GoogleFonts.manrope(
+            Text(tr('+ LOG MACRO'), style: GoogleFonts.inter(
               fontSize: 10, fontWeight: FontWeight.w700,
               color: kLime, letterSpacing: 0.5)),
           ],
@@ -234,8 +236,8 @@ class NutritionDashboardScreen extends StatelessWidget {
         const SizedBox(height: 24),
         // Breakfast (completed)
         _buildMealRow(
-          title: 'Breakfast',
-          subtitle: 'Completed at 08:30 AM',
+          title: tr('Breakfast'),
+          subtitle: tr('Completed at 08:30 AM'),
           kcal: '420 kcal',
           dot: kLime,
           isActive: false,
@@ -250,8 +252,8 @@ class NutritionDashboardScreen extends StatelessWidget {
         const SizedBox(height: 12),
         // Afternoon Snack (upcoming)
         _buildMealRow(
-          title: 'Afternoon Snack',
-          subtitle: 'Estimated: 04:30 PM',
+          title: tr('Afternoon Snack'),
+          subtitle: tr('Estimated: 04:30 PM'),
           kcal: '220 kcal',
           dot: _kBorder26,
           isActive: false,
@@ -260,8 +262,8 @@ class NutritionDashboardScreen extends StatelessWidget {
         const SizedBox(height: 12),
         // Dinner (upcoming)
         _buildMealRow(
-          title: 'Dinner',
-          subtitle: 'Estimated: 08:00 PM',
+          title: tr('Dinner'),
+          subtitle: tr('Estimated: 08:00 PM'),
           kcal: '520 kcal',
           dot: _kBorder26,
           isActive: false,
@@ -305,16 +307,16 @@ class NutritionDashboardScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(title, style: GoogleFonts.manrope(
+                        Text(tr(title), style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                        Text(subtitle, style: GoogleFonts.manrope(
+                        Text(tr(subtitle), style: GoogleFonts.inter(
                           fontSize: 10, color: _kGray6B)),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(kcal, style: GoogleFonts.manrope(
+                        Text(tr(kcal), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
                       ],
                     ),
@@ -340,7 +342,7 @@ class NutritionDashboardScreen extends StatelessWidget {
                               decoration: BoxDecoration(color: item.color, shape: BoxShape.circle),
                             ),
                             const SizedBox(width: 8),
-                            Text(item.name, style: GoogleFonts.manrope(
+                            Text(tr(item.name), style: GoogleFonts.inter(
                               fontSize: 10, color: _kD1)),
                           ],
                         ),
@@ -397,7 +399,7 @@ class NutritionDashboardScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text('Lunch', style: GoogleFonts.manrope(
+                        Text(tr('Lunch'), style: GoogleFonts.inter(
                           fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                         const SizedBox(width: 8),
                         Container(
@@ -406,7 +408,7 @@ class NutritionDashboardScreen extends StatelessWidget {
                             color: kLime,
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Text('NOW', style: GoogleFonts.manrope(
+                          child: Text(tr('NOW'), style: GoogleFonts.inter(
                             fontSize: 8, fontWeight: FontWeight.w900,
                             color: kBg, letterSpacing: 0.23)),
                         ),
@@ -414,15 +416,15 @@ class NutritionDashboardScreen extends StatelessWidget {
                     ),
                     RichText(
                       text: TextSpan(children: [
-                        TextSpan(text: '680', style: GoogleFonts.spaceGrotesk(
+                        TextSpan(text: '680', style: GoogleFonts.inter(
                           fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                        TextSpan(text: 'kcal', style: GoogleFonts.spaceGrotesk(
+                        TextSpan(text: 'kcal', style: GoogleFonts.inter(
                           fontSize: 10, color: _kGray6B)),
                       ]),
                     ),
                   ],
                 ),
-                Text('Scheduled: 01:30 PM', style: GoogleFonts.manrope(
+                Text(tr('Scheduled: 01:30 PM'), style: GoogleFonts.inter(
                   fontSize: 10, color: _kGray9C)),
                 const SizedBox(height: 12),
                 // Food items
@@ -444,7 +446,7 @@ class NutritionDashboardScreen extends StatelessWidget {
                           children: [
                             const Icon(Icons.check, color: kBg, size: 14),
                             const SizedBox(width: 8),
-                            Text('MARK EATEN', style: GoogleFonts.manrope(
+                            Text(tr('MARK EATEN'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700,
                               color: kBg, letterSpacing: -0.6)),
                           ],
@@ -462,7 +464,7 @@ class NutritionDashboardScreen extends StatelessWidget {
                         children: [
                           const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 14),
                           const SizedBox(width: 8),
-                          Text('SCAN FOOD', style: GoogleFonts.manrope(
+                          Text(tr('SCAN FOOD'), style: GoogleFonts.inter(
                             fontSize: 12, fontWeight: FontWeight.w700,
                             color: Colors.white, letterSpacing: -0.6)),
                         ],
@@ -500,9 +502,9 @@ class NutritionDashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: GoogleFonts.manrope(
+                Text(tr(name), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text(detail, style: GoogleFonts.manrope(
+                Text(tr(detail), style: GoogleFonts.inter(
                   fontSize: 9, color: _kGray6B)),
               ],
             ),
@@ -540,9 +542,9 @@ class NutritionDashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Hydration', style: GoogleFonts.manrope(
+                Text(tr('Hydration'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text('1.8L / 3.0L Target', style: GoogleFonts.manrope(
+                Text(tr('1.8L / 3.0L Target'), style: GoogleFonts.inter(
                   fontSize: 10, color: _kGray9C)),
               ],
             ),
@@ -560,7 +562,7 @@ class NutritionDashboardScreen extends StatelessWidget {
               const SizedBox(width: 8),
               SizedBox(
                 width: 32,
-                child: Text('1.8', style: GoogleFonts.spaceGrotesk(
+                child: Text(tr('1.8'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: Colors.white), textAlign: TextAlign.center),
               ),
@@ -609,7 +611,7 @@ class NutritionDashboardScreen extends StatelessWidget {
         children: [
           Icon(icon, color: active ? kLime : _kGray6B, size: 22),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
         ],
@@ -633,7 +635,7 @@ class NutritionDashboardScreen extends StatelessWidget {
             child: const Icon(Icons.person, color: Colors.white, size: 14),
           ),
           const SizedBox(height: 4),
-          Text('PROFILE', style: GoogleFonts.manrope(
+          Text(tr('PROFILE'), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: _kGray6B, letterSpacing: 0.9)),
         ],

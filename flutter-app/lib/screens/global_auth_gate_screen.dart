@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
 import '../theme/brand.dart';
 import 'phone_otp_login_screen.dart';
+import '../l10n/tr.dart';
+
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -78,22 +80,22 @@ class GlobalAuthGateScreen extends StatelessWidget {
                   const Spacer(flex: 3),
 
                   // Main headline
-                  Text('Το fitness\nστο χέρι σου.',
-                    style: GoogleFonts.manrope(
+                  Text(tr('Το fitness\nστο χέρι σου.'),
+                    style: GoogleFonts.inter(
                       fontSize: 40, fontWeight: FontWeight.w800,
                       color: Colors.white, letterSpacing: -1.2, height: 1.1)),
                   const SizedBox(height: 16),
                   Text(
-                    'Βρες γυμναστήριο, δες πακέτα και κάνε\nκρατήσεις — όλα σε ένα μέρος.',
-                    style: GoogleFonts.manrope(
+                    tr('Βρες γυμναστήριο, δες πακέτα και κάνε\nκρατήσεις — όλα σε ένα μέρος.'),
+                    style: GoogleFonts.inter(
                       fontSize: 15, color: _kGray, height: 1.6)),
 
                   const Spacer(flex: 2),
 
                   // ── Primary CTA ──────────────────────────────────────
                   _PrimaryButton(
-                    label: 'Είσοδος / Εγγραφή',
-                    subtitle: 'Με τον αριθμό του κινητού σου',
+                    label: tr('Είσοδος / Εγγραφή'),
+                    subtitle: tr('Με τον αριθμό του κινητού σου'),
                     icon: Icons.phone_android_rounded,
                     onTap: () => _goLogin(context),
                   ),
@@ -102,8 +104,8 @@ class GlobalAuthGateScreen extends StatelessWidget {
 
                   // ── Secondary CTA ────────────────────────────────────
                   _SecondaryButton(
-                    label: 'Συνέχεια ως επισκέπτης',
-                    subtitle: 'Εξερεύνηση χωρίς σύνδεση',
+                    label: tr('Συνέχεια ως επισκέπτης'),
+                    subtitle: tr('Εξερεύνηση χωρίς σύνδεση'),
                     onTap: onExplore,
                   ),
 
@@ -156,13 +158,13 @@ class _PrimaryButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                    style: GoogleFonts.manrope(
+                  Text(tr(label),
+                    style: GoogleFonts.inter(
                       fontSize: 15, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: 0.1)),
                   const SizedBox(height: 1),
-                  Text(subtitle,
-                    style: GoogleFonts.manrope(
+                  Text(tr(subtitle),
+                    style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w500,
                       color: Colors.white70)),
                 ],
@@ -208,13 +210,13 @@ class _SecondaryButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                    style: GoogleFonts.manrope(
+                  Text(tr(label),
+                    style: GoogleFonts.inter(
                       fontSize: 15, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: 0.1)),
                   const SizedBox(height: 1),
-                  Text(subtitle,
-                    style: GoogleFonts.manrope(
+                  Text(tr(subtitle),
+                    style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w500,
                       color: _kGray)),
                 ],

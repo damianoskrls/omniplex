@@ -19,15 +19,19 @@ import 'services/auth_service.dart';
 import 'services/biometric_auth_service.dart';
 import 'services/global_auth_service.dart';
 import 'services/language_service.dart';
+import 'services/translation_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_service.dart';
 import 'services/user_notification_sync.dart';
 
 import 'widgets/splash_screen.dart' show SplashScreen, GymSplashScreen;
+import './l10n/tr.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LanguageService.instance.load();
+  await TranslationService.instance.load();
   LanguageService.instance.addListener(() {
     updateLanguageBridge(LanguageService.instance.locale.languageCode);
   });
@@ -56,6 +60,7 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
     AppNav.leaveGym = _resetToSelector;
     AppNav.enterAsRole = _enterAsRole;
     LanguageService.instance.addListener(_onLanguageChanged);
+    TranslationService.instance.addListener(_onLanguageChanged);
     WidgetsBinding.instance.addObserver(this);
     SchedulerBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
@@ -74,6 +79,7 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
   @override
   void dispose() {
     LanguageService.instance.removeListener(_onLanguageChanged);
+    TranslationService.instance.removeListener(_onLanguageChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -95,12 +101,12 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
     try {
       await _bootstrapInternal(splashStarted).timeout(
         const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Η εκκίνηση καθυστερεί πολύ'),
+        onTimeout: () => throw TimeoutException(tr('Η εκκίνηση καθυστερεί πολύ')),
       );
     } on TimeoutException {
       if (!mounted) return;
       setState(() {
-        _error = 'Η εκκίνηση καθυστερεί. Έλεγξε ότι τρέχει το admin-api (θύρα 3001) και δοκίμασε ξανά.';
+        _error = tr('Η εκκίνηση καθυστερεί. Έλεγξε ότι τρέχει το admin-api (θύρα 3001) και δοκίμασε ξανά.');
       });
     } catch (e) {
       if (!mounted) return;
@@ -377,9 +383,9 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                  Text(tr(_error!), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
                   const SizedBox(height: 20),
-                  FilledButton(onPressed: _retry, child: const Text('Δοκίμασε ξανά')),
+                  FilledButton(onPressed: _retry, child: Text(tr('Δοκίμασε ξανά'))),
                 ],
               ),
             ),
@@ -492,7 +498,7 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
             ),
           ),
           if (_switchingRole)
-            const ColoredBox(
+            ColoredBox(
               color: Color(0xCC000000),
               child: Center(
                 child: Column(
@@ -500,7 +506,7 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
                   children: [
                     CircularProgressIndicator(color: Color(0xFFB8F55E)),
                     SizedBox(height: 16),
-                    Text('Αλλαγή ρόλου...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                    Text(tr('Αλλαγή ρόλου...'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),

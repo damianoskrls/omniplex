@@ -6,6 +6,8 @@ import '../services/auth_service.dart';
 import '../services/global_auth_service.dart';
 import '../widgets/omni_design.dart';
 import 'global_register_screen.dart';
+import '../l10n/tr.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.globalAuth});
@@ -46,11 +48,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final pin   = _pinCtrl.text.trim();
 
     if (phone.isEmpty) {
-      setState(() => _error = 'Συμπλήρωσε το κινητό σου');
+      setState(() => _error = tr('Συμπλήρωσε το κινητό σου'));
       return;
     }
     if (pin.length != 4 || int.tryParse(pin) == null) {
-      setState(() => _error = 'Το PIN αποτελείται από 4 ψηφία');
+      setState(() => _error = tr('Το PIN αποτελείται από 4 ψηφία'));
       return;
     }
 
@@ -122,22 +124,22 @@ class _LoginScreenState extends State<LoginScreen> {
           child: const Icon(Icons.fitness_center, color: kBg, size: 18),
         ),
         const SizedBox(width: 10),
-        Text('BookUp', style: GoogleFonts.spaceGrotesk(
+        Text(tr('BookUp'), style: GoogleFonts.inter(
           fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
       ],
     );
   }
 
   Widget _buildHeading() {
-    return Text('Σύνδεση', style: GoogleFonts.spaceGrotesk(
+    return Text(tr('Σύνδεση'), style: GoogleFonts.inter(
       fontSize: 34, fontWeight: FontWeight.w700,
       color: Colors.white, letterSpacing: -0.8));
   }
 
   Widget _buildSubtitle() {
     return Text(
-      'Έχεις λογαριασμό σε γυμναστήριο; Σύνδεσε με κινητό & PIN.',
-      style: GoogleFonts.manrope(fontSize: 14, color: kGray, height: 1.5),
+      tr('Έχεις λογαριασμό σε γυμναστήριο; Σύνδεσε με κινητό & PIN.'),
+      style: GoogleFonts.inter(fontSize: 14, color: kGray, height: 1.5),
     );
   }
 
@@ -146,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('ΚΙΝΗΤΌ', style: GoogleFonts.manrope(
+        Text(tr('ΚΙΝΗΤΌ'), style: GoogleFonts.inter(
           fontSize: 11, fontWeight: FontWeight.w700,
           color: active ? kLime : kGray, letterSpacing: 1.4)),
         const SizedBox(height: 8),
@@ -163,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: const BoxDecoration(
                   border: Border(right: BorderSide(color: kBorder)),
                 ),
-                child: Text('+30', style: GoogleFonts.manrope(
+                child: Text(tr('+30'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: 1.0)),
               ),
@@ -173,10 +175,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   focusNode: _phoneFocus,
                   keyboardType: TextInputType.phone,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: GoogleFonts.manrope(fontSize: 14, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 14, color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: '6901234567',
-                    hintStyle: GoogleFonts.manrope(fontSize: 14, color: kDim),
+                    hintText: tr('6901234567'),
+                    hintStyle: GoogleFonts.inter(fontSize: 14, color: kDim),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                   ),
@@ -194,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('PIN (4 ΨΗΦΊΑ)', style: GoogleFonts.manrope(
+        Text(tr('PIN (4 ΨΗΦΊΑ)'), style: GoogleFonts.inter(
           fontSize: 11, fontWeight: FontWeight.w700,
           color: active ? kLime : kGray, letterSpacing: 1.4)),
         const SizedBox(height: 8),
@@ -214,10 +216,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.number,
                   maxLength: 4,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: GoogleFonts.manrope(fontSize: 20, color: Colors.white, letterSpacing: 8),
+                  style: GoogleFonts.inter(fontSize: 20, color: Colors.white, letterSpacing: 8),
                   decoration: InputDecoration(
-                    hintText: '• • • •',
-                    hintStyle: GoogleFonts.manrope(fontSize: 14, color: kDim),
+                    hintText: tr('• • • •'),
+                    hintStyle: GoogleFonts.inter(fontSize: 14, color: kDim),
                     border: InputBorder.none,
                     counterText: '',
                     contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
@@ -245,8 +247,8 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            'Το PIN είναι τα 4 τελευταία ψηφία του κινητού σου (εκτός αν έχει αλλάξει).',
-            style: GoogleFonts.manrope(fontSize: 11, color: kGray, height: 1.4),
+            tr('Το PIN είναι τα 4 τελευταία ψηφία του κινητού σου (εκτός αν έχει αλλάξει).'),
+            style: GoogleFonts.inter(fontSize: 11, color: kGray, height: 1.4),
           ),
         ),
       ],
@@ -266,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const Icon(Icons.error_outline, color: Color(0xFFFF5D5D), size: 16),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(_error!, style: GoogleFonts.manrope(
+            child: Text(tr(_error!), style: GoogleFonts.inter(
               fontSize: 13, color: const Color(0xFFFF5D5D))),
           ),
         ],
@@ -287,7 +289,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: _loading
             ? const SizedBox(width: 22, height: 22,
                 child: CircularProgressIndicator(color: kBg, strokeWidth: 2.5))
-            : Text('ΣΥΝΔΕΣΗ', style: GoogleFonts.spaceGrotesk(
+            : Text(tr('ΣΥΝΔΕΣΗ'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w700,
                 color: kBg, letterSpacing: 1.5)),
         ),
@@ -300,7 +302,7 @@ class _LoginScreenState extends State<LoginScreen> {
       const Expanded(child: Divider(color: kBorder, thickness: 1)),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Text('ΔΕΝ ΕΧΕΙΣ ΛΟΓΑΡΙΑΣΜΟ;', style: GoogleFonts.spaceGrotesk(
+        child: Text(tr('ΔΕΝ ΕΧΕΙΣ ΛΟΓΑΡΙΑΣΜΟ;'), style: GoogleFonts.inter(
           fontSize: 10, color: kDim, letterSpacing: 1.5)),
       ),
       const Expanded(child: Divider(color: kBorder, thickness: 1)),
@@ -324,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
               border: Border.all(color: kBorder2),
             ),
             child: Center(
-              child: Text('ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ', style: GoogleFonts.spaceGrotesk(
+              child: Text(tr('ΔΗΜΙΟΥΡΓΙΑ ΛΟΓΑΡΙΑΣΜΟΥ'), style: GoogleFonts.inter(
                 fontSize: 13, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: 1.2)),
             ),
@@ -332,9 +334,9 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 20),
         Text(
-          'Αν δεν έχεις ακόμα λογαριασμό, δημιούργησε έναν και βρες το γυμναστήριό σου.',
+          tr('Αν δεν έχεις ακόμα λογαριασμό, δημιούργησε έναν και βρες το γυμναστήριό σου.'),
           textAlign: TextAlign.center,
-          style: GoogleFonts.manrope(fontSize: 12, color: kGray, height: 1.5),
+          style: GoogleFonts.inter(fontSize: 12, color: kGray, height: 1.5),
         ),
       ],
     );

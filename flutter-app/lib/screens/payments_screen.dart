@@ -10,6 +10,8 @@ import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import '../widgets/payment_sheet.dart';
+import '../l10n/tr.dart';
+
 
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({super.key});
@@ -79,7 +81,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       body: _loading
           ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
-              ? Center(child: Text(_error!))
+              ? Center(child: Text(tr(_error!)))
               : RefreshIndicator(
                   onRefresh: _load,
                   color: AppColors.lime,
@@ -93,10 +95,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(AppStrings.of(context).paymentsBalance,
+                                  Text(tr(AppStrings.of(context).paymentsBalance),
                                       style: Theme.of(context).textTheme.bodyMedium),
                                   Text(
-                                    _eur(_totalBalance),
+                                    tr(_eur(_totalBalance)),
                                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                           fontWeight: FontWeight.w800,
                                           color: _totalBalance > 0 ? AppColors.orange : AppColors.lime,
@@ -134,31 +136,31 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          p.description ?? AppStrings.of(context).paymentsDefaultLabel,
+                                          tr(p.description ?? AppStrings.of(context).paymentsDefaultLabel),
                                           style: Theme.of(context).textTheme.titleMedium,
                                         ),
                                       ),
                                       PillChip(
-                                        label: p.statusLabel,
+                                        label: tr(p.statusLabel),
                                         color: _statusColor(p.status).withValues(alpha: 0.15),
                                         textColor: _statusColor(p.status),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  Text(AppStrings.of(context).paymentsTotalPaid(_eur(p.amountCents), _eur(p.paidAmountCents))),
+                                  Text(tr(AppStrings.of(context).paymentsTotalPaid(_eur(p.amountCents), _eur(p.paidAmountCents)))),
                                   if (p.balanceCents > 0)
                                     Text(
-                                      AppStrings.of(context).paymentsBalance2(_eur(p.balanceCents)),
+                                      tr(AppStrings.of(context).paymentsBalance2(_eur(p.balanceCents))),
                                       style: const TextStyle(color: AppColors.orange, fontWeight: FontWeight.w600),
                                     ),
                                   if (date != null)
                                     Text(
-                                      DateFormat('d MMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US').format(date),
+                                      tr(DateFormat('d MMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US').format(date)),
                                       style: Theme.of(context).textTheme.bodyMedium,
                                     ),
                                   if (p.notes != null && p.notes!.isNotEmpty)
-                                    Text(p.notes!, style: Theme.of(context).textTheme.bodyMedium),
+                                    Text(tr(p.notes!), style: Theme.of(context).textTheme.bodyMedium),
                                   if (canPay) ...[
                                     const SizedBox(height: 12),
                                     SizedBox(

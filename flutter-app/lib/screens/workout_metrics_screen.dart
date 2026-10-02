@@ -13,6 +13,8 @@ import '../services/demo_workout_metrics_service.dart';
 import '../services/health_workout_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 class WorkoutMetricsScreen extends StatefulWidget {
   const WorkoutMetricsScreen({super.key});
@@ -99,7 +101,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
 
     if (workouts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppStrings.of(context).metricsNoHealthData)),
+        SnackBar(content: Text(tr(AppStrings.of(context).metricsNoHealthData))),
       );
       setState(() => _syncingHealth = false);
       return;
@@ -111,7 +113,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
     });
     _chartAnim.forward(from: 0);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppStrings.of(context).metricsLoadedFromWatch(workouts.length))),
+      SnackBar(content: Text(tr(AppStrings.of(context).metricsLoadedFromWatch(workouts.length)))),
     );
   }
 
@@ -188,7 +190,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                AppStrings.of(context).metricsDemoData,
+                tr(AppStrings.of(context).metricsDemoData),
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13, height: 1.35),
               ),
             ),
@@ -217,9 +219,9 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Apple Watch / Health', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text(tr('Apple Watch / Health'), style: TextStyle(fontWeight: FontWeight.w700)),
                 Text(
-                  _data?.dataSource == 'health' ? AppStrings.of(context).metricsSyncFromWatch : AppStrings.of(context).metricsLoadRecent,
+                  tr(_data?.dataSource == 'health' ? AppStrings.of(context).metricsSyncFromWatch : AppStrings.of(context).metricsLoadRecent),
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
               ],
@@ -234,7 +236,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
             ),
             child: _syncingHealth
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(AppStrings.of(context).metricsSync),
+                : Text(tr(AppStrings.of(context).metricsSync)),
           ),
         ],
       ),
@@ -274,10 +276,10 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '${(pct * _chartTween.value).round()}%',
+                          tr('${(pct * _chartTween.value).round()}%'),
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
                         ),
-                        const Text('στόχος', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text(tr('στόχος'), style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                       ],
                     ),
                   ],
@@ -290,12 +292,12 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(AppStrings.of(context).metricsGoalTarget, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                Text(tr(AppStrings.of(context).metricsGoalTarget), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 const SizedBox(height: 6),
-                Text(AppStrings.of(context).metricsDoneOfTarget(done, target), style: const TextStyle(color: AppColors.textSecondary)),
+                Text(tr(AppStrings.of(context).metricsDoneOfTarget(done, target)), style: const TextStyle(color: AppColors.textSecondary)),
                 const SizedBox(height: 10),
                 Text(
-                  AppStrings.of(context).metricsCaloriesTarget(caloriesTarget),
+                  tr(AppStrings.of(context).metricsCaloriesTarget(caloriesTarget)),
                   style: TextStyle(color: AppColors.lime.withValues(alpha: 0.9), fontSize: 13),
                 ),
                 if (stats.goalMet)
@@ -349,8 +351,8 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
             children: [
               Icon(tile.icon, color: tile.color, size: 22),
               const Spacer(),
-              Text(display, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-              Text(tile.label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text(tr(display), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+              Text(tr(tile.label), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
             ],
           ),
         );
@@ -359,14 +361,14 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
   }
 
   Widget _sectionTitle(String title) {
-    return Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700));
+    return Text(tr(title), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700));
   }
 
   Widget _activityPieCard(List<ActivityBreakdown> items) {
     if (items.isEmpty) {
       return SurfaceCard(
         padding: const EdgeInsets.all(24),
-        child: Center(child: Text(AppStrings.of(context).metricsNoData)),
+        child: Center(child: Text(tr(AppStrings.of(context).metricsNoData))),
       );
     }
 
@@ -395,7 +397,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
                         value: value > 0 ? value : 0.01,
                         color: color,
                         radius: 58,
-                        title: value >= totalCal * 0.08 ? '${((item.calories / totalCal) * 100).round()}%' : '',
+                        title: tr(value >= totalCal * 0.08 ? '${((item.calories / totalCal) * 100).round()}%' : ''),
                         titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
                       );
                     }),
@@ -413,7 +415,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
             children: List.generate(sorted.length, (i) {
               final item = sorted[i];
               return PillChip(
-                label: '${item.label} · ${item.sessions}',
+                label: tr('${item.label} · ${item.sessions}'),
                 color: _chartColors[i % _chartColors.length].withValues(alpha: 0.2),
                 textColor: _chartColors[i % _chartColors.length],
               );
@@ -454,7 +456,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
                       showTitles: true,
                       reservedSize: 36,
                       getTitlesWidget: (v, _) => Text(
-                        v >= 1000 ? '${(v / 1000).toStringAsFixed(1)}k' : v.toInt().toString(),
+                        tr(v >= 1000 ? '${(v / 1000).toStringAsFixed(1)}k' : v.toInt().toString()),
                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
                       ),
                     ),
@@ -468,7 +470,7 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
-                            dateFmt.format(weeks[idx].weekStart),
+                            tr(dateFmt.format(weeks[idx].weekStart)),
                             style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
                           ),
                         );
@@ -538,8 +540,8 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(w.displayTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
-                          Text(dateFmt.format(w.startedAt), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                          Text(tr(w.displayTitle), style: const TextStyle(fontWeight: FontWeight.w700)),
+                          Text(tr(dateFmt.format(w.startedAt)), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                         ],
                       ),
                     ),
@@ -552,10 +554,10 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
                   runSpacing: 6,
                   children: [
                     if (w.caloriesKcal != null)
-                      PillChip(label: '${w.caloriesKcal} kcal', color: AppColors.orange.withValues(alpha: 0.15), textColor: AppColors.orange),
-                    PillChip(label: s.minutesSuffix(w.durationMins), color: AppColors.teal.withValues(alpha: 0.15), textColor: AppColors.teal),
+                      PillChip(label: tr('${w.caloriesKcal} kcal'), color: AppColors.orange.withValues(alpha: 0.15), textColor: AppColors.orange),
+                    PillChip(label: tr(s.minutesSuffix(w.durationMins)), color: AppColors.teal.withValues(alpha: 0.15), textColor: AppColors.teal),
                     if (w.avgHeartRate != null)
-                      PillChip(label: '♥ ${w.avgHeartRate}', color: AppColors.pink.withValues(alpha: 0.15), textColor: AppColors.pink),
+                      PillChip(label: tr('♥ ${w.avgHeartRate}'), color: AppColors.pink.withValues(alpha: 0.15), textColor: AppColors.pink),
                   ],
                 ),
                 if (expanded) ...[
@@ -582,8 +584,8 @@ class _WorkoutMetricsScreenState extends State<WorkoutMetricsScreen> with Ticker
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          SizedBox(width: 120, child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+          SizedBox(width: 120, child: Text(tr(label), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+          Expanded(child: Text(tr(value), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
         ],
       ),
     );

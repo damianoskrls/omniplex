@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
 import 'role_selection_screen.dart';
+import '../l10n/tr.dart';
+
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -106,15 +108,15 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
     final confirm = _confirmCtrl.text;
 
     if (name.isEmpty || email.isEmpty || pass.isEmpty) {
-      setState(() => _error = 'Συμπλήρωσε όνομα, email και κωδικό');
+      setState(() => _error = tr('Συμπλήρωσε όνομα, email και κωδικό'));
       return;
     }
     if (pass != confirm) {
-      setState(() => _error = 'Οι κωδικοί δεν ταιριάζουν');
+      setState(() => _error = tr('Οι κωδικοί δεν ταιριάζουν'));
       return;
     }
     if (pass.length < 6) {
-      setState(() => _error = 'Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες');
+      setState(() => _error = tr('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες'));
       return;
     }
 
@@ -194,13 +196,13 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
               children: [
-                Text('Δημιουργία\nΛογαριασμού',
-                  style: GoogleFonts.manrope(
+                Text(tr('Δημιουργία\nΛογαριασμού'),
+                  style: GoogleFonts.inter(
                     fontSize: 28, fontWeight: FontWeight.w700,
                     color: Colors.white, letterSpacing: -0.7, height: 1.1)),
                 const SizedBox(height: 8),
-                Text('Εγγράψου δωρεάν και ανακάλυψε γυμναστήρια.',
-                  style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.5)),
+                Text(tr('Εγγράψου δωρεάν και ανακάλυψε γυμναστήρια.'),
+                  style: GoogleFonts.inter(fontSize: 14, color: _kGray, height: 1.5)),
                 const SizedBox(height: 28),
 
                 if (_error != null) ...[
@@ -211,15 +213,15 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
-                    child: Text(_error!,
-                      style: GoogleFonts.manrope(color: Colors.redAccent, fontSize: 13)),
+                    child: Text(tr(_error!),
+                      style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13)),
                   ),
                   const SizedBox(height: 16),
                 ],
 
-                _fieldLabel('Ονοματεπώνυμο'),
+                _fieldLabel(tr('Ονοματεπώνυμο')),
                 const SizedBox(height: 8),
-                _inputField(ctrl: _nameCtrl, hint: 'Γιώργης Παπαδόπουλος'),
+                _inputField(ctrl: _nameCtrl, hint: tr('Γιώργης Παπαδόπουλος')),
                 const SizedBox(height: 14),
 
                 _fieldLabel('Email'),
@@ -228,13 +230,13 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                     type: TextInputType.emailAddress),
                 const SizedBox(height: 14),
 
-                _fieldLabel('Κινητό (προαιρετικό)'),
+                _fieldLabel(tr('Κινητό (προαιρετικό)')),
                 const SizedBox(height: 8),
                 _inputField(ctrl: _phoneCtrl, hint: '69XXXXXXXX',
                     type: TextInputType.phone),
                 const SizedBox(height: 14),
 
-                _fieldLabel('Κωδικός'),
+                _fieldLabel(tr('Κωδικός')),
                 const SizedBox(height: 8),
                 _inputField(
                   ctrl: _passCtrl, hint: '••••••••', obscure: _passObscure,
@@ -245,7 +247,7 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                 ),
                 const SizedBox(height: 14),
 
-                _fieldLabel('Επιβεβαίωση κωδικού'),
+                _fieldLabel(tr('Επιβεβαίωση κωδικού')),
                 const SizedBox(height: 8),
                 _inputField(
                   ctrl: _confirmCtrl, hint: '••••••••', obscure: _confirmObscure,
@@ -257,15 +259,15 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                 const SizedBox(height: 28),
 
                 // Gyms section
-                Text('Γυμναστήρια',
-                  style: GoogleFonts.manrope(
+                Text(tr('Γυμναστήρια'),
+                  style: GoogleFonts.inter(
                     fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(height: 4),
                 Text(
-                  widget.preselectedGym != null
+                  tr(widget.preselectedGym != null
                     ? 'Θα σταλεί αίτημα εγγραφής στο επιλεγμένο γυμναστήριο.'
-                    : 'Είσαι ήδη μέλος κάπου; Πρόσθεσέ το για αυτόματη σύνδεση.',
-                  style: GoogleFonts.manrope(fontSize: 12, color: _kGray, height: 1.5)),
+                    : tr('Είσαι ήδη μέλος κάπου; Πρόσθεσέ το για αυτόματη σύνδεση.')),
+                  style: GoogleFonts.inter(fontSize: 12, color: _kGray, height: 1.5)),
                 const SizedBox(height: 12),
 
                 // Selected gyms chips
@@ -286,14 +288,14 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                           color: color.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8)),
                         child: Center(child: Text(
-                          (g['app_name'] as String? ?? g['name'] as String? ?? '?')[0].toUpperCase(),
-                          style: GoogleFonts.manrope(
+                          tr((g['app_name'] as String? ?? g['name'] as String? ?? '?')[0].toUpperCase()),
+                          style: GoogleFonts.inter(
                             color: color, fontWeight: FontWeight.w800, fontSize: 14))),
                       ),
                       const SizedBox(width: 10),
                       Expanded(child: Text(
-                        g['app_name'] as String? ?? g['name'] as String? ?? '',
-                        style: GoogleFonts.manrope(
+                        tr(g['app_name'] as String? ?? g['name'] as String? ?? ''),
+                        style: GoogleFonts.inter(
                           color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14))),
                       GestureDetector(
                         onTap: () => setState(() => _selectedGyms.removeWhere((x) => x['id'] == g['id'])),
@@ -306,10 +308,10 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                 if (widget.preselectedGym == null) ...[
                   TextField(
                     controller: _gymSearchCtrl,
-                    style: GoogleFonts.manrope(color: Colors.white, fontSize: 14),
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: 'Αναζήτηση γυμναστηρίου...',
-                      hintStyle: GoogleFonts.manrope(color: _kGray, fontSize: 14),
+                      hintText: tr('Αναζήτηση γυμναστηρίου...'),
+                      hintStyle: GoogleFonts.inter(color: _kGray, fontSize: 14),
                       prefixIcon: _gymSearching
                         ? const Padding(padding: EdgeInsets.all(12),
                             child: SizedBox(width: 16, height: 16,
@@ -346,12 +348,12 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                               Expanded(child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(g['app_name'] as String? ?? g['name'] as String? ?? '',
-                                    style: GoogleFonts.manrope(
+                                  Text(tr(g['app_name'] as String? ?? g['name'] as String? ?? ''),
+                                    style: GoogleFonts.inter(
                                       color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
                                   if ((g['city'] as String?)?.isNotEmpty == true)
-                                    Text(g['city'] as String,
-                                      style: GoogleFonts.manrope(color: _kGray, fontSize: 11)),
+                                    Text(tr(g['city'] as String),
+                                      style: GoogleFonts.inter(color: _kGray, fontSize: 11)),
                                 ],
                               )),
                               const Icon(Icons.add_rounded, color: _kLime, size: 18),
@@ -381,20 +383,20 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
                     child: _loading
                       ? const SizedBox(width: 22, height: 22,
                           child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                      : Text('Δημιουργία Λογαριασμού',
-                          style: GoogleFonts.manrope(
+                      : Text(tr('Δημιουργία Λογαριασμού'),
+                          style: GoogleFonts.inter(
                             fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                 ),
                 const SizedBox(height: 20),
                 Center(
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Text('Έχεις ήδη λογαριασμό; ',
-                      style: GoogleFonts.manrope(fontSize: 14, color: _kGray)),
+                    Text(tr('Έχεις ήδη λογαριασμό; '),
+                      style: GoogleFonts.inter(fontSize: 14, color: _kGray)),
                     GestureDetector(
                       onTap: () => Navigator.maybePop(context),
-                      child: Text('Σύνδεση',
-                        style: GoogleFonts.manrope(
+                      child: Text(tr('Σύνδεση'),
+                        style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w700, color: _kLime,
                           decoration: TextDecoration.underline,
                           decorationColor: _kLime)),
@@ -409,7 +411,7 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
     );
   }
 
-  Widget _fieldLabel(String text) => Text(text, style: GoogleFonts.manrope(
+  Widget _fieldLabel(String text) => Text(tr(text), style: GoogleFonts.inter(
     fontSize: 13, fontWeight: FontWeight.w600, color: _kGray));
 
   Widget _inputField({
@@ -423,10 +425,10 @@ class _GlobalRegisterScreenState extends State<GlobalRegisterScreen> {
       controller: ctrl,
       keyboardType: type,
       obscureText: obscure,
-      style: GoogleFonts.manrope(color: Colors.white, fontSize: 15),
+      style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.manrope(color: _kGray),
+        hintText: tr(hint),
+        hintStyle: GoogleFonts.inter(color: _kGray),
         suffixIcon: suffix,
         filled: true,
         fillColor: _kCard,

@@ -21,6 +21,8 @@ import 'electronic_documents_screen.dart';
 import 'gym_entry_splash.dart';
 import 'gym_profile_screen.dart';
 import 'phone_otp_login_screen.dart';
+import '../l10n/tr.dart';
+
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -114,7 +116,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     _loadDashboard();
     _openTab(3);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Το αίτημα είναι σε αναμονή στα Gyms σου.')),
+      SnackBar(content: Text(tr('Το αίτημα είναι σε αναμονή στα Gyms σου.'))),
     );
   }
 
@@ -122,7 +124,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     _loadDashboard();
     _openTab(3);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Το γυμναστήριο προστέθηκε στα Gyms σου, με τα στοιχεία που έχει ο διαχειριστής.')),
+      SnackBar(content: Text(tr('Το γυμναστήριο προστέθηκε στα Gyms σου, με τα στοιχεία που έχει ο διαχειριστής.'))),
     );
   }
 
@@ -150,7 +152,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     if (!mounted) return;
     if (gym == null) {
       _openTab(3);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(message))));
       return;
     }
     GymLaunch.tabKey = tabKey;
@@ -165,12 +167,12 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     if (rows is! List) return null;
     for (final raw in rows) {
       if (raw is! Map || raw['business_id']?.toString() != businessId) continue;
-      final name = (raw['plan_name'] ?? 'Πακέτο').toString();
+      final name = (raw['plan_name'] ?? tr('Πακέτο')).toString();
       final total = raw['total_sessions'];
       final used = raw['used_sessions'];
       if (total is num && total > 0 && total < 9000) {
         final left = (total - (used is num ? used : 0)).clamp(0, total).toInt();
-        return '$name · $left συνεδρίες';
+        return tr('$name · $left συνεδρίες');
       }
       return name;
     }
@@ -252,7 +254,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             ? UserNotificationSync.instance.messagePayload(item)
             : 'notif:$id';
         await NotificationService.instance.showInstant(
-          title: item['title'] as String? ?? 'Ειδοποίηση',
+          title: tr(item['title'] as String? ?? tr('Ειδοποίηση')),
           body: item['body'] as String? ?? '',
           payload: payload,
         );
@@ -320,12 +322,12 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
         context: context,
         builder: (_) => AlertDialog(
           backgroundColor: _kCard,
-          title: const Text('Σφάλμα', style: TextStyle(color: Colors.white)),
-          content: Text(msg, style: const TextStyle(color: Colors.white70)),
+          title: Text(tr('Σφάλμα'), style: TextStyle(color: Colors.white)),
+          content: Text(tr(msg), style: const TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('OK', style: TextStyle(color: _kAccent)),
+              child: Text(tr('OK'), style: TextStyle(color: _kAccent)),
             ),
           ],
         ),
@@ -414,7 +416,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
               } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Αποτυχία αφαίρεσης: $e'), backgroundColor: Colors.red.shade700),
+                  SnackBar(content: Text(tr('Αποτυχία αφαίρεσης: $e')), backgroundColor: Colors.red.shade700),
                 );
               }
             },
@@ -456,10 +458,10 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       _navItem(0, 'Home', 'assets/icons/nav_omni_home.png'),
-                      _navItem(1, 'Αναζήτηση', 'assets/icons/nav_omni_search.png'),
+                      _navItem(1, tr('Αναζήτηση'), 'assets/icons/nav_omni_search.png'),
                       const SizedBox(width: 70),
                       _navItem(3, 'Gyms', 'assets/icons/nav_omni_gyms.png'),
-                      _navItem(4, 'Προφίλ', 'assets/icons/nav_omni_profile.png'),
+                      _navItem(4, tr('Προφίλ'), 'assets/icons/nav_omni_profile.png'),
                     ],
                   ),
                 ),
@@ -532,10 +534,10 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  label,
+                  tr(label),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(
+                  style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: active ? Colors.white : const Color(0xFF717479),
@@ -606,15 +608,15 @@ class _HomeTab extends StatelessWidget {
 
   String get _greeting {
     final h = DateTime.now().hour;
-    if (h < 12) return 'Καλημέρα';
-    if (h < 18) return 'Καλησπέρα';
-    return 'Καλό βράδυ';
+    if (h < 12) return tr('Καλημέρα');
+    if (h < 18) return tr('Καλησπέρα');
+    return tr('Καλό βράδυ');
   }
 
   String get _dateStr {
     final now = DateTime.now();
-    const days = ['Κυρ','Δευ','Τρί','Τετ','Πέμ','Παρ','Σάβ'];
-    const months = ['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+    final days = [tr('Κυρ'),tr('Δευ'),tr('Τρί'),tr('Τετ'),tr('Πέμ'),tr('Παρ'),tr('Σάβ')];
+    final months = [tr('Ιαν'),tr('Φεβ'),tr('Μαρ'),tr('Απρ'),tr('Μαΐ'),tr('Ιουν'),tr('Ιουλ'),tr('Αυγ'),tr('Σεπ'),tr('Οκτ'),tr('Νοε'),tr('Δεκ')];
     return '${days[now.weekday % 7]}, ${now.day} ${months[now.month - 1]}';
   }
 
@@ -656,23 +658,23 @@ class _HomeTab extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: Text(
-                            globalAuth.isLoggedIn
+                            tr(globalAuth.isLoggedIn
                                 ? 'Τα γυμναστήρια που περιμένουν έγκριση είναι στα Gyms.'
-                                : 'Βρες γυμναστήριο από την Αναζήτηση. Η σύνδεση ζητιέται όταν θες πακέτο.',
-                            style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.4),
+                                : tr('Βρες γυμναστήριο από την Αναζήτηση. Η σύνδεση ζητιέται όταν θες πακέτο.')),
+                            style: GoogleFonts.inter(fontSize: 14, color: _kGray, height: 1.4),
                           ),
                         ),
 
                       if (homeGroups.isNotEmpty) ...[
                         Row(children: [
                           Expanded(
-                            child: Text('Τα Γυμναστήριά Μου',
-                              style: GoogleFonts.manrope(
+                            child: Text(tr('Τα Γυμναστήριά Μου'),
+                              style: GoogleFonts.inter(
                                 fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
                           ),
                           Text(
-                            homeGroups.length == 1 ? '1 ενεργό' : '${homeGroups.length} ενεργά',
-                            style: GoogleFonts.manrope(fontSize: 13, color: _kGray, fontWeight: FontWeight.w600),
+                            tr(homeGroups.length == 1 ? '1 ενεργό' : tr('${homeGroups.length} ενεργά')),
+                            style: GoogleFonts.inter(fontSize: 13, color: _kGray, fontWeight: FontWeight.w600),
                           ),
                         ]),
                         const SizedBox(height: 12),
@@ -755,7 +757,7 @@ class _GymLogo extends StatelessWidget {
           color: accent,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(initials, style: GoogleFonts.manrope(color: onFill, fontWeight: FontWeight.w800, fontSize: 14)),
+        child: Text(tr(initials), style: GoogleFonts.inter(color: onFill, fontWeight: FontWeight.w800, fontSize: 14)),
       );
     }
     return Container(
@@ -772,7 +774,7 @@ class _GymLogo extends StatelessWidget {
         fit: BoxFit.contain,
         width: 76,
         height: 48,
-        errorBuilder: (_, _, _) => Text(initials, style: GoogleFonts.manrope(color: const Color(0xFF111111), fontWeight: FontWeight.w800)),
+        errorBuilder: (_, _, _) => Text(tr(initials), style: GoogleFonts.inter(color: const Color(0xFF111111), fontWeight: FontWeight.w800)),
       ),
     );
   }
@@ -780,7 +782,7 @@ class _GymLogo extends StatelessWidget {
 
 String _logoInitials(String name) {
   final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
-  if (parts.isEmpty) return 'Γ';
+  if (parts.isEmpty) return tr('Γ');
   if (parts.length == 1) {
     final word = parts.first;
     return word.substring(0, word.length >= 2 ? 2 : 1).toUpperCase();
@@ -923,10 +925,10 @@ class _HomeGymSlide extends StatelessWidget {
   }
 
   String _roleLabel(GlobalGym role) {
-    if (!role.isStaff) return 'Ασκούμενος';
-    if (role.staffKind == 'nutritionist') return 'Διατροφολόγος';
-    if (role.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
-    return 'Προπονητής';
+    if (!role.isStaff) return tr('Ασκούμενος');
+    if (role.staffKind == 'nutritionist') return tr('Διατροφολόγος');
+    if (role.staffKind == 'physiotherapist') return tr('Φυσιοθεραπευτής');
+    return tr('Προπονητής');
   }
 
   _RoleTone _tone(GlobalGym role) {
@@ -972,7 +974,7 @@ class _HomeGymSlide extends StatelessWidget {
     }
     if (member.isStaff) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Το QR είναι για τον ρόλο του ασκούμενου')),
+        SnackBar(content: Text(tr('Το QR είναι για τον ρόλο του ασκούμενου'))),
       );
       return;
     }
@@ -1004,10 +1006,10 @@ class _HomeGymSlide extends StatelessWidget {
               _GymLogo(url: gym.logoUrl, name: gym.appName, accent: accentColor),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(gym.appName,
+                child: Text(tr(gym.appName),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
               GestureDetector(
                 onTap: () => _showQr(context),
@@ -1031,18 +1033,18 @@ class _HomeGymSlide extends StatelessWidget {
               children: [
                 for (final role in roles) ...[
                   _HomeRoleButton(
-                    label: _roleLabel(role),
+                    label: tr(_roleLabel(role)),
                     tone: _tone(role),
                     onTap: () => onEnter(role),
                   ),
                   if (!role.isStaff && packageLine != null) ...[
                     const SizedBox(height: 8),
-                    Text('Πακέτο', style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+                    Text(tr('Πακέτο'), style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
                     const SizedBox(height: 2),
-                    Text(packageLine!,
+                    Text(tr(packageLine!),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
                   ],
                   const SizedBox(height: 8),
                   _NextAppointment(
@@ -1064,8 +1066,8 @@ class _HomeGymSlide extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: _kBorder),
                     ),
-                    child: Text('+  Νέος ρόλος',
-                      style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                    child: Text(tr('+  Νέος ρόλος'),
+                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                 ),
               ],
@@ -1107,7 +1109,7 @@ class _HomeRoleButton extends StatelessWidget {
         child: Row(children: [
           Icon(tone.icon, size: 18, color: tone.fg),
           const SizedBox(width: 8),
-          Text(label, style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: tone.fg)),
+          Text(tr(label), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: tone.fg)),
         ]),
       ),
     );
@@ -1127,14 +1129,14 @@ class _NextAppointment extends StatelessWidget {
     return GestureDetector(
       onTap: booking == null ? null : onTap,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Επόμενο ραντεβού',
-          style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+        Text(tr('Επόμενο ραντεβού'),
+          style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
         const SizedBox(height: 2),
         Text(
-          booking == null ? 'Δεν υπάρχει ραντεβού' : '$hhmm · $service',
+          tr(booking == null ? 'Δεν υπάρχει ραντεβού' : '$hhmm · $service'),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.manrope(
+          style: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.w800,
             color: booking == null ? _kGray : Colors.white,
@@ -1173,7 +1175,7 @@ class _GymQrSheetState extends State<_GymQrSheet> {
         headers: {'Authorization': 'Bearer $gymToken'},
       );
       final body = jsonDecode(res.body);
-      if (res.statusCode != 200) throw body['error']?.toString() ?? 'Αποτυχία QR';
+      if (res.statusCode != 200) throw body['error']?.toString() ?? tr('Αποτυχία QR');
       if (mounted) setState(() => _token = body['token']?.toString());
     } catch (e) {
       if (mounted) setState(() => _error = '$e'.replaceFirst('Exception: ', ''));
@@ -1188,14 +1190,14 @@ class _GymQrSheetState extends State<_GymQrSheet> {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 36, height: 4, decoration: BoxDecoration(color: _kBorder, borderRadius: BorderRadius.circular(99))),
         const SizedBox(height: 16),
-        Text(widget.gym.appName, style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+        Text(tr(widget.gym.appName), style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
         const SizedBox(height: 4),
-        Text('Δείξε το QR στο γυμναστήριο', style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+        Text(tr('Δείξε το QR στο γυμναστήριο'), style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
         const SizedBox(height: 16),
         if (_loading)
           const Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: Color(0xFF86EFAC)))
         else if (_error != null)
-          Padding(padding: const EdgeInsets.all(16), child: Text(_error!, style: const TextStyle(color: Colors.white70)))
+          Padding(padding: const EdgeInsets.all(16), child: Text(tr(_error!), style: const TextStyle(color: Colors.white70)))
         else
           Container(
             padding: const EdgeInsets.all(12),
@@ -1296,10 +1298,10 @@ class _GymEntryCardState extends State<_GymEntryCard> {
   }
 
   String _label(GlobalGym gym) {
-    if (!gym.isStaff) return 'Ασκούμενος';
-    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
-    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
-    return 'Προπονητής';
+    if (!gym.isStaff) return tr('Ασκούμενος');
+    if (gym.staffKind == 'nutritionist') return tr('Διατροφολόγος');
+    if (gym.staffKind == 'physiotherapist') return tr('Φυσιοθεραπευτής');
+    return tr('Προπονητής');
   }
 
   IconData _icon(GlobalGym gym) {
@@ -1311,7 +1313,7 @@ class _GymEntryCardState extends State<_GymEntryCard> {
 
   String _typeLabel(GlobalGym gym) {
     final type = gym.businessType.toLowerCase();
-    if (type == 'gym' || type.contains('γυμν')) return 'Γυμναστήριο';
+    if (type == 'gym' || type.contains(tr('γυμν'))) return tr('Γυμναστήριο');
     return gym.businessType;
   }
 
@@ -1324,22 +1326,22 @@ class _GymEntryCardState extends State<_GymEntryCard> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C1C2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Αφαίρεση γυμναστηρίου',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: Colors.white)),
+        title: Text(tr('Αφαίρεση γυμναστηρίου'),
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white)),
         content: Text(
-          gym.isStaff
+          tr(gym.isStaff
             ? 'Θα αφαιρεθείς ως trainer από το "${gym.appName}". Η σύνδεσή σου ως ασκούμενος, αν υπάρχει, μένει.'
-            : 'Θα αφαιρεθείς ως ασκούμενος από το "${gym.appName}". Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.',
-          style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
+            : tr('Θα αφαιρεθείς ως ασκούμενος από το "${gym.appName}". Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.')),
+          style: GoogleFonts.inter(color: _kGray, fontSize: 14)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Άκυρο', style: GoogleFonts.manrope(color: _kGray)),
+            child: Text(tr('Άκυρο'), style: GoogleFonts.inter(color: _kGray)),
           ),
           TextButton(
             onPressed: () { Navigator.pop(ctx); onRemove(); },
-            child: Text('Αφαίρεση',
-              style: GoogleFonts.manrope(color: Colors.redAccent, fontWeight: FontWeight.w700)),
+            child: Text(tr('Αφαίρεση'),
+              style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1377,19 +1379,19 @@ class _GymEntryCardState extends State<_GymEntryCard> {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(gym.appName,
+                  Text(tr(gym.appName),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text(_typeLabel(gym),
-                    style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                  Text(tr(_typeLabel(gym)),
+                    style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
                   if (!isPending && widget.packageLine != null) ...[
                     const SizedBox(height: 2),
-                    Text(widget.packageLine!,
+                    Text(tr(widget.packageLine!),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
                   ],
                 ]),
               ),
@@ -1407,7 +1409,7 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                       child: Row(children: [
                         const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent, size: 16),
                         const SizedBox(width: 8),
-                        Text('Αφαίρεση', style: GoogleFonts.manrope(color: Colors.redAccent, fontSize: 13)),
+                        Text(tr('Αφαίρεση'), style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13)),
                       ]),
                     ),
                   ],
@@ -1416,12 +1418,12 @@ class _GymEntryCardState extends State<_GymEntryCard> {
           ),
           const Divider(color: _kBorder, height: 1),
           if (isPending)
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Row(children: [
                 Icon(Icons.hourglass_empty_rounded, color: Color(0xFFF59E0B), size: 16),
                 SizedBox(width: 8),
-                Expanded(child: Text('Αναμονή έγκρισης γυμναστηρίου',
+                Expanded(child: Text(tr('Αναμονή έγκρισης γυμναστηρίου'),
                   style: TextStyle(fontSize: 13, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600))),
               ]),
             )
@@ -1434,10 +1436,10 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                   child: Row(children: [
                     const Icon(Icons.calendar_today_outlined, size: 14, color: _kAccent),
                     const SizedBox(width: 6),
-                    Expanded(child: Text('Επόμενη: $nextStr',
+                    Expanded(child: Text(tr('Επόμενη: $nextStr'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(fontSize: 12, color: Colors.white))),
+                      style: GoogleFonts.inter(fontSize: 12, color: Colors.white))),
                   ]),
                 ),
               ),
@@ -1448,13 +1450,13 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text.rich(TextSpan(children: [
-                    TextSpan(text: 'Βήμα 1: ', style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
-                    TextSpan(text: 'Επίλεξε ρόλο εισόδου', style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                    TextSpan(text: tr('Βήμα 1: '), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                    TextSpan(text: tr('Επίλεξε ρόλο εισόδου'), style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
                   ])),
                 ),
                 if (widget.roles.length > 2)
-                  Text('${widget.roles.length} ρόλοι',
-                    style: GoogleFonts.manrope(fontSize: 12, color: _kGray, fontWeight: FontWeight.w600)),
+                  Text(tr('${widget.roles.length} ρόλοι'),
+                    style: GoogleFonts.inter(fontSize: 12, color: _kGray, fontWeight: FontWeight.w600)),
               ]),
             ),
             const SizedBox(height: 10),
@@ -1467,7 +1469,7 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                 children: [
                   for (final role in widget.roles) ...[
                     _EntryRoleChip(
-                      label: _label(role),
+                      label: tr(_label(role)),
                       icon: _icon(role),
                       selected: selected != null && _sameRole(role, selected),
                       onTap: () => setState(() => _selected = role),
@@ -1503,7 +1505,7 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                 enabled: selected != null,
                 color: accent,
                 onFill: onFill,
-                label: selected == null ? 'Επίλεξε πρώτα ρόλο' : 'Σύνδεση ως ${_label(selected)}',
+                label: tr(selected == null ? 'Επίλεξε πρώτα ρόλο' : tr('Σύνδεση ως ${_label(selected)}')),
                 onTap: selected == null ? null : () => widget.onEnter(selected),
               ),
             ),
@@ -1544,7 +1546,7 @@ class _EntryRoleChip extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 16, color: selected ? Colors.white : _kGray),
           const SizedBox(width: 6),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 13, fontWeight: FontWeight.w700,
             color: selected ? Colors.white : Colors.white)),
           if (selected) ...[
@@ -1574,7 +1576,7 @@ class _NewRoleChip extends StatelessWidget {
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.add_rounded, size: 16, color: _kGray),
               const SizedBox(width: 4),
-              Text('Νέος', style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+              Text(tr('Νέος'), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
             ]),
           ),
         ),
@@ -1642,7 +1644,7 @@ class _EntryConnectButton extends StatelessWidget {
             const Icon(Icons.lock_outline_rounded, size: 16, color: _kGray),
             const SizedBox(width: 8),
           ],
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 15, fontWeight: FontWeight.w800,
             color: enabled ? onFill : _kGray)),
           if (enabled) ...[
@@ -1678,24 +1680,24 @@ class _NextClassCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('ΕΠΟΜΕΝΟ ΜΑΘΗΜΑ',
-          style: GoogleFonts.manrope(
+        Text(tr('ΕΠΟΜΕΝΟ ΜΑΘΗΜΑ'),
+          style: GoogleFonts.inter(
             fontSize: 10, fontWeight: FontWeight.w700,
             color: _kCyan, letterSpacing: 1.2)),
         const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(time,
-              style: GoogleFonts.manrope(
+            Text(tr(time),
+              style: GoogleFonts.inter(
                 fontSize: 40, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -1)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(service, style: GoogleFonts.manrope(
+                Text(tr(service), style: GoogleFonts.inter(
                   fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text(gymName, style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                Text(tr(gymName), style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
               ]),
             ),
             Container(
@@ -1720,7 +1722,7 @@ class _NextClassCard extends StatelessWidget {
                 child: const Icon(Icons.person_rounded, color: _kGray, size: 14),
               ),
               const SizedBox(width: 6),
-              Text(coach, style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+              Text(tr(coach), style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
             ])
           else
             const SizedBox(),
@@ -1732,7 +1734,7 @@ class _NextClassCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(9999),
             ),
             alignment: Alignment.center,
-            child: Text('Δες κράτηση', style: GoogleFonts.manrope(
+            child: Text(tr('Δες κράτηση'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
           ),
         ]),
@@ -1757,8 +1759,8 @@ class _ThisWeekSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Αυτή την Εβδομάδα',
-          style: GoogleFonts.manrope(
+        Text(tr('Αυτή την Εβδομάδα'),
+          style: GoogleFonts.inter(
             fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
         const SizedBox(height: 12),
         // Mini week strip
@@ -1793,14 +1795,14 @@ class _ThisWeekSection extends StatelessWidget {
                       width: 6, height: 6,
                       decoration: const BoxDecoration(color: _kAccent, shape: BoxShape.circle)),
                     const SizedBox(width: 10),
-                    Text(time, style: GoogleFonts.manrope(
+                    Text(tr(time), style: GoogleFonts.inter(
                       fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(service, style: GoogleFonts.manrope(
+                        Text(tr(service), style: GoogleFonts.inter(
                           fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                        Text(gym, style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
+                        Text(tr(gym), style: GoogleFonts.inter(fontSize: 11, color: _kGray)),
                       ]),
                     ),
                     const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
@@ -1815,7 +1817,7 @@ class _ThisWeekSection extends StatelessWidget {
                   border: Border(top: BorderSide(color: Color(0xFF26272C)))),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text('Δες ολόκληρο το πρόγραμμα', style: GoogleFonts.manrope(
+                  Text(tr('Δες ολόκληρο το πρόγραμμα'), style: GoogleFonts.inter(
                     fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(width: 4),
                   const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
@@ -1834,7 +1836,7 @@ class _WeekStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    const dayLabels = ['Δ','Τ','Τ','Π','Π','Σ','Κ'];
+    final dayLabels = [tr('Δ'),tr('Τ'),tr('Τ'),tr('Π'),tr('Π'),tr('Σ'),tr('Κ')];
     return Row(
       children: List.generate(7, (i) {
         final day   = now.subtract(Duration(days: now.weekday - 1 - i));
@@ -1843,7 +1845,7 @@ class _WeekStrip extends StatelessWidget {
         final today = day.day == now.day && day.month == now.month;
         return Expanded(
           child: Column(children: [
-            Text(label, style: GoogleFonts.manrope(fontSize: 10, color: _kGray)),
+            Text(tr(label), style: GoogleFonts.inter(fontSize: 10, color: _kGray)),
             const SizedBox(height: 4),
             Container(
               width: 32, height: 32,
@@ -1852,7 +1854,7 @@ class _WeekStrip extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Text(num, style: GoogleFonts.manrope(
+              child: Text(tr(num), style: GoogleFonts.inter(
                 fontSize: 13, fontWeight: FontWeight.w700,
                 color: today ? _kBg : Colors.white)),
             ),
@@ -2030,7 +2032,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   }
 
   String _dayLabel(DateTime d) {
-    const n = ['Δευ','Τρί','Τετ','Πέμ','Παρ','Σάβ','Κυρ'];
+    final n = [tr('Δευ'),tr('Τρί'),tr('Τετ'),tr('Πέμ'),tr('Παρ'),tr('Σάβ'),tr('Κυρ')];
     return n[d.weekday - 1];
   }
 
@@ -2039,11 +2041,11 @@ class _ScheduleTabState extends State<_ScheduleTab> {
 
   String _titleForDate(DateTime d) {
     final now = DateTime.now();
-    if (d.day == now.day && d.month == now.month && d.year == now.year) return 'Σήμερα';
+    if (d.day == now.day && d.month == now.month && d.year == now.year) return tr('Σήμερα');
     final tom = now.add(const Duration(days: 1));
-    if (d.day == tom.day && d.month == tom.month && d.year == tom.year) return 'Αύριο';
-    const days = ['Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο','Κυριακή'];
-    const months = ['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+    if (d.day == tom.day && d.month == tom.month && d.year == tom.year) return tr('Αύριο');
+    final days = [tr('Δευτέρα'),tr('Τρίτη'),tr('Τετάρτη'),tr('Πέμπτη'),tr('Παρασκευή'),tr('Σάββατο'),tr('Κυριακή')];
+    final months = [tr('Ιαν'),tr('Φεβ'),tr('Μαρ'),tr('Απρ'),tr('Μαΐ'),tr('Ιουν'),tr('Ιουλ'),tr('Αυγ'),tr('Σεπ'),tr('Οκτ'),tr('Νοε'),tr('Δεκ')];
     return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
   }
 
@@ -2064,8 +2066,8 @@ class _ScheduleTabState extends State<_ScheduleTab> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Πρόγραμμα',
-                    style: GoogleFonts.manrope(
+                  Text(tr('Πρόγραμμα'),
+                    style: GoogleFonts.inter(
                       fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
                   Row(children: [
                     _NavBtn(
@@ -2089,7 +2091,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
             if (widget.gyms.length > 1) ...[
               const SizedBox(height: 14),
               _filterRow(
-                label: 'Γυμναστήριο',
+                label: tr('Γυμναστήριο'),
                 selected: _gymId,
                 options: widget.gyms.map((g) => (id: g.businessId, name: g.appName)).toList(),
                 onPick: (id) => setState(() {
@@ -2101,7 +2103,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
             if (_stores.length > 1) ...[
               const SizedBox(height: 10),
               _filterRow(
-                label: 'Κατάστημα',
+                label: tr('Κατάστημα'),
                 selected: _locationId,
                 options: _stores.map((l) => (id: l['id']?.toString() ?? '', name: l['name']?.toString() ?? '')).toList(),
                 onPick: (id) => setState(() => _locationId = id),
@@ -2142,13 +2144,13 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(_dayLabel(day),
-                            style: GoogleFonts.manrope(
+                          Text(tr(_dayLabel(day)),
+                            style: GoogleFonts.inter(
                               fontSize: 10, fontWeight: FontWeight.w600,
                               color: isSelected ? _kBg : _kGray)),
                           const SizedBox(height: 4),
-                          Text('${day.day}',
-                            style: GoogleFonts.manrope(
+                          Text(tr('${day.day}'),
+                            style: GoogleFonts.inter(
                               fontSize: 18, fontWeight: FontWeight.w700,
                               color: isSelected ? _kBg : Colors.white)),
                           const SizedBox(height: 3),
@@ -2177,8 +2179,8 @@ class _ScheduleTabState extends State<_ScheduleTab> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
               child: Row(children: [
-                Text(_titleForDate(_selected),
-                  style: GoogleFonts.manrope(
+                Text(tr(_titleForDate(_selected)),
+                  style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(width: 10),
                 Container(
@@ -2190,8 +2192,8 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    bookings.isEmpty ? 'Χωρίς κρατήσεις' : '${bookings.length} κρατήσεις',
-                    style: GoogleFonts.manrope(
+                    tr(bookings.isEmpty ? 'Χωρίς κρατήσεις' : tr('${bookings.length} κρατήσεις')),
+                    style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w600,
                       color: bookings.isNotEmpty ? _kAccent : _kGray),
                   ),
@@ -2236,7 +2238,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     required ValueChanged<String?> onPick,
   }) {
     final chips = <({String? id, String name})>[
-      (id: null, name: 'Συνολικά'),
+      (id: null, name: tr('Συνολικά')),
       ...options.where((o) => o.id.isNotEmpty && o.name.isNotEmpty).map((o) => (id: o.id, name: o.name)),
     ];
     return Column(
@@ -2244,7 +2246,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-          child: Text(label, style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700, color: _kGray)),
+          child: Text(tr(label), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: _kGray)),
         ),
         SizedBox(
           height: 36,
@@ -2267,7 +2269,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                     borderRadius: BorderRadius.circular(999),
                     border: on ? null : Border.all(color: _kBorder),
                   ),
-                  child: Text(chip.name, style: GoogleFonts.manrope(
+                  child: Text(tr(chip.name), style: GoogleFonts.inter(
                     fontSize: 13, fontWeight: FontWeight.w700,
                     color: on ? Colors.white : _kGray,
                   )),
@@ -2288,7 +2290,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     if (bookings.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Δεν υπάρχουν ραντεβού για συγχρονισμό')),
+        SnackBar(content: Text(tr('Δεν υπάρχουν ραντεβού για συγχρονισμό'))),
       );
       return;
     }
@@ -2298,17 +2300,17 @@ class _ScheduleTabState extends State<_ScheduleTab> {
         backgroundColor: _kCard,
         title: const Text('Google Calendar', style: TextStyle(color: Colors.white)),
         content: Text(
-          'Να ετοιμαστούν ${bookings.length} ραντεβού για το Google Calendar σου; Θα ανοίξει η κοινοποίηση για να τα προσθέσεις.',
+          tr('Να ετοιμαστούν ${bookings.length} ραντεβού για το Google Calendar σου; Θα ανοίξει η κοινοποίηση για να τα προσθέσεις.'),
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Άκυρο', style: TextStyle(color: Colors.white54)),
+            child: Text(tr('Άκυρο'), style: TextStyle(color: Colors.white54)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Συγχρονισμός', style: TextStyle(color: _kLime)),
+            child: Text(tr('Συγχρονισμός'), style: TextStyle(color: _kLime)),
           ),
         ],
       ),
@@ -2321,12 +2323,12 @@ class _ScheduleTabState extends State<_ScheduleTab> {
       await file.writeAsString(ics);
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'text/calendar', name: 'omniplex-programma.ics')],
-        subject: 'Πρόγραμμα OmniPlex',
+        subject: tr('Πρόγραμμα OmniPlex'),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Αποτυχία συγχρονισμού: $e')),
+        SnackBar(content: Text(tr('Αποτυχία συγχρονισμού: $e'))),
       );
     }
   }
@@ -2384,7 +2386,7 @@ String _bookingsToIcs(List<Map<String, dynamic>> bookings) {
     final isTrainer = b['role'] == 'staff';
     final who = ((isTrainer ? b['client_name'] : b['staff_name']) as String?)?.trim();
     final title = [
-      if (service != null && service.isNotEmpty) service else 'Ραντεβού',
+      if (service != null && service.isNotEmpty) service else tr('Ραντεβού'),
       if (gym.isNotEmpty) gym,
     ].join(' — ');
     final details = [
@@ -2501,8 +2503,8 @@ class _ScheduleBookingCard extends StatelessWidget {
         else ...[
           SizedBox(
             width: 52,
-            child: Text(time,
-              style: GoogleFonts.manrope(
+            child: Text(tr(time),
+              style: GoogleFonts.inter(
                 fontSize: 20, fontWeight: FontWeight.w700,
                 color: isCancel ? _kGray : _kAccent)),
           ),
@@ -2511,17 +2513,17 @@ class _ScheduleBookingCard extends StatelessWidget {
         // Details
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (imgUrl != null && imgUrl.isNotEmpty)
-            Text(time,
-              style: GoogleFonts.manrope(
+            Text(tr(time),
+              style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w600,
                 color: isCancel ? _kGray : _kAccent)),
-          Text(service,
-            style: GoogleFonts.manrope(
+          Text(tr(service),
+            style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700,
               color: isCancel ? _kGray : Colors.white)),
           const SizedBox(height: 3),
-          Text(isTrainer ? 'Ως trainer' : 'Ως ασκούμενος',
-            style: GoogleFonts.manrope(
+          Text(tr(isTrainer ? 'Ως trainer' : tr('Ως ασκούμενος')),
+            style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: isTrainer ? const Color(0xFF3EE6FF) : _kAccent)),
@@ -2530,16 +2532,16 @@ class _ScheduleBookingCard extends StatelessWidget {
             const Icon(Icons.fitness_center_rounded, size: 11, color: _kGray),
             const SizedBox(width: 4),
             Flexible(child: Text(
-              [
+              tr([
                 gym,
                 if ((booking['location_name'] as String?)?.isNotEmpty == true) booking['location_name'],
-              ].join(' · '),
+              ].join(' · ')),
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(fontSize: 11, color: _kGray))),
+              style: GoogleFonts.inter(fontSize: 11, color: _kGray))),
             if (who != null && who.isNotEmpty) ...[
-              Text(' · ', style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
-              Flexible(child: Text(isTrainer ? 'Πελάτης: $who' : who, overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.manrope(fontSize: 11, color: _kGray))),
+              Text(tr(' · '), style: GoogleFonts.inter(fontSize: 11, color: _kGray)),
+              Flexible(child: Text(tr(isTrainer ? 'Πελάτης: $who' : who), overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(fontSize: 11, color: _kGray))),
             ],
           ]),
         ])),
@@ -2548,8 +2550,8 @@ class _ScheduleBookingCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
             decoration: BoxDecoration(
               color: _kBorder, borderRadius: BorderRadius.circular(8)),
-            child: Text('Ακυρώθηκε',
-              style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w600, color: _kGray)),
+            child: Text(tr('Ακυρώθηκε'),
+              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: _kGray)),
           )
         else if (onTap != null)
           const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
@@ -2568,7 +2570,7 @@ class _BookingDetailSheet extends StatelessWidget {
     if (date == null) return '';
     final parts = date.split('-');
     if (parts.length < 3) return date;
-    const months = ['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+    final months = [tr('Ιαν'),tr('Φεβ'),tr('Μαρ'),tr('Απρ'),tr('Μαΐ'),tr('Ιουν'),tr('Ιουλ'),tr('Αυγ'),tr('Σεπ'),tr('Οκτ'),tr('Νοε'),tr('Δεκ')];
     final m = int.tryParse(parts[1]) ?? 1;
     final t = (time ?? '').length >= 5 ? time!.substring(0, 5) : (time ?? '');
     return '${parts[2]} ${months[m - 1]} ${parts[0]}${t.isNotEmpty ? ', $t' : ''}';
@@ -2647,19 +2649,19 @@ class _BookingDetailSheet extends StatelessWidget {
               decoration: BoxDecoration(color: _kBorder, borderRadius: BorderRadius.circular(2))),
           ),
           const SizedBox(height: 20),
-          Text(service,
-            style: GoogleFonts.manrope(
+          Text(tr(service),
+            style: GoogleFonts.inter(
               fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 6),
-          Text(gym,
-            style: GoogleFonts.manrope(fontSize: 14, color: _kAccent, fontWeight: FontWeight.w600)),
+          Text(tr(gym),
+            style: GoogleFonts.inter(fontSize: 14, color: _kAccent, fontWeight: FontWeight.w600)),
           const SizedBox(height: 20),
           _DetailRow(Icons.calendar_today_outlined, _fmt(date, time)),
-          if (duration != null) _DetailRow(Icons.timer_outlined, '$duration λεπτά'),
+          if (duration != null) _DetailRow(Icons.timer_outlined, tr('$duration λεπτά')),
           if (staff != null) _DetailRow(Icons.person_outline_rounded, staff),
           _DetailRow(
             status == 'confirmed' ? Icons.check_circle_outline : Icons.schedule_outlined,
-            status == 'confirmed' ? 'Επιβεβαιωμένη' : 'Σε αναμονή',
+            status == 'confirmed' ? 'Επιβεβαιωμένη' : tr('Σε αναμονή'),
           ),
           if (onOpenGym != null) ...[
             const SizedBox(height: 8),
@@ -2676,20 +2678,20 @@ class _BookingDetailSheet extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: Text('Άνοιξε το γυμναστήριο', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+                child: Text(tr('Άνοιξε το γυμναστήριο'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
               ),
             ),
           ],
           const SizedBox(height: 24),
-          Text('Sync με ημερολόγιο',
-            style: GoogleFonts.manrope(
+          Text(tr('Sync με ημερολόγιο'),
+            style: GoogleFonts.inter(
               fontSize: 13, fontWeight: FontWeight.w700, color: _kGray)),
           const SizedBox(height: 10),
           Row(children: [
             Expanded(
               child: _CalBtn(
                 icon: Icons.calendar_month,
-                label: 'Google Calendar',
+                label: tr('Google Calendar'),
                 onTap: () => _syncGoogle(booking),
               ),
             ),
@@ -2697,7 +2699,7 @@ class _BookingDetailSheet extends StatelessWidget {
             Expanded(
               child: _CalBtn(
                 icon: Icons.apple,
-                label: 'iPhone Calendar',
+                label: tr('iPhone Calendar'),
                 onTap: () => _syncIcs(booking),
               ),
             ),
@@ -2718,7 +2720,7 @@ class _DetailRow extends StatelessWidget {
     child: Row(children: [
       Icon(icon, size: 16, color: _kGray),
       const SizedBox(width: 10),
-      Text(text, style: GoogleFonts.manrope(fontSize: 14, color: Colors.white)),
+      Text(tr(text), style: GoogleFonts.inter(fontSize: 14, color: Colors.white)),
     ]),
   );
 }
@@ -2741,7 +2743,7 @@ class _CalBtn extends StatelessWidget {
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(icon, size: 16, color: Colors.white),
         const SizedBox(width: 6),
-        Text(label, style: GoogleFonts.manrope(
+        Text(tr(label), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
       ]),
     ),
@@ -2760,12 +2762,12 @@ class _NoBookingsDay extends StatelessWidget {
         child: const Icon(Icons.calendar_today_outlined, color: _kGray, size: 26),
       ),
       const SizedBox(height: 16),
-      Text('Καμία κράτηση',
-        style: GoogleFonts.manrope(
+      Text(tr('Καμία κράτηση'),
+        style: GoogleFonts.inter(
           fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
       const SizedBox(height: 6),
-      Text('Δεν έχεις κρατήσεις αυτή την ημέρα.',
-        style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+      Text(tr('Δεν έχεις κρατήσεις αυτή την ημέρα.'),
+        style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
     ]),
   );
 }
@@ -2847,7 +2849,7 @@ class _MyGymsTabState extends State<_MyGymsTab> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Σφάλμα: $e'), backgroundColor: Colors.red.shade700));
+        SnackBar(content: Text(tr('Σφάλμα: $e')), backgroundColor: Colors.red.shade700));
     }
   }
 
@@ -2860,8 +2862,8 @@ class _MyGymsTabState extends State<_MyGymsTab> {
 
     Widget _sectionLabel(String label) => Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Text(label,
-        style: GoogleFonts.manrope(
+      child: Text(tr(label),
+        style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: _kGray, letterSpacing: 0.5)),
     );
@@ -2884,16 +2886,16 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                 children: [
                   // Header
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Τα Γυμναστήριά Μου',
-                      style: GoogleFonts.manrope(
+                    Text(tr('Τα Γυμναστήριά Μου'),
+                      style: GoogleFonts.inter(
                         fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-                    Text('$totalCount γυμναστήρια',
-                      style: GoogleFonts.manrope(fontSize: 12, color: _kGray)),
+                    Text(tr('$totalCount γυμναστήρια'),
+                      style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
                   ]),
                   const SizedBox(height: 20),
 
                   if (gyms.isNotEmpty) ...[
-                    _sectionLabel('Τα γυμναστήριά σου'),
+                    _sectionLabel(tr('Τα γυμναστήριά σου')),
                     ...() {
                       final seen = <String>{};
                       final cards = <Widget>[];
@@ -2923,7 +2925,7 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                     }(),
                   ],
                   if (staffPending.isNotEmpty || memberPending.isNotEmpty) ...[
-                    _sectionLabel('Εκκρεμή αιτήματα'),
+                    _sectionLabel(tr('Εκκρεμή αιτήματα')),
                     ...staffPending.map((req) => _PendingRequestCard(
                       request: req,
                       onCancel: () => _cancelRequest(req['id'] as String),
@@ -2956,11 +2958,11 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                           child: const Icon(Icons.add_rounded, color: Colors.white, size: 16),
                         ),
                         const SizedBox(height: 6),
-                        Text('Σύνδεσε νέο γυμναστήριο',
-                          style: GoogleFonts.manrope(
+                        Text(tr('Σύνδεσε νέο γυμναστήριο'),
+                          style: GoogleFonts.inter(
                             fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                        Text('Αναζήτηση και εγγραφή σε γυμναστήρια κοντά σου',
-                          style: GoogleFonts.manrope(fontSize: 11, color: _kGray)),
+                        Text(tr('Αναζήτηση και εγγραφή σε γυμναστήρια κοντά σου'),
+                          style: GoogleFonts.inter(fontSize: 11, color: _kGray)),
                       ]),
                     ),
                   ),
@@ -3006,19 +3008,19 @@ class _PendingRequestCard extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(request['app_name'] as String? ?? request['business_name'] as String? ?? 'Γυμναστήριο',
-              style: GoogleFonts.manrope(
+            Text(tr(request['app_name'] as String? ?? request['business_name'] as String? ?? tr('Γυμναστήριο')),
+              style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
             const SizedBox(height: 2),
             Text(
-              [
+              tr([
                 request['role'] == 'staff'
                     ? 'Ως ${request['specialty'] ?? 'προσωπικό'}'
-                    : 'Ως ασκούμενος',
+                    : tr('Ως ασκούμενος'),
                 if ((request['location_name'] as String?)?.isNotEmpty == true) request['location_name'],
-                'εκκρεμεί έγκριση',
-              ].join(' · '),
-              style: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFFFFA500))),
+                tr('εκκρεμεί έγκριση'),
+              ].join(' · ')),
+              style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFFFA500))),
           ]),
         ),
         const SizedBox(width: 8),
@@ -3030,8 +3032,8 @@ class _PendingRequestCard extends StatelessWidget {
               color: _kBorder,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text('Ακύρωση',
-              style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600, color: _kGray)),
+            child: Text(tr('Ακύρωση'),
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: _kGray)),
           ),
         ),
       ]),
@@ -3069,21 +3071,21 @@ class _ProfileTab extends StatelessWidget {
                   child: const Icon(Icons.person_rounded, color: _kGray, size: 40),
                 ),
                 const SizedBox(height: 12),
-                Text(user?.fullName ?? '',
-                  style: GoogleFonts.manrope(
+                Text(tr(user?.fullName ?? ''),
+                  style: GoogleFonts.inter(
                     fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
                 if ((user?.email ?? '').isNotEmpty)
-                  Text(user!.email,
-                    style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+                  Text(tr(user!.email),
+                    style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
               ]),
             ),
             const SizedBox(height: 32),
 
             // Settings rows
-            _SettingRow(icon: Icons.notifications_outlined, label: 'Ειδοποιήσεις', onTap: onNotifications),
+            _SettingRow(icon: Icons.notifications_outlined, label: tr('Ειδοποιήσεις'), onTap: onNotifications),
             _SettingRow(
               icon: Icons.draw_outlined,
-              label: 'Ηλεκτρονικές εγγραφές',
+              label: tr('Ηλεκτρονικές εγγραφές'),
               onTap: () => Navigator.push(context, MaterialPageRoute(
                 builder: (_) => ElectronicDocumentsScreen.global(
                   apiBase: 'https://passionate-grace-production-98ad.up.railway.app/api',
@@ -3101,21 +3103,21 @@ class _ProfileTab extends StatelessWidget {
             ),
             _SettingRow(
               icon: Icons.lock_outline_rounded,
-              label: 'Ασφάλεια & Απόρρητο',
+              label: tr('Ασφάλεια & Απόρρητο'),
               onTap: () {
                 showDialog<void>(
                   context: context,
                   builder: (ctx) => AlertDialog(
                     backgroundColor: _kCard,
-                    title: const Text('Λογαριασμός', style: TextStyle(color: Colors.white)),
+                    title: Text(tr('Λογαριασμός'), style: TextStyle(color: Colors.white)),
                     content: Text(
-                      user?.email.isNotEmpty == true
+                      tr(user?.email.isNotEmpty == true
                           ? 'Συνδεδεμένος ως ${user!.email}.'
-                          : 'Δεν υπάρχει email σε αυτόν τον λογαριασμό.',
+                          : tr('Δεν υπάρχει email σε αυτόν τον λογαριασμό.')),
                       style: const TextStyle(color: Colors.white70),
                     ),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('OK'))),
                     ],
                   ),
                 );
@@ -3123,7 +3125,7 @@ class _ProfileTab extends StatelessWidget {
             ),
             _SettingRow(
               icon: Icons.help_outline_rounded,
-              label: 'Βοήθεια & Υποστήριξη',
+              label: tr('Βοήθεια & Υποστήριξη'),
               onTap: () {
                 launchUrl(Uri.parse('mailto:support@omniplex.app?subject=OmniPlex'));
               },
@@ -3146,12 +3148,124 @@ class _ProfileTab extends StatelessWidget {
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Icon(Icons.logout_rounded, color: Colors.red.shade400, size: 18),
                   const SizedBox(width: 8),
-                  Text('Αποσύνδεση', style: GoogleFonts.manrope(
+                  Text(tr('Αποσύνδεση'), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.red.shade400)),
                 ]),
               ),
             ),
+            const SizedBox(height: 14),
+            Center(
+              child: TextButton(
+                onPressed: () => _confirmDeleteAccount(context),
+                child: Text(
+                  LanguageService.instance.isGreek ? 'Διαγραφή λογαριασμού' : 'Delete account',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red.shade300,
+                    decoration: TextDecoration.underline,
+                    decorationColor: Colors.red.shade300,
+                  ),
+                ),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final el = LanguageService.instance.isGreek;
+    final lines = el
+        ? const [
+            'Ο λογαριασμός σου στο OmniPlex διαγράφεται οριστικά και δεν αναιρείται.',
+            'Αποσυνδέεσαι αμέσως. Με το ίδιο email ή τηλέφωνο δεν ξαναμπαίνεις σε αυτόν τον λογαριασμό.',
+            'Χάνεις την πρόσβαση στα γυμναστήρια από την εφαρμογή και οι μελλοντικές κρατήσεις ακυρώνονται.',
+            'Το όνομα, το email και το τηλέφωνο αφαιρούνται από τα προφίλ μέλους.',
+            'Πληρωμές και συνδρομές μένουν στο γυμναστήριο, γιατί τις χρειάζεται για το ταμείο του.',
+            'Αν δουλεύεις σε γυμναστήριο, το προφίλ εργασίας μένει εκεί. Χάνεις μόνο την είσοδο από αυτόν τον λογαριασμό.',
+          ]
+        : const [
+            'Your OmniPlex account is deleted permanently. This cannot be undone.',
+            'You are signed out immediately and cannot sign in again with the same email or phone.',
+            'You lose access to your gyms in the app, and upcoming bookings are cancelled.',
+            'Your name, email and phone are removed from member profiles.',
+            'Payments and memberships stay with the gym, because it needs them for its records.',
+            'If you work at a gym, that work profile stays. You only lose access from this account.',
+          ];
+
+    var busy = false;
+    String? error;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _kCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) => SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + MediaQuery.viewPaddingOf(sheetCtx).bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: _kBorder, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                el ? 'Διαγραφή λογαριασμού' : 'Delete account',
+                style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+              const SizedBox(height: 14),
+              ...lines.map((line) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(line, style: GoogleFonts.inter(fontSize: 14, height: 1.4, color: Colors.white70)),
+              )),
+              if (error != null) ...[
+                const SizedBox(height: 4),
+                Text(error!, style: GoogleFonts.inter(fontSize: 13, color: Colors.red.shade300)),
+              ],
+              const SizedBox(height: 8),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.red.shade700,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: busy
+                    ? null
+                    : () async {
+                        setSheet(() { busy = true; error = null; });
+                        try {
+                          await globalAuth.deleteAccount();
+                          if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                          onLogout();
+                        } catch (e) {
+                          setSheet(() {
+                            busy = false;
+                            error = e.toString().replaceFirst('Exception: ', '');
+                          });
+                        }
+                      },
+                child: busy
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(
+                        el ? 'Διαγραφή λογαριασμού' : 'Delete account',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                      ),
+              ),
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(sheetCtx),
+                child: Text(el ? 'Άκυρο' : 'Cancel', style: const TextStyle(color: Colors.white54)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -3180,7 +3294,7 @@ class _SettingRow extends StatelessWidget {
         Icon(icon, color: _kGray, size: 18),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(label, style: GoogleFonts.manrope(
+          child: Text(tr(label), style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
         ),
         const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
@@ -3218,7 +3332,7 @@ class _OmniHeader extends StatelessWidget {
           if (guest)
             GestureDetector(
               onTap: onLogin,
-              child: Text('Σύνδεση', style: GoogleFonts.manrope(
+              child: Text(tr('Σύνδεση'), style: GoogleFonts.inter(
                 fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFFC52473))),
             )
           else
@@ -3251,7 +3365,7 @@ class _OmniHeader extends StatelessWidget {
                   border: Border.all(color: _kBorder),
                 ),
                 alignment: Alignment.center,
-                child: Text(letter, style: GoogleFonts.manrope(
+                child: Text(tr(letter), style: GoogleFonts.inter(
                   fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
@@ -3319,13 +3433,13 @@ class _GlobalNotificationsPageState extends State<_GlobalNotificationsPage> {
       appBar: AppBar(
         backgroundColor: _kBg,
         foregroundColor: Colors.white,
-        title: Text('Ειδοποιήσεις', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        title: Text(tr('Ειδοποιήσεις'), style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _kAccent))
           : _items.isEmpty
-              ? Center(child: Text('Δεν υπάρχουν ειδοποιήσεις',
-                  style: GoogleFonts.manrope(color: _kGray)))
+              ? Center(child: Text(tr('Δεν υπάρχουν ειδοποιήσεις'),
+                  style: GoogleFonts.inter(color: _kGray)))
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                   itemCount: _items.length,
@@ -3343,16 +3457,16 @@ class _GlobalNotificationsPageState extends State<_GlobalNotificationsPage> {
                           border: Border.all(color: unread ? _kAccent.withValues(alpha: 0.45) : _kBorder),
                         ),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(item['title'] as String? ?? 'Ειδοποίηση',
-                            style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                          Text(tr(item['title'] as String? ?? tr('Ειδοποίηση')),
+                            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                           if ((item['body'] as String?)?.isNotEmpty == true) ...[
                             const SizedBox(height: 4),
-                            Text(item['body'] as String, style: GoogleFonts.manrope(fontSize: 13, color: _kGray)),
+                            Text(tr(item['body'] as String), style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
                           ],
                           if ((item['gym_name'] as String?)?.isNotEmpty == true) ...[
                             const SizedBox(height: 6),
-                            Text(item['gym_name'] as String,
-                              style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w600, color: _kAccent)),
+                            Text(tr(item['gym_name'] as String),
+                              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: _kAccent)),
                           ],
                         ]),
                       ),

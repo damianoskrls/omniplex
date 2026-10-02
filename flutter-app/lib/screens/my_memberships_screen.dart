@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class MyMembershipsScreen extends StatefulWidget {
   const MyMembershipsScreen({super.key});
@@ -88,7 +90,7 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('My Memberships', style: GoogleFonts.spaceGrotesk(
+        Text(tr('My Memberships'), style: GoogleFonts.inter(
           fontSize: 24, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.6)),
         Container(
@@ -122,7 +124,7 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(tabs[i], style: GoogleFonts.spaceGrotesk(
+                      child: Text(tr(tabs[i]), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700,
                         color: active ? Colors.white : kGray,
                         letterSpacing: 0.35)),
@@ -151,7 +153,7 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
   }
 
   Widget _buildSectionLabel() {
-    return Text('2 ACTIVE MEMBERSHIPS', style: GoogleFonts.manrope(
+    return Text(tr('2 ACTIVE MEMBERSHIPS'), style: GoogleFonts.inter(
       fontSize: 12, fontWeight: FontWeight.w600,
       color: kGray, letterSpacing: 0.3));
   }
@@ -184,9 +186,9 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Fitness Club Athens', style: GoogleFonts.manrope(
+                    Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                    Text('10 Class Pack', style: GoogleFonts.manrope(
+                    Text(tr('10 Class Pack'), style: GoogleFonts.inter(
                       fontSize: 12, color: kGray)),
                   ],
                 ),
@@ -200,7 +202,7 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
                   border: Border.all(color: kBorder2),
                 ),
                 child: Center(
-                  child: Text('PACK', style: GoogleFonts.spaceGrotesk(
+                  child: Text(tr('PACK'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kGray, letterSpacing: 0.25)),
                 ),
@@ -212,9 +214,9 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Classes Remaining', style: GoogleFonts.manrope(
+              Text(tr('Classes Remaining'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
-              Text('8 / 10', style: GoogleFonts.spaceGrotesk(
+              Text(tr('8 / 10'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w700, color: kLime)),
             ],
           ),
@@ -247,10 +249,10 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
               children: [
                 const Icon(Icons.calendar_today_outlined, color: kGray, size: 14),
                 const SizedBox(width: 8),
-                Text('Expires', style: GoogleFonts.manrope(
+                Text(tr('Expires'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                 const Spacer(),
-                Text('Oct 28', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Oct 28'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
               ],
             ),
@@ -291,9 +293,9 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Urban Fitness', style: GoogleFonts.manrope(
+                    Text(tr('Urban Fitness'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                    Text('Monthly Unlimited', style: GoogleFonts.manrope(
+                    Text(tr('Monthly Unlimited'), style: GoogleFonts.inter(
                       fontSize: 12, color: kGray)),
                   ],
                 ),
@@ -309,7 +311,7 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
                   ],
                 ),
                 child: Center(
-                  child: Text('Active', style: GoogleFonts.spaceGrotesk(
+                  child: Text(tr('Active'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kBg, letterSpacing: 0.25)),
                 ),
@@ -333,10 +335,10 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Unlimited Access', style: GoogleFonts.spaceGrotesk(
+                      Text(tr('Unlimited Access'), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700,
                         color: kLime, letterSpacing: -0.35)),
-                      Text('No visit limits this cycle', style: GoogleFonts.manrope(
+                      Text(tr('No visit limits this cycle'), style: GoogleFonts.inter(
                         fontSize: 12, color: kGray)),
                     ],
                   ),
@@ -353,10 +355,10 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
               children: [
                 const Icon(Icons.sync, color: kGray, size: 14),
                 const SizedBox(width: 8),
-                Text('Renews', style: GoogleFonts.manrope(
+                Text(tr('Renews'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                 const Spacer(),
-                Text('Nov 5', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Nov 5'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
               ],
             ),
@@ -379,7 +381,7 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('View Details', style: GoogleFonts.spaceGrotesk(
+          Text(tr('View Details'), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: 0.3)),
           const SizedBox(width: 8),
@@ -413,10 +415,10 @@ class _MyMembershipsScreenState extends State<MyMembershipsScreen> {
             children: [
               Icon(item.$1, color: active ? kLime : kDim, size: 20),
               const SizedBox(height: 6),
-              Text(item.$2,
+              Text(tr(item.$2),
                 style: active
-                  ? GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
-                  : GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w600, color: kDim)),
+                  ? GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
+                  : GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: kDim)),
             ],
           );
         }).toList(),

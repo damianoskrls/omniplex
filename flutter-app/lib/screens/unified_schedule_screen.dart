@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class UnifiedScheduleScreen extends StatefulWidget {
   const UnifiedScheduleScreen({super.key});
@@ -34,19 +36,19 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     _buildDaySection(
-                      label: 'MONDAY, OCT 21',
+                      label: tr('MONDAY, OCT 21'),
                       isCurrent: true,
                       classes: [
                         _ClassData(
                           time: '18:30', duration: '60 MIN',
-                          title: 'CrossFit\nIntermediate',
+                          title: tr('CrossFit\nIntermediate'),
                           gym: 'Fitness Club Athens',
                           trainerName: 'Maria',
                           accentColor: kLime,
                         ),
                         _ClassData(
                           time: '20:00', duration: '45 MIN',
-                          title: 'Yoga Flow',
+                          title: tr('Yoga Flow'),
                           gym: 'Urban Fitness',
                           trainerName: 'Alex',
                           accentColor: kCyan,
@@ -55,12 +57,12 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                     ),
                     const SizedBox(height: 32),
                     _buildDaySection(
-                      label: 'TUESDAY, OCT 22',
+                      label: tr('TUESDAY, OCT 22'),
                       isCurrent: false,
                       classes: [
                         _ClassData(
                           time: '07:30', duration: '50 MIN',
-                          title: 'Personal\nTraining',
+                          title: tr('Personal\nTraining'),
                           gym: 'Fitness Club Athens',
                           trainerName: 'Maria',
                           accentColor: Colors.white24,
@@ -69,8 +71,8 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                     ),
                     const SizedBox(height: 32),
                     Center(
-                      child: Text('END OF SCHEDULED BOOKINGS',
-                        style: GoogleFonts.manrope(
+                      child: Text(tr('END OF SCHEDULED BOOKINGS'),
+                        style: GoogleFonts.inter(
                           fontSize: 10, fontWeight: FontWeight.w700,
                           color: const Color(0xFF4B5563), letterSpacing: 3.0)),
                     ),
@@ -97,7 +99,7 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('MY SCHEDULE', style: GoogleFonts.spaceGrotesk(
+                  Text(tr('MY SCHEDULE'), style: GoogleFonts.inter(
                     fontSize: 24, fontWeight: FontWeight.w800,
                     color: Colors.white, letterSpacing: -0.6)),
                   Container(
@@ -132,7 +134,7 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                         borderRadius: BorderRadius.circular(9999),
                         border: Border.all(color: active ? kLime : _kBorder26),
                       ),
-                      child: Text(_gyms[i].toUpperCase(), style: GoogleFonts.manrope(
+                      child: Text(tr(_gyms[i].toUpperCase()), style: GoogleFonts.inter(
                         fontSize: 12, fontWeight: FontWeight.w700,
                         color: active ? kBg : _kGray9C, letterSpacing: 0.6)),
                     ),
@@ -162,9 +164,9 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                               width: 2),
                           ),
                         ),
-                        child: Text(_views[i].toUpperCase(),
+                        child: Text(tr(_views[i].toUpperCase()),
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.manrope(
+                          style: GoogleFonts.inter(
                             fontSize: 12, fontWeight: FontWeight.w700,
                             color: active ? kLime : _kGray6B,
                             letterSpacing: 1.2)),
@@ -204,7 +206,7 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(label, style: GoogleFonts.spaceGrotesk(
+              child: Text(tr(label), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w900,
                 color: isCurrent ? kCyan : _kGray6B,
                 letterSpacing: 2.4)),
@@ -259,11 +261,11 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                         // Time column
                         Column(
                           children: [
-                            Text(cls.time, style: GoogleFonts.spaceGrotesk(
+                            Text(tr(cls.time), style: GoogleFonts.inter(
                               fontSize: 18, fontWeight: FontWeight.w700,
                               color: Colors.white)),
                             const SizedBox(height: 6),
-                            Text(cls.duration, style: GoogleFonts.manrope(
+                            Text(tr(cls.duration), style: GoogleFonts.inter(
                               fontSize: 10, fontWeight: FontWeight.w700,
                               color: _kGray6B, letterSpacing: -0.5)),
                           ],
@@ -275,10 +277,10 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(cls.title, style: GoogleFonts.manrope(
+                            Text(tr(cls.title), style: GoogleFonts.inter(
                               fontSize: 16, fontWeight: FontWeight.w700,
                               color: Colors.white)),
-                            Text(cls.gym, style: GoogleFonts.manrope(
+                            Text(tr(cls.gym), style: GoogleFonts.inter(
                               fontSize: 12, color: kCyan)),
                           ],
                         ),
@@ -292,7 +294,7 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: kLime.withValues(alpha: 0.20)),
                       ),
-                      child: Text('CONFIRMED', style: GoogleFonts.manrope(
+                      child: Text(tr('CONFIRMED'), style: GoogleFonts.inter(
                         fontSize: 9, fontWeight: FontWeight.w700,
                         color: kLime, letterSpacing: 0.9)),
                     ),
@@ -318,11 +320,11 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                         const SizedBox(width: 8),
                         RichText(
                           text: TextSpan(
-                            style: GoogleFonts.manrope(fontSize: 12, color: _kGray9C),
+                            style: GoogleFonts.inter(fontSize: 12, color: _kGray9C),
                             children: [
                               const TextSpan(text: 'Trainer: '),
                               TextSpan(text: cls.trainerName,
-                                style: GoogleFonts.manrope(
+                                style: GoogleFonts.inter(
                                   fontSize: 12, fontWeight: FontWeight.w700,
                                   color: Colors.white)),
                             ],
@@ -332,7 +334,7 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                     ),
                     Row(
                       children: [
-                        Text('DETAILS', style: GoogleFonts.manrope(
+                        Text(tr('DETAILS'), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w700,
                           color: _kGray6B, letterSpacing: 1.2)),
                         const SizedBox(width: 4),
@@ -390,7 +392,7 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
                   child: const Icon(Icons.person, color: Colors.white, size: 14),
                 ),
                 const SizedBox(height: 4),
-                Text('PROFILE', style: GoogleFonts.manrope(
+                Text(tr('PROFILE'), style: GoogleFonts.inter(
                   fontSize: 9, fontWeight: FontWeight.w700,
                   color: _kGray6B, letterSpacing: 0.9)),
               ],
@@ -426,7 +428,7 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          Text('SCHEDULE', style: GoogleFonts.manrope(
+          Text(tr('SCHEDULE'), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: kLime, letterSpacing: 0.9)),
         ],
@@ -442,7 +444,7 @@ class _UnifiedScheduleScreenState extends State<UnifiedScheduleScreen> {
         children: [
           Icon(icon, color: active ? kLime : _kGray6B, size: 22),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
         ],

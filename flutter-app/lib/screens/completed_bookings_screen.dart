@@ -11,6 +11,8 @@ import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import 'workout_complete_screen.dart';
 import 'goals_screen.dart';
+import '../l10n/tr.dart';
+
 
 class CompletedBookingsScreen extends StatefulWidget {
   const CompletedBookingsScreen({super.key});
@@ -83,9 +85,9 @@ class _CompletedBookingsScreenState extends State<CompletedBookingsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(_error!),
+                      Text(tr(_error!)),
                       const SizedBox(height: 16),
-                      ElevatedButton(onPressed: _load, child: Text(AppStrings.of(context).retryBtn)),
+                      ElevatedButton(onPressed: _load, child: Text(tr(AppStrings.of(context).retryBtn))),
                     ],
                   ),
                 )
@@ -99,20 +101,20 @@ class _CompletedBookingsScreenState extends State<CompletedBookingsScreen> {
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          Text(AppStrings.of(context).completedHistory, style: Theme.of(context).textTheme.titleMedium),
+                          Text(tr(AppStrings.of(context).completedHistory), style: Theme.of(context).textTheme.titleMedium),
                           const Spacer(),
                           TextButton(
                             onPressed: () => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const GoalsScreen()),
                             ),
-                            child: Text(AppStrings.of(context).completedGoalsBtn),
+                            child: Text(tr(AppStrings.of(context).completedGoalsBtn)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
                       if (_pendingConfirm.isNotEmpty) ...[
-                        Text(AppStrings.of(context).completedPendingSection, style: Theme.of(context).textTheme.titleMedium),
+                        Text(tr(AppStrings.of(context).completedPendingSection), style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 10),
                         ...List.generate(_pendingConfirm.length, (index) {
                           final booking = _pendingConfirm[index];
@@ -136,7 +138,7 @@ class _CompletedBookingsScreenState extends State<CompletedBookingsScreen> {
                         )
                       else if (_completed.isNotEmpty) ...[
                         if (_pendingConfirm.isNotEmpty)
-                          Text(AppStrings.of(context).completedCompletedSection, style: Theme.of(context).textTheme.titleMedium),
+                          Text(tr(AppStrings.of(context).completedCompletedSection), style: Theme.of(context).textTheme.titleMedium),
                         if (_pendingConfirm.isNotEmpty) const SizedBox(height: 10),
                         ...List.generate(_completed.length, (index) {
                           final booking = _completed[index];
@@ -167,7 +169,7 @@ class _KpiSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(AppStrings.of(context).completedPerformance, style: Theme.of(context).textTheme.titleMedium),
+        Text(tr(AppStrings.of(context).completedPerformance), style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -208,7 +210,7 @@ class _KpiSection extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      AppStrings.of(context).completedGoalProgress,
+                      tr(AppStrings.of(context).completedGoalProgress),
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
@@ -232,7 +234,7 @@ class _KpiSection extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                AppStrings.of(context).completedStats(stats.sessionsThisMonth, stats.goal.targetSessions, totalCompleted),
+                tr(AppStrings.of(context).completedStats(stats.sessionsThisMonth, stats.goal.targetSessions, totalCompleted)),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -266,10 +268,10 @@ class _KpiTile extends StatelessWidget {
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 8),
           Text(
-            value,
+            tr(value),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
-          Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
+          Text(tr(label), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
         ],
       ),
     );
@@ -293,9 +295,9 @@ class _PendingConfirmCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(booking.serviceName, style: Theme.of(context).textTheme.titleMedium),
+                Text(tr(booking.serviceName), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 6),
-                Text(dateFmt.format(booking.startsAt), style: Theme.of(context).textTheme.bodyMedium),
+                Text(tr(dateFmt.format(booking.startsAt)), style: Theme.of(context).textTheme.bodyMedium),
                 const SizedBox(height: 8),
                 PillChip(
                   label: AppStrings.of(context).completedNoCheckin,
@@ -305,7 +307,7 @@ class _PendingConfirmCard extends StatelessWidget {
               ],
             ),
           ),
-          TextButton(onPressed: onConfirm, child: Text(AppStrings.of(context).confirmAttendance)),
+          TextButton(onPressed: onConfirm, child: Text(tr(AppStrings.of(context).confirmAttendance))),
         ],
       ),
     );
@@ -344,13 +346,13 @@ class _CompletedCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(booking.serviceName, style: Theme.of(context).textTheme.titleMedium),
+                Text(tr(booking.serviceName), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     const Icon(Icons.schedule, size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
-                    Text(dateFmt.format(booking.startsAt), style: Theme.of(context).textTheme.bodyMedium),
+                    Text(tr(dateFmt.format(booking.startsAt)), style: Theme.of(context).textTheme.bodyMedium),
                   ],
                 ),
                 if (booking.staffName.isNotEmpty) ...[
@@ -359,7 +361,7 @@ class _CompletedCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
                       const SizedBox(width: 6),
-                      Text(AppStrings.of(context).withStaff(booking.staffName), style: Theme.of(context).textTheme.bodyMedium),
+                      Text(tr(AppStrings.of(context).withStaff(booking.staffName)), style: Theme.of(context).textTheme.bodyMedium),
                     ],
                   ),
                 ],
@@ -389,7 +391,7 @@ class _CompletedCard extends StatelessWidget {
                 if (booking.feedbackNote != null && booking.feedbackNote!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
-                    booking.feedbackNote!,
+                    tr(booking.feedbackNote!),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
                   ),
                 ],
@@ -400,7 +402,7 @@ class _CompletedCard extends StatelessWidget {
                     child: TextButton(
                       onPressed: onOpenTips,
                       child: Text(
-                        booking.feedbackRating == null ? AppStrings.of(context).completedFeedbackBtn : AppStrings.of(context).completedViewTipsBtn,
+                        tr(booking.feedbackRating == null ? AppStrings.of(context).completedFeedbackBtn : AppStrings.of(context).completedViewTipsBtn),
                       ),
                     ),
                   ),

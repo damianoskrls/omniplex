@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../config/tenant_config.dart';
+import '../l10n/tr.dart';
+
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -138,8 +140,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       Container(width: 128, height: 1, color: const Color(0xFF2A2B30)),
                       const SizedBox(height: 12),
                       Text(
-                        'PRECISION FITNESS ACCESS',
-                        style: GoogleFonts.spaceGrotesk(
+                        tr('PRECISION FITNESS ACCESS'),
+                        style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.w400,
                           color: const Color(0xFF5A5C63),
@@ -295,8 +297,8 @@ class _SystemsReady extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(
-          'SYSTEMS READY',
-          style: GoogleFonts.spaceGrotesk(
+          tr('SYSTEMS READY'),
+          style: GoogleFonts.inter(
             fontSize: 10,
             fontWeight: FontWeight.w400,
             color: const Color(0xFF9A9CA3),
@@ -396,7 +398,7 @@ class _OmniplexWordmark extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       text: TextSpan(
-        style: GoogleFonts.spaceGrotesk(
+        style: GoogleFonts.inter(
           fontSize: 48,
           fontWeight: FontWeight.w700,
           letterSpacing: -1.2,
@@ -546,16 +548,16 @@ class _GymSplashScreenState extends State<GymSplashScreen>
                   _GymInitial(name: config.appName, color: primary),
                 const SizedBox(height: 28),
                 Text(
-                  config.appName,
-                  style: GoogleFonts.manrope(
+                  tr(config.appName),
+                  style: GoogleFonts.inter(
                     fontSize: 28, fontWeight: FontWeight.w700,
                     color: Colors.white, letterSpacing: -0.5),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Καλωσήρθες',
-                  style: GoogleFonts.manrope(fontSize: 14, color: const Color(0xFF9A9CA3)),
+                  tr('Καλωσήρθες'),
+                  style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF9A9CA3)),
                 ),
                 const SizedBox(height: 36),
                 SizedBox(
@@ -582,7 +584,7 @@ class _GymInitial extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Text(
-      name.isNotEmpty ? name[0].toUpperCase() : '?',
+      tr(name.isNotEmpty ? name[0].toUpperCase() : '?'),
       style: TextStyle(color: color, fontSize: 44, fontWeight: FontWeight.w700),
     ),
   );
@@ -595,7 +597,7 @@ class _Tagline extends StatelessWidget {
     return RichText(
       textAlign: TextAlign.center,
       text: TextSpan(
-        style: GoogleFonts.manrope(
+        style: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w400,
           color: const Color(0xFF9A9CA3),

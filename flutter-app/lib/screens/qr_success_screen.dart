@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class QrSuccessScreen extends StatelessWidget {
   const QrSuccessScreen({super.key});
@@ -98,13 +100,13 @@ class QrSuccessScreen extends StatelessWidget {
   Widget _buildTitle() {
     return Column(
       children: [
-        Text("YOU'RE CHECKED IN", style: GoogleFonts.spaceGrotesk(
+        Text(tr("YOU'RE CHECKED IN"), style: GoogleFonts.inter(
           fontSize: 36, fontWeight: FontWeight.w800,
           color: Colors.white, letterSpacing: -0.9,
           height: 1.1),
           textAlign: TextAlign.center),
         const SizedBox(height: 12),
-        Text('ENTRY AUTHORIZED', style: GoogleFonts.manrope(
+        Text(tr('ENTRY AUTHORIZED'), style: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w700,
           color: kLime, letterSpacing: 1.4)),
       ],
@@ -131,11 +133,11 @@ class QrSuccessScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('LOCATION', style: GoogleFonts.manrope(
+                      Text(tr('LOCATION'), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: _kGray6B, letterSpacing: 0.5)),
                       const SizedBox(height: 4),
-                      Text('Fitness Club Athens', style: GoogleFonts.manrope(
+                      Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                         fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                     ],
                   ),
@@ -148,11 +150,11 @@ class QrSuccessScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('TIME', style: GoogleFonts.manrope(
+                      Text(tr('TIME'), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: _kGray6B, letterSpacing: 0.5)),
                       const SizedBox(height: 4),
-                      Text('18:25', style: GoogleFonts.manrope(
+                      Text(tr('18:25'), style: GoogleFonts.inter(
                         fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                     ],
                   ),
@@ -160,11 +162,11 @@ class QrSuccessScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('DATE', style: GoogleFonts.manrope(
+                      Text(tr('DATE'), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: _kGray6B, letterSpacing: 0.5)),
                       const SizedBox(height: 4),
-                      Text('Monday, 28 Oct', style: GoogleFonts.manrope(
+                      Text(tr('Monday, 28 Oct'), style: GoogleFonts.inter(
                         fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                     ],
                   ),
@@ -194,10 +196,10 @@ class QrSuccessScreen extends StatelessWidget {
     return RichText(
       textAlign: TextAlign.center,
       text: TextSpan(
-        style: GoogleFonts.manrope(fontSize: 18, color: _kGray9C),
+        style: GoogleFonts.inter(fontSize: 18, color: _kGray9C),
         children: [
           const TextSpan(text: 'Turnstile is unlocked.\n'),
-          TextSpan(text: 'Have a great workout!', style: GoogleFonts.manrope(
+          TextSpan(text: 'Have a great workout!', style: GoogleFonts.inter(
             fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
         ],
       ),
@@ -214,7 +216,7 @@ class QrSuccessScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('DONE', style: GoogleFonts.spaceGrotesk(
+          Text(tr('DONE'), style: GoogleFonts.inter(
             fontSize: 18, fontWeight: FontWeight.w900,
             color: kBg, letterSpacing: 0.9)),
           const SizedBox(width: 12),
@@ -230,7 +232,7 @@ class QrSuccessScreen extends StatelessWidget {
       children: [
         const Icon(Icons.receipt_outlined, color: Color(0xFF6B7280), size: 14),
         const SizedBox(width: 8),
-        Text('VIEW SUMMARY', style: GoogleFonts.manrope(
+        Text(tr('VIEW SUMMARY'), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: _kGray6B, letterSpacing: 1.2)),
       ],

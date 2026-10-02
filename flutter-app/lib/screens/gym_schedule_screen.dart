@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class GymScheduleScreen extends StatefulWidget {
   const GymScheduleScreen({super.key, this.gymName = 'Fitness Club Athens'});
@@ -70,7 +72,7 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
                   const SizedBox(height: 28),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text('Tuesday, June 23', style: GoogleFonts.spaceGrotesk(
+                    child: Text(tr('Tuesday, June 23'), style: GoogleFonts.inter(
                       fontSize: 18, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.45)),
                   ),
@@ -116,10 +118,10 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.gymName, style: GoogleFonts.spaceGrotesk(
+                Text(tr(widget.gymName), style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: -0.45)),
-                Text('Class Schedule', style: GoogleFonts.manrope(
+                Text(tr('Class Schedule'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
               ],
             ),
@@ -158,7 +160,7 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: Text(t, style: GoogleFonts.manrope(
+                  child: Text(tr(t), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w700,
                     color: active ? kBg : kGray)),
                 ),
@@ -176,7 +178,7 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('June 2024', style: GoogleFonts.spaceGrotesk(
+          Text(tr('June 2024'), style: GoogleFonts.inter(
             fontSize: 18, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.45)),
           Row(
@@ -186,7 +188,7 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
                 decoration: const BoxDecoration(color: kLime, shape: BoxShape.circle),
               ),
               const SizedBox(width: 6),
-              Text('5 classes today', style: GoogleFonts.manrope(
+              Text(tr('5 classes today'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
             ],
           ),
@@ -217,11 +219,11 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_days[i], style: GoogleFonts.manrope(
+                  Text(tr(_days[i]), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: active ? kBg : kGray)),
                   const SizedBox(height: 4),
-                  Text('${_dates[i]}', style: GoogleFonts.spaceGrotesk(
+                  Text(tr('${_dates[i]}'), style: GoogleFonts.inter(
                     fontSize: 16, fontWeight: FontWeight.w700,
                     color: active ? kBg : Colors.white)),
                 ],
@@ -246,7 +248,7 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Class Categories', style: GoogleFonts.manrope(
+            Text(tr('Class Categories'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
             const SizedBox(height: 12),
             Wrap(
@@ -261,7 +263,7 @@ class _GymScheduleScreenState extends State<GymScheduleScreen> {
                       color: Color(c.$2), shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 6),
-                  Text(c.$1, style: GoogleFonts.manrope(
+                  Text(tr(c.$1), style: GoogleFonts.inter(
                     fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
                 ],
               )).toList(),
@@ -314,10 +316,10 @@ class _ClassCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(data.time, style: GoogleFonts.spaceGrotesk(
+                      Text(tr(data.time), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                       const SizedBox(height: 2),
-                      Text(data.period, style: GoogleFonts.manrope(
+                      Text(tr(data.period), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w600, color: kGray)),
                     ],
                   ),
@@ -337,12 +339,12 @@ class _ClassCard extends StatelessWidget {
                               color: Color(data.dotColor), shape: BoxShape.circle),
                           ),
                           const SizedBox(width: 8),
-                          Text(data.name, style: GoogleFonts.manrope(
+                          Text(tr(data.name), style: GoogleFonts.inter(
                             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text('${data.coach} · ${data.duration}', style: GoogleFonts.manrope(
+                      Text(tr('${data.coach} · ${data.duration}'), style: GoogleFonts.inter(
                         fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                       const SizedBox(height: 6),
                       Row(
@@ -350,7 +352,7 @@ class _ClassCard extends StatelessWidget {
                           Icon(Icons.people_outline, color: Color(data.spotsColor), size: 12),
                           const SizedBox(width: 6),
                           Flexible(
-                            child: Text(data.spots, style: GoogleFonts.manrope(
+                            child: Text(tr(data.spots), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700,
                               color: Color(data.spotsColor))),
                           ),
@@ -368,7 +370,7 @@ class _ClassCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
-                    child: Text('Book', style: GoogleFonts.manrope(
+                    child: Text(tr('Book'), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
                   ),
                 ),

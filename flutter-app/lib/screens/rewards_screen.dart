@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key, required this.apiBase, required this.token});
@@ -35,12 +37,12 @@ class _RewardsScreenState extends State<RewardsScreen> {
       );
       final body = jsonDecode(res.body);
       if (res.statusCode != 200) {
-        _error = body['error']?.toString() ?? 'Σφάλμα';
+        _error = body['error']?.toString() ?? tr('Σφάλμα');
       } else {
         _data = Map<String, dynamic>.from(body as Map);
       }
     } catch (_) {
-      _error = 'Σφάλμα σύνδεσης';
+      _error = tr('Σφάλμα σύνδεσης');
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -58,7 +60,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
     if (res.statusCode != 200) {
       final body = jsonDecode(res.body);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(body['error']?.toString() ?? 'Δεν ενεργοποιήθηκε')),
+        SnackBar(content: Text(tr(body['error']?.toString() ?? tr('Δεν ενεργοποιήθηκε')))),
       );
       return;
     }
@@ -66,12 +68,12 @@ class _RewardsScreenState extends State<RewardsScreen> {
   }
 
   String _perk(Map reward) {
-    if (reward['reward_type'] == 'discount_percent') return '${reward['discount_percent']}% στην επόμενη drop-in';
+    if (reward['reward_type'] == 'discount_percent') return tr('${reward['discount_percent']}% στην επόμενη drop-in');
     if (reward['reward_type'] == 'discount_fixed') {
       final euros = ((reward['discount_cents'] as num?) ?? 0) / 100;
-      return '${euros.toStringAsFixed(2)}€ στην επόμενη drop-in';
+      return tr('${euros.toStringAsFixed(2)}€ στην επόμενη drop-in');
     }
-    return 'Αποκλειστικά για συχνούς επισκέπτες';
+    return tr('Αποκλειστικά για συχνούς επισκέπτες');
   }
 
   @override
@@ -80,28 +82,28 @@ class _RewardsScreenState extends State<RewardsScreen> {
     final rewards = (data?['rewards'] as List?)?.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() ?? [];
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Επιβράβευση')),
+      appBar: AppBar(title: Text(tr('Επιβράβευση'))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.white70)))
+              ? Center(child: Text(tr(_error!), style: const TextStyle(color: Colors.white70)))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
                       Text(
-                        '${data?['points'] ?? 0} πόντοι · ${data?['visits_30d'] ?? 0} παρουσίες τις τελευταίες 30 ημέρες',
+                        tr('${data?['points'] ?? 0} πόντοι · ${data?['visits_30d'] ?? 0} παρουσίες τις τελευταίες 30 ημέρες'),
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Οι προσφορές ανοίγουν μόνο όταν έχεις τις παρουσίες και τους πόντους που ζητά το γυμναστήριο.',
+                      Text(
+                        tr('Οι προσφορές ανοίγουν μόνο όταν έχεις τις παρουσίες και τους πόντους που ζητά το γυμναστήριο.'),
                         style: TextStyle(color: AppColors.textSecondary, height: 1.4),
                       ),
                       const SizedBox(height: 16),
                       if (rewards.isEmpty)
-                        const Text('Το γυμναστήριο δεν έχει ακόμα προσφορές.', style: TextStyle(color: AppColors.textSecondary))
+                        Text(tr('Το γυμναστήριο δεν έχει ακόμα προσφορές.'), style: TextStyle(color: AppColors.textSecondary))
                       else
                         ...rewards.map((reward) {
                           final claimed = reward['claimed'] == true || reward['claimed'] == 1;
@@ -116,26 +118,26 @@ class _RewardsScreenState extends State<RewardsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(reward['title']?.toString() ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                Text(tr(reward['title']?.toString() ?? ''), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                                 const SizedBox(height: 4),
-                                Text(_perk(reward), style: const TextStyle(color: AppColors.textSecondary)),
+                                Text(tr(_perk(reward)), style: const TextStyle(color: AppColors.textSecondary)),
                                 if ((reward['description']?.toString() ?? '').isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 4),
-                                    child: Text(reward['description'].toString(), style: const TextStyle(color: Colors.white70)),
+                                    child: Text(tr(reward['description'].toString()), style: const TextStyle(color: Colors.white70)),
                                   ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  '${reward['points_cost'] ?? 0} πόντοι · ${reward['min_visits'] ?? 0} παρουσίες',
+                                  tr('${reward['points_cost'] ?? 0} πόντοι · ${reward['min_visits'] ?? 0} παρουσίες'),
                                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                                 ),
                                 const SizedBox(height: 8),
                                 if (claimed)
-                                  const Text('Ενεργή', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600))
+                                  Text(tr('Ενεργή'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600))
                                 else
                                   FilledButton(
                                     onPressed: eligible ? () => _redeem(reward['id'].toString()) : null,
-                                    child: Text(eligible ? 'Ενεργοποίηση' : 'Κλειδωμένη'),
+                                    child: Text(tr(eligible ? 'Ενεργοποίηση' : tr('Κλειδωμένη'))),
                                   ),
                               ],
                             ),

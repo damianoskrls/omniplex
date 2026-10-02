@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class QrCheckinScreen extends StatefulWidget {
   const QrCheckinScreen({super.key, this.gymName});
@@ -92,7 +94,7 @@ class _QrCheckinScreenState extends State<QrCheckinScreen>
                         child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
                         onTap: () => Navigator.maybePop(context),
                       ),
-                      Text('Scan to Enter', style: GoogleFonts.spaceGrotesk(
+                      Text(tr('Scan to Enter'), style: GoogleFonts.inter(
                         fontSize: 18, fontWeight: FontWeight.w700,
                         color: Colors.white, letterSpacing: -0.45)),
                       _GlassButton(
@@ -112,9 +114,9 @@ class _QrCheckinScreenState extends State<QrCheckinScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
-                    'Scan the QR code at the gym entrance to check in.',
+                    tr('Scan the QR code at the gym entrance to check in.'),
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.manrope(
+                    style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600,
                       color: kGray, height: 1.4),
                   ),
@@ -192,7 +194,7 @@ class _QrCheckinScreenState extends State<QrCheckinScreen>
                           children: [
                             const Icon(Icons.location_on_outlined, color: Colors.white, size: 14),
                             const SizedBox(width: 8),
-                            Text(widget.gymName ?? 'Select Gym', style: GoogleFonts.manrope(
+                            Text(tr(widget.gymName ?? 'Select Gym'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                           ],
                         ),
@@ -365,15 +367,15 @@ class _QrSuccessScreenState extends State<QrSuccessScreen>
                       ),
                     ),
                     const SizedBox(height: 32),
-                    Text('Access Granted', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('Access Granted'), style: GoogleFonts.inter(
                       fontSize: 30, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.75)),
                     const SizedBox(height: 12),
-                    Text(widget.gymName, style: GoogleFonts.manrope(
+                    Text(tr(widget.gymName), style: GoogleFonts.inter(
                       fontSize: 16, color: kGray, height: 1.5)),
                     const SizedBox(height: 8),
-                    Text('Welcome! Enjoy your workout.',
-                      style: GoogleFonts.manrope(fontSize: 14, color: kDim)),
+                    Text(tr('Welcome! Enjoy your workout.'),
+                      style: GoogleFonts.inter(fontSize: 14, color: kDim)),
                   ],
                 ),
               ),

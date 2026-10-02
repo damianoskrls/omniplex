@@ -6,6 +6,8 @@ import '../models/user_stats.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 /// Shows the payment method bottom sheet for a given [PaymentRecord].
 /// Call via [showPaymentSheet].
@@ -65,7 +67,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
       final publishable = intent['publishable_key'] as String?;
       final intentId = intent['intent_id'] as String?;
       if (secret == null || publishable == null || intentId == null) {
-        throw ApiException('Η πληρωμή με κάρτα δεν είναι διαθέσιμη');
+        throw ApiException(tr('Η πληρωμή με κάρτα δεν είναι διαθέσιμη'));
       }
       Stripe.publishableKey = publishable;
       await Stripe.instance.initPaymentSheet(
@@ -81,18 +83,18 @@ class _PaymentSheetState extends State<PaymentSheet> {
       widget.onPaid();
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Η πληρωμή ολοκληρώθηκε')),
+        SnackBar(content: Text(tr('Η πληρωμή ολοκληρώθηκε'))),
       );
     } on StripeException catch (e) {
       if (e.error.code == FailureCode.Canceled) return;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε')),
+          SnackBar(content: Text(tr(e.error.localizedMessage ?? tr('Η πληρωμή ακυρώθηκε')))),
         );
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -107,13 +109,13 @@ class _PaymentSheetState extends State<PaymentSheet> {
       if (!mounted) return;
       setState(() {
         _storeRequested = true;
-        _storeMessage = result['message'] as String? ??
-            'Το αίτημα στάλθηκε. Μπορείς να πληρώσεις στο κατάστημα.';
+        final _storeMessage = result['message'] as String? ??
+            tr('Το αίτημα στάλθηκε. Μπορείς να πληρώσεις στο κατάστημα.');
       });
       widget.onPaid();
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -129,7 +131,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
       widget.onPaid();
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -161,10 +163,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          Text('Επιλογή τρόπου πληρωμής', style: Theme.of(context).textTheme.titleLarge),
+          Text(tr('Επιλογή τρόπου πληρωμής'), style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 4),
           Text(
-            '${widget.payment.description ?? "Πληρωμή"} · ${_eur(widget.payment.balanceCents)}',
+            tr('${widget.payment.description ?? "Πληρωμή"} · ${_eur(widget.payment.balanceCents)}'),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
@@ -172,8 +174,8 @@ class _PaymentSheetState extends State<PaymentSheet> {
           if (hasCard)
             PaymentMethodTile(
               icon: Icons.credit_card,
-              title: 'Κάρτα',
-              subtitle: 'Άμεση χρέωση μέσω Stripe',
+              title: tr('Κάρτα'),
+              subtitle: tr('Άμεση χρέωση μέσω Stripe'),
               selected: _selected == 'card',
               onTap: () => setState(() => _selected = 'card'),
             ),
@@ -181,8 +183,8 @@ class _PaymentSheetState extends State<PaymentSheet> {
           const SizedBox(height: 12),
           PaymentMethodTile(
             icon: Icons.storefront_outlined,
-            title: 'Θα πληρώσω στο κατάστημα',
-            subtitle: 'Ζήτα παράταση και πλήρωσε από κοντά',
+            title: tr('Θα πληρώσω στο κατάστημα'),
+            subtitle: tr('Ζήτα παράταση και πλήρωσε από κοντά'),
             selected: _selected == 'in_store',
             onTap: () => setState(() => _selected = 'in_store'),
           ),
@@ -191,8 +193,8 @@ class _PaymentSheetState extends State<PaymentSheet> {
             const SizedBox(height: 12),
             PaymentMethodTile(
               icon: Icons.account_balance,
-              title: 'Τραπεζική κατάθεση',
-              subtitle: 'Κατάθεσε και ειδοποίησε τον admin',
+              title: tr('Τραπεζική κατάθεση'),
+              subtitle: tr('Κατάθεσε και ειδοποίησε τον admin'),
               selected: _selected == 'bank_transfer',
               onTap: () => setState(() => _selected = 'bank_transfer'),
             ),
@@ -210,25 +212,25 @@ class _PaymentSheetState extends State<PaymentSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Στοιχεία κατάθεσης',
+                  Text(tr('Στοιχεία κατάθεσης'),
                       style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.lime)),
                   const SizedBox(height: 12),
                   if (bankMethod['beneficiary'] != null)
-                    BankRow('Δικαιούχος', bankMethod['beneficiary'] as String),
+                    BankRow(tr('Δικαιούχος'), bankMethod['beneficiary'] as String),
                   if (bankMethod['bank_name'] != null)
-                    BankRow('Τράπεζα', bankMethod['bank_name'] as String),
+                    BankRow(tr('Τράπεζα'), bankMethod['bank_name'] as String),
                   BankRow('IBAN', bankMethod['iban'] as String, copyable: true),
-                  BankRow('Ποσό', _eur(widget.payment.balanceCents)),
-                  BankRow('Αιτιολογία', widget.payment.description ?? 'Πληρωμή συνδρομής'),
+                  BankRow(tr('Ποσό'), _eur(widget.payment.balanceCents)),
+                  BankRow(tr('Αιτιολογία'), widget.payment.description ?? tr('Πληρωμή συνδρομής')),
                 ],
               ),
             ),
             const SizedBox(height: 16),
             if (_bankDeclared)
-              const Row(children: [
+              Row(children: [
                 const Icon(Icons.check_circle, color: AppColors.lime, size: 20),
                 SizedBox(width: 8),
-                Expanded(child: Text('Καταχωρήθηκε! Αναμένει επιβεβαίωση από το γυμναστήριο.',
+                Expanded(child: Text(tr('Καταχωρήθηκε! Αναμένει επιβεβαίωση από το γυμναστήριο.'),
                     style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w600))),
               ])
             else
@@ -244,7 +246,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
                   child: _submitting
                       ? const SizedBox(width: 20, height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                      : const Text('Έχω κάνει την κατάθεση'),
+                      : Text(tr('Έχω κάνει την κατάθεση')),
                 ),
               ),
           ],
@@ -263,7 +265,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 child: _submitting
                     ? const SizedBox(width: 20, height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                    : Text('Πληρωμή ${_eur(widget.payment.balanceCents)}'),
+                    : Text(tr('Πληρωμή ${_eur(widget.payment.balanceCents)}')),
               ),
             ),
           ],
@@ -275,13 +277,13 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 const Icon(Icons.check_circle, color: AppColors.lime, size: 20),
                 const SizedBox(width: 8),
                 Expanded(child: Text(
-                  _storeMessage ?? 'Το αίτημα στάλθηκε. Μπορείς να πληρώσεις στο κατάστημα.',
+                  tr(_storeMessage ?? tr('Το αίτημα στάλθηκε. Μπορείς να πληρώσεις στο κατάστημα.')),
                   style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w600),
                 )),
               ])
             else ...[
-              const Text(
-                'Το γυμναστήριο θα δει ότι θα πληρώσεις από κοντά. Το πακέτο μένει ανοιχτό για 7 μέρες μέχρι να περάσεις.',
+              Text(
+                tr('Το γυμναστήριο θα δει ότι θα πληρώσεις από κοντά. Το πακέτο μένει ανοιχτό για 7 μέρες μέχρι να περάσεις.'),
                 style: TextStyle(fontSize: 13, height: 1.4, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
@@ -297,7 +299,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
                   child: _submitting
                       ? const SizedBox(width: 20, height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                      : const Text('Αίτημα παράτασης'),
+                      : Text(tr('Αίτημα παράτασης')),
                 ),
               ),
             ],
@@ -340,11 +342,11 @@ class PaymentMethodTile extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: TextStyle(
+                Text(tr(title), style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: selected ? AppColors.lime : AppColors.textPrimary,
                 )),
-                Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                Text(tr(subtitle), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ]),
             ),
             if (selected) const Icon(Icons.check_circle, color: AppColors.lime, size: 20),
@@ -369,19 +371,19 @@ class BankRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 90,
-            child: Text(label, style: const TextStyle(
+            child: Text(tr(label), style: const TextStyle(
               color: AppColors.textSecondary, fontSize: 12,
             )),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            child: Text(tr(value), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           ),
           if (copyable)
             GestureDetector(
               onTap: () {
                 Clipboard.setData(ClipboardData(text: value));
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('IBAN αντιγράφηκε'), duration: Duration(seconds: 1)),
+                  SnackBar(content: Text(tr('IBAN αντιγράφηκε')), duration: Duration(seconds: 1)),
                 );
               },
               child: Icon(Icons.copy, size: 16, color: AppColors.lime),

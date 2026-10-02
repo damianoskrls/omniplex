@@ -5,6 +5,8 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../models/scale_reading.dart';
+import '../l10n/tr.dart';
+
 
 /// BLE sync for Xiaomi / Mi Body Composition scales and generic weight scales.
 class BleScaleService {
@@ -44,14 +46,14 @@ class BleScaleService {
   Future<void> startScan({Duration timeout = const Duration(seconds: 25)}) async {
     if (!isSupported) return;
     final ok = await ensurePermissions();
-    if (!ok) throw StateError('Δεν δόθηκαν δικαιώματα Bluetooth');
+    if (!ok) throw StateError(tr('Δεν δόθηκαν δικαιώματα Bluetooth'));
 
     await stopScan();
     _devices.clear();
     _emitDevices();
 
     if (await FlutterBluePlus.isSupported == false) {
-      throw StateError('Το Bluetooth δεν υποστηρίζεται σε αυτή τη συσκευή');
+      throw StateError(tr('Το Bluetooth δεν υποστηρίζεται σε αυτή τη συσκευή'));
     }
 
     await FlutterBluePlus.startScan(timeout: timeout);
@@ -150,7 +152,7 @@ class BleScaleService {
         onTimeout: () {
           final cached = _devices[deviceId]?.lastReading;
           if (cached != null) return cached;
-          throw TimeoutException('Δεν λήφθηκε μέτρηση. Βγες ξυπόλυτος στη ζυγαριά.');
+          throw TimeoutException(tr('Δεν λήφθηκε μέτρηση. Βγες ξυπόλυτος στη ζυγαριά.'));
         },
       );
 
@@ -182,7 +184,7 @@ class BleScaleService {
     if (adv.isNotEmpty) return adv;
     final platform = r.device.platformName.trim();
     if (platform.isNotEmpty) return platform;
-    return 'Ζυγαριά ${r.device.remoteId.str.substring(0, 8)}';
+    return tr('Ζυγαριά ${r.device.remoteId.str.substring(0, 8)}');
   }
 
   bool _looksLikeScale(String name) {
@@ -195,7 +197,7 @@ class BleScaleService {
         n.contains('mibfs') ||
         n.contains('xmtzc') ||
         n.contains('yunmai') ||
-        n.contains('ζυγ');
+        n.contains(tr('ζυγ'));
   }
 
   bool _hasXiaomiData(ScanResult r) => r.advertisementData.manufacturerData.containsKey(_xiaomiCompanyId);

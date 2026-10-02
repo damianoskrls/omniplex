@@ -12,6 +12,8 @@ import '../theme/app_colors.dart';
 import '../utils/image_upload.dart';
 import '../utils/message_content.dart';
 import '../widgets/message_bubble_content.dart';
+import '../l10n/tr.dart';
+
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({
@@ -124,7 +126,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted && !silent) setState(() => _loading = false);
@@ -185,7 +187,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       setState(() => _peers = peers);
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     }
   }
@@ -208,7 +210,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       _startChatPolling(threadId);
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted) setState(() => _loadingChat = false);
@@ -236,7 +238,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted) setState(() => _loadingChat = false);
@@ -283,7 +285,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -335,16 +337,16 @@ class _MessagesScreenState extends State<MessagesScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } on StateError catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.of(context).messagesFailedImage)),
+          SnackBar(content: Text(tr(AppStrings.of(context).messagesFailedImage))),
         );
       }
     } finally {
@@ -413,7 +415,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(24),
                             child: Text(
-                              AppStrings.of(context).messagesNoContacts,
+                              tr(AppStrings.of(context).messagesNoContacts),
                               textAlign: TextAlign.center,
                               style: const TextStyle(color: AppColors.textSecondary),
                             ),
@@ -434,7 +436,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           leading: CircleAvatar(
                             backgroundColor: AppColors.lime.withValues(alpha: 0.2),
                             child: Text(
-                              ((t['peer_name'] as String?) ?? '?').characters.first.toUpperCase(),
+                              tr(((t['peer_name'] as String?) ?? '?').characters.first.toUpperCase()),
                               style: const TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ),
@@ -460,7 +462,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                _formatWhen(t['last_message_at'] as String?),
+                                tr(_formatWhen(t['last_message_at'] as String?)),
                                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                               ),
                               if (unread > 0)
@@ -472,7 +474,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
-                                    '$unread',
+                                    tr('$unread'),
                                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                                   ),
                                 ),
@@ -506,7 +508,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   leading: CircleAvatar(
                     backgroundColor: AppColors.lime.withValues(alpha: 0.2),
                     child: Text(
-                      (p['peer_name'] as String? ?? '?').characters.first.toUpperCase(),
+                      tr((p['peer_name'] as String? ?? '?').characters.first.toUpperCase()),
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -565,7 +567,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 4),
                                   child: Text(
-                                    sender,
+                                    tr(sender),
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
@@ -580,7 +582,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _formatWhen(m['created_at'] as String?),
+                                tr(_formatWhen(m['created_at'] as String?)),
                                 style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                               ),
                             ],
@@ -615,7 +617,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       itemBuilder: (_, i) => InkWell(
                         onTap: () => _insertEmoji(commonEmojis[i]),
                         borderRadius: BorderRadius.circular(8),
-                        child: Center(child: Text(commonEmojis[i], style: const TextStyle(fontSize: 22))),
+                        child: Center(child: Text(tr(commonEmojis[i]), style: const TextStyle(fontSize: 22))),
                       ),
                     ),
                   ),

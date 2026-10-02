@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../l10n/tr.dart';
+
 
 class TenantConfig {
   TenantConfig({
@@ -101,7 +103,7 @@ class TenantConfig {
       }
     }
 
-    throw Exception('Δεν βρέθηκε config για "$slug". Έλεγξε το slug και τη σύνδεση.');
+    throw Exception(tr('Δεν βρέθηκε config για "$slug". Έλεγξε το slug και τη σύνδεση.'));
   }
 
   /// Opens a gym without waiting on the network. Uses the last saved config
@@ -208,7 +210,7 @@ class TenantConfig {
   static Future<String?> _pingHealth(String apiBaseUrl, Duration timeout) async {
     final base = apiBaseUrl.replaceAll(RegExp(r'/$'), '');
     final uri = Uri.tryParse('$base/api/health');
-    if (uri == null) return 'Μη έγκυρο api_base_url: $apiBaseUrl';
+    if (uri == null) return tr('Μη έγκυρο api_base_url: $apiBaseUrl');
 
     final client = HttpClient();
     try {
@@ -217,7 +219,7 @@ class TenantConfig {
       final response = await request.close().timeout(timeout);
       await response.drain();
       if (response.statusCode >= 200 && response.statusCode < 300) return null;
-      return 'Ο server απάντησε με σφάλμα (${response.statusCode}).';
+      return tr('Ο server απάντησε με σφάλμα (${response.statusCode}).');
     } on TimeoutException {
       return _unreachableMessage(apiBaseUrl);
     } on SocketException {
@@ -231,14 +233,9 @@ class TenantConfig {
 
   static String _unreachableMessage(String apiBaseUrl) {
     if (!_isLocalApi(apiBaseUrl)) {
-      return 'Δεν υπάρχει σύνδεση. Έλεγξε το ίντερνετ και δοκίμασε ξανά.';
+      return tr('Δεν υπάρχει σύνδεση. Έλεγξε το ίντερνετ και δοκίμασε ξανά.');
     }
-    return 'Δεν συνδέεται στο $apiBaseUrl\n\n'
-        '• iPhone και Mac στο ίδιο Wi‑Fi (όχι μόνο 5G)\n'
-        '• Στο Mac: ipconfig getifaddr en0 → βάλε το IP στο tenant_config.json\n'
-        '• Ρυθμίσεις iPhone → Handstand → Τοπικό Δίκτυο: Ενεργό\n'
-        '• Δοκίμασε στο Safari: $apiBaseUrl/api/health\n'
-        '• Μετά αλλαγή config: stop + flutter run (όχι hot reload)';
+    return tr('Δεν συνδέεται στο $apiBaseUrl\n\n' + '• iPhone και Mac στο ίδιο Wi‑Fi (όχι μόνο 5G)\n' + '• Στο Mac: ipconfig getifaddr en0 → βάλε το IP στο tenant_config.json\n' + '• Ρυθμίσεις iPhone → Handstand → Τοπικό Δίκτυο: Ενεργό\n' + '• Δοκίμασε στο Safari: $apiBaseUrl/api/health\n' + '• Μετά αλλαγή config: stop + flutter run (όχι hot reload)');
   }
 
   /// Opens a gym from the record OmniPlex already loaded, when the public

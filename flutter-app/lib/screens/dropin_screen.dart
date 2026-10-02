@@ -8,6 +8,8 @@ import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import 'dropin_confirm_screen.dart';
+import '../l10n/tr.dart';
+
 
 class DropinScreen extends StatefulWidget {
   const DropinScreen({super.key});
@@ -118,7 +120,7 @@ class _DropinScreenState extends State<DropinScreen> {
         _slotsMessage = result.message;
       });
     } catch (_) {
-      setState(() => _slotsMessage = 'Δεν ήταν δυνατή η φόρτωση ωρών');
+      setState(() => _slotsMessage = tr('Δεν ήταν δυνατή η φόρτωση ωρών'));
     } finally {
       if (mounted) setState(() => _loadingSlots = false);
     }
@@ -126,16 +128,16 @@ class _DropinScreenState extends State<DropinScreen> {
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(msg)), backgroundColor: Colors.red));
   }
 
   String _fmtDate(DateTime d) {
-    const days = ['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ', 'Κυρ'];
-    const months = ['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+    final days = [tr('Δευ'), tr('Τρι'), tr('Τετ'), tr('Πεμ'), tr('Παρ'), tr('Σαβ'), tr('Κυρ')];
+    final months = [tr('Ιαν'),tr('Φεβ'),tr('Μαρ'),tr('Απρ'),tr('Μαΐ'),tr('Ιουν'),tr('Ιουλ'),tr('Αυγ'),tr('Σεπ'),tr('Οκτ'),tr('Νοε'),tr('Δεκ')];
     final now = DateTime.now();
-    if (d.year == now.year && d.month == now.month && d.day == now.day) return 'Σήμερα';
+    if (d.year == now.year && d.month == now.month && d.day == now.day) return tr('Σήμερα');
     final tom = now.add(const Duration(days: 1));
-    if (d.year == tom.year && d.month == tom.month && d.day == tom.day) return 'Αύριο';
+    if (d.year == tom.year && d.month == tom.month && d.day == tom.day) return tr('Αύριο');
     return '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]}';
   }
 
@@ -159,8 +161,8 @@ class _DropinScreenState extends State<DropinScreen> {
                     child: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text('Drop-in', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  Expanded(
+                    child: Text(tr('Drop-in'), style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                   ),
                 ],
               ),
@@ -168,7 +170,7 @@ class _DropinScreenState extends State<DropinScreen> {
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text('Κλείσε μία συνεδρία χωρίς συνδρομή', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              child: Text(tr('Κλείσε μία συνεδρία χωρίς συνδρομή'), style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             ),
             const SizedBox(height: 16),
 
@@ -192,7 +194,7 @@ class _DropinScreenState extends State<DropinScreen> {
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(color: selected ? AppColors.lime : AppColors.border),
                         ),
-                        child: Text(loc.name, style: TextStyle(
+                        child: Text(tr(loc.name), style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: selected ? AppColors.lime : AppColors.textSecondary,
@@ -214,7 +216,7 @@ class _DropinScreenState extends State<DropinScreen> {
                     children: [
                       const Icon(Icons.bolt_outlined, size: 48, color: AppColors.textSecondary),
                       const SizedBox(height: 12),
-                      Text('Δεν υπάρχουν διαθέσιμα drop-in μαθήματα', style: TextStyle(color: AppColors.textSecondary)),
+                      Text(tr('Δεν υπάρχουν διαθέσιμα drop-in μαθήματα'), style: TextStyle(color: AppColors.textSecondary)),
                     ],
                   ),
                 ),
@@ -250,7 +252,7 @@ class _DropinScreenState extends State<DropinScreen> {
                         child: Row(
                           children: [
                             Text(
-                              s['name'] as String? ?? '',
+                              tr(s['name'] as String? ?? ''),
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -265,7 +267,7 @@ class _DropinScreenState extends State<DropinScreen> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                _priceStr(_dropin(s)),
+                                tr(_priceStr(_dropin(s))),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -310,7 +312,7 @@ class _DropinScreenState extends State<DropinScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              '${d.day}',
+                              tr('${d.day}'),
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -318,7 +320,7 @@ class _DropinScreenState extends State<DropinScreen> {
                               ),
                             ),
                             Text(
-                              _fmtDate(d).split(' ').first.length <= 4 ? _fmtDate(d).split(' ').first : _fmtDate(d).substring(0, 3),
+                              tr(_fmtDate(d).split(' ').first.length <= 4 ? _fmtDate(d).split(' ').first : _fmtDate(d).substring(0, 3)),
                               style: TextStyle(fontSize: 10, color: selected ? Colors.white : AppColors.textSecondary),
                             ),
                           ],
@@ -339,14 +341,14 @@ class _DropinScreenState extends State<DropinScreen> {
                       Icon(Icons.access_time_rounded, size: 14, color: AppColors.textSecondary),
                       const SizedBox(width: 4),
                       Text(
-                        '${_selectedService!['duration_mins']} λεπτά',
+                        tr('${_selectedService!['duration_mins']} λεπτά'),
                         style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                       ),
                       const SizedBox(width: 16),
                       Icon(Icons.bolt_rounded, size: 14, color: AppColors.lime),
                       const SizedBox(width: 4),
                       Text(
-                        _priceStr(_dropin(_selectedService!)) + ' / συνεδρία',
+                        tr(_priceStr(_dropin(_selectedService!)) + tr(' / συνεδρία')),
                         style: const TextStyle(fontSize: 13, color: AppColors.lime, fontWeight: FontWeight.w700),
                       ),
                     ],
@@ -362,7 +364,7 @@ class _DropinScreenState extends State<DropinScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(32),
                           child: Text(
-                            _slotsMessage ?? 'Δεν υπάρχουν διαθέσιμες ώρες για αυτή την ημέρα',
+                            tr(_slotsMessage ?? tr('Δεν υπάρχουν διαθέσιμες ώρες για αυτή την ημέρα')),
                             textAlign: TextAlign.center,
                             style: const TextStyle(color: AppColors.textSecondary),
                           ),
@@ -455,7 +457,7 @@ class _SlotCard extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    slot.time,
+                    tr(slot.time),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -470,10 +472,10 @@ class _SlotCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (staffName != null)
-                      Text(staffName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      Text(tr(staffName), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                     if (remainingSpots != null)
                       Text(
-                        isFull ? 'Πλήρης' : '$remainingSpots θέσεις',
+                        tr(isFull ? 'Πλήρης' : tr('$remainingSpots θέσεις')),
                         style: TextStyle(fontSize: 12, color: isFull ? Colors.red[400] : AppColors.textSecondary),
                       ),
                   ],
@@ -489,7 +491,7 @@ class _SlotCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      price,
+                      tr(price),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -498,9 +500,9 @@ class _SlotCard extends StatelessWidget {
                     ),
                   ),
                   if (!isFull)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 4),
-                      child: Text('Κράτηση →', style: TextStyle(fontSize: 11, color: AppColors.lime)),
+                      child: Text(tr('Κράτηση →'), style: TextStyle(fontSize: 11, color: AppColors.lime)),
                     ),
                 ],
               ),
@@ -554,7 +556,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
 
   Future<void> _book() async {
     if (!_isLoggedIn && _nameCtrl.text.trim().isEmpty) {
-      setState(() => _error = 'Απαιτείται όνομα');
+      setState(() => _error = tr('Απαιτείται όνομα'));
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -574,7 +576,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
         final key = intent['publishable_key'] as String?;
         final id = intent['intent_id'] as String?;
         if (secret == null || key == null || id == null) {
-          throw ApiException('Η πληρωμή με κάρτα δεν είναι διαθέσιμη');
+          throw ApiException(tr('Η πληρωμή με κάρτα δεν είναι διαθέσιμη'));
         }
         Stripe.publishableKey = key;
         await Stripe.instance.initPaymentSheet(
@@ -603,9 +605,9 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
       widget.onBooked(booking);
     } on StripeException catch (e) {
       if (e.error.code == FailureCode.Canceled) return;
-      setState(() => _error = e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε');
+      setState(() => _error = e.error.localizedMessage ?? tr('Η πληρωμή ακυρώθηκε'));
     } catch (e) {
-      setState(() => _error = e is ApiException ? e.message : '$e');
+      setState(() => _error = e is ApiException ? e.message : tr('$e'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -642,10 +644,10 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.service['name'] as String? ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                      Text(tr(widget.service['name'] as String? ?? ''), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                       const SizedBox(height: 4),
                       Text(
-                        '${widget.slot.time} · ${_shortDate(widget.date)}',
+                        tr('${widget.slot.time} · ${_shortDate(widget.date)}'),
                         style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                       ),
                     ],
@@ -658,7 +660,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: Text(_priceStr, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  child: Text(tr(_priceStr), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                 ),
               ],
             ),
@@ -666,24 +668,24 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
 
             // Guest form (only if not logged in)
             if (!_isLoggedIn) ...[
-              const Text('Στοιχεία', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+              Text(tr('Στοιχεία'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
               const SizedBox(height: 8),
-              _inputField(_nameCtrl, 'Ονοματεπώνυμο *', Icons.person_outline),
+              _inputField(_nameCtrl, tr('Ονοματεπώνυμο *'), Icons.person_outline),
               const SizedBox(height: 8),
-              _inputField(_phoneCtrl, 'Τηλέφωνο', Icons.phone_outlined),
+              _inputField(_phoneCtrl, tr('Τηλέφωνο'), Icons.phone_outlined),
               const SizedBox(height: 8),
               _inputField(_emailCtrl, 'Email', Icons.email_outlined, keyType: TextInputType.emailAddress),
               const SizedBox(height: 20),
             ],
 
             // Payment method
-            const Text('Τρόπος πληρωμής', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+            Text(tr('Τρόπος πληρωμής'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(child: _payOption('venue', Icons.store_outlined, 'Στο χώρο')),
+                Expanded(child: _payOption('venue', Icons.store_outlined, tr('Στο χώρο'))),
                 const SizedBox(width: 8),
-                Expanded(child: _payOption('card', Icons.credit_card_rounded, 'Κάρτα')),
+                Expanded(child: _payOption('card', Icons.credit_card_rounded, tr('Κάρτα'))),
               ],
             ),
 
@@ -697,8 +699,8 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: const Text(
-                    '💳 Η χρέωση θα γίνει με κάρτα κατά την κράτηση.',
+                  child: Text(
+                    tr('💳 Η χρέωση θα γίνει με κάρτα κατά την κράτηση.'),
                     style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ),
@@ -707,7 +709,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                child: Text(tr(_error!), style: const TextStyle(color: Colors.red, fontSize: 13)),
               ),
 
             const SizedBox(height: 20),
@@ -718,7 +720,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
                 onPressed: _loading ? null : _book,
                 child: _loading
                   ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text('Κράτηση · $_priceStr', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  : Text(tr('Κράτηση · $_priceStr'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               ),
             ),
           ],
@@ -733,7 +735,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
       keyboardType: keyType,
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
       decoration: InputDecoration(
-        hintText: hint,
+        hintText: tr(hint),
         hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
         prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 18),
         filled: true,
@@ -762,7 +764,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
           children: [
             Icon(icon, color: selected ? AppColors.lime : AppColors.textSecondary, size: 22),
             const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? AppColors.lime : AppColors.textSecondary)),
+            Text(tr(label), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? AppColors.lime : AppColors.textSecondary)),
           ],
         ),
       ),
@@ -770,7 +772,7 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
   }
 
   String _shortDate(DateTime d) {
-    const months = ['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+    final months = [tr('Ιαν'),tr('Φεβ'),tr('Μαρ'),tr('Απρ'),tr('Μαΐ'),tr('Ιουν'),tr('Ιουλ'),tr('Αυγ'),tr('Σεπ'),tr('Οκτ'),tr('Νοε'),tr('Δεκ')];
     return '${d.day} ${months[d.month - 1]}';
   }
 }

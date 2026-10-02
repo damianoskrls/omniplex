@@ -5,6 +5,8 @@ import '../config/tenant_config.dart';
 import '../models/user.dart';
 import 'api_service.dart';
 import 'biometric_auth_service.dart';
+import '../l10n/tr.dart';
+
 
 class AuthService extends ChangeNotifier {
   AuthService(this.config) : api = ApiService(config);
@@ -208,7 +210,7 @@ class AuthService extends ChangeNotifier {
     if (!_biometricAvailable) return false;
     final bio = BiometricAuthService.instance;
     final ok  = await bio.authenticate(
-        reason: 'Είσοδος με ${await bio.biometricLabel()}');
+        reason: tr('Είσοδος με ${await bio.biometricLabel()}'));
     if (!ok) return false;
 
     final token = await bio.readToken(_bizId);
@@ -230,7 +232,7 @@ class AuthService extends ChangeNotifier {
     if (!_biometricAvailable || !isLoggedIn || api.token == null) return false;
     final bio = BiometricAuthService.instance;
     final ok  = await bio.authenticate(
-        reason: 'Ενεργοποίηση εισόδου με ${await bio.biometricLabel()}');
+        reason: tr('Ενεργοποίηση εισόδου με ${await bio.biometricLabel()}'));
     if (!ok) return false;
     await bio.saveToken(_bizId, api.token!);
     await bio.setBiometricEnabled(_bizId, true);

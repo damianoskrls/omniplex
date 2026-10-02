@@ -6,6 +6,8 @@ import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class ElectronicDocumentsScreen extends StatefulWidget {
   const ElectronicDocumentsScreen.gym({super.key, required this.apiBase, required this.token})
@@ -53,15 +55,15 @@ class _ElectronicDocumentsScreenState extends State<ElectronicDocumentsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Ηλεκτρονικές εγγραφές')),
+      appBar: AppBar(title: Text(tr('Ηλεκτρονικές εγγραφές'))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
               child: _docs.isEmpty
-                  ? ListView(children: const [
+                  ? ListView(children: [
                       SizedBox(height: 80),
-                      Center(child: Text('Δεν υπάρχουν έγγραφα για υπογραφή', style: TextStyle(color: AppColors.textSecondary))),
+                      Center(child: Text(tr('Δεν υπάρχουν έγγραφα για υπογραφή'), style: TextStyle(color: AppColors.textSecondary))),
                     ])
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
@@ -73,9 +75,9 @@ class _ElectronicDocumentsScreenState extends State<ElectronicDocumentsScreen> {
                         return ListTile(
                           tileColor: AppColors.surface,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          title: Text(doc['title']?.toString() ?? 'Έγγραφο', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                          title: Text(doc['title']?.toString() ?? tr('Έγγραφο'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                           subtitle: Text(
-                            '${doc['gym_name'] ?? ''} · ${signed ? 'Υπογεγραμμένο' : 'Εκκρεμεί'}',
+                            tr('${doc['gym_name'] ?? ''} · ${signed ? 'Υπογεγραμμένο' : 'Εκκρεμεί'}'),
                             style: const TextStyle(color: AppColors.textSecondary),
                           ),
                           trailing: Icon(signed ? Icons.verified_outlined : Icons.draw_outlined, color: signed ? AppColors.lime : Colors.white70),
@@ -141,19 +143,19 @@ class _DocumentSignPageState extends State<_DocumentSignPage> {
       );
       final body = jsonDecode(res.body);
       if (res.statusCode != 200) {
-        _error = body['error']?.toString() ?? 'Σφάλμα';
+        _error = body['error']?.toString() ?? tr('Σφάλμα');
       } else {
         _doc = Map<String, dynamic>.from(body as Map);
       }
     } catch (_) {
-      _error = 'Σφάλμα σύνδεσης';
+      _error = tr('Σφάλμα σύνδεσης');
     }
     if (mounted) setState(() {});
   }
 
   Future<void> _submit() async {
     if (_points.whereType<Offset>().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Υπόγραψε στο πλαίσιο')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Υπόγραψε στο πλαίσιο'))));
       return;
     }
     setState(() => _sending = true);
@@ -176,11 +178,11 @@ class _DocumentSignPageState extends State<_DocumentSignPage> {
         Navigator.pop(context);
       } else {
         final body = jsonDecode(res.body);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(body['error']?.toString() ?? 'Αποτυχία')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(body['error']?.toString() ?? tr('Αποτυχία')))));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Αποτυχία υπογραφής')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Αποτυχία υπογραφής'))));
       }
     }
     if (mounted) setState(() => _sending = false);
@@ -193,26 +195,26 @@ class _DocumentSignPageState extends State<_DocumentSignPage> {
     final text = (doc?['gdpr_text'] ?? doc?['body'] ?? '').toString();
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: Text(doc?['title']?.toString() ?? 'Έγγραφο')),
+      appBar: AppBar(title: Text(doc?['title']?.toString() ?? tr('Έγγραφο'))),
       body: _error != null
-          ? Center(child: Text(_error!, style: const TextStyle(color: Colors.white70)))
+          ? Center(child: Text(tr(_error!), style: const TextStyle(color: Colors.white70)))
           : doc == null
               ? const Center(child: CircularProgressIndicator())
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    Text(doc['gym_name']?.toString() ?? '', style: const TextStyle(color: AppColors.textSecondary)),
+                    Text(tr(doc['gym_name']?.toString() ?? ''), style: const TextStyle(color: AppColors.textSecondary)),
                     const SizedBox(height: 8),
-                    Text(doc['full_name']?.toString() ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
+                    Text(tr(doc['full_name']?.toString() ?? ''), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14)),
-                      child: Text(text.replaceAll('**', ''), style: const TextStyle(color: Colors.white70, height: 1.5)),
+                      child: Text(tr(text.replaceAll('**', '')), style: const TextStyle(color: Colors.white70, height: 1.5)),
                     ),
                     if (!signed) ...[
                       const SizedBox(height: 16),
-                      const Text('Υπογραφή', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                      Text(tr('Υπογραφή'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
                       RepaintBoundary(
                         key: _padKey,
@@ -230,25 +232,25 @@ class _DocumentSignPageState extends State<_DocumentSignPage> {
                       ),
                       TextButton(
                         onPressed: () => setState(_points.clear),
-                        child: const Text('Εκκαθάριση'),
+                        child: Text(tr('Εκκαθάριση')),
                       ),
                       CheckboxListTile(
                         value: _agreed,
                         onChanged: (v) => setState(() => _agreed = v ?? false),
-                        title: const Text(
-                          'Διάβασα το κείμενο, συναινώ στην επεξεργασία των δεδομένων μου και αποδέχομαι την ηλεκτρονική υπογραφή.',
+                        title: Text(
+                          tr('Διάβασα το κείμενο, συναινώ στην επεξεργασία των δεδομένων μου και αποδέχομαι την ηλεκτρονική υπογραφή.'),
                           style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                         controlAffinity: ListTileControlAffinity.leading,
                       ),
                       FilledButton(
                         onPressed: _sending || !_agreed ? null : _submit,
-                        child: Text(_sending ? 'Αποστολή…' : 'Υπογραφή'),
+                        child: Text(tr(_sending ? 'Αποστολή…' : tr('Υπογραφή'))),
                       ),
                     ] else
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 20),
-                        child: Text('Το έγγραφο έχει υπογραφεί.', style: TextStyle(color: Colors.white)),
+                        child: Text(tr('Το έγγραφο έχει υπογραφεί.'), style: TextStyle(color: Colors.white)),
                       ),
                   ],
                 ),

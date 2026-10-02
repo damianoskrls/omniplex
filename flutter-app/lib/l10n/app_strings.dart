@@ -27,6 +27,15 @@ class AppStrings {
   String get nutrition    => _isEl ? 'Διατροφή'       : 'Nutrition';
   String get workouts     => _isEl ? 'Προπονήσεις'    : 'Workouts';
   String get more         => _isEl ? 'Περισσότερα'    : 'More';
+  String get navMyGym    => _isEl ? 'Το γυμναστήριό μου' : 'My Gym';
+  String get navBook     => _isEl ? 'Κράτηση'        : 'Book';
+  String get navWorkout  => _isEl ? 'Προπόνηση'      : 'Workout';
+  String get navAppointments => _isEl ? 'Ραντεβού'   : 'Appointments';
+  String get navPayments => _isEl ? 'Πληρωμές'       : 'Payments';
+  String get navMessages => _isEl ? 'Μηνύματα'       : 'Messages';
+  String get navClients  => _isEl ? 'Πελάτες'        : 'Clients';
+  String get navTrials   => _isEl ? 'Δοκιμαστικά'    : 'Trials';
+  String get navHours    => _isEl ? 'Ωράριο'         : 'Hours';
 
   // ── Greeting ─────────────────────────────────────────────────────────────
   String greeting(String name) => _isEl ? 'Γεια σου, $name!' : 'Hey, $name!';

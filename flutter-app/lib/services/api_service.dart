@@ -15,6 +15,8 @@ import '../models/nutrition.dart';
 import '../models/user.dart';
 import '../models/user_stats.dart';
 import '../models/workout_metrics.dart';
+import '../l10n/tr.dart';
+
 
 class ApiException implements Exception {
   ApiException(this.message, {this.statusCode, this.payload});
@@ -48,8 +50,7 @@ class ApiService {
     return request.timeout(
       _requestTimeout,
       onTimeout: () => throw ApiException(
-        'Ο server δεν απάντησε εγκαίρως ($_base).\n'
-        'Έλεγξε ότι τρέχει το admin-api στη θύρα 3001 και ότι iPhone/Mac είναι στο ίδιο δίκτυο.',
+        tr('Ο server δεν απάντησε εγκαίρως ($_base).\n' + 'Έλεγξε ότι τρέχει το admin-api στη θύρα 3001 και ότι iPhone/Mac είναι στο ίδιο δίκτυο.'),
       ),
     );
   }
@@ -360,7 +361,7 @@ class ApiService {
         isFull: map['is_full'] as bool? ?? false,
       );
     }).toList();
-    return (slots: slots, message: data['message'] as String?);
+    return (slots: slots, message: tr((data['message'] as String?) ?? ''));
   }
 
   Future<void> bookNutritionConsultation({
@@ -808,12 +809,12 @@ class ApiService {
         isFull: map['is_full'] as bool? ?? false,
         waitlistAvailable: map['waitlist_available'] as bool? ?? false,
         waitlistCount: map['waitlist_count'] as int?,
-        label: map['label'] as String?,
+        label: tr((map['label'] as String?) ?? ''),
         roomId: map['room_id'] as String?,
         roomName: map['room_name'] as String?,
         roomPhotoUrl: map['room_photo_url'] as String?,
         roomShortInfo: map['room_short_info'] as String?,
-        subtitle: map['subtitle'] as String?,
+        subtitle: tr((map['subtitle'] as String?) ?? ''),
         imageUrl: map['image_url'] as String?,
         iconKey: map['icon_key'] as String?,
         preparationTips: (map['preparation_tips'] as List? ?? [])
@@ -827,7 +828,7 @@ class ApiService {
     return (
       slots: parsed,
       featureWaitlist: data['feature_waitlist'] as bool? ?? false,
-      message: data['message'] as String?,
+      message: tr((data['message'] as String?) ?? ''),
       dayStatus: data['day_status'] as String?,
     );
   }
@@ -996,14 +997,14 @@ class ApiService {
     final streamed = await request.send().timeout(
       _uploadTimeout,
       onTimeout: () => throw ApiException(
-        'Η αποστολή εικόνας διήρκεσε πολύ. Δοκίμασε ξανά με καλύτερο Wi‑Fi.',
+        tr('Η αποστολή εικόνας διήρκεσε πολύ. Δοκίμασε ξανά με καλύτερο Wi‑Fi.'),
       ),
     );
     final res = await http.Response.fromStream(streamed);
     final data = _decode(res) as Map<String, dynamic>;
     final url = data['attachment_url'] as String?;
     if (url == null || url.isEmpty) {
-      throw ApiException('Αποτυχία αποστολής εικόνας');
+      throw ApiException(tr('Αποτυχία αποστολής εικόνας'));
     }
     return url;
   }
@@ -1260,17 +1261,17 @@ class ApiService {
           .timeout(
             timeout,
             onTimeout: () => throw ApiException(
-              'Η αποστολή διήρκεσε πολύ. Δοκίμασε ξανά με καλύτερο Wi‑Fi.',
+              tr('Η αποστολή διήρκεσε πολύ. Δοκίμασε ξανά με καλύτερο Wi‑Fi.'),
             ),
           );
     } on SocketException {
       throw ApiException(
-        'Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.',
+        tr('Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.'),
       );
     } on HttpException {
-      throw ApiException('Σφάλμα δικτύου. Δοκίμασε ξανά.');
+      throw ApiException(tr('Σφάλμα δικτύου. Δοκίμασε ξανά.'));
     } on FormatException {
-      throw ApiException('Μη έγκυρη απάντηση από τον server.');
+      throw ApiException(tr('Μη έγκυρη απάντηση από τον server.'));
     }
   }
 
@@ -1284,18 +1285,18 @@ class ApiService {
       if (timeout != null) {
         return await request.timeout(
           timeout,
-          onTimeout: () => throw ApiException('Ο βοηθός άργησε να απαντήσει. Δοκίμασε ξανά.'),
+          onTimeout: () => throw ApiException(tr('Ο βοηθός άργησε να απαντήσει. Δοκίμασε ξανά.')),
         );
       }
       return await _withTimeout(request);
     } on SocketException {
       throw ApiException(
-        'Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.',
+        tr('Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.'),
       );
     } on HttpException {
-      throw ApiException('Σφάλμα δικτύου. Δοκίμασε ξανά.');
+      throw ApiException(tr('Σφάλμα δικτύου. Δοκίμασε ξανά.'));
     } on FormatException {
-      throw ApiException('Μη έγκυρη απάντηση από τον server.');
+      throw ApiException(tr('Μη έγκυρη απάντηση από τον server.'));
     }
   }
 
@@ -1305,10 +1306,10 @@ class ApiService {
       return await _withTimeout(http.get(uri, headers: _headers));
     } on SocketException {
       throw ApiException(
-        'Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.',
+        tr('Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.'),
       );
     } on HttpException {
-      throw ApiException('Σφάλμα δικτύου. Δοκίμασε ξανά.');
+      throw ApiException(tr('Σφάλμα δικτύου. Δοκίμασε ξανά.'));
     }
   }
 
@@ -1321,7 +1322,7 @@ class ApiService {
       ));
     } on SocketException {
       throw ApiException(
-        'Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.',
+        tr('Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.'),
       );
     }
   }
@@ -1335,10 +1336,10 @@ class ApiService {
       ));
     } on SocketException {
       throw ApiException(
-        'Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.',
+        tr('Δεν συνδέεται ο server. Βεβαιώσου ότι τρέχει το admin-api στη θύρα 3001.'),
       );
     } on HttpException {
-      throw ApiException('Σφάλμα δικτύου. Δοκίμασε ξανά.');
+      throw ApiException(tr('Σφάλμα δικτύου. Δοκίμασε ξανά.'));
     }
   }
 
@@ -1347,12 +1348,12 @@ class ApiService {
     try {
       body = res.body.isEmpty ? null : jsonDecode(res.body);
     } catch (_) {
-      throw ApiException('Μη έγκυρη απάντηση από τον server.');
+      throw ApiException(tr('Μη έγκυρη απάντηση από τον server.'));
     }
     if (res.statusCode >= 200 && res.statusCode < 300) return body;
-    final message = body is Map ? (body['error'] as String? ?? 'Σφάλμα') : 'Σφάλμα';
+    final message = body is Map ? (body['error'] as String? ?? tr('Σφάλμα')) : tr('Σφάλμα');
     final payload = body is Map ? Map<String, dynamic>.from(body) : null;
-    throw ApiException(message, statusCode: res.statusCode, payload: payload);
+    throw ApiException(tr(message), statusCode: res.statusCode, payload: payload);
   }
 
   // ── Community ────────────────────────────────────────────────────────────────

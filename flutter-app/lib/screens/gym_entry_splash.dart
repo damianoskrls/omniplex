@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import '../l10n/tr.dart';
+
 
 const _apiBase = 'https://passionate-grace-production-98ad.up.railway.app/api';
 
@@ -126,9 +128,9 @@ class _GymEntrySplashState extends State<_GymEntrySplash> {
                   _mark(),
                 const SizedBox(height: 18),
                 Text(
-                  widget.name,
+                  tr(widget.name),
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.manrope(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
                 ),
               ],
             ),
@@ -148,8 +150,8 @@ class _GymEntrySplashState extends State<_GymEntrySplash> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        widget.name.isEmpty ? 'G' : widget.name.characters.first.toUpperCase(),
-        style: GoogleFonts.manrope(fontSize: 36, fontWeight: FontWeight.w800, color: const Color(0xFF7B3EAD)),
+        tr(widget.name.isEmpty ? 'G' : widget.name.characters.first.toUpperCase()),
+        style: GoogleFonts.inter(fontSize: 36, fontWeight: FontWeight.w800, color: const Color(0xFF7B3EAD)),
       ),
     );
   }

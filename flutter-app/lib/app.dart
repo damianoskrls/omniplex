@@ -11,6 +11,7 @@ import 'screens/my_orders_screen.dart';
 import 'screens/workout_complete_screen.dart';
 import 'services/auth_service.dart';
 import 'services/language_service.dart';
+import 'services/translation_service.dart';
 import 'services/notification_service.dart';
 import 'services/push_service.dart';
 import 'services/user_notification_sync.dart';
@@ -18,6 +19,8 @@ import 'screens/admin_shell_screen.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/splash_screen.dart' show SplashScreen, GymSplashScreen;
+import './l10n/tr.dart';
+
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -49,6 +52,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
     _wasLoggedIn = widget.auth.isLoggedIn;
     WidgetsBinding.instance.addObserver(this);
     LanguageService.instance.addListener(_onLocaleChanged);
+    TranslationService.instance.addListener(_onLocaleChanged);
     NotificationService.instance.onTap = _handleNotificationTap;
     PushService.instance.onTap = _handleNotificationTap;
     widget.auth.addListener(_onAuthChanged);
@@ -68,6 +72,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
     _splashTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     LanguageService.instance.removeListener(_onLocaleChanged);
+    TranslationService.instance.removeListener(_onLocaleChanged);
     widget.auth.removeListener(_onAuthChanged);
     UserNotificationSync.instance.stop();
     super.dispose();
@@ -166,7 +171,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
             accent:  AppColors.fromHex(widget.config.accentColor),
             child: MaterialApp(
               navigatorKey: appNavigatorKey,
-              title: widget.config.appName,
+              title: tr(widget.config.appName),
               debugShowCheckedModeBanner: false,
               locale: LanguageService.instance.locale,
               theme: AppTheme.fromConfig(widget.config),
@@ -180,7 +185,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                     );
                   }
                   if (auth.reconnecting) {
-                    return const Scaffold(
+                    return Scaffold(
                       backgroundColor: Color(0xFF0F0F12),
                       body: Center(
                         child: Column(
@@ -188,7 +193,7 @@ class _BookUpAppState extends State<BookUpApp> with WidgetsBindingObserver {
                           children: [
                             CircularProgressIndicator(color: Color(0xFFB8F55E)),
                             SizedBox(height: 20),
-                            Text('Σύνδεση στον server...',
+                            Text(tr('Σύνδεση στον server...'),
                                 style: TextStyle(color: Colors.white54, fontSize: 14)),
                           ],
                         ),

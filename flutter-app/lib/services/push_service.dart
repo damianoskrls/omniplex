@@ -9,6 +9,8 @@ import '../firebase_options.dart';
 import 'auth_service.dart';
 import 'global_auth_service.dart';
 import 'notification_service.dart';
+import '../l10n/tr.dart';
+
 
 typedef PushTapHandler = void Function(String payload);
 
@@ -29,7 +31,7 @@ class PushService {
   Future<bool> init() async {
     if (kIsWeb || _ready) return _ready;
     if (!DefaultFirebaseOptions.isConfigured) {
-      debugPrint('FCM: Firebase δεν είναι ρυθμισμένο — τρέξε flutterfire configure');
+      debugPrint(tr('FCM: Firebase δεν είναι ρυθμισμένο — τρέξε flutterfire configure'));
       return false;
     }
 
@@ -124,10 +126,10 @@ class PushService {
     final id = message.data['notification_id']?.toString() ?? '';
     if (id.isNotEmpty && claimNotification?.call(id) == false) return;
     final notification = message.notification;
-    final title = notification?.title ?? message.data['title'] as String? ?? 'Ειδοποίηση';
+    final title = notification?.title ?? message.data['title'] as String? ?? tr('Ειδοποίηση');
     final body = notification?.body ?? message.data['body'] as String? ?? '';
     final payload = payloadFromData(message.data);
-    NotificationService.instance.showInstant(title: title, body: body, payload: payload);
+    NotificationService.instance.showInstant(title: tr(title), body: body, payload: payload);
     onForegroundData?.call(Map<String, dynamic>.from(message.data));
   }
 

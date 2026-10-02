@@ -7,6 +7,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class AiAgentScreen extends StatefulWidget {
   const AiAgentScreen({super.key});
@@ -353,7 +355,7 @@ class _WelcomeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final quickEn = ['Book a class', 'My upcoming bookings', 'View schedule', 'Cancel a booking'];
-    final quickEl = ['Κλείσε μάθημα', 'Οι κρατήσεις μου', 'Δες πρόγραμμα', 'Ακύρωση κράτησης'];
+    final quickEl = [tr('Κλείσε μάθημα'), tr('Οι κρατήσεις μου'), tr('Δες πρόγραμμα'), tr('Ακύρωση κράτησης')];
     final quick = isEl ? quickEl : quickEn;
 
     return Center(
@@ -365,7 +367,7 @@ class _WelcomeCard extends StatelessWidget {
             const _AiAvatar(size: 96),
             const SizedBox(height: 20),
             Text(
-              agentName,
+              tr(agentName),
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -375,7 +377,7 @@ class _WelcomeCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              isEl ? 'Πώς μπορώ να σε βοηθήσω;' : 'How can I help you?',
+              tr(isEl ? 'Πώς μπορώ να σε βοηθήσω;' : 'How can I help you?'),
               style: const TextStyle(fontSize: 15, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 32),
@@ -393,7 +395,7 @@ class _WelcomeCard extends StatelessWidget {
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Text(
-                    q,
+                    tr(q),
                     style: const TextStyle(fontSize: 13.5, color: AppColors.textPrimary),
                   ),
                 ),
@@ -653,7 +655,7 @@ class _InputBar extends StatelessWidget {
               controller: controller,
               style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
               decoration: InputDecoration(
-                hintText: isEl ? 'Γράψε ή μίλα...' : 'Type or speak...',
+                hintText: tr(isEl ? 'Γράψε ή μίλα...' : 'Type or speak...'),
                 hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
                 filled: true,
                 fillColor: AppColors.bg,

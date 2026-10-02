@@ -5,6 +5,8 @@ import '../models/location.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class AddServiceScreen extends StatefulWidget {
   const AddServiceScreen({super.key});
@@ -51,16 +53,16 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   }
 
   String _sessions(dynamic value) {
-    if (value == null) return 'Απεριόριστες συνεδρίες';
+    if (value == null) return tr('Απεριόριστες συνεδρίες');
     final n = value is num ? value.toInt() : int.tryParse('$value');
-    if (n == null || n <= 0 || n >= 9999) return 'Απεριόριστες συνεδρίες';
-    return n == 1 ? '1 συνεδρία' : '$n συνεδρίες';
+    if (n == null || n <= 0 || n >= 9999) return tr('Απεριόριστες συνεδρίες');
+    return n == 1 ? '1 συνεδρία' : tr('$n συνεδρίες');
   }
 
   String _fmtSlot(String? date, String? time) {
     if (date == null || date.length < 10) return time ?? '';
-    const days = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
-    const months = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
+    final days = [tr('Δευτέρα'), tr('Τρίτη'), tr('Τετάρτη'), tr('Πέμπτη'), tr('Παρασκευή'), tr('Σάββατο'), tr('Κυριακή')];
+    final months = [tr('Ιαν'), tr('Φεβ'), tr('Μαρ'), tr('Απρ'), tr('Μαΐ'), tr('Ιουν'), tr('Ιουλ'), tr('Αυγ'), tr('Σεπ'), tr('Οκτ'), tr('Νοε'), tr('Δεκ')];
     final d = DateTime.tryParse(date);
     if (d == null) return '$date ${time ?? ''}'.trim();
     return '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]}, ${time ?? ''}'.trim();
@@ -73,20 +75,20 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Τι θέλεις να ζητήσεις;', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Το γυμναστήριο θα δει το αίτημα και θα το αποδεχτεί.',
+        title: Text(tr('Τι θέλεις να ζητήσεις;'), style: TextStyle(color: Colors.white)),
+        content: Text(
+          tr('Το γυμναστήριο θα δει το αίτημα και θα το αποδεχτεί.'),
           style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Άκυρο')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Άκυρο'))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, 'trial'),
-            child: const Text('Πρώτα δοκιμαστικό'),
+            child: Text(tr('Πρώτα δοκιμαστικό')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, 'enroll'),
-            child: const Text('Εγγραφή στο πακέτο'),
+            child: Text(tr('Εγγραφή στο πακέτο')),
           ),
         ],
       ),
@@ -101,12 +103,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         final picked = await showDialog<GymLocation>(
           context: context,
           builder: (ctx) => SimpleDialog(
-            title: const Text('Σε ποιο κατάστημα;'),
+            title: Text(tr('Σε ποιο κατάστημα;')),
             children: [
               for (final loc in locs.locations)
                 SimpleDialogOption(
                   onPressed: () => Navigator.pop(ctx, loc),
-                  child: Text(loc.displayLine.isEmpty ? loc.name : '${loc.name}\n${loc.displayLine}'),
+                  child: Text(tr(loc.displayLine.isEmpty ? loc.name : '${loc.name}\n${loc.displayLine}')),
                 ),
             ],
           ),
@@ -120,7 +122,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
       return;
     }
@@ -137,7 +139,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       } on ApiException catch (e) {
         if (mounted) {
           setState(() => _buyingId = null);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
         }
         return;
       }
@@ -145,7 +147,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       setState(() => _buyingId = null);
       if (slot == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Δεν βρέθηκε διαθέσιμο ραντεβού τις επόμενες 2 εβδομάδες')),
+          SnackBar(content: Text(tr('Δεν βρέθηκε διαθέσιμο ραντεβού τις επόμενες 2 εβδομάδες'))),
         );
         return;
       }
@@ -155,14 +157,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.surface,
-          title: const Text('Επόμενο διαθέσιμο', style: TextStyle(color: Colors.white)),
+          title: Text(tr('Επόμενο διαθέσιμο'), style: TextStyle(color: Colors.white)),
           content: Text(
-            '${locationName != null ? '$locationName\n' : ''}${_fmtSlot(trialDate, trialTime)}\n\nΘα λάβεις ειδοποίηση έγκρισης πριν κλειστεί το ραντεβού.',
+            tr('${locationName != null ? '$locationName\n' : ''}${_fmtSlot(trialDate, trialTime)}\n\nΘα λάβεις ειδοποίηση έγκρισης πριν κλειστεί το ραντεβού.'),
             style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Άκυρο')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Στείλε αίτημα')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Άκυρο'))),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Στείλε αίτημα'))),
           ],
         ),
       );
@@ -180,12 +182,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message']?.toString() ?? 'Το αίτημα στάλθηκε')),
+        SnackBar(content: Text(tr(result['message']?.toString() ?? tr('Το αίτημα στάλθηκε')))),
       );
       await _load();
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted) setState(() => _buyingId = null);
@@ -199,7 +201,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     try {
       final api = context.read<AuthService>().api;
       final result = await api.buyExtraPlan(planId);
-      var message = result['message'] as String? ?? 'Η υπηρεσία προστέθηκε.';
+      var message = result['message'] as String? ?? tr('Η υπηρεσία προστέθηκε.');
       if (result['mode'] == 'stripe') {
         Stripe.publishableKey = result['publishable_key'] as String;
         await Stripe.instance.initPaymentSheet(
@@ -214,21 +216,21 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           planId: planId,
           intentId: result['intent_id'] as String,
         );
-        message = confirmed['message'] as String? ?? 'Το πακέτο αγοράστηκε.';
+        final message = confirmed['message'] as String? ?? tr('Το πακέτο αγοράστηκε.');
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(message))));
       Navigator.pop(context, true);
     } on StripeException catch (e) {
       if (e.error.code == FailureCode.Canceled) return;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε')),
+          SnackBar(content: Text(tr(e.error.localizedMessage ?? tr('Η πληρωμή ακυρώθηκε')))),
         );
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted) setState(() => _buyingId = null);
@@ -241,18 +243,18 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bg,
-        title: const Text('Πρόσθεσε υπηρεσία'),
+        title: Text(tr('Πρόσθεσε υπηρεσία')),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
           : _error != null
-              ? Center(child: Text(_error!))
+              ? Center(child: Text(tr(_error!)))
               : _services.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Padding(
                         padding: EdgeInsets.all(24),
                         child: Text(
-                          'Έχεις ήδη όλες τις υπηρεσίες του γυμναστηρίου.',
+                          tr('Έχεις ήδη όλες τις υπηρεσίες του γυμναστηρίου.'),
                           textAlign: TextAlign.center,
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
@@ -285,20 +287,20 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            service['name']?.toString() ?? '',
+            tr(service['name']?.toString() ?? ''),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           if ((service['description']?.toString() ?? '').isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              service['description'].toString(),
+              tr(service['description'].toString()),
               style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
             ),
           ],
           const SizedBox(height: 12),
           if (plans.isEmpty)
-            const Text(
-              'Δεν υπάρχει πακέτο για αυτή την υπηρεσία.',
+            Text(
+              tr('Δεν υπάρχει πακέτο για αυτή την υπηρεσία.'),
               style: TextStyle(color: AppColors.textSecondary),
             )
           else
@@ -312,16 +314,16 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(plan['name']?.toString() ?? 'Πακέτο',
+                    Text(tr(plan['name']?.toString() ?? tr('Πακέτο')),
                         style: const TextStyle(fontWeight: FontWeight.w700)),
                     Text(
-                      '${_sessions(plan['sessions'])} · ${_price(cents)}',
+                      tr('${_sessions(plan['sessions'])} · ${_price(cents)}'),
                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 8),
                     if (pending != null)
                       Text(
-                        pending == 'trial' ? 'Εκκρεμεί αίτημα δοκιμαστικού' : 'Εκκρεμεί αίτημα εγγραφής',
+                        tr(pending == 'trial' ? 'Εκκρεμεί αίτημα δοκιμαστικού' : tr('Εκκρεμεί αίτημα εγγραφής')),
                         style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
                       )
                     else
@@ -334,11 +336,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                               onPressed: busy || _buyingId != null ? null : () => _buy(plan),
                               child: busy
                                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                  : const Text('Πλήρωσε τώρα'),
+                                  : Text(tr('Πλήρωσε τώρα')),
                             ),
                           OutlinedButton(
                             onPressed: busy || _buyingId != null ? null : () => _request(plan, serviceId),
-                            child: const Text('Αίτημα'),
+                            child: Text(tr('Αίτημα')),
                           ),
                         ],
                       ),

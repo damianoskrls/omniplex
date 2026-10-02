@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class PackageDetailsScreen extends StatelessWidget {
   const PackageDetailsScreen({super.key});
@@ -52,7 +54,7 @@ class PackageDetailsScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildCircleBtn(const Icon(Icons.chevron_left, color: Colors.white, size: 20)),
-                    Text('PACKAGE DETAILS', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('PACKAGE DETAILS'), style: GoogleFonts.inter(
                       fontSize: 18, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: 1.8)),
                     _buildCircleBtn(const Icon(Icons.share_outlined, color: Colors.white, size: 18)),
@@ -87,7 +89,7 @@ class PackageDetailsScreen extends StatelessWidget {
                   children: [
                     const Icon(Icons.calendar_month_outlined, color: kBg, size: 20),
                     const SizedBox(width: 12),
-                    Text('BOOK A SESSION', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('BOOK A SESSION'), style: GoogleFonts.inter(
                       fontSize: 16, fontWeight: FontWeight.w900,
                       color: kBg, letterSpacing: 3.2)),
                   ],
@@ -147,11 +149,11 @@ class PackageDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('FITNESS CLUB ATHENS', style: GoogleFonts.manrope(
+                Text(tr('FITNESS CLUB ATHENS'), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: kCyan, letterSpacing: 1.0)),
                 const SizedBox(height: 4),
-                Text('10 CLASS PACK', style: GoogleFonts.spaceGrotesk(
+                Text(tr('10 CLASS PACK'), style: GoogleFonts.inter(
                   fontSize: 36, fontWeight: FontWeight.w900,
                   color: Colors.white, letterSpacing: -0.9)),
               ],
@@ -185,13 +187,13 @@ class PackageDetailsScreen extends StatelessWidget {
                       decoration: const BoxDecoration(color: kLime, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 6),
-                    Text('✓ ACTIVE', style: GoogleFonts.manrope(
+                    Text(tr('✓ ACTIVE'), style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w700,
                       color: kLime)),
                   ],
                 ),
               ),
-              Text('USAGE DETAILS', style: GoogleFonts.manrope(
+              Text(tr('USAGE DETAILS'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700,
                 color: _kGray9C, letterSpacing: 1.0)),
             ],
@@ -204,14 +206,14 @@ class PackageDetailsScreen extends StatelessWidget {
               RichText(
                 text: TextSpan(
                   children: [
-                    TextSpan(text: '7', style: GoogleFonts.spaceGrotesk(
+                    TextSpan(text: '7', style: GoogleFonts.inter(
                       fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
-                    TextSpan(text: ' / 10', style: GoogleFonts.spaceGrotesk(
+                    TextSpan(text: ' / 10', style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700, color: _kGray6B)),
                   ],
                 ),
               ),
-              Text('SESSIONS REMAINING', style: GoogleFonts.manrope(
+              Text(tr('SESSIONS REMAINING'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700, color: kCyan)),
             ],
           ),
@@ -255,11 +257,11 @@ class PackageDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: _kGray6B, letterSpacing: 0.9)),
           const SizedBox(height: 4),
-          Text(date, style: GoogleFonts.manrope(
+          Text(tr(date), style: GoogleFonts.inter(
             fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 4),
         ],
@@ -283,7 +285,7 @@ class PackageDetailsScreen extends StatelessWidget {
             decoration: const BoxDecoration(
               border: Border(left: BorderSide(color: kLime, width: 2)),
             ),
-            child: Text('PACKAGE BENEFITS', style: GoogleFonts.manrope(
+            child: Text(tr('PACKAGE BENEFITS'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: 1.4)),
           ),
@@ -303,7 +305,7 @@ class PackageDetailsScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(b, style: GoogleFonts.manrope(
+                  child: Text(tr(b), style: GoogleFonts.inter(
                     fontSize: 14, color: _kD1)),
                 ),
               ],
@@ -324,7 +326,7 @@ class PackageDetailsScreen extends StatelessWidget {
             decoration: const BoxDecoration(
               border: Border(left: BorderSide(color: kCyan, width: 2)),
             ),
-            child: Text('PAYMENT INFO', style: GoogleFonts.manrope(
+            child: Text(tr('PAYMENT INFO'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: 1.4)),
           ),
@@ -332,14 +334,14 @@ class PackageDetailsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('STATUS', style: GoogleFonts.manrope(
+              Text(tr('STATUS'), style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w700,
                 color: _kGray9C, letterSpacing: 0.12)),
               Row(
                 children: [
                   const Icon(Icons.check_circle, color: kLime, size: 14),
                   const SizedBox(width: 8),
-                  Text('PAID', style: GoogleFonts.spaceGrotesk(
+                  Text(tr('PAID'), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w900,
                     color: Colors.white, fontStyle: FontStyle.italic, letterSpacing: 0.16)),
                 ],
@@ -349,15 +351,15 @@ class PackageDetailsScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
           const SizedBox(height: 16),
-          Text('PURCHASE HISTORY', style: GoogleFonts.manrope(
+          Text(tr('PURCHASE HISTORY'), style: GoogleFonts.inter(
             fontSize: 11, fontWeight: FontWeight.w700, color: _kGray9C)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('25 Oct 2025', style: GoogleFonts.manrope(
+              Text(tr('25 Oct 2025'), style: GoogleFonts.inter(
                 fontSize: 14, color: Colors.white)),
-              Text('€120', style: GoogleFonts.spaceGrotesk(
+              Text(tr('€120'), style: GoogleFonts.inter(
                 fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
             ],
           ),
@@ -375,7 +377,7 @@ class PackageDetailsScreen extends StatelessWidget {
           children: [
             const Icon(Icons.download_outlined, color: _kGray6B, size: 14),
             const SizedBox(width: 8),
-            Text('DOWNLOAD INVOICE', style: GoogleFonts.manrope(
+            Text(tr('DOWNLOAD INVOICE'), style: GoogleFonts.inter(
               fontSize: 10, fontWeight: FontWeight.w700,
               color: _kGray6B, letterSpacing: 1.0)),
           ],
@@ -388,7 +390,7 @@ class PackageDetailsScreen extends StatelessWidget {
           children: [
             const Icon(Icons.cancel_outlined, color: Color(0xCCEF4444), size: 14),
             const SizedBox(width: 8),
-            Text('CANCEL PACKAGE', style: GoogleFonts.manrope(
+            Text(tr('CANCEL PACKAGE'), style: GoogleFonts.inter(
               fontSize: 10, fontWeight: FontWeight.w700,
               color: const Color(0xCCEF4444), letterSpacing: 1.0)),
           ],

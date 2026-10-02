@@ -11,6 +11,8 @@ import 'package:gal/gal.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/workout_share_details.dart';
+import '../l10n/tr.dart';
+
 
 class SharePhotoService {
   Future<Uint8List?> loadLogoBytes({
@@ -80,7 +82,7 @@ class SharePhotoService {
     final accent = _colorFromHex(details.accentColorHex);
     final custom = details.caption?.trim();
     if (details.caption == null) {
-      y = _drawLabel(canvas, 'ΠΡΟΠΟΝΗΣΗ', pad, y, 18 * scale, accent, letterSpacing: 1.2);
+      y = _drawLabel(canvas, tr('ΠΡΟΠΟΝΗΣΗ'), pad, y, 18 * scale, accent, letterSpacing: 1.2);
       y += lineGap * 0.4;
       y = _drawLabel(canvas, details.workoutTitle.toUpperCase(), pad, y, 40 * scale, Colors.white, bold: true, maxWidth: w - pad * 2);
     } else if (custom != null && custom.isNotEmpty) {

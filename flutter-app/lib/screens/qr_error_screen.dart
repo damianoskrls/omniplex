@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kRed = Color(0xFFFF5A4E);
 const _kOrange = Color(0xFFF5A623);
@@ -45,13 +47,13 @@ class QrErrorScreen extends StatelessWidget {
                           const SizedBox(height: 8),
                           _buildErrorIcon(),
                           const SizedBox(height: 28),
-                          Text('Access unavailable', style: GoogleFonts.spaceGrotesk(
+                          Text(tr('Access unavailable'), style: GoogleFonts.inter(
                             fontSize: 30, fontWeight: FontWeight.w700,
                             color: Colors.white, letterSpacing: -0.75),
                             textAlign: TextAlign.center),
                           const SizedBox(height: 8),
-                          Text('Your membership has expired.',
-                            style: GoogleFonts.manrope(
+                          Text(tr('Your membership has expired.'),
+                            style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w600,
                               color: kGray),
                             textAlign: TextAlign.center),
@@ -62,7 +64,7 @@ class QrErrorScreen extends StatelessWidget {
                           const SizedBox(height: 16),
                           GestureDetector(
                             onTap: () => Navigator.maybePop(context),
-                            child: Text('Close', style: GoogleFonts.manrope(
+                            child: Text(tr('Close'), style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w700,
                               color: kGray,
                               decoration: TextDecoration.underline,
@@ -101,7 +103,7 @@ class QrErrorScreen extends StatelessWidget {
               child: const Icon(Icons.bolt, color: kLime, size: 14),
             ),
             const SizedBox(width: 8),
-            Text('OMNIPLEX', style: GoogleFonts.spaceGrotesk(
+            Text(tr('OMNIPLEX'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: 1.4)),
           ],
@@ -201,9 +203,9 @@ class QrErrorScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Fitness Club Athens', style: GoogleFonts.manrope(
+              Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-              Text('Membership expired on Oct 15', style: GoogleFonts.manrope(
+              Text(tr('Membership expired on Oct 15'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
             ],
           ),
@@ -226,7 +228,7 @@ class QrErrorScreen extends StatelessWidget {
             children: [
               const Icon(Icons.credit_card_outlined, color: _kRed, size: 18),
               const SizedBox(width: 8),
-              Text('View Membership', style: GoogleFonts.spaceGrotesk(
+              Text(tr('View Membership'), style: GoogleFonts.inter(
                 fontSize: 16, fontWeight: FontWeight.w700, color: _kRed)),
             ],
           ),
@@ -243,7 +245,7 @@ class QrErrorScreen extends StatelessWidget {
             children: [
               const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 16),
               const SizedBox(width: 8),
-              Text('Book a Class', style: GoogleFonts.spaceGrotesk(
+              Text(tr('Book a Class'), style: GoogleFonts.inter(
                 fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
             ],
           ),
@@ -257,7 +259,7 @@ class QrErrorScreen extends StatelessWidget {
       children: [
         const Expanded(child: Divider(color: kBorder, thickness: 1)),
         const SizedBox(width: 12),
-        Text('OTHER SCENARIO', style: GoogleFonts.manrope(
+        Text(tr('OTHER SCENARIO'), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: kDim, letterSpacing: 1.2)),
         const SizedBox(width: 12),
@@ -293,10 +295,10 @@ class QrErrorScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Wrong gym detected', style: GoogleFonts.manrope(
+                  Text(tr('Wrong gym detected'), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(height: 4),
-                  Text('This QR belongs to another gym', style: GoogleFonts.manrope(
+                  Text(tr('This QR belongs to another gym'), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                 ],
               ),
@@ -314,7 +316,7 @@ class QrErrorScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.fitness_center, color: kGray, size: 14),
                 const SizedBox(width: 8),
-                Text('Urban Fitness', style: GoogleFonts.manrope(
+                Text(tr('Urban Fitness'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
               ],
             ),
@@ -330,7 +332,7 @@ class QrErrorScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(9999),
                   ),
                   child: Center(
-                    child: Text('Switch Gym', style: GoogleFonts.spaceGrotesk(
+                    child: Text(tr('Switch Gym'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700, color: kBg)),
                   ),
                 ),
@@ -346,7 +348,7 @@ class QrErrorScreen extends StatelessWidget {
                       border: Border.all(color: kBorder2, width: 2),
                     ),
                     child: Center(
-                      child: Text('Cancel', style: GoogleFonts.spaceGrotesk(
+                      child: Text(tr('Cancel'), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                     ),
                   ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class ClassDetailsScreen extends StatelessWidget {
   const ClassDetailsScreen({super.key,
@@ -50,7 +52,7 @@ class ClassDetailsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(className, style: GoogleFonts.spaceGrotesk(
+                      Text(tr(className), style: GoogleFonts.inter(
                         fontSize: 24, fontWeight: FontWeight.w700,
                         color: Colors.white, letterSpacing: -0.6)),
                       const SizedBox(height: 12),
@@ -116,7 +118,7 @@ class ClassDetailsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Text('Class Details', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Class Details'), style: GoogleFonts.inter(
                   fontSize: 16, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: -0.4)),
               ],
@@ -133,7 +135,7 @@ class ClassDetailsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(9999),
               ),
               child: Center(
-                child: Text(category, style: GoogleFonts.manrope(
+                child: Text(tr(category), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w800,
                   color: kBg, letterSpacing: 0.3)),
               ),
@@ -168,9 +170,9 @@ class ClassDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(gymName, style: GoogleFonts.manrope(
+                Text(tr(gymName), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text('View gym profile', style: GoogleFonts.manrope(
+                Text(tr('View gym profile'), style: GoogleFonts.inter(
                   fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
               ],
             ),
@@ -202,9 +204,9 @@ class ClassDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(coachName, style: GoogleFonts.manrope(
+                Text(tr(coachName), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text(coachSpecialty, style: GoogleFonts.manrope(
+                Text(tr(coachSpecialty), style: GoogleFonts.inter(
                   fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
               ],
             ),
@@ -213,7 +215,7 @@ class ClassDetailsScreen extends StatelessWidget {
             children: [
               const Icon(Icons.star, color: Colors.white, size: 12),
               const SizedBox(width: 4),
-              Text('4.9', style: GoogleFonts.manrope(
+              Text(tr('4.9'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
             ],
           ),
@@ -247,7 +249,7 @@ class ClassDetailsScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Text(level, style: GoogleFonts.manrope(
+                  Text(tr(level), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(width: 8),
                   Row(
@@ -285,7 +287,7 @@ class ClassDetailsScreen extends StatelessWidget {
         children: [
           Icon(icon, color: kGray, size: 12),
           const SizedBox(width: 8),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
         ],
       ),
@@ -296,12 +298,12 @@ class ClassDetailsScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('About this class', style: GoogleFonts.spaceGrotesk(
+        Text(tr('About this class'), style: GoogleFonts.inter(
           fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
         const SizedBox(height: 10),
         Text(
-          'A high-intensity strength session focused on compound lifts and progressive overload. Coach Maria guides you through squats, deadlifts, and presses with proper form coaching for all levels. Perfect for building raw power and muscular endurance in a supportive group environment.',
-          style: GoogleFonts.manrope(
+          tr('A high-intensity strength session focused on compound lifts and progressive overload. Coach Maria guides you through squats, deadlifts, and presses with proper form coaching for all levels. Perfect for building raw power and muscular endurance in a supportive group environment.'),
+          style: GoogleFonts.inter(
             fontSize: 14, color: kGray, height: 1.625)),
       ],
     );
@@ -316,7 +318,7 @@ class ClassDetailsScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('What to bring', style: GoogleFonts.spaceGrotesk(
+        Text(tr('What to bring'), style: GoogleFonts.inter(
           fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
         const SizedBox(height: 12),
         Column(
@@ -341,7 +343,7 @@ class ClassDetailsScreen extends StatelessWidget {
                     child: Icon(item.$1, color: kGray, size: 16),
                   ),
                   const SizedBox(width: 12),
-                  Text(item.$2, style: GoogleFonts.manrope(
+                  Text(tr(item.$2), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                 ],
               ),
@@ -367,8 +369,8 @@ class ClassDetailsScreen extends StatelessWidget {
             children: [
               const Icon(Icons.warning_amber_rounded, color: Color(0xFFFFB23E), size: 16),
               const SizedBox(width: 8),
-              Text('Almost full · $spotsLeft of $totalSpots spots left',
-                style: GoogleFonts.manrope(
+              Text(tr('Almost full · $spotsLeft of $totalSpots spots left'),
+                style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: const Color(0xFFFFB23E))),
             ],
@@ -418,7 +420,7 @@ class ClassDetailsScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.bolt, color: kBg, size: 16),
                 const SizedBox(width: 8),
-                Text('Book Class', style: GoogleFonts.manrope(
+                Text(tr('Book Class'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w800, color: kBg)),
               ],
             ),
@@ -431,7 +433,7 @@ class ClassDetailsScreen extends StatelessWidget {
               border: Border.all(color: kBorder2),
             ),
             child: Center(
-              child: Text('Book Drop-in', style: GoogleFonts.manrope(
+              child: Text(tr('Book Drop-in'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
           ),

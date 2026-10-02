@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class ConnectGymScreen extends StatefulWidget {
   const ConnectGymScreen({super.key});
@@ -108,9 +110,9 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
             RichText(
               text: TextSpan(
                 children: [
-                  TextSpan(text: 'OMNI', style: GoogleFonts.spaceGrotesk(
+                  TextSpan(text: 'OMNI', style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                  TextSpan(text: 'PLEX', style: GoogleFonts.spaceGrotesk(
+                  TextSpan(text: 'PLEX', style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: kLime)),
                 ],
               ),
@@ -126,12 +128,12 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Already a member?', style: GoogleFonts.spaceGrotesk(
+        Text(tr('Already a member?'), style: GoogleFonts.inter(
           fontSize: 30, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.75)),
         const SizedBox(height: 10),
-        Text('Connect your existing gym to OmniPlex.',
-          style: GoogleFonts.manrope(fontSize: 14, color: kGray)),
+        Text(tr('Connect your existing gym to OmniPlex.'),
+          style: GoogleFonts.inter(fontSize: 14, color: kGray)),
       ],
     );
   }
@@ -153,11 +155,11 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
           ),
           TextField(
             controller: _searchController,
-            style: GoogleFonts.manrope(fontSize: 14, color: Colors.white),
+            style: GoogleFonts.inter(fontSize: 14, color: Colors.white),
             decoration: InputDecoration(
               border: InputBorder.none,
-              hintText: 'Search gyms...',
-              hintStyle: GoogleFonts.manrope(fontSize: 14, color: kDim),
+              hintText: tr('Search gyms...'),
+              hintStyle: GoogleFonts.inter(fontSize: 14, color: kDim),
               contentPadding: const EdgeInsets.only(top: 20),
             ),
           ),
@@ -193,7 +195,7 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Fitness Club Athens', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                   fontSize: 16, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: -0.4)),
                 const SizedBox(height: 4),
@@ -201,8 +203,8 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
                   children: [
                     const Icon(Icons.location_on_outlined, color: kGray, size: 10),
                     const SizedBox(width: 4),
-                    Text('24 Syngrou Avenue, Athens 11742',
-                      style: GoogleFonts.manrope(fontSize: 12, color: kGray)),
+                    Text(tr('24 Syngrou Avenue, Athens 11742'),
+                      style: GoogleFonts.inter(fontSize: 12, color: kGray)),
                   ],
                 ),
               ],
@@ -228,12 +230,12 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Verification method', style: GoogleFonts.spaceGrotesk(
+        Text(tr('Verification method'), style: GoogleFonts.inter(
           fontSize: 18, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.45)),
         const SizedBox(height: 4),
-        Text('Choose how we should confirm your membership.',
-          style: GoogleFonts.manrope(fontSize: 12, color: kGray)),
+        Text(tr('Choose how we should confirm your membership.'),
+          style: GoogleFonts.inter(fontSize: 12, color: kGray)),
         const SizedBox(height: 16),
         Column(
           children: List.generate(_methods.length, (i) {
@@ -274,11 +276,11 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_methods[i].$2, style: GoogleFonts.manrope(
+                            Text(tr(_methods[i].$2), style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w600,
                               color: Colors.white)),
                             const SizedBox(height: 2),
-                            Text(_methods[i].$3, style: GoogleFonts.manrope(
+                            Text(tr(_methods[i].$3), style: GoogleFonts.inter(
                               fontSize: 12, color: kGray)),
                           ],
                         ),
@@ -321,7 +323,7 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('ENTER MEMBERSHIP ID', style: GoogleFonts.manrope(
+        Text(tr('ENTER MEMBERSHIP ID'), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w600,
           color: kGray, letterSpacing: 0.3)),
         const SizedBox(height: 8),
@@ -341,11 +343,11 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
               ),
               TextField(
                 controller: _membershipIdController,
-                style: GoogleFonts.manrope(fontSize: 14, color: Colors.white),
+                style: GoogleFonts.inter(fontSize: 14, color: Colors.white),
                 decoration: InputDecoration(
                   border: InputBorder.none,
-                  hintText: 'e.g. FCA-208441',
-                  hintStyle: GoogleFonts.manrope(fontSize: 14, color: kDim),
+                  hintText: tr('e.g. FCA-208441'),
+                  hintStyle: GoogleFonts.inter(fontSize: 14, color: kDim),
                   contentPadding: const EdgeInsets.only(top: 20),
                 ),
               ),
@@ -374,7 +376,7 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Membership status reference', style: GoogleFonts.manrope(
+          Text(tr('Membership status reference'), style: GoogleFonts.inter(
             fontSize: 12, color: kDim)),
           const SizedBox(height: 12),
           Wrap(
@@ -395,7 +397,7 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
                       color: s.$2, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 8),
-                  Text(s.$1, style: GoogleFonts.manrope(
+                  Text(tr(s.$1), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: s.$2)),
                 ],
               ),
@@ -421,8 +423,8 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              "Verification may take up to 24 hours depending on your gym's system.",
-              style: GoogleFonts.manrope(fontSize: 12, color: kDim)),
+              tr("Verification may take up to 24 hours depending on your gym's system."),
+              style: GoogleFonts.inter(fontSize: 12, color: kDim)),
           ),
         ],
       ),
@@ -448,7 +450,7 @@ class _ConnectGymScreenState extends State<ConnectGymScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Connect My Membership', style: GoogleFonts.spaceGrotesk(
+            Text(tr('Connect My Membership'), style: GoogleFonts.inter(
               fontSize: 16, fontWeight: FontWeight.w700,
               color: kBg, letterSpacing: -0.4)),
             const SizedBox(width: 8),

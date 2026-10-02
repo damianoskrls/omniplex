@@ -9,6 +9,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -125,7 +127,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          message,
+          tr(message),
           style: TextStyle(
             color: success ? AppColors.bg : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
@@ -152,10 +154,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                Text(AppStrings.of(context).goalsFitnessSection, style: Theme.of(context).textTheme.titleLarge),
+                Text(tr(AppStrings.of(context).goalsFitnessSection), style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 8),
                 Text(
-                  AppStrings.of(context).goalsFitnessDesc,
+                  tr(AppStrings.of(context).goalsFitnessDesc),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 16),
@@ -163,7 +165,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(AppStrings.of(context).goalsGoalType, style: Theme.of(context).textTheme.titleMedium),
+                      Text(tr(AppStrings.of(context).goalsGoalType), style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
@@ -216,7 +218,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                           profile.targetWeightKg != null) ...[
                         const SizedBox(height: 16),
                         Text(
-                          AppStrings.of(context).goalsWeightDistance(profile.weightKg! - profile.targetWeightKg!),
+                          tr(AppStrings.of(context).goalsWeightDistance(profile.weightKg! - profile.targetWeightKg!)),
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.lime),
                         ),
                       ],
@@ -231,7 +233,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                   width: 20,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                                 )
-                              : Text(AppStrings.of(context).goalsSaveDetails),
+                              : Text(tr(AppStrings.of(context).goalsSaveDetails)),
                         ),
                       ),
                     ],
@@ -239,16 +241,16 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
                 if (showLoyalty && stats != null) ...[
                   const SizedBox(height: 28),
-                  Text(AppStrings.of(context).goalsWorkoutSection, style: Theme.of(context).textTheme.titleLarge),
+                  Text(tr(AppStrings.of(context).goalsWorkoutSection), style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
                   GradientCard(
                     colors: const [Color(0xFF3D2F8F), AppColors.purple],
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(AppStrings.of(context).goalsLoyaltyPoints, style: const TextStyle(color: Colors.white70)),
+                        Text(tr(AppStrings.of(context).goalsLoyaltyPoints), style: const TextStyle(color: Colors.white70)),
                         Text(
-                          '${stats.loyaltyPoints}',
+                          tr('${stats.loyaltyPoints}'),
                           style: const TextStyle(
                             fontSize: 42,
                             fontWeight: FontWeight.w800,
@@ -263,7 +265,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(AppStrings.of(context).goalsMonthProgress, style: Theme.of(context).textTheme.titleMedium),
+                        Text(tr(AppStrings.of(context).goalsMonthProgress), style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(height: 12),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
@@ -275,12 +277,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(AppStrings.of(context).goalsSessionsProgress(stats.sessionsThisMonth, stats.goal.targetSessions)),
+                        Text(tr(AppStrings.of(context).goalsSessionsProgress(stats.sessionsThisMonth, stats.goal.targetSessions))),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text(AppStrings.of(context).goalsMonthlyGoal, style: Theme.of(context).textTheme.titleMedium),
+                  Text(tr(AppStrings.of(context).goalsMonthlyGoal), style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -290,7 +292,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                         icon: const Icon(Icons.remove_circle_outline),
                       ),
                       Text(
-                        '$_target',
+                        tr('$_target'),
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       IconButton(
@@ -323,7 +325,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                             )
-                          : Text(AppStrings.of(context).goalsSaveWorkoutGoal),
+                          : Text(tr(AppStrings.of(context).goalsSaveWorkoutGoal)),
                     ),
                   ),
                 ],

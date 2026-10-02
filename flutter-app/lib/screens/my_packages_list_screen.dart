@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class MyPackagesListScreen extends StatefulWidget {
   const MyPackagesListScreen({super.key});
@@ -40,8 +42,8 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                           _buildTabBar(),
                           const SizedBox(height: 24),
                           _buildPackageCard(
-                            title: '10 CLASS PACK',
-                            subtitle: 'Premium CrossFit Tier',
+                            title: tr('10 CLASS PACK'),
+                            subtitle: tr('Premium CrossFit Tier'),
                             remaining: '7 Sessions',
                             expires: '28 Oct 2026',
                             price: '€120',
@@ -49,8 +51,8 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                           ),
                           const SizedBox(height: 24),
                           _buildPackageCard(
-                            title: 'YOGA MONTHLY',
-                            subtitle: 'Zen Studio Unlimited',
+                            title: tr('YOGA MONTHLY'),
+                            subtitle: tr('Zen Studio Unlimited'),
                             remaining: 'Unlimited',
                             expires: '15 Nov 2025',
                             price: '€80',
@@ -84,7 +86,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildCircleBtn(const Icon(Icons.chevron_left, color: Colors.white, size: 20)),
-          Text('MY PACKAGES', style: GoogleFonts.spaceGrotesk(
+          Text(tr('MY PACKAGES'), style: GoogleFonts.inter(
             fontSize: 18, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: 1.8)),
           _buildCircleBtn(const Icon(Icons.tune, color: Colors.white, size: 18)),
@@ -109,11 +111,11 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('CURRENT FACILITY', style: GoogleFonts.manrope(
+        Text(tr('CURRENT FACILITY'), style: GoogleFonts.inter(
           fontSize: 10, fontWeight: FontWeight.w700,
           color: kCyan, letterSpacing: 1.0)),
         const SizedBox(height: 4),
-        Text('FITNESS CLUB ATHENS', style: GoogleFonts.spaceGrotesk(
+        Text(tr('FITNESS CLUB ATHENS'), style: GoogleFonts.inter(
           fontSize: 20, fontWeight: FontWeight.w800,
           color: Colors.white, letterSpacing: -0.5)),
       ],
@@ -142,7 +144,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: Text(tabs[i].toUpperCase(), style: GoogleFonts.manrope(
+                  child: Text(tr(tabs[i].toUpperCase()), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w700,
                     color: active ? kBg : _kGray6B,
                     letterSpacing: 0.6)),
@@ -186,11 +188,11 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(title, style: GoogleFonts.spaceGrotesk(
+                        Text(tr(title), style: GoogleFonts.inter(
                           fontSize: 24, fontWeight: FontWeight.w900,
                           color: Colors.white, letterSpacing: -0.19)),
                         const SizedBox(height: 4),
-                        Text(subtitle, style: GoogleFonts.manrope(
+                        Text(tr(subtitle), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w700,
                           color: kCyan)),
                       ],
@@ -214,17 +216,17 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                           children: [
                             _buildStatItem('REMAINING',
                               isUnlimited
-                                ? Text('Unlimited', style: GoogleFonts.spaceGrotesk(
+                                ? Text(tr('Unlimited'), style: GoogleFonts.inter(
                                     fontSize: 18, fontWeight: FontWeight.w900,
                                     color: Colors.white, fontStyle: FontStyle.italic,
                                     letterSpacing: -0.9))
-                                : Text(remaining, style: GoogleFonts.manrope(
+                                : Text(tr(remaining), style: GoogleFonts.inter(
                                     fontSize: 18, fontWeight: FontWeight.w700,
                                     color: Colors.white)),
                             ),
                             const SizedBox(height: 16),
                             _buildStatItem('PRICE',
-                              Text(price, style: GoogleFonts.manrope(
+                              Text(tr(price), style: GoogleFonts.inter(
                                 fontSize: 18, fontWeight: FontWeight.w700,
                                 color: Colors.white)),
                             ),
@@ -237,7 +239,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildStatItem('EXPIRES',
-                              Text(expires, style: GoogleFonts.manrope(
+                              Text(tr(expires), style: GoogleFonts.inter(
                                 fontSize: 18, fontWeight: FontWeight.w700,
                                 color: Colors.white)),
                             ),
@@ -247,7 +249,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                                 children: [
                                   const Icon(Icons.check_circle, color: kLime, size: 14),
                                   const SizedBox(width: 6),
-                                  Text('Paid', style: GoogleFonts.manrope(
+                                  Text(tr('Paid'), style: GoogleFonts.inter(
                                     fontSize: 14, fontWeight: FontWeight.w700,
                                     color: Colors.white)),
                                 ],
@@ -278,7 +280,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                           children: [
                             const Icon(Icons.remove_red_eye_outlined, color: kBg, size: 16),
                             const SizedBox(width: 8),
-                            Text('VIEW', style: GoogleFonts.manrope(
+                            Text(tr('VIEW'), style: GoogleFonts.inter(
                               fontSize: 11, fontWeight: FontWeight.w700,
                               color: kBg, letterSpacing: 1.1)),
                           ],
@@ -319,7 +321,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                     decoration: const BoxDecoration(color: kLime, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 6),
-                  Text('ACTIVE', style: GoogleFonts.manrope(
+                  Text(tr('ACTIVE'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kLime, letterSpacing: 0.05)),
                 ],
@@ -335,7 +337,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.manrope(
+        Text(tr(label), style: GoogleFonts.inter(
           fontSize: 9, fontWeight: FontWeight.w700,
           color: _kGray6B, letterSpacing: 0.45)),
         const SizedBox(height: 2),
@@ -351,7 +353,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
         children: [
           const Icon(Icons.add_circle_outline, color: kCyan, size: 16),
           const SizedBox(width: 8),
-          Text('PURCHASE NEW PACKAGE', style: GoogleFonts.manrope(
+          Text(tr('PURCHASE NEW PACKAGE'), style: GoogleFonts.inter(
             fontSize: 11, fontWeight: FontWeight.w700,
             color: kCyan, letterSpacing: 1.1)),
         ],
@@ -389,7 +391,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
                   child: const Icon(Icons.person, color: Colors.white, size: 14),
                 ),
                 const SizedBox(height: 4),
-                Text('PROFILE', style: GoogleFonts.manrope(
+                Text(tr('PROFILE'), style: GoogleFonts.inter(
                   fontSize: 9, fontWeight: FontWeight.w700,
                   color: _kGray6B, letterSpacing: 0.9)),
               ],
@@ -408,7 +410,7 @@ class _MyPackagesListScreenState extends State<MyPackagesListScreen> {
         children: [
           Icon(icon, color: active ? kLime : _kGray6B, size: 22),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
         ],

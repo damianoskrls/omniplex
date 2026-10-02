@@ -17,6 +17,8 @@ import 'booking_flow_screen.dart';
 import 'nutrition_consultation_booking_screen.dart';
 import 'dropin_screen.dart';
 import 'workout_programs_screen.dart';
+import '../l10n/tr.dart';
+
 
 class ServicesScreen extends StatefulWidget {
   const ServicesScreen({super.key});
@@ -191,9 +193,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
+            Text(tr(_error!), style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: Text(AppStrings.of(context).retryBtn)),
+            ElevatedButton(onPressed: _load, child: Text(tr(AppStrings.of(context).retryBtn))),
           ],
         ),
       );
@@ -203,10 +205,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
       return EmptyState(
         icon: Icons.card_membership_outlined,
         title: AppStrings.of(context).servicesNoPackages,
-        subtitle: 'Μπορείς να προσθέσεις άλλη υπηρεσία του γυμναστηρίου και να πάρεις πακέτο.',
+        subtitle: tr('Μπορείς να προσθέσεις άλλη υπηρεσία του γυμναστηρίου και να πάρεις πακέτο.'),
         action: ElevatedButton(
           onPressed: _openAddService,
-          child: const Text('Πρόσθεσε υπηρεσία'),
+          child: Text(tr('Πρόσθεσε υπηρεσία')),
         ),
       );
     }
@@ -225,10 +227,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
           // Open-access services (no booking needed)
           if (_openAccessServices.isNotEmpty) ...[
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8, bottom: 10),
               child: Text(
-                'Ελεύθερη Πρόσβαση',
+                tr('Ελεύθερη Πρόσβαση'),
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
               ),
             ),
@@ -240,7 +242,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Text(
-                AppStrings.of(context).servicesNoPackages,
+                tr(AppStrings.of(context).servicesNoPackages),
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
             ),
@@ -268,12 +270,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Drop-in', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                        Text('Αγόρασε μία συνεδρία για υπηρεσία που δεν έχεις', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text(tr('Drop-in'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        Text(tr('Αγόρασε μία συνεδρία για υπηρεσία που δεν έχεις'), style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                   ),
@@ -311,11 +313,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _nutritionConsultService!.name,
+                          tr(_nutritionConsultService!.name),
                           style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 18),
                         ),
                         Text(
-                          _nutritionPendingBooking != null
+                          tr(_nutritionPendingBooking != null
                               ? AppStrings.of(context).servicesPendingNutrition
                               : _nutritionUpcomingBooking != null
                                   ? AppStrings.of(context).servicesConfirmedNutrition
@@ -325,7 +327,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                       : AppStrings.of(context).servicesNutritionCredits(_nutritionCredits['remaining'] ?? 0)
                                   : _nutritionCredits['has_access'] == true
                                       ? AppStrings.of(context).servicesNoNutritionist
-                                      : AppStrings.of(context).servicesContactForVisits,
+                                      : AppStrings.of(context).servicesContactForVisits),
                           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                         ),
                       ],
@@ -362,7 +364,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            service.name,
+                            tr(service.name),
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 20,
@@ -377,7 +379,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            '${service.durationMins}\'',
+                            tr('${service.durationMins}\''),
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               color: service.canBook ? AppColors.textPrimary : AppColors.textSecondary,
@@ -389,7 +391,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     if (service.description != null) ...[
                       const SizedBox(height: 8),
                       Text(
-                        service.description!,
+                        tr(service.description!),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -405,12 +407,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       children: [
                         if (service.category != null)
                           PillChip(
-                            label: service.category!,
+                            label: tr(service.category!),
                             color: AppColors.surfaceLight,
                             textColor: AppColors.textSecondary,
                           ),
                         PillChip(
-                          label: _creditsLabel(service),
+                          label: tr(_creditsLabel(service)),
                           color: AppColors.surfaceLight,
                           textColor: service.canBook ? AppColors.textPrimary : AppColors.textSecondary,
                         ),
@@ -427,7 +429,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            AppStrings.of(context).servicesRenewal(renewal),
+                            tr(AppStrings.of(context).servicesRenewal(renewal)),
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
@@ -461,7 +463,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      AppStrings.of(context).servicesBook,
+                                      tr(AppStrings.of(context).servicesBook),
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 13,
@@ -492,8 +494,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                       border: Border.all(color: AppColors.border),
                                     ),
                                     alignment: Alignment.center,
-                                    child: const Text(
-                                      'Προγράμματα',
+                                    child: Text(
+                                      tr('Προγράμματα'),
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 13,
@@ -516,7 +518,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
           OutlinedButton.icon(
             onPressed: _openAddService,
             icon: const Icon(Icons.add),
-            label: const Text('Πρόσθεσε άλλη υπηρεσία και πάρε πακέτο'),
+            label: Text(tr('Πρόσθεσε άλλη υπηρεσία και πάρε πακέτο')),
           ),
         ],
       ),
@@ -534,10 +536,10 @@ class _OccupancyCard extends StatelessWidget {
     final status = occupancy['status'] as String? ?? 'unknown';
 
     final (Color dotColor, String label, Color bg) = switch (status) {
-      'full'  => (Colors.red,          'Γεμάτο αυτή τη στιγμή', Colors.red.withValues(alpha: 0.08)),
-      'busy'  => (Colors.orange,       'Αρκετός κόσμος τώρα',   Colors.orange.withValues(alpha: 0.08)),
-      'quiet' => (AppColors.lime,      'Ελεύθερος χώρος',       AppColors.lime.withValues(alpha: 0.06)),
-      _       => (AppColors.textSecondary, 'Άγνωστο', Colors.transparent),
+      'full'  => (Colors.red,          tr('Γεμάτο αυτή τη στιγμή'), Colors.red.withValues(alpha: 0.08)),
+      'busy'  => (Colors.orange,       tr('Αρκετός κόσμος τώρα'),   Colors.orange.withValues(alpha: 0.08)),
+      'quiet' => (AppColors.lime,      tr('Ελεύθερος χώρος'),       AppColors.lime.withValues(alpha: 0.06)),
+      _ => (AppColors.textSecondary, tr('Άγνωστο'), Colors.transparent),
     };
 
     return Container(
@@ -560,7 +562,7 @@ class _OccupancyCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: dotColor)),
+                Text(tr(label), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: dotColor)),
               ],
             ),
           ),
@@ -608,9 +610,9 @@ class _OpenAccessCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                Text(tr(name), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 if (desc.isNotEmpty)
-                  Text(desc, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(tr(desc), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
@@ -620,7 +622,7 @@ class _OpenAccessCard extends StatelessWidget {
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text('Ελεύθερο', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+            child: Text(tr('Ελεύθερο'), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
           ),
         ],
       ),

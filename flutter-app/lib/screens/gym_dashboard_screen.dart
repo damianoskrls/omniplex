@@ -10,6 +10,8 @@ import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
 import 'workout_programs_screen.dart';
+import '../l10n/tr.dart';
+
 
 const _kAccent = Color(0xFF7B3EAD);
 const _kBrandGradient = LinearGradient(
@@ -110,9 +112,9 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
           children: [
             const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textSecondary),
             const SizedBox(height: 16),
-            Text(_error!, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+            Text(tr(_error!), style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('Δοκίμασε ξανά')),
+            ElevatedButton(onPressed: _load, child: Text(tr('Δοκίμασε ξανά'))),
           ],
         ),
       );
@@ -131,7 +133,7 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
           SurfaceCard(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const WorkoutProgramsScreen(serviceTitle: 'Προπόνηση')),
+              MaterialPageRoute(builder: (_) => WorkoutProgramsScreen(serviceTitle: tr('Προπόνηση'))),
             ),
             child: Row(
               children: [
@@ -144,14 +146,14 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
                   child: Icon(Icons.playlist_play_rounded, color: context.tenantPrimary, size: 24),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Προγράμματα γυμναστικής',
+                      Text(tr('Προγράμματα γυμναστικής'),
                           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                       SizedBox(height: 3),
-                      Text('Διάλεξε πρόγραμμα και σημείωσε κάθε άσκηση',
+                      Text(tr('Διάλεξε πρόγραμμα και σημείωσε κάθε άσκηση'),
                           style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     ],
                   ),
@@ -166,9 +168,9 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
               Expanded(
                 child: _StatCard(
                   icon: Icons.fitness_center_outlined,
-                  label: 'Υπόλοιπο',
+                  label: tr('Υπόλοιπο'),
                   value: _hasUnlimited ? '∞' : _gymCredits.isEmpty ? '—' : '$_totalRemaining',
-                  subtitle: 'συνεδρίες',
+                  subtitle: tr('συνεδρίες'),
                   gradient: _kBrandGradient,
                 ),
               ),
@@ -177,16 +179,16 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
                 child: _totalBalanceCents > 0
                     ? _StatCard(
                         icon: Icons.account_balance_wallet_outlined,
-                        label: 'Οφειλή',
+                        label: tr('Οφειλή'),
                         value: '€${(_totalBalanceCents / 100).toStringAsFixed(0)}',
-                        subtitle: 'οφειλόμενο',
+                        subtitle: tr('οφειλόμενο'),
                         color: AppColors.orange,
                       )
-                    : const _StatCard(
+                    : _StatCard(
                         icon: Icons.check_circle_outline,
-                        label: 'Λογαριασμός',
+                        label: tr('Λογαριασμός'),
                         value: 'OK',
-                        subtitle: 'χωρίς οφειλές',
+                        subtitle: tr('χωρίς οφειλές'),
                         color: AppColors.teal,
                       ),
               ),
@@ -194,7 +196,7 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
           ),
           if (_gymCredits.isNotEmpty) ...[
             const SizedBox(height: 20),
-            Text('Ενεργά Πακέτα',
+            Text(tr('Ενεργά Πακέτα'),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 10),
             ..._gymCredits.take(4).map((c) => _PackageRow(credit: c)),
@@ -241,10 +243,10 @@ class _GymHeroCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(config.appName,
+                Text(tr(config.appName),
                     style: const TextStyle(
                         color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
-                const Text('Μέλος',
+                Text(tr('Μέλος'),
                     style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
               ],
             ),
@@ -256,12 +258,12 @@ class _GymHeroCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.circle, size: 6, color: Colors.greenAccent),
                 SizedBox(width: 6),
-                Text('Ενεργό',
+                Text(tr('Ενεργό'),
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
               ],
             ),
@@ -308,9 +310,9 @@ class _NextWorkoutCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Επόμενη Προπόνηση',
+                  Text(tr('Επόμενη Προπόνηση'),
                       style: Theme.of(context).textTheme.titleMedium),
-                  Text('Δεν υπάρχει προγραμματισμένη κράτηση',
+                  Text(tr('Δεν υπάρχει προγραμματισμένη κράτηση'),
                       style: Theme.of(context).textTheme.bodyMedium),
                 ],
               ),
@@ -324,9 +326,9 @@ class _NextWorkoutCard extends StatelessWidget {
     final b = booking!;
     final String dayLabel;
     if (_isToday(b.startsAt)) {
-      dayLabel = 'Σήμερα';
+      dayLabel = tr('Σήμερα');
     } else if (_isTomorrow(b.startsAt)) {
-      dayLabel = 'Αύριο';
+      dayLabel = tr('Αύριο');
     } else {
       dayLabel = DateFormat('EEEE d MMM', locale).format(b.startsAt);
     }
@@ -354,24 +356,24 @@ class _NextWorkoutCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Επόμενη Προπόνηση',
+                Text(tr('Επόμενη Προπόνηση'),
                     style: TextStyle(
                         color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 3),
-                Text(b.serviceName, style: Theme.of(context).textTheme.titleMedium),
+                Text(tr(b.serviceName), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 5),
                 Row(
                   children: [
                     const Icon(Icons.schedule, size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
-                    Text('$dayLabel · $timeLabel',
+                    Text(tr('$dayLabel · $timeLabel'),
                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     if (b.staffName.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
                       const SizedBox(width: 4),
                       Flexible(
-                        child: Text(b.staffName,
+                        child: Text(tr(b.staffName),
                             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                             overflow: TextOverflow.ellipsis),
                       ),
@@ -383,7 +385,7 @@ class _NextWorkoutCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           PillChip(
-            label: dayLabel == 'Σήμερα' ? 'Σήμερα' : 'Επόμενο',
+            label: tr(dayLabel == 'Σήμερα' ? 'Σήμερα' : tr('Επόμενο')),
             color: _kAccent.withValues(alpha: 0.15),
             textColor: _kAccent,
           ),
@@ -428,7 +430,7 @@ class _StatCard extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: isGrad ? Colors.white : c),
           const SizedBox(height: 8),
-          Text(value,
+          Text(tr(value),
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w800,
@@ -436,7 +438,7 @@ class _StatCard extends StatelessWidget {
                 height: 1,
               )),
           const SizedBox(height: 3),
-          Text(subtitle,
+          Text(tr(subtitle),
               style: TextStyle(
                 fontSize: 12,
                 color: isGrad ? Colors.white70 : AppColors.textSecondary,
@@ -455,7 +457,7 @@ class _PackageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = credit.planName ?? credit.serviceName ?? 'Πακέτο';
+    final title = credit.planName ?? credit.serviceName ?? tr('Πακέτο');
     final isUnlim = credit.isUnlimited;
 
     return Padding(
@@ -472,12 +474,12 @@ class _PackageRow extends StatelessWidget {
             const Icon(Icons.card_membership_outlined, size: 18, color: AppColors.textSecondary),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(title,
+              child: Text(tr(title),
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   overflow: TextOverflow.ellipsis),
             ),
             Text(
-              isUnlim ? '∞' : '${credit.remaining} / ${credit.totalSessions}',
+              tr(isUnlim ? '∞' : '${credit.remaining} / ${credit.totalSessions}'),
               style: const TextStyle(fontWeight: FontWeight.w700, color: _kAccent, fontSize: 14),
             ),
           ],

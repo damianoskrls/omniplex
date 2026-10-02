@@ -11,15 +11,17 @@ import 'staff_avatar.dart';
 import 'staff_detail_sheet.dart';
 import 'tenant_logo.dart';
 import 'ui_kit.dart';
+import '../l10n/tr.dart';
 
-const _dayLabels = [
-  'Δευτέρα',
-  'Τρίτη',
-  'Τετάρτη',
-  'Πέμπτη',
-  'Παρασκευή',
-  'Σάββατο',
-  'Κυριακή',
+
+final _dayLabels = [
+  tr('Δευτέρα'),
+  tr('Τρίτη'),
+  tr('Τετάρτη'),
+  tr('Πέμπτη'),
+  tr('Παρασκευή'),
+  tr('Σάββατο'),
+  tr('Κυριακή'),
 ];
 
 Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
@@ -65,7 +67,7 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(ctx),
-                      tooltip: 'Κλείσιμο',
+                      tooltip: tr('Κλείσιμο'),
                       icon: const Icon(Icons.close_rounded),
                     ),
                   ],
@@ -94,37 +96,37 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  info.appName.isNotEmpty ? info.appName : info.name,
+                  tr(info.appName.isNotEmpty ? info.appName : info.name),
                   textAlign: TextAlign.center,
                   style: Theme.of(ctx).textTheme.headlineMedium,
                 ),
                 if (info.name.isNotEmpty && info.name != info.appName) ...[
                   const SizedBox(height: 4),
                   Text(
-                    info.name,
+                    tr(info.name),
                     textAlign: TextAlign.center,
                     style: Theme.of(ctx).textTheme.bodyMedium,
                   ),
                 ],
                 const SizedBox(height: 24),
                 if (_hasContactInfo(info)) ...[
-                  _SectionTitle(title: 'Επικοινωνία'),
+                  _SectionTitle(title: tr('Επικοινωνία')),
                   const SizedBox(height: 10),
                   if (info.address != null && info.address!.trim().isNotEmpty)
                     _InfoRow(
                       icon: Icons.location_on_outlined,
-                      title: 'Διεύθυνση',
+                      title: tr('Διεύθυνση'),
                       value: info.address!,
-                      actionLabel: 'Οδηγίες',
+                      actionLabel: tr('Οδηγίες'),
                       onAction: () => _openDirections(info.address!),
                     ),
                   if (info.phone != null && info.phone!.trim().isNotEmpty) ...[
                     if (info.address != null && info.address!.trim().isNotEmpty) const SizedBox(height: 10),
                     _InfoRow(
                       icon: Icons.phone_outlined,
-                      title: 'Τηλέφωνο',
+                      title: tr('Τηλέφωνο'),
                       value: info.phone!,
-                      actionLabel: 'Κλήση',
+                      actionLabel: tr('Κλήση'),
                       onAction: () => _openPhone(info.phone!),
                     ),
                   ],
@@ -132,9 +134,9 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                     const SizedBox(height: 10),
                     _InfoRow(
                       icon: Icons.mail_outline,
-                      title: 'Email',
+                      title: tr('Email'),
                       value: info.email!,
-                      actionLabel: 'Αποστολή',
+                      actionLabel: tr('Αποστολή'),
                       onAction: () => _openEmail(info.email!),
                     ),
                   ],
@@ -142,7 +144,7 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                     const SizedBox(height: 10),
                     _InfoRow(
                       icon: Icons.person_outline,
-                      title: 'Υπεύθυνος',
+                      title: tr('Υπεύθυνος'),
                       value: info.ownerPhone != null && info.ownerPhone!.trim().isNotEmpty
                           ? '${info.ownerName!}\n${info.ownerPhone!}'
                           : info.ownerName!,
@@ -157,8 +159,8 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                   const SizedBox(height: 24),
                 ],
                 if (info.locations.isEmpty && info.openingHours != null && info.openingHours!.days.isNotEmpty) ...[
-                  const _SectionTitle(
-                    title: 'Ωράριο λειτουργίας',
+                  _SectionTitle(
+                    title: tr('Ωράριο λειτουργίας'),
                   ),
                   const SizedBox(height: 10),
                   _OpeningHoursTable(hours: info.openingHours!),
@@ -166,7 +168,7 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                 ],
                 if (info.locations.isNotEmpty) ...[
                   _SectionTitle(
-                    title: info.multiLocation ? 'Καταστήματα' : 'Κατάστημα',
+                    title: tr(info.multiLocation ? 'Καταστήματα' : tr('Κατάστημα')),
                   ),
                   const SizedBox(height: 10),
                   ...info.locations.map(
@@ -178,7 +180,7 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                   const SizedBox(height: 10),
                 ],
                 if (info.trainers.isNotEmpty) ...[
-                  _SectionTitle(title: 'Γυμναστές'),
+                  _SectionTitle(title: tr('Γυμναστές')),
                   const SizedBox(height: 10),
                   _StaffList(
                     profiles: info.trainers,
@@ -187,7 +189,7 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                   const SizedBox(height: 24),
                 ],
                 if (info.nutritionists.isNotEmpty) ...[
-                  _SectionTitle(title: 'Διατροφολόγοι'),
+                  _SectionTitle(title: tr('Διατροφολόγοι')),
                   const SizedBox(height: 10),
                   _StaffList(
                     profiles: info.nutritionists,
@@ -206,7 +208,7 @@ Future<void> showGymInfoSheet(BuildContext context, {required GymInfo info}) {
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Κλείσιμο'),
+                      child: Text(tr('Κλείσιμο')),
                     ),
                   ),
                 ),
@@ -233,7 +235,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(title, style: Theme.of(context).textTheme.titleMedium);
+    return Text(tr(title), style: Theme.of(context).textTheme.titleMedium);
   }
 }
 
@@ -261,11 +263,11 @@ class _OpeningHoursTable extends StatelessWidget {
               children: [
                 SizedBox(
                   width: 92,
-                  child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                  child: Text(tr(label), style: Theme.of(context).textTheme.bodyMedium),
                 ),
                 Expanded(
                   child: Text(
-                    value,
+                    tr(value),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           color: dayHours?.closed == true
                               ? AppColors.textSecondary
@@ -300,7 +302,7 @@ class _LocationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(location.name, style: Theme.of(context).textTheme.titleSmall),
+          Text(tr(location.name), style: Theme.of(context).textTheme.titleSmall),
           if (address != null) ...[
             const SizedBox(height: 8),
             Row(
@@ -308,10 +310,10 @@ class _LocationCard extends StatelessWidget {
               children: [
                 const Icon(Icons.location_on_outlined, size: 18, color: AppColors.purple),
                 const SizedBox(width: 8),
-                Expanded(child: Text(address, style: Theme.of(context).textTheme.bodyMedium)),
+                Expanded(child: Text(tr(address), style: Theme.of(context).textTheme.bodyMedium)),
                 TextButton(
                   onPressed: () => _openDirections(address),
-                  child: const Text('Οδηγίες'),
+                  child: Text(tr('Οδηγίες')),
                 ),
               ],
             ),
@@ -321,7 +323,7 @@ class _LocationCard extends StatelessWidget {
             _LocationContactRow(
               icon: Icons.phone_outlined,
               value: location.phone!,
-              actionLabel: 'Κλήση',
+              actionLabel: tr('Κλήση'),
               onAction: () => _openPhone(location.phone!),
             ),
           ],
@@ -336,13 +338,13 @@ class _LocationCard extends StatelessWidget {
           ],
           if (location.openingHours != null && location.openingHours!.days.isNotEmpty) ...[
             const SizedBox(height: 14),
-            Text('Ωράριο', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
+            Text(tr('Ωράριο'), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
             const SizedBox(height: 8),
             _OpeningHoursTable(hours: location.openingHours!),
           ],
           if (location.rooms.isNotEmpty) ...[
             const SizedBox(height: 14),
-            Text('Αίθουσες', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
+            Text(tr('Αίθουσες'), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
             const SizedBox(height: 10),
             ...location.rooms.map(
               (room) => Padding(
@@ -376,8 +378,8 @@ class _LocationContactRow extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: AppColors.purple),
         const SizedBox(width: 8),
-        Expanded(child: Text(value, style: Theme.of(context).textTheme.bodyMedium)),
-        TextButton(onPressed: onAction, child: Text(actionLabel)),
+        Expanded(child: Text(tr(value), style: Theme.of(context).textTheme.bodyMedium)),
+        TextButton(onPressed: onAction, child: Text(tr(actionLabel))),
       ],
     );
   }
@@ -424,11 +426,11 @@ class _RoomTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(room.name, style: Theme.of(context).textTheme.titleSmall),
+                  Text(tr(room.name), style: Theme.of(context).textTheme.titleSmall),
                   if (room.shortInfo != null && room.shortInfo!.trim().isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
-                      room.shortInfo!,
+                      tr(room.shortInfo!),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
@@ -526,7 +528,7 @@ class _StaffCard extends StatelessWidget {
               StaffAvatar(staff: member, config: config, radius: 32),
               const SizedBox(height: 8),
               Text(
-                member.fullName,
+                tr(member.fullName),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -535,7 +537,7 @@ class _StaffCard extends StatelessWidget {
               if (member.role != null && member.role!.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
-                  member.role!,
+                  tr(member.role!),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -545,7 +547,7 @@ class _StaffCard extends StatelessWidget {
               if (locations.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
-                  locations,
+                  tr(locations),
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -592,14 +594,14 @@ class _InfoRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
+                Text(tr(title), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
                 const SizedBox(height: 4),
-                Text(value, style: Theme.of(context).textTheme.titleSmall),
+                Text(tr(value), style: Theme.of(context).textTheme.titleSmall),
               ],
             ),
           ),
           if (actionLabel != null && onAction != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+            TextButton(onPressed: onAction, child: Text(tr(actionLabel!))),
         ],
       ),
     );

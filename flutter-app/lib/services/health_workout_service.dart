@@ -4,6 +4,8 @@ import 'package:health/health.dart';
 
 import '../models/booking.dart';
 import '../models/workout_health.dart';
+import '../l10n/tr.dart';
+
 
 class HealthWorkoutService {
   HealthWorkoutService._();
@@ -212,22 +214,22 @@ class HealthWorkoutService {
   }
 
   String _activityLabel(String typeName) {
-    const labels = {
-      'TRADITIONAL_STRENGTH_TRAINING': 'Άσκηση με βάρη',
+    final labels = {
+      'TRADITIONAL_STRENGTH_TRAINING': tr('Άσκηση με βάρη'),
       'FUNCTIONAL_STRENGTH_TRAINING': 'Functional training',
       'HIGH_INTENSITY_INTERVAL_TRAINING': 'HIIT',
       'CORE_TRAINING': 'Core training',
       'YOGA': 'Yoga',
       'PILATES': 'Pilates',
       'CROSS_TRAINING': 'Cross training',
-      'RUNNING': 'Τρέξιμο',
-      'WALKING': 'Περπάτημα',
-      'CYCLING': 'Ποδήλατο',
-      'SWIMMING': 'Κολύμβηση',
-      'ELLIPTICAL': 'Ελλειπτικό',
-      'STAIR_CLIMBING': 'Σκάλες',
+      'RUNNING': tr('Τρέξιμο'),
+      'WALKING': tr('Περπάτημα'),
+      'CYCLING': tr('Ποδήλατο'),
+      'SWIMMING': tr('Κολύμβηση'),
+      'ELLIPTICAL': tr('Ελλειπτικό'),
+      'STAIR_CLIMBING': tr('Σκάλες'),
       'MIND_AND_BODY': 'Mind & body',
-      'OTHER': 'Προπόνηση',
+      'OTHER': tr('Προπόνηση'),
     };
     return labels[typeName] ?? typeName.replaceAll('_', ' ').toLowerCase();
   }

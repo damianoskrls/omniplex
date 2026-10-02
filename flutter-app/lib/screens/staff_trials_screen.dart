@@ -6,6 +6,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 class StaffTrialsScreen extends StatefulWidget {
   const StaffTrialsScreen({super.key});
@@ -46,7 +48,7 @@ class _StaffTrialsScreenState extends State<StaffTrialsScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = 'Δεν φορτώθηκαν τα δοκιμαστικά');
+      if (mounted) setState(() => _error = tr('Δεν φορτώθηκαν τα δοκιμαστικά'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -74,15 +76,15 @@ class _StaffTrialsScreenState extends State<StaffTrialsScreen> {
   }
 
   Future<void> _claim(Map<String, dynamic> trial) async {
-    final name = trial['user_name'] as String? ?? 'τον πελάτη';
+    final name = trial['user_name'] as String? ?? tr('τον πελάτη');
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Θα το κάνω εγώ'),
-        content: Text('Αναλαμβάνεις το δοκιμαστικό του $name;'),
+        title: Text(tr('Θα το κάνω εγώ')),
+        content: Text(tr('Αναλαμβάνεις το δοκιμαστικό του $name;')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Άκυρο')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ναι')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Άκυρο'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Ναι'))),
         ],
       ),
     );
@@ -91,12 +93,12 @@ class _StaffTrialsScreenState extends State<StaffTrialsScreen> {
       await context.read<AuthService>().api.claimTrial(trial['id'] as String);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Το δοκιμαστικό είναι δικό σου')),
+        SnackBar(content: Text(tr('Το δοκιμαστικό είναι δικό σου'))),
       );
       await _load();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
@@ -122,30 +124,30 @@ class _StaffTrialsScreenState extends State<StaffTrialsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            const Text('Δοκιμαστικά',
+            Text(tr('Δοκιμαστικά'),
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
-            const Text('Ανάλαβε όσα είναι ελεύθερα και γράψε αποτέλεσμα μετά.',
+            Text(tr('Ανάλαβε όσα είναι ελεύθερα και γράψε αποτέλεσμα μετά.'),
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             const SizedBox(height: 14),
             Row(
               children: [
-                _Stat('Ανοιχτά', _n(_stats['open'])),
+                _Stat(tr('Ανοιχτά'), _n(_stats['open'])),
                 const SizedBox(width: 8),
-                _Stat('Έκανα', _n(_stats['done'])),
+                _Stat(tr('Έκανα'), _n(_stats['done'])),
                 const SizedBox(width: 8),
-                _Stat('Έγιναν πελάτες', _n(_stats['became_members'])),
+                _Stat(tr('Έγιναν πελάτες'), _n(_stats['became_members'])),
                 const SizedBox(width: 8),
-                _Stat('Ικανοποιημένοι', _n(_stats['satisfied'])),
+                _Stat(tr('Ικανοποιημένοι'), _n(_stats['satisfied'])),
               ],
             ),
             const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               children: [
-                _chip(0, 'Ανοιχτά'),
-                _chip(1, 'Δικά μου'),
-                _chip(2, 'Όλα'),
+                _chip(0, tr('Ανοιχτά')),
+                _chip(1, tr('Δικά μου')),
+                _chip(2, tr('Όλα')),
               ],
             ),
             const SizedBox(height: 14),
@@ -155,11 +157,11 @@ class _StaffTrialsScreenState extends State<StaffTrialsScreen> {
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (_error != null)
-              Text(_error!, style: const TextStyle(color: AppColors.textSecondary))
+              Text(tr(_error!), style: const TextStyle(color: AppColors.textSecondary))
             else if (rows.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 32),
-                child: Text('Δεν υπάρχουν δοκιμαστικά σε αυτή την προβολή.',
+                child: Text(tr('Δεν υπάρχουν δοκιμαστικά σε αυτή την προβολή.'),
                     style: TextStyle(color: AppColors.textSecondary)),
               )
             else
@@ -214,11 +216,11 @@ class _Stat extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text('$value',
+            Text(tr('$value'),
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.w800, color: context.tenantPrimary)),
             const SizedBox(height: 2),
-            Text(label,
+            Text(tr(label),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, height: 1.2)),
           ],
@@ -269,27 +271,27 @@ class _TrialTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(name == null || name.isEmpty ? 'Χωρίς όνομα' : name,
+          Text(tr(name == null || name.isEmpty ? 'Χωρίς όνομα' : name),
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 4),
           Text(
-            [service, place, _when(trial['starts_at'] as String?)]
+            tr([service, place, _when(trial['starts_at'] as String?)]
                 .whereType<String>()
                 .where((part) => part.isNotEmpty)
-                .join(' · '),
+                .join(' · ')),
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           if (phone != null && phone.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(phone, style: const TextStyle(fontSize: 13)),
+            Text(tr(phone), style: const TextStyle(fontSize: 13)),
           ],
           const SizedBox(height: 8),
           Text(
-            unassigned
+            tr(unassigned
                 ? 'Χωρίς γυμναστή'
                 : mine
                     ? 'Το έχεις αναλάβει εσύ'
-                    : 'Το έχει ο ${other ?? 'άλλος'}',
+                    : tr('Το έχει ο ${other ?? 'άλλος'}')),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -303,17 +305,17 @@ class _TrialTile extends StatelessWidget {
               runSpacing: 6,
               children: [
                 if (satisfied == 1 || satisfied == true)
-                  const _Tag('Ικανοποιήθηκε', Color(0xFF16A34A)),
+                  _Tag(tr('Ικανοποιήθηκε'), Color(0xFF16A34A)),
                 if (satisfied == 0 || satisfied == false)
-                  const _Tag('Δεν ικανοποιήθηκε', Color(0xFFDC2626)),
-                if (became) const _Tag('Έγινε πελάτης', Color(0xFF16A34A)),
-                if (considering && !became) const _Tag('Το σκέφτεται', Color(0xFFD97706)),
+                  _Tag(tr('Δεν ικανοποιήθηκε'), Color(0xFFDC2626)),
+                if (became) _Tag(tr('Έγινε πελάτης'), Color(0xFF16A34A)),
+                if (considering && !became) _Tag(tr('Το σκέφτεται'), Color(0xFFD97706)),
               ],
             ),
           ],
           if (notes != null && notes.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(notes, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(tr(notes), style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           ],
           if (unassigned || mine) ...[
             const SizedBox(height: 12),
@@ -324,14 +326,14 @@ class _TrialTile extends StatelessWidget {
                     child: FilledButton(
                       onPressed: onClaim,
                       style: FilledButton.styleFrom(backgroundColor: color),
-                      child: Text('Θα το κάνω εγώ', style: TextStyle(color: AppColors.onFill(color))),
+                      child: Text(tr('Θα το κάνω εγώ'), style: TextStyle(color: AppColors.onFill(color))),
                     ),
                   ),
                 if (mine)
                   Expanded(
                     child: OutlinedButton(
                       onPressed: onFeedback,
-                      child: const Text('Αποτέλεσμα'),
+                      child: Text(tr('Αποτέλεσμα')),
                     ),
                   ),
               ],
@@ -356,7 +358,7 @@ class _Tag extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      child: Text(tr(label), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
     );
   }
 }
@@ -410,7 +412,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
       Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       setState(() => _saving = false);
     }
   }
@@ -426,46 +428,46 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Αποτέλεσμα δοκιμαστικού',
+            Text(tr('Αποτέλεσμα δοκιμαστικού'),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             if (name.isNotEmpty)
-              Text(name, style: const TextStyle(color: AppColors.textSecondary)),
+              Text(tr(name), style: const TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 16),
-            const Text('Έμεινε ικανοποιημένος;', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text(tr('Έμεινε ικανοποιημένος;'), style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
                 ChoiceChip(
-                  label: const Text('Ναι'),
+                  label: Text(tr('Ναι')),
                   selected: _satisfied == true,
                   onSelected: (_) => setState(() => _satisfied = true),
                 ),
                 ChoiceChip(
-                  label: const Text('Όχι'),
+                  label: Text(tr('Όχι')),
                   selected: _satisfied == false,
                   onSelected: (_) => setState(() => _satisfied = false),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            const Text('Θα γίνει πελάτης;', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text(tr('Θα γίνει πελάτης;'), style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
                 ChoiceChip(
-                  label: const Text('Ναι'),
+                  label: Text(tr('Ναι')),
                   selected: _outcome == 'member',
                   onSelected: (_) => setState(() => _outcome = 'member'),
                 ),
                 ChoiceChip(
-                  label: const Text('Το σκέφτεται'),
+                  label: Text(tr('Το σκέφτεται')),
                   selected: _outcome == 'considering',
                   onSelected: (_) => setState(() => _outcome = 'considering'),
                 ),
                 ChoiceChip(
-                  label: const Text('Όχι'),
+                  label: Text(tr('Όχι')),
                   selected: _outcome == 'no',
                   onSelected: (_) => setState(() => _outcome = 'no'),
                 ),
@@ -475,9 +477,9 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             TextField(
               controller: _notes,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Σχόλια',
-                hintText: 'Τι είδε, τι του άρεσε, τι τον κράτησε πίσω…',
+              decoration: InputDecoration(
+                labelText: tr('Σχόλια'),
+                hintText: tr('Τι είδε, τι του άρεσε, τι τον κράτησε πίσω…'),
                 alignLabelWithHint: true,
               ),
             ),
@@ -486,7 +488,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _saving ? null : _save,
-                child: Text(_saving ? 'Αποθήκευση…' : 'Αποθήκευση'),
+                child: Text(tr(_saving ? 'Αποθήκευση…' : tr('Αποθήκευση'))),
               ),
             ),
           ],

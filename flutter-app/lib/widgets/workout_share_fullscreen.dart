@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/tr.dart';
+
 
 class WorkoutShareFullscreen extends StatelessWidget {
   const WorkoutShareFullscreen({super.key, required this.imageFile});
@@ -15,7 +17,7 @@ class WorkoutShareFullscreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: const Text('Φωτογραφία προπόνησης'),
+        title: Text(tr('Φωτογραφία προπόνησης')),
         systemOverlayStyle: SystemUiOverlayStyle.light,
       ),
       body: InteractiveViewer(
@@ -34,7 +36,7 @@ class WorkoutShareFullscreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Text(
-            'Σύρε για zoom • Πάτα πίσω για κλείσιμο',
+            tr('Σύρε για zoom • Πάτα πίσω για κλείσιμο'),
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
           ),
@@ -75,13 +77,13 @@ class WorkoutShareThumbnail extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.zoom_in, color: Colors.white, size: 16),
                       SizedBox(width: 6),
                       Text(
-                        'Μεγέθυνση',
+                        tr('Μεγέθυνση'),
                         style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ],

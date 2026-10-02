@@ -4,6 +4,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import 'nutritionist_client_screen.dart';
+import '../l10n/tr.dart';
+
 
 class NutritionistClientsScreen extends StatefulWidget {
   const NutritionistClientsScreen({super.key});
@@ -38,9 +40,9 @@ class _NutritionistClientsScreenState extends State<NutritionistClientsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.lime));
-    if (_error != null) return Center(child: Text(_error!));
+    if (_error != null) return Center(child: Text(tr(_error!)));
     if (_clients.isEmpty) {
-      return const Center(child: Text('Δεν υπάρχουν πελάτες διατροφής.', style: TextStyle(color: AppColors.textSecondary)));
+      return Center(child: Text(tr('Δεν υπάρχουν πελάτες διατροφής.'), style: TextStyle(color: AppColors.textSecondary)));
     }
     return RefreshIndicator(
       color: AppColors.lime,
@@ -55,7 +57,7 @@ class _NutritionistClientsScreenState extends State<NutritionistClientsScreen> {
             tileColor: AppColors.surface,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             title: Text(c['full_name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text(c['plan_name']?.toString() ?? 'Πακέτο διατροφής'),
+            subtitle: Text(c['plan_name']?.toString() ?? tr('Πακέτο διατροφής')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(context, MaterialPageRoute(
               builder: (_) => NutritionistClientScreen(
@@ -102,11 +104,11 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
 
   String _statusLabel(String? status) {
     switch (status) {
-      case 'pending': return 'Αναμονή';
-      case 'confirmed': return 'Επιβεβαιωμένη';
-      case 'cancelled': return 'Ακυρωμένη';
-      case 'completed': return 'Ολοκληρωμένη';
-      case 'no_show': return 'Δεν προσήλθε';
+      case 'pending': return tr('Αναμονή');
+      case 'confirmed': return tr('Επιβεβαιωμένη');
+      case 'cancelled': return tr('Ακυρωμένη');
+      case 'completed': return tr('Ολοκληρωμένη');
+      case 'no_show': return tr('Δεν προσήλθε');
       default: return status ?? '';
     }
   }
@@ -127,7 +129,7 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
       }
       await _load();
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
@@ -138,7 +140,7 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
       if (!mounted) return;
       if (clients.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Κανένας πελάτης δεν έχει διαθέσιμες επισκέψεις.')),
+          SnackBar(content: Text(tr('Κανένας πελάτης δεν έχει διαθέσιμες επισκέψεις.'))),
         );
         return;
       }
@@ -155,14 +157,14 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Νέα κράτηση', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                Text(tr('Νέα κράτηση'), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: userId,
-                  decoration: const InputDecoration(labelText: 'Πελάτης'),
+                  decoration: InputDecoration(labelText: tr('Πελάτης')),
                   items: clients.map((c) => DropdownMenuItem(
                     value: c['id'].toString(),
-                    child: Text(c['full_name']?.toString() ?? ''),
+                    child: Text(tr(c['full_name']?.toString() ?? '')),
                   )).toList(),
                   onChanged: (v) => setSheet(() => userId = v),
                 ),
@@ -188,7 +190,7 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
                       context: ctx,
                       builder: (sheetCtx) => ListView(
                         children: [
-                          if (slots.isEmpty) const ListTile(title: Text('Δεν υπάρχουν ελεύθερες ώρες')),
+                          if (slots.isEmpty) ListTile(title: Text(tr('Δεν υπάρχουν ελεύθερες ώρες'))),
                           ...slots.where((s) => (s['available_count'] as num?) == null || (s['available_count'] as num) > 0).map((s) {
                             final t = (s['time'] ?? '').toString();
                             final label = t.length >= 5 ? t.substring(0, 5) : t;
@@ -199,11 +201,11 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
                     );
                     if (picked != null) setSheet(() => time = picked);
                   },
-                  child: Text(time == null ? 'Επίλεξε ώρα' : 'Ώρα $time'),
+                  child: Text(tr(time == null ? 'Επίλεξε ώρα' : tr('Ώρα $time'))),
                 ),
                 FilledButton(
                   onPressed: userId == null || time == null ? null : () => Navigator.pop(ctx, true),
-                  child: const Text('Κράτηση'),
+                  child: Text(tr('Κράτηση')),
                 ),
               ],
             ),
@@ -219,23 +221,23 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
         await _load();
       }
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.lime));
-    if (_error != null) return Center(child: Text(_error!));
+    if (_error != null) return Center(child: Text(tr(_error!)));
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _create,
         icon: const Icon(Icons.add),
-        label: const Text('Νέα κράτηση'),
+        label: Text(tr('Νέα κράτηση')),
       ),
       body: _rows.isEmpty
-          ? const Center(child: Text('Δεν υπάρχουν ραντεβού διατροφής.', style: TextStyle(color: AppColors.textSecondary)))
+          ? Center(child: Text(tr('Δεν υπάρχουν ραντεβού διατροφής.'), style: TextStyle(color: AppColors.textSecondary)))
           : RefreshIndicator(
       color: AppColors.lime,
       onRefresh: _load,
@@ -253,11 +255,11 @@ class _NutritionistBookingsScreenState extends State<NutritionistBookingsScreen>
             trailing: PopupMenuButton<String>(
               onSelected: (value) => _act(b['id'].toString(), value),
               itemBuilder: (_) => [
-                if (b['status'] == 'pending') const PopupMenuItem(value: 'confirmed', child: Text('Επιβεβαίωση')),
-                if (b['status'] == 'pending') const PopupMenuItem(value: 'cancelled', child: Text('Ακύρωση')),
-                if (b['status'] == 'confirmed') const PopupMenuItem(value: 'completed', child: Text('Ολοκληρώθηκε')),
-                if (b['status'] == 'confirmed') const PopupMenuItem(value: 'no_show', child: Text('Δεν προσήλθε')),
-                const PopupMenuItem(value: 'delete', child: Text('Διαγραφή')),
+                if (b['status'] == 'pending') PopupMenuItem(value: 'confirmed', child: Text(tr('Επιβεβαίωση'))),
+                if (b['status'] == 'pending') PopupMenuItem(value: 'cancelled', child: Text(tr('Ακύρωση'))),
+                if (b['status'] == 'confirmed') PopupMenuItem(value: 'completed', child: Text(tr('Ολοκληρώθηκε'))),
+                if (b['status'] == 'confirmed') PopupMenuItem(value: 'no_show', child: Text(tr('Δεν προσήλθε'))),
+                PopupMenuItem(value: 'delete', child: Text(tr('Διαγραφή'))),
               ],
             ),
           );
@@ -301,13 +303,13 @@ class _NutritionistTemplatesScreenState extends State<NutritionistTemplatesScree
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.lime));
-    if (_error != null) return Center(child: Text(_error!));
+    if (_error != null) return Center(child: Text(tr(_error!)));
     if (_rows.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Δεν υπάρχουν έτοιμα προγράμματα. Τα αποθηκευμένα πρότυπα του web φαίνονται εδώ.',
+            tr('Δεν υπάρχουν έτοιμα προγράμματα. Τα αποθηκευμένα πρότυπα του web φαίνονται εδώ.'),
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textSecondary),
           ),
@@ -326,8 +328,8 @@ class _NutritionistTemplatesScreenState extends State<NutritionistTemplatesScree
           return ListTile(
             tileColor: AppColors.surface,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            title: Text(t['name']?.toString() ?? 'Πρόγραμμα', style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: const Text('Έτοιμο / αποθηκευμένο πρόγραμμα'),
+            title: Text(t['name']?.toString() ?? tr('Πρόγραμμα'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(tr('Έτοιμο / αποθηκευμένο πρόγραμμα')),
           );
         },
       ),
@@ -344,7 +346,7 @@ class NutritionistScheduleScreen extends StatefulWidget {
 }
 
 class _NutritionistScheduleScreenState extends State<NutritionistScheduleScreen> {
-  static const _days = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ', 'Κυρ'];
+  static final _days = [tr('Δευ'), tr('Τρί'), tr('Τετ'), tr('Πέμ'), tr('Παρ'), tr('Σάβ'), tr('Κυρ')];
   static const _times = ['09:00', '10:00', '11:00', '12:00', '13:00', '17:00', '18:00', '19:00', '20:00'];
   List<Map<String, dynamic>> _rows = [];
   final Set<int> _daysPicked = {};
@@ -372,7 +374,7 @@ class _NutritionistScheduleScreenState extends State<NutritionistScheduleScreen>
 
   Future<void> _add() async {
     if (_daysPicked.isEmpty || _timesPicked.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Επίλεξε ημέρες και ώρες')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Επίλεξε ημέρες και ώρες'))));
       return;
     }
     try {
@@ -383,18 +385,18 @@ class _NutritionistScheduleScreenState extends State<NutritionistScheduleScreen>
       setState(() { _daysPicked.clear(); _timesPicked.clear(); });
       await _load();
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.lime));
-    if (_error != null) return Center(child: Text(_error!));
+    if (_error != null) return Center(child: Text(tr(_error!)));
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        const Text('Ώρες συνεδριών', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        Text(tr('Ώρες συνεδριών'), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         const SizedBox(height: 8),
         Wrap(spacing: 6, children: [
           for (var i = 0; i < _days.length; i++)
@@ -414,9 +416,9 @@ class _NutritionistScheduleScreenState extends State<NutritionistScheduleScreen>
             ),
         ]),
         const SizedBox(height: 10),
-        FilledButton(onPressed: _add, child: const Text('Προσθήκη ωρών')),
+        FilledButton(onPressed: _add, child: Text(tr('Προσθήκη ωρών'))),
         const SizedBox(height: 16),
-        if (_rows.isEmpty) const Text('Δεν έχεις ορίσει ώρες ακόμα.', style: TextStyle(color: AppColors.textSecondary)),
+        if (_rows.isEmpty) Text(tr('Δεν έχεις ορίσει ώρες ακόμα.'), style: TextStyle(color: AppColors.textSecondary)),
         ..._rows.map((s) {
           final day = (s['weekday'] as num?)?.toInt() ?? 0;
           final time = (s['start_time']?.toString() ?? '').length >= 5

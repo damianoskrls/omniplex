@@ -5,6 +5,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import 'wallet_card_screen.dart';
+import '../l10n/tr.dart';
+
 
 class MyQrScreen extends StatefulWidget {
   const MyQrScreen({super.key});
@@ -39,11 +41,11 @@ class _MyQrScreenState extends State<MyQrScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Το QR μου')),
+      appBar: AppBar(title: Text(tr('Το QR μου'))),
       body: _loading
           ? Center(child: const CircularProgressIndicator(color: AppColors.lime))
           : _error != null
-              ? Center(child: Text(_error!))
+              ? Center(child: Text(tr(_error!)))
               : _QrBody(data: _data!),
     );
   }
@@ -68,13 +70,13 @@ class _QrBody extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(fullName,
+            Text(tr(fullName),
                 style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 4),
             if (hasActive)
               Text(
-                isUnlimited ? 'Απεριόριστες συνεδρίες' : 'Απομένουν $remaining συνεδρίες',
+                tr(isUnlimited ? 'Απεριόριστες συνεδρίες' : tr('Απομένουν $remaining συνεδρίες')),
                 style: TextStyle(
                   fontSize: 14,
                   color: isUnlimited ? AppColors.lime : (remaining as int) > 3
@@ -83,7 +85,7 @@ class _QrBody extends StatelessWidget {
                 ),
               )
             else
-              const Text('Δεν υπάρχει ενεργή συνδρομή',
+              Text(tr('Δεν υπάρχει ενεργή συνδρομή'),
                   style: TextStyle(fontSize: 14, color: AppColors.orange)),
 
             const SizedBox(height: 32),
@@ -128,12 +130,12 @@ class _QrBody extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.qr_code_scanner, size: 16, color: AppColors.textSecondary),
                   SizedBox(width: 8),
-                  Text('Δείξε το στον scanner εισόδου',
+                  Text(tr('Δείξε το στον scanner εισόδου'),
                       style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                 ],
               ),
@@ -156,7 +158,7 @@ class _QrBody extends StatelessWidget {
                   ),
                 ),
                 icon: const Icon(Icons.wallet_outlined, size: 18),
-                label: const Text('Αποθήκευση στο Wallet'),
+                label: Text(tr('Αποθήκευση στο Wallet')),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.lime,
                   side: const BorderSide(color: AppColors.lime),

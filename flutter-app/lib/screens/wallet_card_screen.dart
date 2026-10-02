@@ -13,6 +13,8 @@ import 'dart:io';
 import '../config/tenant_config.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class WalletCardScreen extends StatefulWidget {
   const WalletCardScreen({super.key, required this.token, required this.fullName, required this.memberId});
@@ -41,12 +43,12 @@ class _WalletCardScreenState extends State<WalletCardScreen> {
     setState(() => _saving = true);
     try {
       final bytes = await _captureCard();
-      if (bytes == null) throw Exception('Αποτυχία δημιουργίας εικόνας');
+      if (bytes == null) throw Exception(tr('Αποτυχία δημιουργίας εικόνας'));
       await Gal.putImageBytes(bytes, name: 'member_card_${DateTime.now().millisecondsSinceEpoch}.png');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Η κάρτα αποθηκεύτηκε στη γκαλερί'),
+          SnackBar(
+            content: Text(tr('Η κάρτα αποθηκεύτηκε στη γκαλερί')),
             backgroundColor: Color(0xFF16A34A),
           ),
         );
@@ -54,7 +56,7 @@ class _WalletCardScreenState extends State<WalletCardScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Σφάλμα: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(tr('Σφάλμα: $e')), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -66,15 +68,15 @@ class _WalletCardScreenState extends State<WalletCardScreen> {
     setState(() => _saving = true);
     try {
       final bytes = await _captureCard();
-      if (bytes == null) throw Exception('Αποτυχία δημιουργίας εικόνας');
+      if (bytes == null) throw Exception(tr('Αποτυχία δημιουργίας εικόνας'));
       final tmp = await getTemporaryDirectory();
       final file = File('${tmp.path}/member_card.png');
       await file.writeAsBytes(bytes);
-      await Share.shareXFiles([XFile(file.path)], text: 'Η κάρτα μέλους μου');
+      await Share.shareXFiles([XFile(file.path)], text: tr('Η κάρτα μέλους μου'));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Σφάλμα: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(tr('Σφάλμα: $e')), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -120,7 +122,7 @@ class _WalletCardScreenState extends State<WalletCardScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                'Αποθήκευσε την κάρτα στη γκαλερί σου και πρόσθεσέ τη στο Wallet.',
+                tr('Αποθήκευσε την κάρτα στη γκαλερί σου και πρόσθεσέ τη στο Wallet.'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
@@ -135,7 +137,7 @@ class _WalletCardScreenState extends State<WalletCardScreen> {
                 children: [
                   Expanded(
                     child: _ActionBtn(
-                      label: 'Αποθήκευση',
+                      label: tr('Αποθήκευση'),
                       icon: Icons.download_outlined,
                       color: primary,
                       loading: _saving,
@@ -145,7 +147,7 @@ class _WalletCardScreenState extends State<WalletCardScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _ActionBtn(
-                      label: 'Κοινοποίηση',
+                      label: tr('Κοινοποίηση'),
                       icon: Icons.ios_share_outlined,
                       color: AppColors.surface,
                       textColor: AppColors.textPrimary,
@@ -167,8 +169,8 @@ class _WalletCardScreenState extends State<WalletCardScreen> {
                   children: [
                     const Icon(Icons.wallet, size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
-                    const Text(
-                      'Μετά την αποθήκευση, άνοιξε τη φωτογραφία → Μοιραστείτε → Wallet',
+                    Text(
+                      tr('Μετά την αποθήκευση, άνοιξε τη φωτογραφία → Μοιραστείτε → Wallet'),
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     ),
@@ -272,7 +274,7 @@ class _WalletCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            gymName,
+                            tr(gymName),
                             style: TextStyle(
                               color: fg,
                               fontSize: 14,
@@ -330,14 +332,14 @@ class _WalletCard extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('ΜΕΛΟΣ', style: TextStyle(
+                              Text(tr('ΜΕΛΟΣ'), style: TextStyle(
                                   color: fgFaded, fontSize: 9, letterSpacing: 1.5)),
                               const SizedBox(height: 4),
-                              Text(fullName, style: TextStyle(
+                              Text(tr(fullName), style: TextStyle(
                                   color: fg, fontSize: 15, fontWeight: FontWeight.w800)),
                               if (memberId != null && memberId!.isNotEmpty) ...[
                                 const SizedBox(height: 6),
-                                Text('ID · ${memberId!.substring(0, memberId!.length.clamp(0, 8)).toUpperCase()}',
+                                Text(tr('ID · ${memberId!.substring(0, memberId!.length.clamp(0, 8)).toUpperCase()}'),
                                     style: TextStyle(
                                         color: fgFaded, fontSize: 10, letterSpacing: 1)),
                               ],
@@ -396,7 +398,7 @@ class _ActionBtn extends StatelessWidget {
             else ...[
               Icon(icon, size: 18, color: tc),
               const SizedBox(width: 8),
-              Text(label, style: TextStyle(color: tc, fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(tr(label), style: TextStyle(color: tc, fontWeight: FontWeight.w700, fontSize: 14)),
             ],
           ],
         ),

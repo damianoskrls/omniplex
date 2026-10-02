@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class QrAccessScreen extends StatelessWidget {
   const QrAccessScreen({super.key});
@@ -82,10 +84,10 @@ class QrAccessScreen extends StatelessWidget {
           _buildGlassCircle(const Icon(Icons.close, color: Colors.white, size: 20)),
           Column(
             children: [
-              Text('SCAN TO ENTER', style: GoogleFonts.spaceGrotesk(
+              Text(tr('SCAN TO ENTER'), style: GoogleFonts.inter(
                 fontSize: 18, fontWeight: FontWeight.w800,
                 color: Colors.white, letterSpacing: 1.8)),
-              Text('OMNIPLEX ATHENS • FLOOR 1', style: GoogleFonts.manrope(
+              Text(tr('OMNIPLEX ATHENS • FLOOR 1'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700,
                 color: kLime, letterSpacing: -0.5)),
             ],
@@ -112,10 +114,10 @@ class QrAccessScreen extends StatelessWidget {
     return RichText(
       textAlign: TextAlign.center,
       text: TextSpan(
-        style: GoogleFonts.manrope(fontSize: 14, color: const Color(0xFFD1D5DB)),
+        style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFFD1D5DB)),
         children: [
           const TextSpan(text: "Position the gym's "),
-          TextSpan(text: 'Entry QR Code', style: GoogleFonts.manrope(
+          TextSpan(text: 'Entry QR Code', style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w700, color: kCyan)),
           const TextSpan(text: ' inside the frame to unlock the turnstile.'),
         ],
@@ -209,7 +211,7 @@ class QrAccessScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("CAN'T SCAN? USE MANUAL CODE", style: GoogleFonts.manrope(
+              Text(tr("CAN'T SCAN? USE MANUAL CODE"), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700,
                 color: _kGray9C, letterSpacing: 1.2)),
               const SizedBox(width: 8),
@@ -241,11 +243,11 @@ class QrAccessScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('ACCESS LEVEL', style: GoogleFonts.manrope(
+                      Text(tr('ACCESS LEVEL'), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: _kGray6B, letterSpacing: 0.5)),
                       const SizedBox(height: 2),
-                      Text('Premium All-Access Pass', style: GoogleFonts.manrope(
+                      Text(tr('Premium All-Access Pass'), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                     ],
                   ),
@@ -258,7 +260,7 @@ class QrAccessScreen extends StatelessWidget {
                       decoration: const BoxDecoration(color: kLime, shape: BoxShape.circle),
                     ),
                     const SizedBox(height: 4),
-                    Text('READY', style: GoogleFonts.manrope(
+                    Text(tr('READY'), style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w700, color: kLime)),
                   ],
                 ),

@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({super.key});
@@ -21,7 +23,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   List<Map<String, dynamic>> _products = [];
   Map<String, dynamic> _settings = {};
   String _query = '';
-  String _category = 'Όλα';
+  String _category = tr('Όλα');
   final Map<String, int> _cart = {};
 
   @override
@@ -46,7 +48,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e is ApiException ? e.message : 'Δεν φορτώθηκε το κατάστημα';
+        _error = e is ApiException ? e.message : tr('Δεν φορτώθηκε το κατάστημα');
         _loading = false;
       });
     }
@@ -61,7 +63,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         .toSet()
         .toList()
       ..sort();
-    return ['Όλα', ...names];
+    return [tr('Όλα'), ...names];
   }
 
   List<Map<String, dynamic>> get _visible {
@@ -83,7 +85,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final next = (_cart[id] ?? 0) + qty;
     if (stock is num && next > stock) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Δεν υπάρχει άλλο απόθεμα')),
+        SnackBar(content: Text(tr('Δεν υπάρχει άλλο απόθεμα'))),
       );
       return;
     }
@@ -120,7 +122,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('Κατάστημα', style: GoogleFonts.manrope(
+                    child: Text(tr('Κατάστημα'), style: GoogleFonts.inter(
                       color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
                   ),
                   IconButton(
@@ -156,10 +158,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_error!, textAlign: TextAlign.center,
+              Text(tr(_error!), textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.textSecondary)),
               const SizedBox(height: 12),
-              FilledButton(onPressed: _load, child: const Text('Ξανά')),
+              FilledButton(onPressed: _load, child: Text(tr('Ξανά'))),
             ],
           ),
         ),
@@ -176,7 +178,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             onChanged: (v) => setState(() => _query = v),
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              hintText: 'Αναζήτηση προϊόντος',
+              hintText: tr('Αναζήτηση προϊόντος'),
               hintStyle: const TextStyle(color: AppColors.textSecondary),
               prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
               filled: true,
@@ -203,7 +205,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       color: on ? accent : AppColors.surface,
                       borderRadius: BorderRadius.circular(99),
                     ),
-                    child: Text(name, style: GoogleFonts.manrope(
+                    child: Text(tr(name), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700,
                       color: on ? AppColors.onFill(accent) : AppColors.textSecondary)),
                   ),
@@ -213,9 +215,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           ),
           const SizedBox(height: 16),
           if (items.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 48),
-              child: Text('Δεν υπάρχουν προϊόντα', textAlign: TextAlign.center,
+              child: Text(tr('Δεν υπάρχουν προϊόντα'), textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary)),
             )
           else
@@ -257,15 +259,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product['name']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                  Text(tr(product['name']?.toString() ?? ''), maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Expanded(child: Text(_eur(product['price_cents']),
-                        style: GoogleFonts.manrope(color: accent, fontWeight: FontWeight.w800))),
+                      Expanded(child: Text(tr(_eur(product['price_cents'])),
+                        style: GoogleFonts.inter(color: accent, fontWeight: FontWeight.w800))),
                       if (out)
-                        const Text('Εξαντλήθηκε', style: TextStyle(color: AppColors.textSecondary, fontSize: 11))
+                        Text(tr('Εξαντλήθηκε'), style: TextStyle(color: AppColors.textSecondary, fontSize: 11))
                       else
                         GestureDetector(
                           onTap: () => _add(product),
@@ -322,22 +324,22 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   child: SizedBox(height: 180, width: double.infinity, child: _photo(product['image_url'] as String?)),
                 ),
                 const SizedBox(height: 14),
-                Text(product['name']?.toString() ?? '', style: GoogleFonts.manrope(
+                Text(tr(product['name']?.toString() ?? ''), style: GoogleFonts.inter(
                   color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),
-                Text(_eur(product['price_cents']), style: GoogleFonts.manrope(
+                Text(tr(_eur(product['price_cents'])), style: GoogleFonts.inter(
                   color: accent, fontSize: 18, fontWeight: FontWeight.w800)),
                 if ((product['description'] as String?)?.isNotEmpty == true) ...[
                   const SizedBox(height: 10),
-                  Text(product['description'].toString(), style: const TextStyle(color: AppColors.textSecondary)),
+                  Text(tr(product['description'].toString()), style: const TextStyle(color: AppColors.textSecondary)),
                 ],
                 if ((product['ingredients'] as String?)?.isNotEmpty == true) ...[
                   const SizedBox(height: 8),
-                  Text('Συστατικά: ${product['ingredients']}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(tr('Συστατικά: ${product['ingredients']}'), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 ],
                 if ((product['usage_instructions'] as String?)?.isNotEmpty == true) ...[
                   const SizedBox(height: 8),
-                  Text(product['usage_instructions'].toString(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(tr(product['usage_instructions'].toString()), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 ],
                 const SizedBox(height: 16),
                 Row(
@@ -345,7 +347,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     _qtyButton(Icons.remove, () { if (qty > 1) setLocal(() => qty--); }),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('$qty', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                      child: Text(tr('$qty'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                     ),
                     _qtyButton(Icons.add, () {
                       if (stock is num && qty >= stock) return;
@@ -358,7 +360,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         Navigator.pop(ctx);
                       },
                       style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: AppColors.onFill(accent)),
-                      child: Text(out ? 'Εξαντλήθηκε' : 'Στο καλάθι'),
+                      child: Text(tr(out ? 'Εξαντλήθηκε' : tr('Στο καλάθι'))),
                     ),
                   ],
                 ),
@@ -398,18 +400,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Καλάθι', style: GoogleFonts.manrope(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+              Text(tr('Καλάθι'), style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
               for (final line in lines)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Row(
                     children: [
-                      Expanded(child: Text(line.$3!['name']?.toString() ?? '', style: const TextStyle(color: Colors.white))),
+                      Expanded(child: Text(tr(line.$3!['name']?.toString() ?? ''), style: const TextStyle(color: Colors.white))),
                       _qtyButton(Icons.remove, () { _setQty(line.$1, line.$2 - 1); setSheet(() {}); }),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('${line.$2}', style: const TextStyle(color: Colors.white)),
+                        child: Text(tr('${line.$2}'), style: const TextStyle(color: Colors.white)),
                       ),
                       _qtyButton(Icons.add, () { _add(line.$3!); setSheet(() {}); }),
                     ],
@@ -418,9 +420,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               const Divider(color: AppColors.border),
               Row(
                 children: [
-                  const Text('Σύνολο', style: TextStyle(color: AppColors.textSecondary)),
+                  Text(tr('Σύνολο'), style: TextStyle(color: AppColors.textSecondary)),
                   const Spacer(),
-                  Text(_eur(cents), style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 18)),
+                  Text(tr(_eur(cents)), style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 18)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -432,7 +434,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     _openCheckout(accent, cents);
                   },
                   style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: AppColors.onFill(accent)),
-                  child: const Text('Ολοκλήρωση'),
+                  child: Text(tr('Ολοκλήρωση')),
                 ),
               ),
             ],
@@ -476,42 +478,42 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Παραγγελία', style: GoogleFonts.manrope(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                Text(tr('Παραγγελία'), style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 12),
-                _field(name, 'Ονοματεπώνυμο'),
-                _field(phone, 'Τηλέφωνο', type: TextInputType.phone),
+                _field(name, tr('Ονοματεπώνυμο')),
+                _field(phone, tr('Τηλέφωνο'), type: TextInputType.phone),
                 const SizedBox(height: 8),
-                const Text('Παραλαβή', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                Text(tr('Παραλαβή'), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                 RadioListTile<String>(
                   value: 'pickup', groupValue: delivery, activeColor: accent,
-                  title: const Text('Παραλαβή από το γυμναστήριο', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  title: Text(tr('Παραλαβή από το γυμναστήριο'), style: TextStyle(color: Colors.white, fontSize: 14)),
                   onChanged: (v) => setLocal(() => delivery = v!),
                 ),
                 if (shipOn)
                   RadioListTile<String>(
                     value: 'shipping', groupValue: delivery, activeColor: accent,
-                    title: Text('Αποστολή · ${_eur(shippingCents())}', style: const TextStyle(color: Colors.white, fontSize: 14)),
+                    title: Text(tr('Αποστολή · ${_eur(shippingCents())}'), style: const TextStyle(color: Colors.white, fontSize: 14)),
                     subtitle: (shipping['estimated_days'] ?? '').toString().isEmpty
                         ? null
-                        : Text('Παράδοση ${shipping['estimated_days']}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                        : Text(tr('Παράδοση ${shipping['estimated_days']}'), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                     onChanged: (v) => setLocal(() => delivery = v!),
                   ),
-                if (delivery == 'shipping') _field(address, 'Διεύθυνση'),
+                if (delivery == 'shipping') _field(address, tr('Διεύθυνση')),
                 const SizedBox(height: 8),
-                const Text('Πληρωμή', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                Text(tr('Πληρωμή'), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                 for (final key in (methods.isEmpty ? ['cash'] : methods))
                   RadioListTile<String>(
                     value: key, groupValue: method, activeColor: accent,
                     title: Text(_methodLabel(key), style: const TextStyle(color: Colors.white, fontSize: 14)),
                     onChanged: (v) => setLocal(() => method = v!),
                   ),
-                _field(notes, 'Σημειώσεις'),
+                _field(notes, tr('Σημειώσεις')),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Text('Πληρωτέο', style: TextStyle(color: AppColors.textSecondary)),
+                    Text(tr('Πληρωτέο'), style: TextStyle(color: AppColors.textSecondary)),
                     const Spacer(),
-                    Text(_eur(total), style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 18)),
+                    Text(tr(_eur(total)), style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 18)),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -520,7 +522,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   child: FilledButton(
                     onPressed: busy ? null : () async {
                       if (name.text.trim().isEmpty || phone.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Συμπλήρωσε όνομα και τηλέφωνο')));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Συμπλήρωσε όνομα και τηλέφωνο'))));
                         return;
                       }
                       setLocal(() => busy = true);
@@ -537,7 +539,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       if (ok) Navigator.pop(ctx);
                     },
                     style: FilledButton.styleFrom(backgroundColor: accent, foregroundColor: AppColors.onFill(accent)),
-                    child: Text(busy ? 'Αποστολή…' : 'Καταχώρηση'),
+                    child: Text(tr(busy ? 'Αποστολή…' : tr('Καταχώρηση'))),
                   ),
                 ),
               ],
@@ -556,7 +558,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         keyboardType: type,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          labelText: label,
+          labelText: tr(label),
           labelStyle: const TextStyle(color: AppColors.textSecondary),
           filled: true,
           fillColor: const Color(0xFF121214),
@@ -575,10 +577,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   String _methodLabel(String key) {
     switch (key) {
-      case 'card': return 'Κάρτα στο κατάστημα';
-      case 'stripe': return 'Κάρτα online';
-      case 'bank_transfer': return 'Τραπεζική κατάθεση';
-      default: return 'Μετρητά στο κατάστημα';
+      case 'card': return tr('Κάρτα στο κατάστημα');
+      case 'stripe': return tr('Κάρτα online');
+      case 'bank_transfer': return tr('Τραπεζική κατάθεση');
+      default: return tr('Μετρητά στο κατάστημα');
     }
   }
 
@@ -617,20 +619,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       if (!mounted) return true;
       setState(_cart.clear);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Η παραγγελία καταχωρήθηκε')),
+        SnackBar(content: Text(tr('Η παραγγελία καταχωρήθηκε'))),
       );
       return true;
     } on StripeException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.error.localizedMessage ?? 'Η πληρωμή ακυρώθηκε. Η παραγγελία έμεινε σε εκκρεμότητα.')),
+          SnackBar(content: Text(tr(e.error.localizedMessage ?? tr('Η πληρωμή ακυρώθηκε. Η παραγγελία έμεινε σε εκκρεμότητα.')))),
         );
       }
       return true;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e is ApiException ? e.message : 'Η παραγγελία δεν καταχωρήθηκε')),
+          SnackBar(content: Text(tr(e is ApiException ? e.message : tr('Η παραγγελία δεν καταχωρήθηκε')))),
         );
       }
       return false;
@@ -665,7 +667,7 @@ class _MyOrdersPageState extends State<_MyOrdersPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e is ApiException ? e.message : 'Δεν φορτώθηκαν οι παραγγελίες';
+        _error = e is ApiException ? e.message : tr('Δεν φορτώθηκαν οι παραγγελίες');
         _loading = false;
       });
     }
@@ -673,12 +675,12 @@ class _MyOrdersPageState extends State<_MyOrdersPage> {
 
   String _status(String? raw) {
     switch (raw) {
-      case 'paid': return 'Πληρώθηκε';
-      case 'processing': return 'Σε επεξεργασία';
-      case 'fulfilled': return 'Παραδόθηκε';
-      case 'cancelled': return 'Ακυρώθηκε';
-      case 'refunded': return 'Επιστράφηκε';
-      default: return 'Εκκρεμεί';
+      case 'paid': return tr('Πληρώθηκε');
+      case 'processing': return tr('Σε επεξεργασία');
+      case 'fulfilled': return tr('Παραδόθηκε');
+      case 'cancelled': return tr('Ακυρώθηκε');
+      case 'refunded': return tr('Επιστράφηκε');
+      default: return tr('Εκκρεμεί');
     }
   }
 
@@ -699,14 +701,14 @@ class _MyOrdersPageState extends State<_MyOrdersPage> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         foregroundColor: Colors.white,
-        title: const Text('Οι παραγγελίες μου'),
+        title: Text(tr('Οι παραγγελίες μου')),
       ),
       body: _loading
           ? Center(child: CircularProgressIndicator(color: accent))
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: AppColors.textSecondary)))
+              ? Center(child: Text(tr(_error!), style: const TextStyle(color: AppColors.textSecondary)))
               : _orders.isEmpty
-                  ? const Center(child: Text('Δεν έχεις παραγγελίες', style: TextStyle(color: AppColors.textSecondary)))
+                  ? Center(child: Text(tr('Δεν έχεις παραγγελίες'), style: TextStyle(color: AppColors.textSecondary)))
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: _orders.length,
@@ -726,15 +728,15 @@ class _MyOrdersPageState extends State<_MyOrdersPage> {
                             children: [
                               Row(
                                 children: [
-                                  Text(_status(order['status']?.toString()),
+                                  Text(tr(_status(order['status']?.toString())),
                                     style: TextStyle(color: accent, fontWeight: FontWeight.w800)),
                                   const Spacer(),
-                                  Text(_eur(order['total_cents']), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                  Text(tr(_eur(order['total_cents'])), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                                 ],
                               ),
                               const SizedBox(height: 6),
                               for (final line in lines)
-                                Text('${line['qty'] ?? 1} × ${line['name'] ?? ''}',
+                                Text(tr('${line['qty'] ?? 1} × ${line['name'] ?? ''}'),
                                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                             ],
                           ),

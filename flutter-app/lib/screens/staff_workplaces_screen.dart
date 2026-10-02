@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kOrange = Color(0xFFFFA53E);
 const _kOrangeBg = Color(0xFF2B1D0E);
@@ -71,7 +73,7 @@ class StaffWorkplacesScreen extends StatelessWidget {
                           child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
                         ),
                         const SizedBox(width: 16),
-                        Text('My Workplaces', style: GoogleFonts.spaceGrotesk(
+                        Text(tr('My Workplaces'), style: GoogleFonts.inter(
                           fontSize: 20, fontWeight: FontWeight.w700,
                           color: Colors.white, letterSpacing: -0.5)),
                       ],
@@ -80,7 +82,7 @@ class StaffWorkplacesScreen extends StatelessWidget {
                   // Section label
                   Padding(
                     padding: const EdgeInsets.only(left: 4, bottom: 12),
-                    child: Text('WHERE YOU WORK', style: GoogleFonts.manrope(
+                    child: Text(tr('WHERE YOU WORK'), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600,
                       color: kGray, letterSpacing: 0.3)),
                   ),
@@ -123,7 +125,7 @@ class StaffWorkplacesScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.add, color: kLime, size: 16),
                         const SizedBox(width: 8),
-                        Text('Add Workplace', style: GoogleFonts.spaceGrotesk(
+                        Text(tr('Add Workplace'), style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w700,
                           color: kLime, letterSpacing: -0.35)),
                       ],
@@ -133,7 +135,7 @@ class StaffWorkplacesScreen extends StatelessWidget {
                   // Find a Workplace section
                   Padding(
                     padding: const EdgeInsets.only(left: 4, bottom: 12),
-                    child: Text('Find a Workplace', style: GoogleFonts.spaceGrotesk(
+                    child: Text(tr('Find a Workplace'), style: GoogleFonts.inter(
                       fontSize: 16, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.4)),
                   ),
@@ -159,7 +161,7 @@ class StaffWorkplacesScreen extends StatelessWidget {
                             children: [
                               const Icon(Icons.search, color: kDim, size: 18),
                               const SizedBox(width: 12),
-                              Text('Search gym', style: GoogleFonts.manrope(
+                              Text(tr('Search gym'), style: GoogleFonts.inter(
                                 fontSize: 14, fontWeight: FontWeight.w600, color: kDim)),
                             ],
                           ),
@@ -190,7 +192,7 @@ class StaffWorkplacesScreen extends StatelessWidget {
                                   const SizedBox(width: 12),
                                   SizedBox(
                                     width: 80,
-                                    child: Text('CrossFit Box Piraeus', style: GoogleFonts.manrope(
+                                    child: Text(tr('CrossFit Box Piraeus'), style: GoogleFonts.inter(
                                       fontSize: 14, fontWeight: FontWeight.w700,
                                       color: Colors.white, height: 1.43)),
                                   ),
@@ -204,7 +206,7 @@ class StaffWorkplacesScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Center(
-                                  child: Text('Request to Join', style: GoogleFonts.spaceGrotesk(
+                                  child: Text(tr('Request to Join'), style: GoogleFonts.inter(
                                     fontSize: 13, fontWeight: FontWeight.w700,
                                     color: kBg, letterSpacing: -0.35)),
                                 ),
@@ -224,8 +226,8 @@ class StaffWorkplacesScreen extends StatelessWidget {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Admin approval required to join a new workplace.',
-                                style: GoogleFonts.manrope(
+                                tr('Admin approval required to join a new workplace.'),
+                                style: GoogleFonts.inter(
                                   fontSize: 12, fontWeight: FontWeight.w600, color: kDim),
                               ),
                             ),
@@ -277,10 +279,10 @@ class StaffWorkplacesScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: GoogleFonts.manrope(
+                  Text(tr(name), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text(role, style: GoogleFonts.manrope(
+                  Text(tr(role), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                   const SizedBox(height: 6),
                   Container(
@@ -290,7 +292,7 @@ class StaffWorkplacesScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9999),
                       border: Border.all(color: kLime.withValues(alpha: 0.40)),
                     ),
-                    child: Text('ACTIVE', style: GoogleFonts.manrope(
+                    child: Text(tr('ACTIVE'), style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w700,
                       color: kLime, letterSpacing: 0.25)),
                   ),
@@ -303,7 +305,7 @@ class StaffWorkplacesScreen extends StatelessWidget {
             children: [
               const Icon(Icons.chevron_right, color: kGray, size: 16),
               const SizedBox(height: 11),
-              Text(since, style: GoogleFonts.manrope(
+              Text(tr(since), style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w600, color: kDim)),
             ],
           ),
@@ -338,10 +340,10 @@ class StaffWorkplacesScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Iron Works Gym', style: GoogleFonts.manrope(
+                  Text(tr('Iron Works Gym'), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text('Yoga Instructor', style: GoogleFonts.manrope(
+                  Text(tr('Yoga Instructor'), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                   const SizedBox(height: 4),
                   Container(
@@ -351,12 +353,12 @@ class StaffWorkplacesScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9999),
                       border: Border.all(color: _kOrange.withValues(alpha: 0.50)),
                     ),
-                    child: Text('PENDING APPROVAL', style: GoogleFonts.manrope(
+                    child: Text(tr('PENDING APPROVAL'), style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w700,
                       color: _kOrange, letterSpacing: 0.25)),
                   ),
                   const SizedBox(height: 4),
-                  Text('Waiting for admin approval', style: GoogleFonts.manrope(
+                  Text(tr('Waiting for admin approval'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w600, color: kDim)),
                 ],
               ),

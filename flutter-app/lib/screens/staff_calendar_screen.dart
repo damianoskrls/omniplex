@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kPurple = Color(0xFFB57BFF);
 const _kPurpleBg = Color(0xFF20142F);
@@ -129,7 +131,7 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('My Calendar', style: GoogleFonts.spaceGrotesk(
+        Text(tr('My Calendar'), style: GoogleFonts.inter(
           fontSize: 20, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.5)),
         Container(
@@ -165,7 +167,7 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text('Fitness Club Athens', style: GoogleFonts.spaceGrotesk(
+            child: Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
           ),
           const Icon(Icons.keyboard_arrow_down, color: kGray, size: 18),
@@ -196,10 +198,10 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
                   border: Border.all(color: kLime.withValues(alpha: 0.40)),
                 ) : null,
                 child: Center(
-                  child: Text(labels[i],
+                  child: Text(tr(labels[i]),
                     style: active
-                      ? GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w700, color: kLime)
-                      : GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
+                      ? GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: kLime)
+                      : GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
                 ),
               ),
             ),
@@ -231,7 +233,7 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
             ),
           ),
           const SizedBox(width: 6),
-          Text(item.$2, style: GoogleFonts.manrope(
+          Text(tr(item.$2), style: GoogleFonts.inter(
             fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
         ],
       )).toList(),
@@ -270,14 +272,14 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
               ),
               child: Column(
                 children: [
-                  Text(d.$1,
+                  Text(tr(d.$1),
                     style: active
-                      ? GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w700, color: kBg)
-                      : GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w600,
+                      ? GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: kBg)
+                      : GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600,
                           color: isFriLeave ? _kOrange : kGray)),
                   const SizedBox(height: 6),
-                  Text(d.$2,
-                    style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w700,
+                  Text(tr(d.$2),
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700,
                       color: active ? kBg : Colors.white)),
                 ],
               ),
@@ -294,7 +296,7 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
       children: [
         Row(
           children: [
-            Text(date, style: GoogleFonts.spaceGrotesk(
+            Text(tr(date), style: GoogleFonts.inter(
               fontSize: 16, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: -0.4)),
             if (isToday) ...[
@@ -306,7 +308,7 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
                   borderRadius: BorderRadius.circular(9999),
                   border: Border.all(color: kLime.withValues(alpha: 0.40)),
                 ),
-                child: Text('TODAY', style: GoogleFonts.manrope(
+                child: Text(tr('TODAY'), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: kLime, letterSpacing: 0.1)),
               ),
@@ -342,14 +344,14 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Text(e.time, style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w700, color: kGray)),
+                    Text(tr(e.time), style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: kGray)),
                     const SizedBox(width: 8),
-                    Text('·', style: GoogleFonts.manrope(fontSize: 12, color: kDim)),
+                    Text(tr('·'), style: GoogleFonts.inter(fontSize: 12, color: kDim)),
                     const SizedBox(width: 8),
-                    Text(e.name, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
+                    Text(tr(e.name), style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
                   ]),
                   const SizedBox(height: 4),
-                  Text(e.sub, style: GoogleFonts.manrope(fontSize: 12, color: kDim)),
+                  Text(tr(e.sub), style: GoogleFonts.inter(fontSize: 12, color: kDim)),
                 ],
               )),
               Container(
@@ -384,17 +386,17 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(children: [
-                        Text(e.time, style: GoogleFonts.spaceGrotesk(
+                        Text(tr(e.time), style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                         const SizedBox(width: 8),
-                        Text('·', style: GoogleFonts.manrope(
+                        Text(tr('·'), style: GoogleFonts.inter(
                           fontSize: 12, color: isLeave ? e.accent! : kGray)),
                         const SizedBox(width: 8),
-                        Text(e.name, style: GoogleFonts.manrope(
+                        Text(tr(e.name), style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                       ]),
                       const SizedBox(height: 4),
-                      Text(e.sub, style: GoogleFonts.manrope(fontSize: 12, color: kGray)),
+                      Text(tr(e.sub), style: GoogleFonts.inter(fontSize: 12, color: kGray)),
                     ],
                   )),
                   Container(
@@ -449,10 +451,10 @@ class _StaffCalendarScreenState extends State<StaffCalendarScreen> {
             children: [
               Icon(item.$1, color: active ? kLime : kDim, size: 20),
               const SizedBox(height: 6),
-              Text(item.$2,
+              Text(tr(item.$2),
                 style: active
-                  ? GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
-                  : GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w600, color: kDim)),
+                  ? GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
+                  : GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: kDim)),
             ],
           );
         }).toList(),

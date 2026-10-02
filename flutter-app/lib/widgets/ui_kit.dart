@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import 'tenant_logo.dart';
+import '../l10n/tr.dart';
+
 
 class GreetingHeader extends StatelessWidget {
   const GreetingHeader({
@@ -70,8 +72,8 @@ class GreetingHeader extends StatelessWidget {
                         width: 16, height: 16,
                       ),
                       const SizedBox(width: 6),
-                      const Text(
-                        'OmniPlex',
+                      Text(
+                        tr('OmniPlex'),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -132,7 +134,7 @@ class GreetingHeader extends StatelessWidget {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              avatarLetter!.toUpperCase(),
+                              tr(avatarLetter!.toUpperCase()),
                               style: TextStyle(
                                 color: AppColors.onFill(context.tenantPrimary),
                                 fontWeight: FontWeight.w800,
@@ -162,7 +164,7 @@ class GreetingHeader extends StatelessWidget {
                         SizedBox(
                           width: 78,
                           child: Text(
-                            roleLabel!,
+                            tr(roleLabel!),
                             textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -227,7 +229,7 @@ class _HeaderIconButton extends StatelessWidget {
                     border: Border.all(color: AppColors.bg, width: 2),
                   ),
                   child: Text(
-                    badgeCount > 9 ? '9+' : '$badgeCount',
+                    tr(badgeCount > 9 ? '9+' : '$badgeCount'),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 10,
@@ -285,7 +287,7 @@ class PillChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        label,
+        tr(label),
         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor ?? Colors.white),
       ),
     );
@@ -423,7 +425,7 @@ class FloatingNavBar extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          item.badgeCount > 9 ? '9+' : '${item.badgeCount}',
+                          tr(item.badgeCount > 9 ? '9+' : '${item.badgeCount}'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 8,
@@ -438,7 +440,7 @@ class FloatingNavBar extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                item.label,
+                tr(item.label),
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
@@ -570,10 +572,10 @@ class EmptyState extends StatelessWidget {
               child: Icon(icon, size: 40, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 20),
-            Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
+            Text(tr(title), textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
             if (subtitle != null) ...[
               const SizedBox(height: 8),
-              Text(subtitle!, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+              Text(tr(subtitle!), textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
             ],
             if (action != null) ...[
               const SizedBox(height: 16),
@@ -588,7 +590,7 @@ class EmptyState extends StatelessWidget {
 
 String greetingForHour() {
   final h = DateTime.now().hour;
-  if (h < 12) return 'Καλημέρα';
-  if (h < 18) return 'Καλησπέρα';
-  return 'Καληνύχτα';
+  if (h < 12) return tr('Καλημέρα');
+  if (h < 18) return tr('Καλησπέρα');
+  return tr('Καληνύχτα');
 }

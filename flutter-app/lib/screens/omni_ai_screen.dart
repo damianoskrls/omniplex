@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class OmniAiScreen extends StatefulWidget {
   const OmniAiScreen({super.key});
@@ -106,7 +108,7 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
                   color: _kMint, shape: BoxShape.circle),
               ),
               const SizedBox(width: 8),
-              Text('OMNI AI', style: GoogleFonts.manrope(
+              Text(tr('OMNI AI'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w700,
                 color: _kGrayF4, letterSpacing: 1.4)),
             ],
@@ -143,7 +145,7 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
           ),
           border: Border.all(color: border),
         ),
-        child: Text(text, style: GoogleFonts.manrope(
+        child: Text(tr(text), style: GoogleFonts.inter(
           fontSize: 15, color: _kGrayF4)),
       ),
     );
@@ -168,14 +170,14 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
               child: const Icon(Icons.auto_awesome, color: kBg, size: 16),
             ),
             const SizedBox(width: 12),
-            Text('OMNI ASSISTANT', style: GoogleFonts.manrope(
+            Text(tr('OMNI ASSISTANT'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700,
               color: _kGray71, letterSpacing: 1.2)),
           ],
         ),
         const SizedBox(height: 16),
-        Text('I found 3 premium yoga studios within 2 miles of your current location:',
-          style: GoogleFonts.manrope(fontSize: 15, color: _kGrayD4, height: 1.625)),
+        Text(tr('I found 3 premium yoga studios within 2 miles of your current location:'),
+          style: GoogleFonts.inter(fontSize: 15, color: _kGrayD4, height: 1.625)),
         const SizedBox(height: 16),
         _buildGymCard('ZENITH FLOW STUDIO', '4.9', '128 reviews', '0.8 MILES'),
         const SizedBox(height: 16),
@@ -225,7 +227,7 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
                     color: _kBg05.withValues(alpha: 0.60),
                     borderRadius: BorderRadius.circular(9999),
                   ),
-                  child: Text(distance, style: GoogleFonts.manrope(
+                  child: Text(tr(distance), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: _kGrayF4)),
                 ),
@@ -237,7 +239,7 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: GoogleFonts.manrope(
+                Text(tr(name), style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w700,
                   fontStyle: FontStyle.italic,
                   color: _kGrayF4, letterSpacing: -0.45)),
@@ -246,11 +248,11 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
                   children: [
                     const Icon(Icons.star, color: _kMint, size: 10),
                     const SizedBox(width: 4),
-                    Text(rating, style: GoogleFonts.manrope(
+                    Text(tr(rating), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700,
                       color: _kMint)),
                     const SizedBox(width: 8),
-                    Text('($reviews)', style: GoogleFonts.manrope(
+                    Text(tr('($reviews)'), style: GoogleFonts.inter(
                       fontSize: 14, color: _kGray71)),
                   ],
                 ),
@@ -278,7 +280,7 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
         borderRadius: BorderRadius.circular(12),
         border: primary ? null : Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
-      child: Text(label.toUpperCase(), style: GoogleFonts.manrope(
+      child: Text(tr(label.toUpperCase()), style: GoogleFonts.inter(
         fontSize: 12, fontWeight: FontWeight.w700,
         color: primary ? kBg : Colors.white, letterSpacing: 0.6)),
     );
@@ -304,7 +306,7 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
         child: Row(
           children: [
             Expanded(
-              child: Text('Ask anything...', style: GoogleFonts.manrope(
+              child: Text(tr('Ask anything...'), style: GoogleFonts.inter(
                 fontSize: 14, color: const Color(0xFF52525B))),
             ),
             Container(
@@ -337,7 +339,7 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('STAFF OPERATIONS MODE', style: GoogleFonts.manrope(
+              Text(tr('STAFF OPERATIONS MODE'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w900,
                 color: _kPurple, letterSpacing: 2.0)),
               Container(
@@ -376,7 +378,7 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
                       child: const Icon(Icons.flash_on, color: Colors.white, size: 12),
                     ),
                     const SizedBox(width: 12),
-                    Text('Ops Assistant', style: GoogleFonts.manrope(
+                    Text(tr('Ops Assistant'), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700,
                       color: _kGrayD4, letterSpacing: -0.30)),
                   ],
@@ -401,18 +403,18 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
               ),
               const SizedBox(height: 24),
               // Assistant overview
-              Text('ASSISTANT OVERVIEW', style: GoogleFonts.manrope(
+              Text(tr('ASSISTANT OVERVIEW'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700,
                 color: _kGray71, letterSpacing: 1.2)),
               const SizedBox(height: 16),
               RichText(text: TextSpan(children: [
-                TextSpan(text: 'There are ', style: GoogleFonts.manrope(
+                TextSpan(text: 'There are ', style: GoogleFonts.inter(
                   fontSize: 14, color: _kGrayA1, height: 1.5)),
-                TextSpan(text: '4 guest trials', style: GoogleFonts.manrope(
+                TextSpan(text: '4 guest trials', style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: Colors.white, height: 1.5)),
                 TextSpan(text: ' scheduled for today. Three have not been assigned a host yet.',
-                  style: GoogleFonts.manrope(
+                  style: GoogleFonts.inter(
                     fontSize: 14, color: _kGrayA1, height: 1.5)),
               ])),
               const SizedBox(height: 16),
@@ -459,10 +461,10 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Sarah Miller', style: GoogleFonts.manrope(
+                              Text(tr('Sarah Miller'), style: GoogleFonts.inter(
                                 fontSize: 12, fontWeight: FontWeight.w700,
                                 color: _kGrayF4)),
-                              Text('Assigned to: Alex (You)', style: GoogleFonts.manrope(
+                              Text(tr('Assigned to: Alex (You)'), style: GoogleFonts.inter(
                                 fontSize: 9, color: _kGray71)),
                             ],
                           ),
@@ -493,7 +495,7 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
                         borderRadius: BorderRadius.circular(9999),
                         border: Border.all(color: _kDark2A),
                       ),
-                      child: Text(labels[i], style: GoogleFonts.manrope(
+                      child: Text(tr(labels[i]), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: _kGrayA1)),
                     );
@@ -549,10 +551,10 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: GoogleFonts.manrope(
+                      Text(tr(name), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700,
                         color: _kGrayF4)),
-                      Text(sub, style: GoogleFonts.manrope(
+                      Text(tr(sub), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w500,
                         color: _kGray71)),
                     ],
@@ -562,10 +564,10 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(time, style: GoogleFonts.manrope(
+                  Text(tr(time), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w700,
                     color: _kPurple)),
-                  Text(type, style: GoogleFonts.manrope(
+                  Text(tr(type), style: GoogleFonts.inter(
                     fontSize: 10, color: _kGray71,
                     letterSpacing: 0.19)),
                 ],
@@ -582,8 +584,8 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
                     color: _kPurple,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text('Assign to me', textAlign: TextAlign.center,
-                    style: GoogleFonts.manrope(
+                  child: Text(tr('Assign to me'), textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: 0.30)),
                 ),
@@ -597,8 +599,8 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: _kDark2A),
                   ),
-                  child: Text('View Details', textAlign: TextAlign.center,
-                    style: GoogleFonts.manrope(
+                  child: Text(tr('View Details'), textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700,
                       color: _kGrayD4, letterSpacing: 0.30)),
                 ),
@@ -626,8 +628,8 @@ class _OmniAiScreenState extends State<OmniAiScreen> {
           const Icon(Icons.flash_on, color: _kPurple, size: 14),
           const SizedBox(width: 16),
           Expanded(
-            child: Text('Type a command or ask for data...',
-              style: GoogleFonts.manrope(
+            child: Text(tr('Type a command or ask for data...'),
+              style: GoogleFonts.inter(
                 fontSize: 14, color: const Color(0xFF9CA3AF))),
           ),
           const Icon(Icons.mic_outlined, color: _kPurple, size: 16),

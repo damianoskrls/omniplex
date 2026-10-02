@@ -1,3 +1,4 @@
+import '../l10n/tr.dart';
 class Booking {
   Booking({
     required this.id,
@@ -90,7 +91,7 @@ class Booking {
   factory Booking.fromJson(Map<String, dynamic> json) => Booking(
         id: json['id'].toString(),
         serviceId: (json['service_id'] ?? json['id']).toString(),
-        serviceName: (json['service_name'] ?? 'Υπηρεσία').toString(),
+        serviceName: (json['service_name'] ?? tr('Υπηρεσία')).toString(),
         staffName: json['staff_name'] as String? ?? '',
         startsAt: DateTime.parse(json['starts_at'].toString()).toLocal(),
         endsAt: DateTime.parse(json['ends_at'].toString()).toLocal(),
@@ -141,7 +142,7 @@ class WaitlistEntry {
 
   String get displayName => scheduleLabel?.isNotEmpty == true ? scheduleLabel! : serviceName;
 
-  String get statusLabel => isOffered ? 'Θέση διαθέσιμη' : 'Σε αναμονή';
+  String get statusLabel => isOffered ? 'Θέση διαθέσιμη' : tr('Σε αναμονή');
 
   factory WaitlistEntry.fromJson(Map<String, dynamic> json) => WaitlistEntry(
         id: json['id'] as String,
@@ -210,37 +211,35 @@ class TimeSlot {
 
   String? get userConflictLabel {
     if (!userHasBooking) return null;
-    if (userSameService) return 'Έχεις ήδη κράτηση — πάτα για λεπτομέρειες';
+    if (userSameService) return tr('Έχεις ήδη κράτηση — πάτα για λεπτομέρειες');
     if (userConflictService != null && userConflictService!.isNotEmpty) {
-      return 'Σύγκρουση με $userConflictService — πάτα για λεπτομέρειες';
+      return tr('Σύγκρουση με $userConflictService — πάτα για λεπτομέρειες');
     }
-    return 'Μη διαθέσιμο — πάτα για λεπτομέρειες';
+    return tr('Μη διαθέσιμο — πάτα για λεπτομέρειες');
   }
 
   String? get userConflictTitle {
     if (!userHasBooking) return null;
-    if (userSameService) return 'Έχεις ήδη κράτηση';
-    return 'Σύγκρουση ώρας';
+    if (userSameService) return tr('Έχεις ήδη κράτηση');
+    return tr('Σύγκρουση ώρας');
   }
 
   String userConflictDetail(String currentServiceName) {
     if (userSameService) {
-      return 'Έχεις ήδη κράτηση για «$currentServiceName» στις $time.\n\n'
-          'Δεν μπορείς να κλείσεις την ίδια υπηρεσία δύο φορές την ίδια ώρα. Επίλεξε άλλη ώρα.';
+      return tr('Έχεις ήδη κράτηση για «$currentServiceName» στις $time.\n\n' + 'Δεν μπορείς να κλείσεις την ίδια υπηρεσία δύο φορές την ίδια ώρα. Επίλεξε άλλη ώρα.');
     }
     if (userConflictService != null && userConflictService!.isNotEmpty) {
-      return 'Έχεις ήδη κράτηση για «$userConflictService» στις $time.\n\n'
-          'Δεν μπορείς να κλείσεις «$currentServiceName» την ίδια ώρα. Επίλεξε άλλη ώρα.';
+      return tr('Έχεις ήδη κράτηση για «$userConflictService» στις $time.\n\n' + 'Δεν μπορείς να κλείσεις «$currentServiceName» την ίδια ώρα. Επίλεξε άλλη ώρα.');
     }
-    return 'Έχεις ήδη κράτηση στις $time.\n\nΕπίλεξε άλλη ώρα για να συνεχίσεις.';
+    return tr('Έχεις ήδη κράτηση στις $time.\n\nΕπίλεξε άλλη ώρα για να συνεχίσεις.');
   }
 
   String? get capacityLabel {
     if (capacity == null) return null;
     final booked = bookedCount ?? 0;
     final cap = capacity!;
-    if (isFull) return 'Πλήρες ($booked/$cap)';
-    return '$booked/$cap θέσεις';
+    if (isFull) return tr('Πλήρες ($booked/$cap)');
+    return tr('$booked/$cap θέσεις');
   }
 
   String displayTitle(String mode) {
@@ -253,7 +252,8 @@ class TimeSlot {
   String? displaySubtitle(String mode) {
     if (roomShortInfo != null && roomShortInfo!.isNotEmpty) return roomShortInfo;
     if (mode == 'class') return subtitle ?? (roomName?.isNotEmpty == true ? roomName : null);
-    if (mode == 'room') return label?.isNotEmpty == true ? label : subtitle;
+    final roomLabel = subtitle;
+    if (mode == 'room') return label?.isNotEmpty == true ? label : (roomLabel == null ? null : tr(roomLabel));
     return subtitle ?? (roomName?.isNotEmpty == true ? roomName : null);
   }
 }

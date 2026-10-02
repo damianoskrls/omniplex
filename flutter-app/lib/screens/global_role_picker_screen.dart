@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
 import '../theme/brand.dart';
+import '../l10n/tr.dart';
+
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -79,18 +81,18 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
 
                     const SizedBox(height: 32),
 
-                    Text(widget.isOptional ? 'Βήμα 2 από 2' : 'ΕΠΙΛΟΓΗ ΡΟΛΟΥ',
-                      style: GoogleFonts.manrope(
+                    Text(tr(widget.isOptional ? 'Βήμα 2 από 2' : tr('ΕΠΙΛΟΓΗ ΡΟΛΟΥ')),
+                      style: GoogleFonts.inter(
                         fontSize: 11, fontWeight: FontWeight.w600,
                         color: _kGray, letterSpacing: 1.5)),
                     const SizedBox(height: 10),
-                    Text('Πώς θα\nχρησιμοποιήσεις\nτο OmniPlex;',
-                      style: GoogleFonts.manrope(
+                    Text(tr('Πώς θα\nχρησιμοποιήσεις\nτο OmniPlex;'),
+                      style: GoogleFonts.inter(
                         fontSize: 30, fontWeight: FontWeight.w700,
                         color: Colors.white, letterSpacing: -0.75, height: 1.15)),
                     const SizedBox(height: 8),
-                    Text('Επέλεξε τον ρόλο σου για να σε κατευθύνουμε σωστά.',
-                      style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.55)),
+                    Text(tr('Επέλεξε τον ρόλο σου για να σε κατευθύνουμε σωστά.'),
+                      style: GoogleFonts.inter(fontSize: 14, color: _kGray, height: 1.55)),
 
                     const SizedBox(height: 36),
 
@@ -98,8 +100,8 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                     _RoleCard(
                       icon: Icons.fitness_center_rounded,
                       iconColor: _kLime,
-                      title: 'Ασκούμενος',
-                      subtitle: 'Θέλω να βρω γυμναστήριο, να κάνω κρατήσεις\nκαι να παρακολουθώ την πρόοδό μου.',
+                      title: tr('Ασκούμενος'),
+                      subtitle: tr('Θέλω να βρω γυμναστήριο, να κάνω κρατήσεις\nκαι να παρακολουθώ την πρόοδό μου.'),
                       selected: _selected == GlobalRole.client,
                       onTap: () => setState(() => _selected = GlobalRole.client),
                     ),
@@ -110,8 +112,8 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                     _RoleCard(
                       icon: Icons.sports_rounded,
                       iconColor: const Color(0xFF3EE6FF),
-                      title: 'Γυμναστής / Professional',
-                      subtitle: 'Εργάζομαι σε γυμναστήριο ή είμαι personal\ntrainer και θέλω να συνδεθώ με το χώρο μου.',
+                      title: tr('Γυμναστής / Professional'),
+                      subtitle: tr('Εργάζομαι σε γυμναστήριο ή είμαι personal\ntrainer και θέλω να συνδεθώ με το χώρο μου.'),
                       selected: _selected == GlobalRole.trainer,
                       onTap: () => setState(() => _selected = GlobalRole.trainer),
                     ),
@@ -122,8 +124,8 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                     _RoleCard(
                       icon: Icons.diversity_3_rounded,
                       iconColor: const Color(0xFFA78BFA),
-                      title: 'Ασκούμενος & Trainer',
-                      subtitle: 'Κάνω προπόνηση αλλά και δουλεύω ή προπονώ\nσε γυμναστήριο.',
+                      title: tr('Ασκούμενος & Trainer'),
+                      subtitle: tr('Κάνω προπόνηση αλλά και δουλεύω ή προπονώ\nσε γυμναστήριο.'),
                       selected: _selected == GlobalRole.both,
                       onTap: () => setState(() => _selected = GlobalRole.both),
                     ),
@@ -157,8 +159,8 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                         ] : null,
                       ),
                       alignment: Alignment.center,
-                      child: Text('Συνέχεια',
-                        style: GoogleFonts.manrope(
+                      child: Text(tr('Συνέχεια'),
+                        style: GoogleFonts.inter(
                           fontSize: 15, fontWeight: FontWeight.w700,
                           color: _selected != null ? Colors.white : _kGray)),
                     ),
@@ -169,8 +171,8 @@ class _GlobalRolePickerScreenState extends State<GlobalRolePickerScreen> {
                     Center(
                       child: GestureDetector(
                         onTap: _skip,
-                        child: Text('Παράλειψη',
-                          style: GoogleFonts.manrope(
+                        child: Text(tr('Παράλειψη'),
+                          style: GoogleFonts.inter(
                             fontSize: 13, fontWeight: FontWeight.w600,
                             color: _kGray,
                             decoration: TextDecoration.underline,
@@ -237,12 +239,12 @@ class _RoleCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                    style: GoogleFonts.manrope(
+                  Text(tr(title),
+                    style: GoogleFonts.inter(
                       fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(height: 4),
-                  Text(subtitle,
-                    style: GoogleFonts.manrope(fontSize: 12, color: _kGray, height: 1.5)),
+                  Text(tr(subtitle),
+                    style: GoogleFonts.inter(fontSize: 12, color: _kGray, height: 1.5)),
                 ],
               ),
             ),

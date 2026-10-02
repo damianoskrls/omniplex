@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kOrange = Color(0xFFFFA53E);
 const _kOrangeBg = Color(0xFF2B1D0E);
@@ -92,7 +94,7 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
                                 child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
                               ),
                               const SizedBox(width: 16),
-                              Text('My Availability', style: GoogleFonts.spaceGrotesk(
+                              Text(tr('My Availability'), style: GoogleFonts.inter(
                                 fontSize: 20, fontWeight: FontWeight.w700,
                                 color: Colors.white, letterSpacing: -0.5)),
                             ],
@@ -123,7 +125,7 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
                                     child: const Icon(Icons.fitness_center, color: kLime, size: 16),
                                   ),
                                   const SizedBox(width: 12),
-                                  Text('Fitness Club Athens', style: GoogleFonts.spaceGrotesk(
+                                  Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                                 ],
                               ),
@@ -176,7 +178,7 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
                             children: [
                               const Icon(Icons.add, color: kLime, size: 14),
                               const SizedBox(width: 8),
-                              Text('Add Break', style: GoogleFonts.manrope(
+                              Text(tr('Add Break'), style: GoogleFonts.inter(
                                 fontSize: 12, fontWeight: FontWeight.w700, color: kLime)),
                             ],
                           ),
@@ -210,7 +212,7 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
                                     child: const Icon(Icons.event_available_outlined, color: kLime, size: 16),
                                   ),
                                   const SizedBox(width: 12),
-                                  Text('Available for new\nappointments', style: GoogleFonts.manrope(
+                                  Text(tr('Available for new\nappointments'), style: GoogleFonts.inter(
                                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                                 ],
                               ),
@@ -270,7 +272,7 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
                       children: [
                         const Icon(Icons.check, color: kBg, size: 16),
                         const SizedBox(width: 8),
-                        Text('Save Changes', style: GoogleFonts.spaceGrotesk(
+                        Text(tr('Save Changes'), style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w700,
                           color: kBg, letterSpacing: -0.35)),
                       ],
@@ -291,11 +293,11 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: GoogleFonts.spaceGrotesk(
+          Text(tr(title), style: GoogleFonts.inter(
             fontSize: 16, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.4)),
           if (subtitle != null)
-            Text(subtitle, style: GoogleFonts.manrope(
+            Text(tr(subtitle), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
         ],
       ),
@@ -314,9 +316,9 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
         ] : null,
       ),
       child: Center(
-        child: Text(letter, style: active
-          ? GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700, color: kBg)
-          : GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700, color: kGray)),
+        child: Text(tr(letter), style: active
+          ? GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: kBg)
+          : GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: kGray)),
       ),
     );
   }
@@ -343,7 +345,7 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
                   border: Border.all(color: kLime.withValues(alpha: 0.30)),
                 ),
                 child: Center(
-                  child: Text(letter, style: GoogleFonts.spaceGrotesk(
+                  child: Text(tr(letter), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w700, color: kLime)),
                 ),
               ),
@@ -352,9 +354,9 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(day, style: GoogleFonts.manrope(
+                  Text(tr(day), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text(hours, style: GoogleFonts.manrope(
+                  Text(tr(hours), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                 ],
               ),
@@ -394,9 +396,9 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Lunch Break', style: GoogleFonts.manrope(
+                  Text(tr('Lunch Break'), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text('12:00 - 13:00', style: GoogleFonts.manrope(
+                  Text(tr('12:00 - 13:00'), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                 ],
               ),
@@ -436,9 +438,9 @@ class _StaffAvailabilityScreenState extends State<StaffAvailabilityScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Fitness Club Athens', style: GoogleFonts.manrope(
+                  Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text('Main Location', style: GoogleFonts.manrope(
+                  Text(tr('Main Location'), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                 ],
               ),

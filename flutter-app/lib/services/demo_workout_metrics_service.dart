@@ -1,4 +1,6 @@
 import '../models/workout_metrics.dart';
+import '../l10n/tr.dart';
+
 
 /// Rich sample workout metrics for previewing charts when no sync exists.
 class DemoWorkoutMetricsService {
@@ -11,7 +13,7 @@ class DemoWorkoutMetricsService {
         daysAgo: 2,
         hour: 18,
         serviceName: 'Personal Training',
-        activityLabel: 'Άσκηση με βάρη',
+        activityLabel: tr('Άσκηση με βάρη'),
         activityType: 'TRADITIONAL_STRENGTH_TRAINING',
         durationMins: 58,
         calories: 412,
@@ -50,8 +52,8 @@ class DemoWorkoutMetricsService {
       _DemoWorkout(
         daysAgo: 12,
         hour: 8,
-        serviceName: 'Τρέξιμο',
-        activityLabel: 'Τρέξιμο',
+        serviceName: tr('Τρέξιμο'),
+        activityLabel: tr('Τρέξιμο'),
         activityType: 'RUNNING',
         durationMins: 35,
         calories: 320,
@@ -82,7 +84,7 @@ class DemoWorkoutMetricsService {
         daysAgo: 22,
         hour: 17,
         serviceName: 'Personal Training',
-        activityLabel: 'Άσκηση με βάρη',
+        activityLabel: tr('Άσκηση με βάρη'),
         activityType: 'TRADITIONAL_STRENGTH_TRAINING',
         durationMins: 62,
         calories: 430,
@@ -102,7 +104,7 @@ class DemoWorkoutMetricsService {
         daysAgo: 28,
         hour: 18,
         serviceName: 'Cycling',
-        activityLabel: 'Ποδήλατο',
+        activityLabel: tr('Ποδήλατο'),
         activityType: 'CYCLING',
         durationMins: 45,
         calories: 390,
@@ -132,10 +134,10 @@ class DemoWorkoutMetricsService {
 
     final byActivityMap = <String, ActivityBreakdown>{};
     for (final w in workouts) {
-      final key = w.activityLabel ?? 'Άλλο';
+      final key = w.activityLabel ?? tr('Άλλο');
       final prev = byActivityMap[key];
       byActivityMap[key] = ActivityBreakdown(
-        label: key,
+        label: tr(key),
         sessions: (prev?.sessions ?? 0) + 1,
         calories: (prev?.calories ?? 0) + (w.caloriesKcal ?? 0),
         durationMins: (prev?.durationMins ?? 0) + w.durationMins,

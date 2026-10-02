@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
 import 'global_role_picker_screen.dart';
 import 'global_profile_details_screen.dart';
+import '../l10n/tr.dart';
+
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -97,7 +99,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
   Future<void> _sendOtp() async {
     final phone = _phone;
     if (phone.isEmpty) {
-      setState(() => _error = 'Εισάγετε τον αριθμό τηλεφώνου σας');
+      setState(() => _error = tr('Εισάγετε τον αριθμό τηλεφώνου σας'));
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -183,7 +185,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     final name = (widget.globalAuth.user?.fullName ?? '').trim();
     // Treat empty name or the default "Χρήστης XXXX" pattern as missing
     final hasName = name.isNotEmpty &&
-        !RegExp(r'^Χρήστης\s+\d+$').hasMatch(name);
+        !RegExp(tr(r'^Χρήστης\s+\d+$')).hasMatch(name);
     if (!widget.skipProfile && (isNew || !hasName)) {
       _goProfileDetails();
     } else {
@@ -244,17 +246,17 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Text('Σύνδεση', style: GoogleFonts.manrope(
+        Text(tr('Σύνδεση'), style: GoogleFonts.inter(
           color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700,
         )),
         const SizedBox(height: 8),
-        Text('Εισάγετε τον αριθμό τηλεφώνου σας\nγια να λάβετε κωδικό επαλήθευσης.',
-          style: GoogleFonts.manrope(color: _kGray, fontSize: 14, height: 1.5),
+        Text(tr('Εισάγετε τον αριθμό τηλεφώνου σας\nγια να λάβετε κωδικό επαλήθευσης.'),
+          style: GoogleFonts.inter(color: _kGray, fontSize: 14, height: 1.5),
         ),
         const SizedBox(height: 40),
 
         // Phone field
-        Text('Τηλέφωνο', style: GoogleFonts.manrope(
+        Text(tr('Τηλέφωνο'), style: GoogleFonts.inter(
           color: _kGray, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5,
         )),
         const SizedBox(height: 8),
@@ -271,7 +273,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
                 decoration: BoxDecoration(
                   border: Border(right: BorderSide(color: _kBorder)),
                 ),
-                child: Text('+30', style: GoogleFonts.manrope(
+                child: Text(tr('+30'), style: GoogleFonts.inter(
                   color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500,
                 )),
               ),
@@ -281,10 +283,10 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
                   keyboardType: TextInputType.phone,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   autofocus: true,
-                  style: GoogleFonts.manrope(color: Colors.white, fontSize: 15),
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
                   decoration: InputDecoration(
-                    hintText: '6xxxxxxxxx',
-                    hintStyle: GoogleFonts.manrope(color: _kGray),
+                    hintText: tr('6xxxxxxxxx'),
+                    hintStyle: GoogleFonts.inter(color: _kGray),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                   ),
@@ -317,7 +319,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
             alignment: Alignment.center,
             child: _loading
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : Text('Αποστολή κωδικού', style: GoogleFonts.manrope(
+              : Text(tr('Αποστολή κωδικού'), style: GoogleFonts.inter(
                   fontWeight: FontWeight.w700, fontSize: 15, color: Colors.white)),
           ),
         ),
@@ -333,20 +335,20 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Text('Κωδικός επαλήθευσης', style: GoogleFonts.manrope(
+        Text(tr('Κωδικός επαλήθευσης'), style: GoogleFonts.inter(
           color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700,
         )),
         const SizedBox(height: 8),
         if (_useOtpMode)
           Text.rich(TextSpan(
             children: [
-              TextSpan(text: 'Στείλαμε 6-ψήφιο κωδικό στο ', style: GoogleFonts.manrope(color: _kGray, fontSize: 14)),
-              TextSpan(text: '+30 $_phone', style: GoogleFonts.manrope(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+              TextSpan(text: tr('Στείλαμε 6-ψήφιο κωδικό στο '), style: GoogleFonts.inter(color: _kGray, fontSize: 14)),
+              TextSpan(text: '+30 $_phone', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
             ],
           ))
         else
-          Text('Βάλτε τον κωδικό του λογαριασμού σας OmniPlex.',
-            style: GoogleFonts.manrope(color: _kGray, fontSize: 14, height: 1.5),
+          Text(tr('Βάλτε τον κωδικό του λογαριασμού σας OmniPlex.'),
+            style: GoogleFonts.inter(color: _kGray, fontSize: 14, height: 1.5),
           ),
         const SizedBox(height: 40),
 
@@ -375,10 +377,10 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
               controller: _passwordCtrl,
               obscureText: true,
               autofocus: true,
-              style: GoogleFonts.manrope(color: Colors.white, fontSize: 15),
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
               decoration: InputDecoration(
-                hintText: 'Κωδικός OmniPlex',
-                hintStyle: GoogleFonts.manrope(color: _kGray),
+                hintText: tr('Κωδικός OmniPlex'),
+                hintStyle: GoogleFonts.inter(color: _kGray),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
               ),
@@ -402,7 +404,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
               alignment: Alignment.center,
               child: _loading
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text('Σύνδεση', style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.white)),
+                : Text(tr('Σύνδεση'), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.white)),
             ),
           ),
         ],
@@ -422,10 +424,10 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
               _error = null;
             }),
             child: Text(
-              _useOtpMode
+              tr(_useOtpMode
                 ? 'Έχω κωδικό λογαριασμού OmniPlex'
-                : 'Χρήση κωδικού SMS',
-              style: GoogleFonts.manrope(
+                : tr('Χρήση κωδικού SMS')),
+              style: GoogleFonts.inter(
                 color: _kLime, fontSize: 13, fontWeight: FontWeight.w600,
               ),
             ),
@@ -437,10 +439,10 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
           // Resend
           Center(
             child: _resendSeconds > 0
-              ? Text('Αποστολή ξανά σε ${_resendSeconds}s', style: GoogleFonts.manrope(color: _kGray, fontSize: 13))
+              ? Text(tr('Αποστολή ξανά σε ${_resendSeconds}s'), style: GoogleFonts.inter(color: _kGray, fontSize: 13))
               : GestureDetector(
                   onTap: _loading ? null : _sendOtp,
-                  child: Text('Αποστολή ξανά', style: GoogleFonts.manrope(
+                  child: Text(tr('Αποστολή ξανά'), style: GoogleFonts.inter(
                     color: _kGray, fontSize: 13, fontWeight: FontWeight.w600,
                   )),
                 ),
@@ -478,7 +480,7 @@ class _OtpBox extends StatelessWidget {
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: GoogleFonts.manrope(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+        style: GoogleFonts.inter(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
         decoration: InputDecoration(
           filled: true,
           fillColor: const Color(0xFF16171B),
@@ -524,7 +526,7 @@ class _ErrorBanner extends StatelessWidget {
         children: [
           const Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
           const SizedBox(width: 8),
-          Expanded(child: Text(message, style: GoogleFonts.manrope(color: Colors.redAccent, fontSize: 13))),
+          Expanded(child: Text(tr(message), style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13))),
         ],
       ),
     );

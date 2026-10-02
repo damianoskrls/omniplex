@@ -9,6 +9,8 @@ import 'auth_service.dart';
 import 'global_auth_service.dart';
 import 'notification_service.dart';
 import 'push_service.dart';
+import '../l10n/tr.dart';
+
 
 // Notification types that are only relevant around the booking time.
 // If the booking is in the past by more than this threshold, skip the popup.
@@ -167,7 +169,7 @@ class UserNotificationSync {
         }
 
         await NotificationService.instance.showInstant(
-          title: n['title'] as String? ?? 'Ειδοποίηση',
+          title: tr(n['title'] as String? ?? tr('Ειδοποίηση')),
           body: n['body'] as String? ?? '',
           payload: payload,
         );
@@ -202,7 +204,7 @@ class UserNotificationSync {
         final type = n['type']?.toString() ?? 'notice';
         final payload = type == 'message' ? messagePayload(n) : 'notif:$id';
         await NotificationService.instance.showInstant(
-          title: n['title'] as String? ?? 'Ειδοποίηση',
+          title: tr(n['title'] as String? ?? tr('Ειδοποίηση')),
           body: n['body'] as String? ?? '',
           payload: payload,
         );

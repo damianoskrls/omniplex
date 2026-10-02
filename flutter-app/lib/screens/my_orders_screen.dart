@@ -6,6 +6,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class MyOrdersScreen extends StatefulWidget {
   const MyOrdersScreen({super.key});
@@ -67,12 +69,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     children: [
                       const Icon(Icons.error_outline, color: AppColors.textSecondary, size: 48),
                       const SizedBox(height: 12),
-                      Text(_error!, style: const TextStyle(color: AppColors.textSecondary)),
+                      Text(tr(_error!), style: const TextStyle(color: AppColors.textSecondary)),
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: _load,
                         style: FilledButton.styleFrom(backgroundColor: AppColors.lime, foregroundColor: AppColors.bg),
-                        child: Text(AppStrings.of(context).retry),
+                        child: Text(tr(AppStrings.of(context).retry)),
                       ),
                     ],
                   ),
@@ -91,9 +93,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                             child: const Icon(Icons.shopping_bag_outlined, size: 48, color: AppColors.textSecondary),
                           ),
                           const SizedBox(height: 20),
-                          Text(AppStrings.of(context).noOrders, style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600)),
+                          Text(tr(AppStrings.of(context).noOrders), style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 6),
-                          Text(AppStrings.of(context).ordersEmptySubtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                          Text(tr(AppStrings.of(context).ordersEmptySubtitle), style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                         ],
                       ),
                     )
@@ -164,9 +166,9 @@ class _OrderCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(shortId, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15, fontFamily: 'monospace')),
+                        Text(tr(shortId), style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15, fontFamily: 'monospace')),
                         const SizedBox(height: 2),
-                        Text(createdAt, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                        Text(tr(createdAt), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -176,7 +178,7 @@ class _OrderCard extends StatelessWidget {
                       color: cfg.bgColor,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(cfg.label, style: TextStyle(color: cfg.color, fontSize: 12, fontWeight: FontWeight.w600)),
+                    child: Text(tr(cfg.label), style: TextStyle(color: cfg.color, fontSize: 12, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -204,12 +206,12 @@ class _OrderCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Center(
-                              child: Text('$qty', style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w700)),
+                              child: Text(tr('$qty'), style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w700)),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13), overflow: TextOverflow.ellipsis)),
-                          Text(eur(unitCents * qty), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                          Expanded(child: Text(tr(name), style: const TextStyle(color: AppColors.textPrimary, fontSize: 13), overflow: TextOverflow.ellipsis)),
+                          Text(tr(eur(unitCents * qty)), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                         ],
                       ),
                     );
@@ -219,7 +221,7 @@ class _OrderCard extends StatelessWidget {
               if (items.length > 3)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                  child: Text(s.ordersMoreItems(items.length - 3), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  child: Text(tr(s.ordersMoreItems(items.length - 3)), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                 ),
             ],
 
@@ -229,8 +231,8 @@ class _OrderCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(s.orderTotal, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                  Text(eur(totalCents), style: TextStyle(color: AppColors.lime, fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text(tr(s.orderTotal), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(tr(eur(totalCents)), style: TextStyle(color: AppColors.lime, fontSize: 15, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -337,7 +339,7 @@ class _StatusTimeline extends StatelessWidget {
                     : null,
               ),
               const SizedBox(height: 4),
-              Text(labels[stepIdx], style: TextStyle(fontSize: 9, color: done ? AppColors.lime : AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              Text(tr(labels[stepIdx]), style: TextStyle(fontSize: 9, color: done ? AppColors.lime : AppColors.textSecondary, fontWeight: FontWeight.w600)),
             ],
           );
         }),
@@ -384,23 +386,23 @@ class _OrderDetailSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(shortId, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 20, fontFamily: 'monospace')),
+                    Text(tr(shortId), style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w800, fontSize: 20, fontFamily: 'monospace')),
                     const SizedBox(height: 4),
-                    Text(createdAt, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    Text(tr(createdAt), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(color: cfg.bgColor, borderRadius: BorderRadius.circular(20)),
-                child: Text(cfg.label, style: TextStyle(color: cfg.color, fontSize: 13, fontWeight: FontWeight.w700)),
+                child: Text(tr(cfg.label), style: TextStyle(color: cfg.color, fontSize: 13, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
           const SizedBox(height: 20),
 
           // Items
-          Text(s.orderProducts, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+          Text(tr(s.orderProducts), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
           const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(12)),
@@ -422,11 +424,11 @@ class _OrderDetailSheet extends StatelessWidget {
                         Container(
                           width: 28, height: 28,
                           decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(8)),
-                          child: Center(child: Text('$qty', style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13))),
+                          child: Center(child: Text(tr('$qty'), style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13))),
                         ),
                         const SizedBox(width: 10),
-                        Expanded(child: Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14))),
-                        Text(eur(unitCents * qty), style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                        Expanded(child: Text(tr(name), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14))),
+                        Text(tr(eur(unitCents * qty)), style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                       ],
                     ),
                   );
@@ -437,8 +439,8 @@ class _OrderDetailSheet extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(s.orderTotal, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
-                      Text(eur(totalCents), style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 16)),
+                      Text(tr(s.orderTotal), style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
+                      Text(tr(eur(totalCents)), style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 16)),
                     ],
                   ),
                 ),
@@ -448,7 +450,7 @@ class _OrderDetailSheet extends StatelessWidget {
 
           if (['pending', 'paid', 'processing'].contains(status)) ...[
             const SizedBox(height: 20),
-            Text(s.orderProgress, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            Text(tr(s.orderProgress), style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
             const SizedBox(height: 10),
             Container(
               decoration: BoxDecoration(color: AppColors.surfaceLight, borderRadius: BorderRadius.circular(12)),

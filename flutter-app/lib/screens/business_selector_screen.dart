@@ -6,6 +6,8 @@ import '../config/tenant_config.dart';
 import '../services/global_auth_service.dart';
 import '../theme/app_colors.dart';
 import 'global_login_screen.dart';
+import '../l10n/tr.dart';
+
 
 class BusinessSelectorScreen extends StatefulWidget {
   const BusinessSelectorScreen({
@@ -80,8 +82,8 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
   String _selectedService = '';
   final _cityCtrl = TextEditingController();
 
-  static const _serviceFilters = [
-    ('', 'Όλα'),
+  static final _serviceFilters = [
+    ('', tr('Όλα')),
     ('Pilates', 'Pilates'),
     ('Yoga', 'Yoga'),
     ('CrossFit', 'CrossFit'),
@@ -156,11 +158,11 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
             .toList();
         setState(() { _results = list; _searching = false; });
       } else {
-        setState(() { _error = 'Σφάλμα σύνδεσης (${res.statusCode})'; _searching = false; });
+        setState(() { _error = tr('Σφάλμα σύνδεσης (${res.statusCode})'); _searching = false; });
       }
     } catch (_) {
       if (!mounted) return;
-      setState(() { _error = 'Αδύνατη η σύνδεση. Έλεγξε τη σύνδεσή σου.'; _searching = false; });
+      setState(() { _error = tr('Αδύνατη η σύνδεση. Έλεγξε τη σύνδεσή σου.'); _searching = false; });
     }
   }
 
@@ -185,11 +187,11 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
   }
 
   String _typeLabel(String t) {
-    const m = {
-      'gym': 'Γυμναστήριο', 'aesthetic': 'Αισθητική',
-      'salon': 'Κομμωτήριο', 'barbershop': 'Barbershop',
+    final m = {
+      'gym': tr('Γυμναστήριο'), 'aesthetic': tr('Αισθητική'),
+      'salon': tr('Κομμωτήριο'), 'barbershop': 'Barbershop',
       'spa': 'Spa', 'pilates': 'Pilates / Yoga',
-      'physiotherapy': 'Φυσικοθεραπεία', 'personal_training': 'Personal Training',
+      'physiotherapy': tr('Φυσικοθεραπεία'), 'personal_training': 'Personal Training',
     };
     return m[t] ?? t;
   }
@@ -235,8 +237,8 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                                 shaderCallback: (bounds) => const LinearGradient(
                                   colors: [Color(0xFF7C5CFC), Color(0xFFE040FB)],
                                 ).createShader(bounds),
-                                child: const Text(
-                                  'OmniPlex',
+                                child: Text(
+                                  tr('OmniPlex'),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w800,
@@ -251,8 +253,8 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                           const SizedBox(height: 40),
 
                           // Hero headline
-                          const Text(
-                            'Βρες τον\nχώρο σου.',
+                          Text(
+                            tr('Βρες τον\nχώρο σου.'),
                             style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.w800,
@@ -264,7 +266,7 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
 
                           const SizedBox(height: 10),
                           Text(
-                            'Αναζήτησε γυμναστήριο ή κέντρο',
+                            tr('Αναζήτησε γυμναστήριο ή κέντρο'),
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.55),
                               fontSize: 14,
@@ -323,7 +325,7 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                                       ),
                                     ),
                                     child: Text(
-                                      label,
+                                      tr(label),
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
@@ -345,7 +347,7 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(28, 8, 28, 0),
-                        child: _ErrorBanner(message: _error!),
+                        child: _ErrorBanner(message: tr(_error!)),
                       ),
 
                     // Results
@@ -386,14 +388,14 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
     if (!hasQuery && !hasFilter) {
       return _EmptyState(
         icon: Icons.search_rounded,
-        message: 'Ξεκίνα πληκτρολογώντας\nή επέλεξε φίλτρο',
+        message: tr('Ξεκίνα πληκτρολογώντας\nή επέλεξε φίλτρο'),
       );
     }
 
     if (!_searching && _results.isEmpty) {
       return _EmptyState(
         icon: Icons.search_off_rounded,
-        message: 'Δεν βρέθηκαν αποτελέσματα\nΔοκίμασε διαφορετική αναζήτηση',
+        message: tr('Δεν βρέθηκαν αποτελέσματα\nΔοκίμασε διαφορετική αναζήτηση'),
       );
     }
 
@@ -485,7 +487,7 @@ class _SearchField extends StatelessWidget {
               ),
               cursorColor: const Color(0xFF7C5CFC),
               decoration: InputDecoration(
-                hintText: 'π.χ. Handstand, FitLife...',
+                hintText: tr('π.χ. Handstand, FitLife...'),
                 hintStyle: TextStyle(
                   color: Colors.white.withValues(alpha: 0.22),
                   fontWeight: FontWeight.w400,
@@ -541,7 +543,7 @@ class _CityField extends StatelessWidget {
               onChanged: onChanged,
               style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Πόλη (π.χ. Αθήνα, Θεσσαλονίκη)',
+                hintText: tr('Πόλη (π.χ. Αθήνα, Θεσσαλονίκη)'),
                 hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.22), fontSize: 13),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -635,7 +637,7 @@ class _ResultCardState extends State<_ResultCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.biz.appName,
+                      tr(widget.biz.appName),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -655,7 +657,7 @@ class _ResultCardState extends State<_ResultCard> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          widget.typeLabel,
+                          tr(widget.typeLabel),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.40),
                             fontSize: 12,
@@ -664,7 +666,7 @@ class _ResultCardState extends State<_ResultCard> {
                         ),
                         if (widget.biz.city != null) ...[
                           Text(
-                            ' · ${widget.biz.city}',
+                            tr(' · ${widget.biz.city}'),
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.30),
                               fontSize: 12,
@@ -676,7 +678,7 @@ class _ResultCardState extends State<_ResultCard> {
                     if (widget.biz.services.isNotEmpty) ...[
                       const SizedBox(height: 5),
                       Text(
-                        widget.biz.services.take(3).join(' · '),
+                        tr(widget.biz.services.take(3).join(' · ')),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -689,7 +691,7 @@ class _ResultCardState extends State<_ResultCard> {
                     if (widget.biz.description != null) ...[
                       const SizedBox(height: 3),
                       Text(
-                        widget.biz.description!,
+                        tr(widget.biz.description!),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -732,7 +734,7 @@ class _LogoFallback extends StatelessWidget {
     final letter = name.isNotEmpty ? name[0].toUpperCase() : '?';
     return Center(
       child: Text(
-        letter,
+        tr(letter),
         style: TextStyle(
           color: color,
           fontSize: 22,
@@ -760,7 +762,7 @@ class _EmptyState extends StatelessWidget {
             Icon(icon, color: Colors.white.withValues(alpha: 0.10), size: 48),
             const SizedBox(height: 16),
             Text(
-              message,
+              tr(message),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.22),
@@ -795,7 +797,7 @@ class _ErrorBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              message,
+              tr(message),
               style: const TextStyle(color: Color(0xFFFF6B6B), fontSize: 13, height: 1.4),
             ),
           ),
@@ -836,7 +838,7 @@ class _GlobalAccountBanner extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Τα γυμναστήριά μου ($gymCount)',
+                    tr('Τα γυμναστήριά μου ($gymCount)'),
                     style: const TextStyle(color: Color(0xFF9D7BFE), fontWeight: FontWeight.w700, fontSize: 14),
                   ),
                 ),
@@ -870,7 +872,7 @@ class _GlobalAccountBanner extends StatelessWidget {
                 Icon(Icons.person_rounded, color: Colors.white.withValues(alpha: 0.5), size: 18),
                 const SizedBox(width: 10),
                 Text(
-                  'Σύνδεση / Εγγραφή global λογαριασμού',
+                  tr('Σύνδεση / Εγγραφή global λογαριασμού'),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 13),
                 ),
               ],
@@ -896,7 +898,7 @@ class _Footer extends StatelessWidget {
           Container(width: 20, height: 1, color: Colors.white.withValues(alpha: 0.06)),
           const SizedBox(width: 10),
           Text(
-            'OMNIPLEX',
+            tr('OMNIPLEX'),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.10),
               fontSize: 10,
@@ -931,7 +933,7 @@ class _ConnectingOverlay extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'ΣΥΝΔΕΣΗ',
+              tr('ΣΥΝΔΕΣΗ'),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 11,
@@ -961,7 +963,7 @@ class _OmniplexMark extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          'O',
+          tr('O'),
           style: TextStyle(
             color: const Color(0xFF9C5FFC),
             fontSize: size * 0.5,

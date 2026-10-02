@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kPurple = Color(0xFFB084FF);
 const _kPurpleBg = Color(0xFF1E1830);
@@ -19,11 +21,11 @@ class EmptyStatesScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('OMNIPLEX DESIGN SYSTEM', style: GoogleFonts.manrope(
+              Text(tr('OMNIPLEX DESIGN SYSTEM'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700,
                 color: kGray, letterSpacing: 1.2)),
               const SizedBox(height: 4),
-              Text('Empty State Reference Sheet', style: GoogleFonts.spaceGrotesk(
+              Text(tr('Empty State Reference Sheet'), style: GoogleFonts.inter(
                 fontSize: 24, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.6)),
               const SizedBox(height: 32),
@@ -35,8 +37,8 @@ class EmptyStatesScreen extends StatelessWidget {
                 iconBorder: kLime.withValues(alpha: 0.30),
                 icon: Icons.map_outlined,
                 iconColor: kLime,
-                title: 'Your fitness journey\nstarts here.',
-                subtitle: 'Find a gym and add it to My Gyms.',
+                title: tr('Your fitness journey\nstarts here.'),
+                subtitle: tr('Find a gym and add it to My Gyms.'),
                 buttonLabel: 'Discover Gyms',
                 buttonIcon: Icons.explore_outlined,
                 buttonPrimary: true,
@@ -50,8 +52,8 @@ class EmptyStatesScreen extends StatelessWidget {
                 iconBorder: kCyan.withValues(alpha: 0.30),
                 icon: Icons.calendar_month_outlined,
                 iconColor: kCyan,
-                title: 'Nothing booked yet.',
-                subtitle: 'Find a class and reserve your spot.',
+                title: tr('Nothing booked yet.'),
+                subtitle: tr('Find a class and reserve your spot.'),
                 buttonLabel: 'Explore Classes',
                 buttonIcon: Icons.fitness_center_outlined,
                 buttonPrimary: false,
@@ -65,8 +67,8 @@ class EmptyStatesScreen extends StatelessWidget {
                 iconBorder: _kPurple.withValues(alpha: 0.30),
                 icon: Icons.card_membership_outlined,
                 iconColor: _kPurple,
-                title: 'No active memberships',
-                subtitle: 'Explore gyms and find a plan that fits you.',
+                title: tr('No active memberships'),
+                subtitle: tr('Explore gyms and find a plan that fits you.'),
                 buttonLabel: 'Discover Gyms',
                 buttonIcon: Icons.explore_outlined,
                 buttonPrimary: true,
@@ -87,7 +89,7 @@ class EmptyStatesScreen extends StatelessWidget {
           decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
-        Text(label, style: GoogleFonts.manrope(
+        Text(tr(label), style: GoogleFonts.inter(
           fontSize: 11, fontWeight: FontWeight.w700,
           color: kGray, letterSpacing: 1.1)),
       ],
@@ -182,8 +184,8 @@ class EmptyStatesScreen extends StatelessWidget {
                 // Heading
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(title, textAlign: TextAlign.center,
-                    style: GoogleFonts.spaceGrotesk(
+                  child: Text(tr(title), textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
                       fontSize: 18, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.45)),
                 ),
@@ -191,8 +193,8 @@ class EmptyStatesScreen extends StatelessWidget {
                 // Subtitle
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Text(subtitle, textAlign: TextAlign.center,
-                    style: GoogleFonts.manrope(
+                  child: Text(tr(subtitle), textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
                       fontSize: 14, color: kGray, height: 1.625)),
                 ),
                 const Spacer(),
@@ -215,7 +217,7 @@ class EmptyStatesScreen extends StatelessWidget {
                         Icon(buttonIcon,
                           color: buttonPrimary ? kBg : Colors.white, size: 16),
                         const SizedBox(width: 8),
-                        Text(buttonLabel, style: GoogleFonts.spaceGrotesk(
+                        Text(tr(buttonLabel), style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w700,
                           color: buttonPrimary ? kBg : Colors.white,
                           letterSpacing: -0.35)),

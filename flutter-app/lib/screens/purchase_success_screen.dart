@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class PurchaseSuccessScreen extends StatelessWidget {
   const PurchaseSuccessScreen({super.key,
@@ -78,7 +80,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   // Back to home
                   GestureDetector(
-                    child: Text('Back to Home', style: GoogleFonts.manrope(
+                    child: Text(tr('Back to Home'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700,
                       color: kGray)),
                   ),
@@ -105,7 +107,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
           child: const Icon(Icons.bolt, color: kLime, size: 14),
         ),
         const SizedBox(width: 8),
-        Text('OMNIPLEX', style: GoogleFonts.spaceGrotesk(
+        Text(tr('OMNIPLEX'), style: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: 1.4)),
       ],
@@ -170,11 +172,11 @@ class PurchaseSuccessScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        Text("You're all set!", style: GoogleFonts.spaceGrotesk(
+        Text(tr("You're all set!"), style: GoogleFonts.inter(
           fontSize: 24, fontWeight: FontWeight.w700,
           color: Colors.white, letterSpacing: -0.6)),
         const SizedBox(height: 8),
-        Text('Your purchase was completed successfully.', style: GoogleFonts.manrope(
+        Text(tr('Your purchase was completed successfully.'), style: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
       ],
     );
@@ -209,10 +211,10 @@ class PurchaseSuccessScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(gymName, style: GoogleFonts.manrope(
+                      Text(tr(gymName), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                       const SizedBox(height: 3),
-                      Text('Membership Provider', style: GoogleFonts.manrope(
+                      Text(tr('Membership Provider'), style: GoogleFonts.inter(
                         fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                     ],
                   ),
@@ -240,7 +242,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Payment Method', style: GoogleFonts.manrope(
+              Text(tr('Payment Method'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
               Row(
                 children: [
@@ -251,13 +253,13 @@ class PurchaseSuccessScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Center(
-                      child: Text('VISA', style: GoogleFonts.spaceGrotesk(
+                      child: Text(tr('VISA'), style: GoogleFonts.inter(
                         fontSize: 7, fontWeight: FontWeight.w700,
                         color: Colors.white, letterSpacing: 0.5)),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text('•••• $cardLast4', style: GoogleFonts.manrope(
+                  Text(tr('•••• $cardLast4'), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                 ],
               ),
@@ -270,7 +272,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
-            child: Text('Transaction ID: $transactionId', style: GoogleFonts.manrope(
+            child: Text(tr('Transaction ID: $transactionId'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w600,
               color: kDim, letterSpacing: 0.3)),
           ),
@@ -283,12 +285,12 @@ class PurchaseSuccessScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: GoogleFonts.manrope(
+        Text(tr(label), style: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
-        Text(value, style: value == amount
-          ? GoogleFonts.spaceGrotesk(
+        Text(tr(value), style: value == amount
+          ? GoogleFonts.inter(
               fontSize: 16, fontWeight: FontWeight.w700, color: valueColor)
-          : GoogleFonts.manrope(
+          : GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700, color: valueColor)),
       ],
     );
@@ -307,7 +309,7 @@ class PurchaseSuccessScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('View Membership', style: GoogleFonts.spaceGrotesk(
+          Text(tr('View Membership'), style: GoogleFonts.inter(
             fontSize: 16, fontWeight: FontWeight.w700,
             color: Colors.black, letterSpacing: 0.05)),
           const SizedBox(width: 8),

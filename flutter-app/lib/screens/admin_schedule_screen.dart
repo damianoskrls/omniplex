@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kRed = Color(0xFFFF5D5D);
 const _kRedBg = Color(0xFF2A1414);
@@ -146,10 +148,10 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Admin Dashboard', style: GoogleFonts.manrope(
+                            Text(tr('Admin Dashboard'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                             const SizedBox(height: 4),
-                            Text('Class Schedule', style: GoogleFonts.spaceGrotesk(
+                            Text(tr('Class Schedule'), style: GoogleFonts.inter(
                               fontSize: 20, fontWeight: FontWeight.w700,
                               color: Colors.white, letterSpacing: -0.5)),
                           ],
@@ -165,7 +167,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                             children: [
                               const Icon(Icons.add, color: kBg, size: 12),
                               const SizedBox(width: 8),
-                              Text('Add Class', style: GoogleFonts.spaceGrotesk(
+                              Text(tr('Add Class'), style: GoogleFonts.inter(
                                 fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
                             ],
                           ),
@@ -197,10 +199,10 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                                       borderRadius: BorderRadius.circular(9999),
                                     ),
                                     child: Center(
-                                      child: Text('Day', style: _viewIndex == 0
-                                        ? GoogleFonts.spaceGrotesk(
+                                      child: Text(tr('Day'), style: _viewIndex == 0
+                                        ? GoogleFonts.inter(
                                             fontSize: 12, fontWeight: FontWeight.w700, color: kBg)
-                                        : GoogleFonts.manrope(
+                                        : GoogleFonts.inter(
                                             fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                                     ),
                                   ),
@@ -213,10 +215,10 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                                       borderRadius: BorderRadius.circular(9999),
                                     ),
                                     child: Center(
-                                      child: Text('Week', style: _viewIndex == 1
-                                        ? GoogleFonts.spaceGrotesk(
+                                      child: Text(tr('Week'), style: _viewIndex == 1
+                                        ? GoogleFonts.inter(
                                             fontSize: 12, fontWeight: FontWeight.w700, color: kBg)
-                                        : GoogleFonts.manrope(
+                                        : GoogleFonts.inter(
                                             fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                                     ),
                                   ),
@@ -259,18 +261,18 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                             ),
                             child: Column(
                               children: [
-                                Text(d.$1.toUpperCase(), style: active
-                                  ? GoogleFonts.manrope(
+                                Text(tr(d.$1.toUpperCase()), style: active
+                                  ? GoogleFonts.inter(
                                       fontSize: 10, fontWeight: FontWeight.w700,
                                       color: kBg, letterSpacing: 0.4)
-                                  : GoogleFonts.manrope(
+                                  : GoogleFonts.inter(
                                       fontSize: 10, fontWeight: FontWeight.w700,
                                       color: kGray, letterSpacing: 0.4)),
                                 const SizedBox(height: 6),
-                                Text(d.$2, style: active
-                                  ? GoogleFonts.spaceGrotesk(
+                                Text(tr(d.$2), style: active
+                                  ? GoogleFonts.inter(
                                       fontSize: 14, fontWeight: FontWeight.w700, color: kBg)
-                                  : GoogleFonts.manrope(
+                                  : GoogleFonts.inter(
                                       fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                               ],
                             ),
@@ -285,10 +287,10 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Wednesday, June 12', style: GoogleFonts.spaceGrotesk(
+                        Text(tr('Wednesday, June 12'), style: GoogleFonts.inter(
                           fontSize: 16, fontWeight: FontWeight.w700,
                           color: Colors.white, letterSpacing: -0.4)),
-                        Text('4 classes', style: GoogleFonts.manrope(
+                        Text(tr('4 classes'), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                       ],
                     ),
@@ -345,9 +347,9 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(c.time, style: GoogleFonts.manrope(
+              Text(tr(c.time), style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
-              Text(c.endTime, style: GoogleFonts.manrope(
+              Text(tr(c.endTime), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w600, color: kDim)),
             ],
           ),
@@ -371,7 +373,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(c.name, style: GoogleFonts.spaceGrotesk(
+                      Text(tr(c.name), style: GoogleFonts.inter(
                         fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -380,7 +382,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                           borderRadius: BorderRadius.circular(9999),
                           border: Border.all(color: c.statusBorder),
                         ),
-                        child: Text(c.status, style: GoogleFonts.spaceGrotesk(
+                        child: Text(tr(c.status), style: GoogleFonts.inter(
                           fontSize: 10, fontWeight: FontWeight.w700, color: c.statusText)),
                       ),
                     ],
@@ -403,7 +405,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Text(c.coach, style: GoogleFonts.manrope(
+                      Text(tr(c.coach), style: GoogleFonts.inter(
                         fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                       const SizedBox(width: 8),
                       Container(
@@ -414,7 +416,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                       const SizedBox(width: 8),
                       const Icon(Icons.location_on_outlined, color: kGray, size: 10),
                       const SizedBox(width: 4),
-                      Text(c.room, style: GoogleFonts.manrope(
+                      Text(tr(c.room), style: GoogleFonts.inter(
                         fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                     ],
                   ),
@@ -423,10 +425,10 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Capacity', style: GoogleFonts.manrope(
+                      Text(tr('Capacity'), style: GoogleFonts.inter(
                         fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
-                      Text('${c.booked} / ${c.capacity} booked',
-                        style: GoogleFonts.spaceGrotesk(
+                      Text(tr('${c.booked} / ${c.capacity} booked'),
+                        style: GoogleFonts.inter(
                           fontSize: 11, fontWeight: FontWeight.w700, color: c.barColor)),
                     ],
                   ),
@@ -464,12 +466,12 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
                         children: [
                           Expanded(child: _buildActionButton(
                             icon: Icons.edit_outlined,
-                            label: 'Edit',
+                            label: tr('Edit'),
                           )),
                           const SizedBox(width: 8),
                           Expanded(child: _buildActionButton(
                             icon: Icons.swap_horiz_outlined,
-                            label: 'Reassign',
+                            label: tr('Reassign'),
                           )),
                           const SizedBox(width: 8),
                           Container(
@@ -507,7 +509,7 @@ class _AdminScheduleScreenState extends State<AdminScheduleScreen> {
         children: [
           Icon(icon, color: Colors.white, size: 10),
           const SizedBox(width: 6),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
         ],
       ),

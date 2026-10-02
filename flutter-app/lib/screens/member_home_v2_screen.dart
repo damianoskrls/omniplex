@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class MemberHomeV2Screen extends StatefulWidget {
   const MemberHomeV2Screen({super.key, this.userName, this.onTabChange});
@@ -64,10 +66,10 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Good morning,', style: GoogleFonts.manrope(
+              Text(tr('Good morning,'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w500, color: _kGray9C)),
               const SizedBox(height: 2),
-              Text('${widget.userName?.split(' ').first ?? 'there'} 👋', style: GoogleFonts.spaceGrotesk(
+              Text(tr('${widget.userName?.split(' ').first ?? 'there'} 👋'), style: GoogleFonts.inter(
                 fontSize: 24, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.6)),
             ],
@@ -108,10 +110,10 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('MY GYM', style: GoogleFonts.spaceGrotesk(
+            Text(tr('MY GYM'), style: GoogleFonts.inter(
               fontSize: 18, fontWeight: FontWeight.w700,
               color: kCyan, letterSpacing: 0.9)),
-            Text('ACTIVE ACCESS', style: GoogleFonts.manrope(
+            Text(tr('ACTIVE ACCESS'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w500,
               color: _kGray6B, letterSpacing: 1.2)),
           ],
@@ -174,7 +176,7 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Fitness Club\nAthens', style: GoogleFonts.spaceGrotesk(
+                            Text(tr('Fitness Club\nAthens'), style: GoogleFonts.inter(
                               fontSize: 24, fontWeight: FontWeight.w800,
                               color: Colors.white, height: 1.0)),
                             const SizedBox(height: 8),
@@ -190,7 +192,7 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
                                 children: [
                                   const Icon(Icons.check_circle, color: kLime, size: 10),
                                   const SizedBox(width: 6),
-                                  Text('ACTIVE MEMBERSHIP', style: GoogleFonts.manrope(
+                                  Text(tr('ACTIVE MEMBERSHIP'), style: GoogleFonts.inter(
                                     fontSize: 10, fontWeight: FontWeight.w700,
                                     color: kLime, letterSpacing: 1.0)),
                                 ],
@@ -216,10 +218,10 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('VALID UNTIL', style: GoogleFonts.manrope(
+                            Text(tr('VALID UNTIL'), style: GoogleFonts.inter(
                               fontSize: 10, fontWeight: FontWeight.w700,
                               color: _kGray9C, letterSpacing: -0.5)),
-                            Text('Oct 28, 2024', style: GoogleFonts.manrope(
+                            Text(tr('Oct 28, 2024'), style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w500,
                               color: Colors.white)),
                           ],
@@ -231,10 +233,10 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('NEXT SESSION', style: GoogleFonts.manrope(
+                            Text(tr('NEXT SESSION'), style: GoogleFonts.inter(
                               fontSize: 10, fontWeight: FontWeight.w700,
                               color: _kGray9C, letterSpacing: -0.5)),
-                            Text('18:30 CrossFit', style: GoogleFonts.manrope(
+                            Text(tr('18:30 CrossFit'), style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w500,
                               color: kCyan)),
                           ],
@@ -276,7 +278,7 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
                 child: Center(child: Icon(a.$1, color: Colors.white, size: 20)),
               ),
               const SizedBox(height: 8),
-              Text(a.$2, style: GoogleFonts.manrope(
+              Text(tr(a.$2), style: GoogleFonts.inter(
                 fontSize: 9, fontWeight: FontWeight.w700,
                 color: _kGray9C, letterSpacing: -0.25)),
             ],
@@ -293,7 +295,7 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('THIS WEEK', style: GoogleFonts.spaceGrotesk(
+            Text(tr('THIS WEEK'), style: GoogleFonts.inter(
               fontSize: 18, fontWeight: FontWeight.w700,
               color: kCyan, letterSpacing: 0.9)),
             const Icon(Icons.tune, color: _kGray6B, size: 16),
@@ -324,11 +326,11 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(_days[i], style: GoogleFonts.manrope(
+                      Text(tr(_days[i]), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: isActive ? kBg.withValues(alpha: 0.70) : _kGray6B,
                         letterSpacing: 0.3)),
-                      Text(_dates[i], style: GoogleFonts.manrope(
+                      Text(tr(_dates[i]), style: GoogleFonts.inter(
                         fontSize: 18, fontWeight: FontWeight.w700,
                         color: isActive ? kBg : Colors.white)),
                     ],
@@ -341,7 +343,7 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
         const SizedBox(height: 16),
         // Class cards
         _buildClassCard(
-          time: '18:30', duration: '60 MIN', title: 'CrossFit Intermediate',
+          time: '18:30', duration: '60 MIN', title: tr('CrossFit Intermediate'),
           location: 'Fitness Club Athens', accentColor: kLime,
           trailing: _buildAvatarStack(),
         ),
@@ -349,7 +351,7 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
         Opacity(
           opacity: 0.70,
           child: _buildClassCard(
-            time: '20:00', duration: '45 MIN', title: 'Yoga Flow',
+            time: '20:00', duration: '45 MIN', title: tr('Yoga Flow'),
             location: 'Zen Studio Hub', accentColor: _kBorder26,
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -357,7 +359,7 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
                 color: const Color(0xFF262626),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('WAITLIST', style: GoogleFonts.manrope(
+              child: Text(tr('WAITLIST'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: 0.5)),
             ),
@@ -395,9 +397,9 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(time, style: GoogleFonts.manrope(
+                Text(tr(time), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text(duration, style: GoogleFonts.manrope(
+                Text(tr(duration), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: _kGray6B, letterSpacing: 0.2)),
               ],
@@ -408,13 +410,13 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.manrope(
+                Text(tr(title), style: GoogleFonts.inter(
                   fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                 Row(
                   children: [
                     const Icon(Icons.location_on_outlined, color: _kGray9C, size: 9),
                     const SizedBox(width: 4),
-                    Text(location, style: GoogleFonts.manrope(
+                    Text(tr(location), style: GoogleFonts.inter(
                       fontSize: 12, color: _kGray9C)),
                   ],
                 ),
@@ -453,7 +455,7 @@ class _MemberHomeV2ScreenState extends State<MemberHomeV2Screen> {
               color: const Color(0xFF262626),
             ),
             child: Center(
-              child: Text('+12', style: GoogleFonts.manrope(
+              child: Text(tr('+12'), style: GoogleFonts.inter(
                 fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
           ),

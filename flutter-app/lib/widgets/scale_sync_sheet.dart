@@ -9,6 +9,8 @@ import '../services/ble_scale_service.dart';
 import '../services/demo_metrics_service.dart';
 import '../services/health_scale_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 typedef ScaleReadingApplied = Future<void> Function(ScaleReading reading);
 
@@ -84,15 +86,15 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
     });
     try {
       if (!_health.isSupported) {
-        throw StateError('Διαθέσιμο μόνο σε iPhone/Android');
+        throw StateError(tr('Διαθέσιμο μόνο σε iPhone/Android'));
       }
       final reading = await _health.fetchLatestReading();
       if (!mounted) return;
       if (reading == null) {
         setState(() {
-          _healthError = Platform.isIOS
+          final _healthError = Platform.isIOS
               ? 'Δεν βρέθηκε βάρος στο Apple Health. Σύνδεσε πρώτα την Xiaomi ζυγαριά στο Zepp Life / Apple Health.'
-              : 'Δεν βρέθηκε βάρος στο Health Connect. Εγκατάστησε Health Connect και σύνδεσε την Zepp Life.';
+              : tr('Δεν βρέθηκε βάρος στο Health Connect. Εγκατάστησε Health Connect και σύνδεσε την Zepp Life.');
         });
       } else {
         setState(() => _healthPreview = reading);
@@ -122,7 +124,7 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
       if (!mounted) return;
       if (reading == null) {
         setState(() {
-          _healthError = 'Δεν ήταν δυνατή η εγγραφή/ανάγνωση από Apple Health. Έλεγξε τα δικαιώματα Health.';
+          final _healthError = tr('Δεν ήταν δυνατή η εγγραφή/ανάγνωση από Apple Health. Έλεγξε τα δικαιώματα Health.');
         });
       } else {
         setState(() => _healthPreview = reading);
@@ -185,9 +187,9 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
             ),
           ),
           const SizedBox(height: 16),
-          Text('Συγχρονισμός ζυγαριάς', style: Theme.of(context).textTheme.titleLarge),
+          Text(tr('Συγχρονισμός ζυγαριάς'), style: Theme.of(context).textTheme.titleLarge),
           Text(
-            'Apple Health / Health Connect ή άμεση σύνδεση Bluetooth (Xiaomi κ.λπ.)',
+            tr('Apple Health / Health Connect ή άμεση σύνδεση Bluetooth (Xiaomi κ.λπ.)'),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
@@ -221,9 +223,9 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
     return ListView(
       children: [
         Text(
-          Platform.isIOS
+          tr(Platform.isIOS
               ? 'Διάβασε το τελευταίο βάρος από Apple Health (π.χ. μέσω Zepp Life / Mi Fit).'
-              : 'Διάβασε το τελευταίο βάρος από Health Connect (π.χ. μέσω Zepp Life).',
+              : tr('Διάβασε το τελευταίο βάρος από Health Connect (π.χ. μέσω Zepp Life).')),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 12),
@@ -232,11 +234,11 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
           icon: _healthLoading
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.favorite_outline, size: 18),
-          label: Text(_healthLoading ? 'Αναζήτηση...' : 'Συγχρονισμός Health'),
+          label: Text(_healthLoading ? 'Αναζήτηση...' : tr('Συγχρονισμός Health')),
         ),
         if (_healthError != null) ...[
           const SizedBox(height: 12),
-          Text(_healthError!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13)),
+          Text(tr(_healthError!), style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13)),
         ],
         if (_healthPreview != null) ...[
           const SizedBox(height: 16),
@@ -245,19 +247,19 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
         if (kDebugMode) ...[
           const SizedBox(height: 20),
           Text(
-            'Προσομοίωση (dev)',
+            tr('Προσομοίωση (dev)'),
             style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.orange),
           ),
           const SizedBox(height: 8),
           Text(
-            'Δοκίμασε το flow χωρίς ζυγαριά — γράφει δείγμα στο Apple Health ή εμφανίζει fake reading.',
+            tr('Δοκίμασε το flow χωρίς ζυγαριά — γράφει δείγμα στο Apple Health ή εμφανίζει fake reading.'),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: _simulateHealthReading,
             icon: const Icon(Icons.phone_iphone, size: 18),
-            label: const Text('Προσομοίωση μέτρησης'),
+            label: Text(tr('Προσομοίωση μέτρησης')),
           ),
           const SizedBox(height: 8),
           FilledButton.tonalIcon(
@@ -265,7 +267,7 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
             icon: _demoLoading
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.favorite, size: 18),
-            label: Text(_demoLoading ? 'Εγγραφή στο Health...' : 'Γράψε στο Apple Health & sync'),
+            label: Text(_demoLoading ? 'Εγγραφή στο Health...' : tr('Γράψε στο Apple Health & sync')),
           ),
         ],
       ],
@@ -276,7 +278,7 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
     return ListView(
       children: [
         Text(
-          'Άνοιξε Bluetooth, βγες ξυπόλυτος στη ζυγαριά και πάτα «Σάρωση». Υποστηρίζονται Xiaomi Mi / Body Composition.',
+          tr('Άνοιξε Bluetooth, βγες ξυπόλυτος στη ζυγαριά και πάτα «Σάρωση». Υποστηρίζονται Xiaomi Mi / Body Composition.'),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 12),
@@ -288,19 +290,19 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
                 icon: _bleScanning
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.bluetooth_searching, size: 18),
-                label: Text(_bleScanning ? 'Σάρωση...' : 'Σάρωση ζυγαριών'),
+                label: Text(_bleScanning ? 'Σάρωση...' : tr('Σάρωση ζυγαριών')),
               ),
             ),
             const SizedBox(width: 8),
             OutlinedButton(
               onPressed: () => _ble.stopScan(),
-              child: const Text('Stop'),
+              child: Text(tr('Stop')),
             ),
           ],
         ),
         if (_bleError != null) ...[
           const SizedBox(height: 12),
-          Text(_bleError!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13)),
+          Text(tr(_bleError!), style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13)),
         ],
         if (_blePreview != null) ...[
           const SizedBox(height: 12),
@@ -308,7 +310,7 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
         ],
         if (_bleDevices.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Text('Συσκευές', style: Theme.of(context).textTheme.labelLarge),
+          Text(tr('Συσκευές'), style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
           ..._bleDevices.map((d) {
             final busy = _connectingId == d.id;
@@ -320,7 +322,7 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
                 subtitle: Text(
                   d.lastReading != null
                       ? 'Τελευταίο: ${d.lastReading!.weightKg} kg'
-                      : 'Πάτα για σύνδεση — σκέψου τη ζυγαριά',
+                      : tr('Πάτα για σύνδεση — σκέψου τη ζυγαριά'),
                 ),
                 trailing: busy
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
@@ -342,10 +344,10 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('${r.weightKg} kg', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-            if (r.bodyFatPct != null) Text('Λίπος: ${r.bodyFatPct}%'),
+            Text(tr('${r.weightKg} kg'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+            if (r.bodyFatPct != null) Text(tr('Λίπος: ${r.bodyFatPct}%')),
             Text(
-              'Πηγή: ${r.sourceLabel}',
+              tr('Πηγή: ${r.sourceLabel}'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 10),
@@ -355,7 +357,7 @@ class _ScaleSyncSheetState extends State<_ScaleSyncSheet> with SingleTickerProvi
                 if (!mounted) return;
                 Navigator.of(context).pop();
               },
-              child: const Text('Αποθήκευση μέτρησης'),
+              child: Text(tr('Αποθήκευση μέτρησης')),
             ),
           ],
         ),

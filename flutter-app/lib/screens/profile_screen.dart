@@ -20,6 +20,8 @@ import 'messages_screen.dart';
 import 'staff_messages_screen.dart';
 import 'payments_screen.dart';
 import 'workout_metrics_screen.dart';
+import '../l10n/tr.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, this.onRemoveGym, this.onEnterAsRole});
@@ -66,13 +68,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!context.mounted) return;
     if (!global.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Συνδέσου από το OmniPlex για να στείλεις αίτημα.')),
+        SnackBar(content: Text(tr('Συνδέσου από το OmniPlex για να στείλεις αίτημα.'))),
       );
       return;
     }
     if (role == 'member' && global.gyms.any((g) => g.businessId == config.businessId && !g.isStaff)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Είσαι ήδη ασκούμενος σε αυτό το γυμναστήριο.')),
+        SnackBar(content: Text(tr('Είσαι ήδη ασκούμενος σε αυτό το γυμναστήριο.'))),
       );
       return;
     }
@@ -81,15 +83,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final locs = await auth.api.fetchLocations();
       if (locs.locations.length > 1) {
         if (!context.mounted) return;
-        locationId = await showDialog<String>(
+        final locationId = await showDialog<String>(
           context: context,
           builder: (ctx) => SimpleDialog(
-            title: const Text('Σε ποιο κατάστημα;'),
+            title: Text(tr('Σε ποιο κατάστημα;')),
             children: [
               for (final loc in locs.locations)
                 SimpleDialogOption(
                   onPressed: () => Navigator.pop(ctx, loc.id),
-                  child: Text(loc.name),
+                  child: Text(tr(loc.name)),
                 ),
             ],
           ),
@@ -112,11 +114,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res['message']?.toString() ?? 'Το αίτημα στάλθηκε. Ο διαχειριστής θα το δει για έγκριση.')),
+        SnackBar(content: Text(tr(res['message']?.toString() ?? tr('Το αίτημα στάλθηκε. Ο διαχειριστής θα το δει για έγκριση.')))),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.toString()))));
     }
   }
 
@@ -146,22 +148,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
+                  tr(user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?'),
                   style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white),
                 ),
               ),
               const SizedBox(height: 14),
-              Text(user.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+              Text(tr(user.fullName), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
               const SizedBox(height: 4),
-              Text(user.email, style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+              Text(tr(user.email), style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
               if (user.phone != null) ...[
                 const SizedBox(height: 4),
-                Text(user.phone!, style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+                Text(tr(user.phone!), style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
               ],
               if (!isStaff && fitness.fitnessGoalLabel != null) ...[
                 const SizedBox(height: 12),
                 PillChip(
-                  label: fitness.fitnessGoalLabel!,
+                  label: tr(fitness.fitnessGoalLabel!),
                   color: AppColors.teal.withValues(alpha: 0.2),
                   textColor: AppColors.teal,
                 ),
@@ -169,17 +171,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!isStaff && (fitness.weightKg != null || fitness.targetWeightKg != null)) ...[
                 const SizedBox(height: 8),
                 Text(
-                  [
+                  tr([
                     if (fitness.weightKg != null) '${fitness.weightKg!.toStringAsFixed(1)} kg',
                     if (fitness.targetWeightKg != null) AppStrings.of(context).profileTargetWeight(fitness.targetWeightKg!),
-                  ].join(' · '),
+                  ].join(' · ')),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
                 ),
               ],
               if (!isStaff && config.featureLoyaltyPoints) ...[
                 const SizedBox(height: 16),
                 PillChip(
-                  label: '${config.label('loyalty_label', 'Πόντοι')}: ${user.loyaltyPoints}',
+                  label: tr('${config.label('loyalty_label', 'Πόντοι')}: ${user.loyaltyPoints}'),
                   color: AppColors.lime.withValues(alpha: 0.25),
                   textColor: AppColors.lime,
                 ),
@@ -195,8 +197,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (AppNav.leaveGym != null) ...[
                 _MenuTile(
                   icon: Icons.arrow_back_rounded,
-                  title: 'Πίσω στο OmniPlex',
-                  subtitle: 'Έξοδος από αυτόν τον ρόλο',
+                  title: tr('Πίσω στο OmniPlex'),
+                  subtitle: tr('Έξοδος από αυτόν τον ρόλο'),
                   onTap: () {
                     Navigator.of(context).pop();
                     AppNav.leaveGym!();
@@ -217,7 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _MenuTile(
                   icon: Icons.track_changes_outlined,
                   title: AppStrings.of(context).profileGoals,
-                  subtitle: fitness.fitnessGoalLabel ?? AppStrings.of(context).profileGoalsSubtitle(''),
+                  subtitle: tr(fitness.fitnessGoalLabel ?? AppStrings.of(context).profileGoalsSubtitle('')),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GoalsScreen())),
                 ),
                 const Divider(height: 1, indent: 56),
@@ -251,7 +253,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         setState(() => _biometricEnabled = true);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(AppStrings.of(context).profileBiometricFailed)),
+                          SnackBar(content: Text(tr(AppStrings.of(context).profileBiometricFailed))),
                         );
                       }
                     } else {
@@ -273,8 +275,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!isStaff) ...[
                 _MenuTile(
                   icon: Icons.health_and_safety_outlined,
-                  title: 'Κάρτα υγείας',
-                  subtitle: 'Στόχος, παθήσεις, φάρμακα, έγγραφο γιατρού',
+                  title: tr('Κάρτα υγείας'),
+                  subtitle: tr('Στόχος, παθήσεις, φάρμακα, έγγραφο γιατρού'),
                   onTap: () {
                     final base = config.apiBaseUrl.replaceAll(RegExp(r'/$'), '');
                     Navigator.push(context, MaterialPageRoute(
@@ -291,8 +293,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!isStaff && config.featureLoyaltyPoints) ...[
                 _MenuTile(
                   icon: Icons.card_giftcard_outlined,
-                  title: 'Επιβράβευση',
-                  subtitle: 'Εκπτώσεις και προσφορές για συχνούς',
+                  title: tr('Επιβράβευση'),
+                  subtitle: tr('Εκπτώσεις και προσφορές για συχνούς'),
                   onTap: () {
                     final base = config.apiBaseUrl.replaceAll(RegExp(r'/$'), '');
                     Navigator.push(context, MaterialPageRoute(
@@ -308,8 +310,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (!isStaff) ...[
                 _MenuTile(
                   icon: Icons.draw_outlined,
-                  title: 'Ηλεκτρονικές εγγραφές',
-                  subtitle: 'Εγγραφή, ανανέωση, δήλωση συμμετοχής',
+                  title: tr('Ηλεκτρονικές εγγραφές'),
+                  subtitle: tr('Εγγραφή, ανανέωση, δήλωση συμμετοχής'),
                   onTap: () {
                     final auth = context.read<AuthService>();
                     final base = auth.config.apiBaseUrl.replaceAll(RegExp(r'/$'), '');
@@ -342,10 +344,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const Divider(height: 1, indent: 56),
-              _MenuTile(icon: Icons.email_outlined, title: AppStrings.of(context).email, subtitle: user.email),
+              _MenuTile(icon: Icons.email_outlined, title: AppStrings.of(context).email, subtitle: tr(user.email)),
               const Divider(height: 1, indent: 56),
               if (user.phone != null)
-                _MenuTile(icon: Icons.phone_outlined, title: AppStrings.of(context).profilePhone, subtitle: user.phone!),
+                _MenuTile(icon: Icons.phone_outlined, title: AppStrings.of(context).profilePhone, subtitle: tr(user.phone!)),
               if (user.phone != null) const Divider(height: 1, indent: 56),
               _RoleSwitcher(
                 businessId: config.businessId,
@@ -356,14 +358,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               _MenuTile(
                 icon: Icons.fitness_center,
-                title: config.appName,
-                subtitle: user.isNutritionist
+                title: tr(config.appName),
+                subtitle: tr(user.isNutritionist
                     ? 'Διατροφολόγος'
                     : user.staffKind == 'physiotherapist'
                         ? 'Φυσιοθεραπευτής'
                         : isStaff
                             ? (user.staffRole ?? 'Trainer')
-                            : AppStrings.of(context).activeMember,
+                            : AppStrings.of(context).activeMember),
               ),
             ],
           ),
@@ -392,9 +394,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _LangChip(label: 'ΕΛ', active: isEl, onTap: () => LanguageService.instance.setLocale(const Locale('el'))),
+                    _LangChip(label: tr('ΕΛ'), active: isEl, onTap: () => LanguageService.instance.setLocale(const Locale('el'))),
                     const SizedBox(width: 6),
-                    _LangChip(label: 'EN', active: !isEl, onTap: () => LanguageService.instance.setLocale(const Locale('en'))),
+                    _LangChip(label: tr('EN'), active: !isEl, onTap: () => LanguageService.instance.setLocale(const Locale('en'))),
                   ],
                 ),
               );
@@ -408,7 +410,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: EdgeInsets.zero,
             child: _MenuTile(
               icon: Icons.remove_circle_outline_rounded,
-              title: isStaff ? 'Αφαίρεση ως trainer' : 'Αφαίρεση γυμναστηρίου',
+              title: tr(isStaff ? 'Αφαίρεση ως trainer' : tr('Αφαίρεση γυμναστηρίου')),
               iconColor: AppColors.orange,
               titleColor: AppColors.orange,
               onTap: () async {
@@ -416,23 +418,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   context: context,
                   builder: (_) => AlertDialog(
                     backgroundColor: const Color(0xFF16171B),
-                    title: const Text('Αφαίρεση γυμναστηρίου',
+                    title: Text(tr('Αφαίρεση γυμναστηρίου'),
                         style: TextStyle(color: Colors.white)),
                     content: Text(
-                      isStaff
+                      tr(isStaff
                           ? 'Θα αφαιρεθείς ως trainer από αυτό το γυμναστήριο. Η σύνδεσή σου ως ασκούμενος, αν υπάρχει, μένει.'
-                          : 'Θα αφαιρεθείς ως ασκούμενος από αυτό το γυμναστήριο. Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.',
+                          : tr('Θα αφαιρεθείς ως ασκούμενος από αυτό το γυμναστήριο. Η σύνδεσή σου ως trainer, αν υπάρχει, μένει.')),
                       style: const TextStyle(color: Colors.white70),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Άκυρο',
+                        child: Text(tr('Άκυρο'),
                             style: TextStyle(color: Colors.white54)),
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(context, true),
-                        child: Text('Αφαίρεση',
+                        child: Text(tr('Αφαίρεση'),
                             style: TextStyle(color: AppColors.orange)),
                       ),
                     ],
@@ -519,7 +521,7 @@ class _LangChip extends StatelessWidget {
           border: Border.all(color: active ? lime.withValues(alpha: 0.5) : Colors.white12),
         ),
         child: Text(
-          label,
+          tr(label),
           style: TextStyle(
             color: active ? lime : Colors.white38,
             fontSize: 12,
@@ -572,9 +574,9 @@ class _RoleSwitcherState extends State<_RoleSwitcher> {
   }
 
   String _label(GlobalGym gym) {
-    if (!gym.isStaff) return 'Ασκούμενος';
-    if (gym.staffKind == 'nutritionist') return 'Διατροφολόγος';
-    if (gym.staffKind == 'physiotherapist') return 'Φυσιοθεραπευτής';
+    if (!gym.isStaff) return tr('Ασκούμενος');
+    if (gym.staffKind == 'nutritionist') return tr('Διατροφολόγος');
+    if (gym.staffKind == 'physiotherapist') return tr('Φυσιοθεραπευτής');
     return 'Trainer';
   }
 
@@ -595,13 +597,13 @@ class _RoleSwitcherState extends State<_RoleSwitcher> {
               ? 'Φυσιοθεραπευτής'
               : 'Trainer');
     } else {
-      have.add('Ασκούμενος');
+      have.add(tr('Ασκούμενος'));
     }
     final missing = <(String, String?, String, String)>[
-      if (!have.contains('Ασκούμενος')) ('member', null, 'Αίτημα ασκούμενου', 'Γίνε και πελάτης στο ίδιο γυμναστήριο'),
-      if (!have.contains('Trainer')) ('staff', 'Trainer', 'Αίτημα trainer', 'Γίνε και trainer στο ίδιο γυμναστήριο'),
-      if (!have.contains('Διατροφολόγος')) ('staff', 'Διατροφολόγος', 'Αίτημα διατροφολόγου', 'Γίνε και διατροφολόγος στο ίδιο γυμναστήριο'),
-      if (!have.contains('Φυσιοθεραπευτής')) ('staff', 'Φυσιοθεραπευτής', 'Αίτημα φυσιοθεραπευτή', 'Γίνε και φυσιοθεραπευτής στο ίδιο γυμναστήριο'),
+      if (!have.contains(tr('Ασκούμενος'))) ('member', null, tr('Αίτημα ασκούμενου'), tr('Γίνε και πελάτης στο ίδιο γυμναστήριο')),
+      if (!have.contains('Trainer')) ('staff', 'Trainer', tr('Αίτημα trainer'), tr('Γίνε και trainer στο ίδιο γυμναστήριο')),
+      if (!have.contains(tr('Διατροφολόγος'))) ('staff', tr('Διατροφολόγος'), tr('Αίτημα διατροφολόγου'), tr('Γίνε και διατροφολόγος στο ίδιο γυμναστήριο')),
+      if (!have.contains(tr('Φυσιοθεραπευτής'))) ('staff', tr('Φυσιοθεραπευτής'), tr('Αίτημα φυσιοθεραπευτή'), tr('Γίνε και φυσιοθεραπευτής στο ίδιο γυμναστήριο')),
     ];
     if (_roles.length < 2 && missing.isEmpty) return const SizedBox.shrink();
     return Column(children: [
@@ -609,8 +611,8 @@ class _RoleSwitcherState extends State<_RoleSwitcher> {
         for (final role in _roles.where((g) => !_isCurrent(g))) ...[
           _MenuTile(
             icon: Icons.swap_horiz_rounded,
-            title: 'Μπες ως ${_label(role)}',
-            subtitle: 'Αλλαγή ρόλου χωρίς να ξαναβρείς το γυμναστήριο',
+            title: tr('Μπες ως ${_label(role)}'),
+            subtitle: tr('Αλλαγή ρόλου χωρίς να ξαναβρείς το γυμναστήριο'),
             onTap: (widget.onEnterAsRole ?? AppNav.enterAsRole) == null
                 ? null
                 : () => (widget.onEnterAsRole ?? AppNav.enterAsRole)!(role),
@@ -620,8 +622,8 @@ class _RoleSwitcherState extends State<_RoleSwitcher> {
       for (final ask in missing) ...[
         _MenuTile(
           icon: Icons.add_circle_outline,
-          title: ask.$3,
-          subtitle: ask.$4,
+          title: tr(ask.$3),
+          subtitle: tr(ask.$4),
           onTap: () => widget.onRequest(ask.$1, ask.$2),
         ),
         const Divider(height: 1, indent: 56),

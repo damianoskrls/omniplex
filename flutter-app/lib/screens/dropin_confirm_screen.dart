@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 class DropinConfirmScreen extends StatelessWidget {
   const DropinConfirmScreen({super.key, required this.booking});
@@ -20,7 +22,7 @@ class DropinConfirmScreen extends StatelessWidget {
     if (iso.isEmpty) return '';
     try {
       final d = DateTime.parse(iso);
-      const months = ['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+      final months = [tr('Ιαν'),tr('Φεβ'),tr('Μαρ'),tr('Απρ'),tr('Μαΐ'),tr('Ιουν'),tr('Ιουλ'),tr('Αυγ'),tr('Σεπ'),tr('Οκτ'),tr('Νοε'),tr('Δεκ')];
       return '${d.day} ${months[d.month - 1]} ${d.year}';
     } catch (_) { return iso; }
   }
@@ -63,14 +65,14 @@ class DropinConfirmScreen extends StatelessWidget {
                       child: const Icon(Icons.check_circle_rounded, color: AppColors.lime, size: 40),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Κράτηση Επιβεβαιώθηκε!',
+                    Text(
+                      tr('Κράτηση Επιβεβαιώθηκε!'),
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Δείξε το QR στην υποδοχή για να μπεις',
+                      tr('Δείξε το QR στην υποδοχή για να μπεις'),
                       style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                       textAlign: TextAlign.center,
                     ),
@@ -119,16 +121,16 @@ class DropinConfirmScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _detailRow(Icons.fitness_center_rounded, 'Μάθημα', _serviceName),
+                          _detailRow(Icons.fitness_center_rounded, tr('Μάθημα'), _serviceName),
                           const SizedBox(height: 12),
-                          _detailRow(Icons.calendar_today_rounded, 'Ημερομηνία', _fmtDate(_date)),
+                          _detailRow(Icons.calendar_today_rounded, tr('Ημερομηνία'), _fmtDate(_date)),
                           const SizedBox(height: 12),
-                          _detailRow(Icons.access_time_rounded, 'Ώρα', _time),
+                          _detailRow(Icons.access_time_rounded, tr('Ώρα'), _time),
                           const SizedBox(height: 12),
                           _detailRow(
                             Icons.euro_rounded,
-                            'Πληρωμή',
-                            '$_priceStr · ${_payMethod == 'card' ? 'Κάρτα' : 'Στο χώρο'}'
+                            tr('Πληρωμή'),
+                            tr('$_priceStr · ${_payMethod == 'card' ? 'Κάρτα' : 'Στο χώρο'}')
                             + (_payStatus == 'paid' ? ' ✓' : _payMethod == 'venue' ? ' (εκκρεμεί)' : ''),
                           ),
                         ],
@@ -149,7 +151,7 @@ class DropinConfirmScreen extends StatelessWidget {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Θυμήσου να πληρώσεις $_priceStr στην υποδοχή',
+                                tr('Θυμήσου να πληρώσεις $_priceStr στην υποδοχή'),
                                 style: const TextStyle(fontSize: 13, color: Color(0xFF92400E)),
                               ),
                             ),
@@ -174,7 +176,7 @@ class DropinConfirmScreen extends StatelessWidget {
                     foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text('Επιστροφή στην αρχή', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  child: Text(tr('Επιστροφή στην αρχή'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 ),
               ),
             ),
@@ -192,8 +194,8 @@ class DropinConfirmScreen extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-            Text(value, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+            Text(tr(label), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            Text(tr(value), style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
           ],
         ),
       ],

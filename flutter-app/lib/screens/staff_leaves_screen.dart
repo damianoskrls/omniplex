@@ -7,6 +7,8 @@ import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 class StaffLeavesScreen extends StatefulWidget {
   const StaffLeavesScreen({super.key});
@@ -51,13 +53,13 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: Text(AppStrings.of(context).staffLeavesCancelTitle),
-        content: Text(AppStrings.of(context).staffLeavesCancelBody),
+        content: Text(tr(AppStrings.of(context).staffLeavesCancelBody)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr(AppStrings.of(context).cancel))),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
-            child: Text(AppStrings.of(context).staffLeavesCancelBtn),
+            child: Text(tr(AppStrings.of(context).staffLeavesCancelBtn)),
           ),
         ],
       ),
@@ -67,7 +69,7 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
       await context.read<AuthService>().api.deleteStaffLeave(leaveId);
       if (mounted) _load();
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
@@ -127,7 +129,7 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
           : _error != null
-              ? Center(child: Text(_error!))
+              ? Center(child: Text(tr(_error!)))
               : Column(
                   children: [
                     // Balance banner
@@ -154,9 +156,9 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(AppStrings.of(context).staffLeavesBalance,
+                                Text(tr(AppStrings.of(context).staffLeavesBalance),
                                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                Text(AppStrings.of(context).staffLeavesOf(remaining, _annualDays),
+                                Text(tr(AppStrings.of(context).staffLeavesOf(remaining, _annualDays)),
                                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                               ],
                             ),
@@ -164,9 +166,9 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text(AppStrings.of(context).staffLeavesUsed,
+                              Text(tr(AppStrings.of(context).staffLeavesUsed),
                                   style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                              Text(AppStrings.of(context).staffLeavesDays(_usedDays),
+                              Text(tr(AppStrings.of(context).staffLeavesDays(_usedDays)),
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.orange)),
                             ],
@@ -209,10 +211,10 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                                           child: Column(
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
-                                              Text('$days', style: TextStyle(
+                                              Text(tr('$days'), style: TextStyle(
                                                   fontWeight: FontWeight.w800, fontSize: 20,
                                                   color: sColor, height: 1)),
-                                              Text(days == 1 ? 'μέρα' : 'μέρες',
+                                              Text(tr(days == 1 ? 'μέρα' : tr('μέρες')),
                                                   style: TextStyle(fontSize: 9, color: sColor)),
                                             ],
                                           ),
@@ -223,11 +225,11 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                _formatRange(leave['date_from'] as String?, leave['date_to'] as String?),
+                                                tr(_formatRange(leave['date_from'] as String?, leave['date_to'] as String?)),
                                                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                                               ),
                                               if (leave['reason'] != null && (leave['reason'] as String).isNotEmpty)
-                                                Text(leave['reason'] as String,
+                                                Text(tr(leave['reason'] as String),
                                                     style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                                               const SizedBox(height: 6),
                                               Container(
@@ -236,7 +238,7 @@ class _StaffLeavesScreenState extends State<StaffLeavesScreen> {
                                                   color: sColor.withValues(alpha: 0.12),
                                                   borderRadius: BorderRadius.circular(6),
                                                 ),
-                                                child: Text(_statusLabel(status, context),
+                                                child: Text(tr(_statusLabel(status, context)),
                                                     style: TextStyle(
                                                         fontSize: 11, fontWeight: FontWeight.w700, color: sColor)),
                                               ),
@@ -347,10 +349,10 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(AppStrings.of(context).staffLeavesNewRequest,
+          Text(tr(AppStrings.of(context).staffLeavesNewRequest),
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
           const SizedBox(height: 4),
-          Text(AppStrings.of(context).staffLeavesNewRequestSub,
+          Text(tr(AppStrings.of(context).staffLeavesNewRequestSub),
               style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           const SizedBox(height: 20),
 
@@ -369,7 +371,7 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
                   const Icon(Icons.date_range_outlined, color: AppColors.textSecondary, size: 20),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(_rangeLabel(context),
+                    child: Text(tr(_rangeLabel(context)),
                         style: TextStyle(
                           color: _from != null ? AppColors.textPrimary : AppColors.textSecondary,
                           fontWeight: _from != null ? FontWeight.w600 : FontWeight.w400,
@@ -393,7 +395,7 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
 
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: AppColors.orange, fontSize: 13)),
+            Text(tr(_error!), style: const TextStyle(color: AppColors.orange, fontSize: 13)),
           ],
 
           const SizedBox(height: 20),
@@ -404,7 +406,7 @@ class _AddLeaveSheetState extends State<_AddLeaveSheet> {
               child: _loading
                   ? const SizedBox(height: 20, width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
-                  : Text(AppStrings.of(context).staffLeavesSend),
+                  : Text(tr(AppStrings.of(context).staffLeavesSend)),
             ),
           ),
         ],

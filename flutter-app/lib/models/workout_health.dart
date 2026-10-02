@@ -1,3 +1,4 @@
+import '../l10n/tr.dart';
 class WorkoutHealthSummary {
   const WorkoutHealthSummary({
     required this.externalId,
@@ -43,7 +44,7 @@ class WorkoutHealthSummary {
   String get summaryLine {
     final parts = <String>[];
     if (caloriesKcal != null) parts.add('$caloriesKcal kcal');
-    parts.add('$durationMins λεπτά');
+    parts.add(tr('$durationMins λεπτά'));
     if (avgHeartRate != null) parts.add('♥ $avgHeartRate bpm');
     return parts.join(' · ');
   }

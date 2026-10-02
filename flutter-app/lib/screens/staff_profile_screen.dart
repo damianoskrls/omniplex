@@ -7,6 +7,8 @@ import '../services/language_service.dart';
 import '../services/push_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 class StaffProfileScreen extends StatelessWidget {
   const StaffProfileScreen({super.key});
@@ -31,13 +33,13 @@ class StaffProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user.fullName,
+                    Text(tr(user.fullName),
                         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
                     if (user.staffRole != null && user.staffRole!.isNotEmpty)
-                      Text(user.staffRole!,
+                      Text(tr(user.staffRole!),
                           style: TextStyle(fontSize: 13, color: AppColors.lime, fontWeight: FontWeight.w600)),
                     if (user.email.isNotEmpty)
-                      Text(user.email,
+                      Text(tr(user.email),
                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
@@ -64,9 +66,9 @@ class StaffProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(AppStrings.of(context).staffProfileGym,
+                    Text(tr(AppStrings.of(context).staffProfileGym),
                         style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                    Text(config.appName,
+                    Text(tr(config.appName),
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   ],
                 ),
@@ -85,12 +87,12 @@ class StaffProfileScreen extends StatelessWidget {
                   children: [
                     const Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 8),
-                    Text(AppStrings.of(context).staffProfileBio,
+                    Text(tr(AppStrings.of(context).staffProfileBio),
                         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(user.bio!,
+                Text(tr(user.bio!),
                     style: const TextStyle(fontSize: 14, height: 1.5)),
               ],
             ),
@@ -112,7 +114,7 @@ class StaffProfileScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Text(config.appName,
+        Text(tr(config.appName),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ],
@@ -125,13 +127,13 @@ class StaffProfileScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: Text(AppStrings.of(context).staffProfileLogoutTitle),
-        content: Text(AppStrings.of(context).staffProfileLogoutBody(config.appName)),
+        content: Text(tr(AppStrings.of(context).staffProfileLogoutBody(config.appName))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr(AppStrings.of(context).cancel))),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
-            child: Text(AppStrings.of(context).staffProfileLogout),
+            child: Text(tr(AppStrings.of(context).staffProfileLogout)),
           ),
         ],
       ),
@@ -169,7 +171,7 @@ class _Avatar extends StatelessWidget {
 
   Widget _initials(String name) => Center(
     child: Text(
-      name.isNotEmpty ? name[0].toUpperCase() : '?',
+      tr(name.isNotEmpty ? name[0].toUpperCase() : '?'),
       style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w800, fontSize: 22),
     ),
   );
@@ -194,7 +196,7 @@ class _ActionRow extends StatelessWidget {
           children: [
             Icon(icon, color: c, size: 20),
             const SizedBox(width: 14),
-            Expanded(child: Text(label, style: TextStyle(color: c, fontWeight: FontWeight.w600))),
+            Expanded(child: Text(tr(label), style: TextStyle(color: c, fontWeight: FontWeight.w600))),
             Icon(Icons.chevron_right, color: c.withValues(alpha: 0.5), size: 18),
           ],
         ),
@@ -223,7 +225,7 @@ class _LangChip extends StatelessWidget {
           border: Border.all(color: active ? lime.withValues(alpha: 0.5) : Colors.white12),
         ),
         child: Text(
-          label,
+          tr(label),
           style: TextStyle(
             color: active ? lime : Colors.white38,
             fontSize: 12,

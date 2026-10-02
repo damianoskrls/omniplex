@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/brand.dart';
+import '../l10n/tr.dart';
+
 
 const _kOnboardingKey = 'bookup_onboarding_v3_done';
 
@@ -26,21 +28,21 @@ class _Slide {
   final String body;
 }
 
-const _slides = [
+final _slides = [
   _Slide(
     image: 'assets/onboarding/onboarding_gyms.jpg',
-    title: 'Όλα τα γυμναστήρια.\nΣε ένα μέρος.',
-    body: 'Πακέτα, κρατήσεις και πρόσβαση, χωρίς να αλλάζεις εφαρμογή.',
+    title: tr('Όλα τα γυμναστήρια.\nΣε ένα μέρος.'),
+    body: tr('Πακέτα, κρατήσεις και πρόσβαση, χωρίς να αλλάζεις εφαρμογή.'),
   ),
   _Slide(
     image: 'assets/onboarding/onboarding_book.jpg',
-    title: 'Βρες μάθημα.\nΚλείσε θέση.',
-    body: 'Δες το πρόγραμμα και κλείσε σε δευτερόλεπτα, μόνο τις μέρες που τρέχει.',
+    title: tr('Βρες μάθημα.\nΚλείσε θέση.'),
+    body: tr('Δες το πρόγραμμα και κλείσε σε δευτερόλεπτα, μόνο τις μέρες που τρέχει.'),
   ),
   _Slide(
     image: 'assets/onboarding/onboarding_enter.jpg',
-    title: 'Μπες.\nΣκάναρε. Ξεκίνα.',
-    body: 'Το QR σου ανοίγει την πόρτα στα γυμναστήρια που είσαι μέλος.',
+    title: tr('Μπες.\nΣκάναρε. Ξεκίνα.'),
+    body: tr('Το QR σου ανοίγει την πόρτα στα γυμναστήρια που είσαι μέλος.'),
   ),
 ];
 
@@ -120,7 +122,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       if (_page < _slides.length - 1)
                         TextButton(
                           onPressed: _finish,
-                          child: Text('Παράλειψη', style: GoogleFonts.manrope(color: Colors.white70, fontSize: 13)),
+                          child: Text(tr('Παράλειψη'), style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
                         ),
                     ],
                   ),
@@ -131,9 +133,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       key: ValueKey(slide.title),
                       children: [
                         Text(
-                          slide.title,
+                          tr(slide.title),
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.manrope(
+                          style: GoogleFonts.inter(
                             fontSize: 34,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
@@ -143,9 +145,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          slide.body,
+                          tr(slide.body),
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.manrope(fontSize: 15, color: _gray, height: 1.5),
+                          style: GoogleFonts.inter(fontSize: 15, color: _gray, height: 1.5),
                         ),
                       ],
                     ),
@@ -181,8 +183,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ],
                       ),
                       child: Text(
-                        _page == _slides.length - 1 ? 'Ξεκίνα' : 'Επόμενο',
-                        style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                        tr(_page == _slides.length - 1 ? 'Ξεκίνα' : tr('Επόμενο')),
+                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
                       ),
                     ),
                   ),

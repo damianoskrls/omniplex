@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kAmber = Color(0xFFFFB93D);
 const _kAmberBg = Color(0xFF2A210F);
@@ -75,10 +77,10 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Admin Dashboard', style: GoogleFonts.manrope(
+                                  Text(tr('Admin Dashboard'), style: GoogleFonts.inter(
                                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                                   const SizedBox(height: 4),
-                                  Text('Staff', style: GoogleFonts.spaceGrotesk(
+                                  Text(tr('Staff'), style: GoogleFonts.inter(
                                     fontSize: 20, fontWeight: FontWeight.w700,
                                     color: Colors.white, letterSpacing: -0.5)),
                                 ],
@@ -94,7 +96,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                                   children: [
                                     const Icon(Icons.add, color: kBg, size: 14),
                                     const SizedBox(width: 8),
-                                    Text('Add Staff', style: GoogleFonts.spaceGrotesk(
+                                    Text(tr('Add Staff'), style: GoogleFonts.inter(
                                       fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
                                   ],
                                 ),
@@ -121,10 +123,10 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Team Members', style: GoogleFonts.spaceGrotesk(
+                              Text(tr('Team Members'), style: GoogleFonts.inter(
                                 fontSize: 16, fontWeight: FontWeight.w700,
                                 color: Colors.white, letterSpacing: -0.4)),
-                              Text('14 total', style: GoogleFonts.manrope(
+                              Text(tr('14 total'), style: GoogleFonts.inter(
                                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                             ],
                           ),
@@ -186,10 +188,10 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
           border: active ? null : Border.all(color: kBorder),
         ),
         child: Center(
-          child: Text(label, style: active
-            ? GoogleFonts.spaceGrotesk(
+          child: Text(tr(label), style: active
+            ? GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700, color: kBg)
-            : GoogleFonts.manrope(
+            : GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
         ),
       ),
@@ -247,7 +249,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Flexible(
-                          child: Text(name, style: GoogleFonts.manrope(
+                          child: Text(tr(name), style: GoogleFonts.inter(
                             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                         ),
                         const SizedBox(width: 8),
@@ -258,13 +260,13 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                             borderRadius: BorderRadius.circular(9999),
                             border: Border.all(color: statusBorder),
                           ),
-                          child: Text(status, style: GoogleFonts.spaceGrotesk(
+                          child: Text(tr(status), style: GoogleFonts.inter(
                             fontSize: 10, fontWeight: FontWeight.w700, color: statusText)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(role, style: GoogleFonts.manrope(
+                    Text(tr(role), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                   ],
                 ),
@@ -273,7 +275,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
           ),
           const SizedBox(height: 10),
           // Today's schedule
-          Text("TODAY'S SCHEDULE", style: GoogleFonts.manrope(
+          Text(tr("TODAY'S SCHEDULE"), style: GoogleFonts.inter(
             fontSize: 10, fontWeight: FontWeight.w700,
             color: kDim, letterSpacing: 0.25)),
           const SizedBox(height: 8),
@@ -292,7 +294,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                   children: [
                     const Icon(Icons.calendar_today_outlined, color: kGray, size: 10),
                     const SizedBox(width: 6),
-                    Text('No sessions', style: GoogleFonts.manrope(
+                    Text(tr('No sessions'), style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
                   ],
                 ),
@@ -313,7 +315,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                   children: [
                     const Icon(Icons.schedule_outlined, color: kLime, size: 10),
                     const SizedBox(width: 6),
-                    Text(item, style: GoogleFonts.manrope(
+                    Text(tr(item), style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
                   ],
                 ),
@@ -325,7 +327,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
             children: [
               const Icon(Icons.calendar_month_outlined, color: kGray, size: 10),
               const SizedBox(width: 6),
-              Text(availability, style: GoogleFonts.manrope(
+              Text(tr(availability), style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
             ],
           ),
@@ -344,7 +346,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                 children: [
                   const Icon(Icons.flight_takeoff_outlined, color: _kAmber, size: 11),
                   const SizedBox(width: 6),
-                  Text(leaveNote, style: GoogleFonts.manrope(
+                  Text(tr(leaveNote), style: GoogleFonts.inter(
                     fontSize: 11, fontWeight: FontWeight.w700, color: _kAmber)),
                 ],
               ),
@@ -362,7 +364,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                 children: [
                   Expanded(child: _buildActionButton(
                     icon: Icons.visibility_outlined,
-                    label: 'View',
+                    label: tr('View'),
                     bg: const Color(0xFF1F2024),
                     borderColor: kBorder2,
                     textColor: Colors.white,
@@ -371,7 +373,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: _buildActionButton(
                     icon: Icons.edit_outlined,
-                    label: 'Edit',
+                    label: tr('Edit'),
                     bg: const Color(0xFF1F2024),
                     borderColor: kBorder2,
                     textColor: Colors.white,
@@ -380,7 +382,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: _buildActionButton(
                     icon: Icons.calendar_month_outlined,
-                    label: 'Assign',
+                    label: tr('Assign'),
                     bg: assignEnabled ? const Color(0xFF1D2410) : const Color(0xFF1F2024),
                     borderColor: assignEnabled ? kLime.withValues(alpha: 0.30) : kBorder2,
                     textColor: assignEnabled ? kLime : kGray,
@@ -417,7 +419,7 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
           children: [
             Icon(icon, color: textColor, size: 12),
             const SizedBox(width: 6),
-            Text(label, style: GoogleFonts.manrope(
+            Text(tr(label), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
           ],
         ),
@@ -474,10 +476,10 @@ class _AdminStaffScreenState extends State<AdminStaffScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(label, style: active
-            ? GoogleFonts.spaceGrotesk(
+          Text(tr(label), style: active
+            ? GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
-            : GoogleFonts.manrope(
+            : GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w600, color: kGray),
             textAlign: TextAlign.center),
         ],

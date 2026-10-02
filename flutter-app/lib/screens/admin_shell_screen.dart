@@ -5,6 +5,8 @@ import 'admin_dashboard_screen.dart';
 import 'admin_members_screen.dart';
 import 'admin_requests_screen.dart';
 import 'admin_staff_screen.dart';
+import '../l10n/tr.dart';
+
 
 class AdminShellScreen extends StatefulWidget {
   const AdminShellScreen({super.key});
@@ -69,7 +71,7 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
         children: [
           Icon(icon, color: active ? kLime : const Color(0xFF6B7280), size: 20),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : const Color(0xFF6B7280), letterSpacing: 0.9)),
         ],

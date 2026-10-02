@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/brand.dart';
+import '../l10n/tr.dart';
+
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -74,8 +76,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             width: 12, height: 12),
                         ),
                         const SizedBox(width: 6),
-                        Text('OmniPlex',
-                          style: GoogleFonts.manrope(
+                        Text(tr('OmniPlex'),
+                          style: GoogleFonts.inter(
                             fontSize: 16, fontWeight: FontWeight.w700,
                             color: Colors.white)),
                       ]),
@@ -116,13 +118,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Πώς θα χρησιμοποιήσεις\nτο OmniPlex;',
-                          style: GoogleFonts.manrope(
+                        Text(tr('Πώς θα χρησιμοποιήσεις\nτο OmniPlex;'),
+                          style: GoogleFonts.inter(
                             fontSize: 28, fontWeight: FontWeight.w700,
                             color: Colors.white, letterSpacing: -0.7, height: 1.1)),
                         const SizedBox(height: 10),
-                        Text('Μπορείς να προσθέσεις ρόλο ανά πάσα στιγμή από το προφίλ σου.',
-                          style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.5)),
+                        Text(tr('Μπορείς να προσθέσεις ρόλο ανά πάσα στιγμή από το προφίλ σου.'),
+                          style: GoogleFonts.inter(fontSize: 14, color: _kGray, height: 1.5)),
                         const SizedBox(height: 32),
 
                         // Member option
@@ -131,8 +133,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           icon: Icons.fitness_center_rounded,
                           iconBg: const Color(0xFF1A2A0A),
                           iconColor: _kLime,
-                          title: 'Μέλος',
-                          description: 'Ανακάλυψε γυμναστήρια, κάνε κρατήσεις μαθημάτων και διαχειρίσου συνδρομές.',
+                          title: tr('Μέλος'),
+                          description: tr('Ανακάλυψε γυμναστήρια, κάνε κρατήσεις μαθημάτων και διαχειρίσου συνδρομές.'),
                         ),
                         const SizedBox(height: 12),
 
@@ -142,8 +144,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           icon: Icons.assignment_outlined,
                           iconBg: const Color(0xFF0A1A2A),
                           iconColor: _kCyan,
-                          title: 'Προσωπικό',
-                          description: 'Διαχειρίσου μαθήματα, ραντεβού και το πρόγραμμά σου.',
+                          title: tr('Προσωπικό'),
+                          description: tr('Διαχειρίσου μαθήματα, ραντεβού και το πρόγραμμά σου.'),
                         ),
 
                         const SizedBox(height: 24),
@@ -162,8 +164,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Ο ρόλος σου καθορίζει τον προεπιλεγμένο πίνακα ελέγχου και τα δικαιώματα εντός του OmniPlex.',
-                                style: GoogleFonts.manrope(
+                                tr('Ο ρόλος σου καθορίζει τον προεπιλεγμένο πίνακα ελέγχου και τα δικαιώματα εντός του OmniPlex.'),
+                                style: GoogleFonts.inter(
                                   fontSize: 12, color: _kGray, height: 1.5)),
                             ),
                           ]),
@@ -187,8 +189,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text('Συνέχεια',
-                          style: GoogleFonts.manrope(
+                        Text(tr('Συνέχεια'),
+                          style: GoogleFonts.inter(
                             fontSize: 15, fontWeight: FontWeight.w700,
                             color: Colors.white, letterSpacing: 0.3)),
                         const SizedBox(width: 8),
@@ -240,10 +242,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
           const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: GoogleFonts.manrope(
+              Text(tr(title), style: GoogleFonts.inter(
                 fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
               const SizedBox(height: 3),
-              Text(description, style: GoogleFonts.manrope(
+              Text(tr(description), style: GoogleFonts.inter(
                 fontSize: 12, color: _kGray, height: 1.45)),
             ]),
           ),

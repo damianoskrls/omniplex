@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class GymSpaceScreen extends StatelessWidget {
   const GymSpaceScreen({super.key});
@@ -142,7 +144,7 @@ class GymSpaceScreen extends StatelessWidget {
                   child: const Icon(Icons.fitness_center, color: Colors.black, size: 32),
                 ),
                 const SizedBox(height: 12),
-                Text('Fitness Club\nAthens', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Fitness Club\nAthens'), style: GoogleFonts.inter(
                   fontSize: 30, fontWeight: FontWeight.w800,
                   color: Colors.white, height: 1.0, letterSpacing: -0.75)),
                 const SizedBox(height: 8),
@@ -160,14 +162,14 @@ class GymSpaceScreen extends StatelessWidget {
                         children: [
                           const Icon(Icons.check_circle, color: kLime, size: 8),
                           const SizedBox(width: 6),
-                          Text('Active Membership', style: GoogleFonts.manrope(
+                          Text(tr('Active Membership'), style: GoogleFonts.inter(
                             fontSize: 9, fontWeight: FontWeight.w700,
                             color: kLime, letterSpacing: 0.9)),
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text('Athens, Greece', style: GoogleFonts.manrope(
+                    Text(tr('Athens, Greece'), style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w600,
                       color: kCyan, letterSpacing: -0.5)),
                   ],
@@ -198,7 +200,7 @@ class GymSpaceScreen extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text('MEMBER SPACE', style: GoogleFonts.spaceGrotesk(
+            Text(tr('MEMBER SPACE'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700,
               color: _kGray6B, letterSpacing: 2.4)),
             const SizedBox(width: 16),
@@ -268,7 +270,7 @@ class GymSpaceScreen extends StatelessWidget {
                     width: 16, height: 16,
                     decoration: BoxDecoration(color: kCyan, shape: BoxShape.circle),
                     child: Center(
-                      child: Text(badge, style: GoogleFonts.manrope(
+                      child: Text(tr(badge), style: GoogleFonts.inter(
                         fontSize: 8, fontWeight: FontWeight.w700, color: kBg)),
                     ),
                   ),
@@ -276,7 +278,7 @@ class GymSpaceScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: const Color(0xFFD1D5DB), letterSpacing: 0.15),
             textAlign: TextAlign.center),
@@ -311,20 +313,20 @@ class GymSpaceScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('UPCOMING CLASS', style: GoogleFonts.manrope(
+                  Text(tr('UPCOMING CLASS'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kLime, letterSpacing: 1.0)),
                   const SizedBox(height: 4),
-                  Text('CrossFit Intermediate', style: GoogleFonts.manrope(
+                  Text(tr('CrossFit Intermediate'), style: GoogleFonts.inter(
                     fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('18:30', style: GoogleFonts.spaceGrotesk(
+                  Text(tr('18:30'), style: GoogleFonts.inter(
                     fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text('IN 45 MINS', style: GoogleFonts.manrope(
+                  Text(tr('IN 45 MINS'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700, color: _kGray6B)),
                 ],
               ),
@@ -352,9 +354,9 @@ class GymSpaceScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Coach Alexander', style: GoogleFonts.manrope(
+                      Text(tr('Coach Alexander'), style: GoogleFonts.inter(
                         fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white)),
-                      Text('Main Studio • Zone 3', style: GoogleFonts.manrope(
+                      Text(tr('Main Studio • Zone 3'), style: GoogleFonts.inter(
                         fontSize: 10, color: _kGray6B)),
                     ],
                   ),
@@ -365,7 +367,7 @@ class GymSpaceScreen extends StatelessWidget {
                     color: _kBorder26,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text('DETAILS', style: GoogleFonts.manrope(
+                  child: Text(tr('DETAILS'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: Colors.white, letterSpacing: 0.5)),
                 ),
@@ -381,7 +383,7 @@ class GymSpaceScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('LIVE UPDATES', style: GoogleFonts.spaceGrotesk(
+        Text(tr('LIVE UPDATES'), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: _kGray6B, letterSpacing: 2.4)),
         const SizedBox(height: 16),
@@ -402,7 +404,7 @@ class GymSpaceScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.people_outline, color: kCyan, size: 16),
                         const SizedBox(width: 8),
-                        Text('GYM TRAFFIC', style: GoogleFonts.manrope(
+                        Text(tr('GYM TRAFFIC'), style: GoogleFonts.inter(
                           fontSize: 10, fontWeight: FontWeight.w700, color: _kGray9C)),
                       ],
                     ),
@@ -411,14 +413,14 @@ class GymSpaceScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Text('42%', style: GoogleFonts.spaceGrotesk(
+                        Text(tr('42%'), style: GoogleFonts.inter(
                           fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
                         const SizedBox(width: 4),
-                        Text('Low', style: GoogleFonts.spaceGrotesk(
+                        Text(tr('Low'), style: GoogleFonts.inter(
                           fontSize: 10, color: kLime)),
                       ],
                     ),
-                    Text('Ideal time for heavy lift', style: GoogleFonts.manrope(
+                    Text(tr('Ideal time for heavy lift'), style: GoogleFonts.inter(
                       fontSize: 10, color: _kGray6B)),
                   ],
                 ),
@@ -440,14 +442,14 @@ class GymSpaceScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.thermostat_outlined, color: kCyan, size: 16),
                         const SizedBox(width: 8),
-                        Text('TEMPERATURE', style: GoogleFonts.manrope(
+                        Text(tr('TEMPERATURE'), style: GoogleFonts.inter(
                           fontSize: 10, fontWeight: FontWeight.w700, color: _kGray9C)),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text('21.5°C', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('21.5°C'), style: GoogleFonts.inter(
                       fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-                    Text('Climate controlled', style: GoogleFonts.manrope(
+                    Text(tr('Climate controlled'), style: GoogleFonts.inter(
                       fontSize: 10, color: _kGray6B)),
                   ],
                 ),
@@ -488,7 +490,7 @@ class GymSpaceScreen extends StatelessWidget {
         children: [
           Icon(icon, color: active ? kLime : _kGray6B, size: 22),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
         ],
@@ -516,7 +518,7 @@ class GymSpaceScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text('PROFILE', style: GoogleFonts.manrope(
+          Text(tr('PROFILE'), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: _kGray6B, letterSpacing: 0.9)),
         ],

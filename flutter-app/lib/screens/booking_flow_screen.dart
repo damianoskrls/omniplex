@@ -19,6 +19,8 @@ import '../widgets/staff_detail_sheet.dart';
 import '../widgets/preparation_tips_card.dart';
 import '../widgets/ui_kit.dart';
 import '../services/notification_service.dart';
+import '../l10n/tr.dart';
+
 
 class BookingFlowScreen extends StatefulWidget {
   const BookingFlowScreen({super.key, required this.service});
@@ -285,7 +287,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     if (!_serviceRunsOn(day) || (_openingHours != null && !_openingHours!.isWeekdayOpen(day))) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppStrings.of(context).bookingFlowClosedDay(_weekdayFull[day] ?? '')),
+          content: Text(tr(AppStrings.of(context).bookingFlowClosedDay(_weekdayFull[day] ?? ''))),
         ),
       );
       return;
@@ -372,7 +374,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Text(AppStrings.of(context).bookingFlowSelectMonth, style: Theme.of(ctx).textTheme.titleMedium),
+                child: Text(tr(AppStrings.of(context).bookingFlowSelectMonth), style: Theme.of(ctx).textTheme.titleMedium),
               ),
               Flexible(
                 child: ListView.builder(
@@ -424,7 +426,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       final next = _nextSelectableDate(first);
       if (next == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Δεν υπάρχουν ημέρες με πρόγραμμα για αυτή την υπηρεσία.')),
+          SnackBar(content: Text(tr('Δεν υπάρχουν ημέρες με πρόγραμμα για αυτή την υπηρεσία.'))),
         );
         return;
       }
@@ -466,14 +468,14 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               children: [
                 if (isClosed)
                   Text(
-                    AppStrings.of(context).bookingFlowClosed,
+                    tr(AppStrings.of(context).bookingFlowClosed),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: AppColors.orange,
                         ),
                   ),
                 if (isClosed) const SizedBox(height: 4),
-                Text(message, style: Theme.of(context).textTheme.bodyMedium),
+                Text(tr(message), style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
           ),
@@ -520,7 +522,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     setState(() {
       _selectedStaff = staff;
       _staffPickerExpanded = false;
-      if (_error != null && _error!.contains('Επίλεξε')) _error = null;
+      if (_error != null && _error!.contains(tr('Επίλεξε'))) _error = null;
     });
   }
 
@@ -558,20 +560,20 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         backgroundColor: AppColors.surface,
         title: Text(AppStrings.of(context).bookingFlowFullSlotTitle),
         content: Text(
-          next != null
+          tr(next != null
               ? AppStrings.of(context).bookingFlowFullSlotBody(slot.time, next.time)
-              : AppStrings.of(context).bookingFlowFullSlotNoNext(slot.time),
+              : AppStrings.of(context).bookingFlowFullSlotNoNext(slot.time)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, 'cancel'), child: Text(AppStrings.of(context).cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'cancel'), child: Text(tr(AppStrings.of(context).cancel))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, 'waitlist'),
-            child: Text(AppStrings.of(context).bookingFlowJoinWaitlist, style: const TextStyle(color: AppColors.orange)),
+            child: Text(tr(AppStrings.of(context).bookingFlowJoinWaitlist), style: const TextStyle(color: AppColors.orange)),
           ),
           if (next != null)
             TextButton(
               onPressed: () => Navigator.pop(ctx, 'book'),
-              child: Text(AppStrings.of(context).bookingFlowBookNext(next.time), style: TextStyle(color: _brand)),
+              child: Text(tr(AppStrings.of(context).bookingFlowBookNext(next.time)), style: TextStyle(color: _brand)),
             ),
         ],
       ),
@@ -591,12 +593,12 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.event_busy, color: AppColors.orange, size: 36),
-        title: Text(slot.userConflictTitle ?? 'Μη διαθέσιμο'),
-        content: Text(slot.userConflictDetail(widget.service.name)),
+        title: Text(slot.userConflictTitle ?? tr('Μη διαθέσιμο')),
+        content: Text(tr(slot.userConflictDetail(widget.service.name))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+            child: Text(tr('OK')),
           ),
         ],
       ),
@@ -654,11 +656,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         builder: (ctx) => AlertDialog(
           title: Text(AppStrings.of(context).bookingFlowWaitlistTitle),
           content: Text(
-            '${r['message'] as String? ?? 'Μπήκες στη λίστα αναμονής.'}\n\n'
-            'Θα το δεις στα Ραντεβού μου με ένδειξη «Σε αναμονή».',
+            tr('${r['message'] as String? ?? 'Μπήκες στη λίστα αναμονής.'}\n\n'
+            'Θα το δεις στα Ραντεβού μου με ένδειξη «Σε αναμονή».'),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppStrings.of(context).ok)),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr(AppStrings.of(context).ok))),
           ],
         ),
       );
@@ -681,7 +683,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     }
     _autoSelectStaffIfSingle();
     if (_needsStaffChoice && _selectedStaff == null) {
-      setState(() => _error = 'Επίλεξε ${_config.label('staff_noun', 'γυμναστή')}');
+      setState(() => _error = tr('Επίλεξε ${_config.label('staff_noun', 'γυμναστή')}'));
       return;
     }
 
@@ -749,7 +751,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         );
       }
     } on ApiException catch (e) {
-      if (e.message.contains('λίστα αναμονής') && _featureWaitlist && _selectedTime != null) {
+      if (e.message.contains(tr('λίστα αναμονής')) && _featureWaitlist && _selectedTime != null) {
         final next = _nextAvailableSlotAfter(_selectedTime!);
         final join = await showDialog<String>(
           context: context,
@@ -757,20 +759,20 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             backgroundColor: AppColors.surface,
             title: Text(AppStrings.of(context).bookingFlowSlotFull),
             content: Text(
-              next != null
+              tr(next != null
                   ? '${e.message}\n\nΗ επόμενη διαθέσιμη ώρα είναι στις ${next.time}.'
-                  : e.message,
+                  : e.message),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, 'no'), child: Text(AppStrings.of(context).no)),
+              TextButton(onPressed: () => Navigator.pop(ctx, 'no'), child: Text(tr(AppStrings.of(context).no))),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, 'waitlist'),
-                child: Text(AppStrings.of(context).bookingFlowWaitlistTitle, style: const TextStyle(color: AppColors.orange)),
+                child: Text(tr(AppStrings.of(context).bookingFlowWaitlistTitle), style: const TextStyle(color: AppColors.orange)),
               ),
               if (next != null)
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, 'book'),
-                  child: Text(AppStrings.of(context).bookingFlowBookNext(next.time), style: TextStyle(color: _brand)),
+                  child: Text(tr(AppStrings.of(context).bookingFlowBookNext(next.time)), style: TextStyle(color: _brand)),
                 ),
             ],
           ),
@@ -835,7 +837,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      AppStrings.of(context).bookingFlowAlternativesBody,
+                      tr(AppStrings.of(context).bookingFlowAlternativesBody),
                     ),
                     const SizedBox(height: 16),
                     ...withAlt.map((raw) {
@@ -873,11 +875,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(AppStrings.of(context).no),
+                  child: Text(tr(AppStrings.of(context).no)),
                 ),
                 TextButton(
                   onPressed: selectedKeys.isEmpty ? null : () => Navigator.pop(ctx, true),
-                  child: Text(AppStrings.of(context).bookingFlowBookSelected),
+                  child: Text(tr(AppStrings.of(context).bookingFlowBookSelected)),
                 ),
               ],
             );
@@ -913,16 +915,16 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         backgroundColor: AppColors.surface,
         title: Text(AppStrings.of(context).bookingFlowBulkDoneTitle),
         content: Text(
-          failed > 0
+          tr(failed > 0
               ? '$message\n\nΟι υπόλοιπες ημέρες κλείστηκαν κανονικά.'
               : message.isNotEmpty
                   ? message
-                  : AppStrings.of(context).bookingFlowBulkDoneBody(created),
+                  : AppStrings.of(context).bookingFlowBulkDoneBody(created)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(AppStrings.of(context).ok),
+            child: Text(tr(AppStrings.of(context).ok)),
           ),
         ],
       ),
@@ -933,7 +935,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     if (_selectedTime == null || _selectedWeekdays.isEmpty) return;
     _autoSelectStaffIfSingle();
     if (_needsStaffChoice && _selectedStaff == null) {
-      setState(() => _error = 'Επίλεξε ${_config.label('staff_noun', 'γυμναστή')}');
+      setState(() => _error = tr('Επίλεξε ${_config.label('staff_noun', 'γυμναστή')}'));
       return;
     }
 
@@ -948,10 +950,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: Text(AppStrings.of(context).bookingFlowBulkTitle),
-        content: Text(AppStrings.of(context).bookingFlowBulkConfirmBody(slots.length, _selectedTime!)),
+        content: Text(tr(AppStrings.of(context).bookingFlowBulkConfirmBody(slots.length, _selectedTime!))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).no)),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(AppStrings.of(context).yes)),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr(AppStrings.of(context).no))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr(AppStrings.of(context).yes))),
         ],
       ),
     );
@@ -1000,7 +1002,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             },
             'message': altFailed.isEmpty
                 ? 'Όλες οι διαθέσιμες κρατήσεις ολοκληρώθηκαν.'
-                : 'Μερικές εναλλακτικές δεν ήταν διαθέσιμες.',
+                : tr('Μερικές εναλλακτικές δεν ήταν διαθέσιμες.'),
           };
         }
       }
@@ -1056,7 +1058,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   children: [
                     if (showTimeProminent && title != slot.time)
                       Text(
-                        title,
+                        tr(title),
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
@@ -1065,7 +1067,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       )
                     else
                       Text(
-                        slot.time,
+                        tr(slot.time),
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
@@ -1074,20 +1076,20 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       ),
                     if (showTimeProminent && title != slot.time) ...[
                       const SizedBox(height: 2),
-                      Text(slot.time, style: Theme.of(context).textTheme.bodyMedium),
+                      Text(tr(slot.time), style: Theme.of(context).textTheme.bodyMedium),
                     ],
                     if (subtitle != null) ...[
                       const SizedBox(height: 4),
-                      Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+                      Text(tr(subtitle), style: Theme.of(context).textTheme.bodyMedium),
                     ],
                     if (mode == 'room' && slot.roomName != null && title == slot.roomName && slot.label != null) ...[
                       const SizedBox(height: 4),
-                      Text(slot.label!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
+                      Text(tr(slot.label!), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
                     ],
                     if (isWaitlist) ...[
                       const SizedBox(height: 4),
                       Text(
-                        AppStrings.of(context).bookingFlowWaitlistTitle,
+                        tr(AppStrings.of(context).bookingFlowWaitlistTitle),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontSize: 12,
                               color: AppColors.orange,
@@ -1097,7 +1099,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                     if (isUserConflict && slot.userConflictLabel != null) ...[
                       const SizedBox(height: 6),
                       Text(
-                        slot.userConflictLabel!,
+                        tr(slot.userConflictLabel!),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontSize: 12,
                               color: AppColors.orange,
@@ -1143,22 +1145,22 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _config.label('staff_noun', 'Γυμναστής'),
+                    tr(_config.label('staff_noun', tr('Γυμναστής'))),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
                   ),
                   const SizedBox(height: 2),
-                  Text(staff.fullName, style: Theme.of(context).textTheme.titleMedium),
+                  Text(tr(staff.fullName), style: Theme.of(context).textTheme.titleMedium),
                   if (staff.role != null) ...[
                     const SizedBox(height: 4),
                     PillChip(
-                      label: staff.role!,
+                      label: tr(staff.role!),
                       color: AppColors.purple.withValues(alpha: 0.15),
                       textColor: AppColors.purple,
                     ),
                   ],
                   const SizedBox(height: 4),
                   Text(
-                    AppStrings.of(context).bookingFlowStaffProfileHint,
+                    tr(AppStrings.of(context).bookingFlowStaffProfileHint),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontSize: 11,
                       color: AppColors.textSecondary,
@@ -1170,7 +1172,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             Icon(Icons.check_circle, color: _brand, size: 26),
             if (onChange != null) ...[
               const SizedBox(width: 4),
-              TextButton(onPressed: onChange, child: Text(AppStrings.of(context).bookingFlowChange)),
+              TextButton(onPressed: onChange, child: Text(tr(AppStrings.of(context).bookingFlowChange))),
             ],
           ],
         ),
@@ -1198,11 +1200,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Επίλεξε ${_config.label('staff_noun', 'γυμναστή')}',
+                    tr('Επίλεξε ${_config.label('staff_noun', 'γυμναστή')}'),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    AppStrings.of(context).bookingFlowStaffHint,
+                    tr(AppStrings.of(context).bookingFlowStaffHint),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
                   ),
                 ],
@@ -1251,7 +1253,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                                     StaffAvatar(staff: member, config: _config, radius: 30),
                                     const SizedBox(height: 8),
                                     Text(
-                                      member.fullName,
+                                      tr(member.fullName),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       textAlign: TextAlign.center,
@@ -1264,7 +1266,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                                     if (member.role != null) ...[
                                       const SizedBox(height: 4),
                                       Text(
-                                        member.role!,
+                                        tr(member.role!),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.center,
@@ -1327,7 +1329,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Ο/Η ${_config.label('staff_noun', 'γυμναστής')} σου',
+          tr('Ο/Η ${_config.label('staff_noun', 'γυμναστής')} σου'),
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 10),
@@ -1423,7 +1425,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                         Icon(Icons.schedule, size: 16, color: _brand),
                         const SizedBox(width: 6),
                         Text(
-                          _selectedTime!,
+                          tr(_selectedTime!),
                           style: TextStyle(
                             color: _brand,
                             fontWeight: FontWeight.w700,
@@ -1436,14 +1438,14 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   const Spacer(),
                   TextButton(
                     onPressed: _clearSelectedTime,
-                    child: Text(AppStrings.of(context).bookingFlowChangeTime),
+                    child: Text(tr(AppStrings.of(context).bookingFlowChangeTime)),
                   ),
                 ],
               ),
               if (_selectedIsWaitlist) ...[
                 const SizedBox(height: 12),
                 Text(
-                  AppStrings.of(context).bookingFlowWaitlistFor(_selectedTime!),
+                  tr(AppStrings.of(context).bookingFlowWaitlistFor(_selectedTime!)),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ] else if (staffForTime.isNotEmpty) ...[
@@ -1452,7 +1454,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               ],
               if (_error != null) ...[
                 const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: AppColors.orange)),
+                Text(tr(_error!), style: const TextStyle(color: AppColors.orange)),
               ],
               const SizedBox(height: 16),
               SizedBox(
@@ -1468,11 +1470,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                         )
                       : Text(
-                          _bulkMode
+                          tr(_bulkMode
                               ? AppStrings.of(context).bookingFlowBookAll(_generateBulkSlots().length)
                               : _selectedIsWaitlist
                                   ? AppStrings.of(context).bookingFlowWaitlistTitle
-                                  : _config.label('book_cta', 'Κράτηση'),
+                                  : _config.label('book_cta', tr('Κράτηση'))),
                         ),
                 ),
               ),
@@ -1512,19 +1514,19 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.service.name,
+                  tr(widget.service.name),
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                 ),
                 if (widget.service.description != null) ...[
                   const SizedBox(height: 8),
                   Text(
-                    widget.service.description!,
+                    tr(widget.service.description!),
                     style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
                   ),
                 ],
                 const SizedBox(height: 12),
                 PillChip(
-                  label: '${widget.service.durationMins} λεπτά',
+                  label: tr('${widget.service.durationMins} λεπτά'),
                   color: AppColors.surfaceLight,
                   textColor: AppColors.textPrimary,
                 ),
@@ -1552,11 +1554,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      widget.service.isUnlimited
+                      tr(widget.service.isUnlimited
                           ? AppStrings.of(context).bookingFlowUnlimitedSessions
                           : widget.service.canBook
                               ? AppStrings.of(context).bookingFlowSessionsAvailable(widget.service.creditsRemaining)
-                              : AppStrings.of(context).bookingFlowNoSessionsAvailable,
+                              : AppStrings.of(context).bookingFlowNoSessionsAvailable),
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: widget.service.canBook ? _brand : Colors.orange,
@@ -1575,7 +1577,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               ),
             )
           else if (_needsLocationChoice) ...[
-            Text(AppStrings.of(context).bookingFlowLocation, style: Theme.of(context).textTheme.titleMedium),
+            Text(tr(AppStrings.of(context).bookingFlowLocation), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             ..._locations.map((loc) {
               final selected = _selectedLocation?.id == loc.id;
@@ -1618,7 +1620,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             if (!_locationReady) ...[
               const SizedBox(height: 8),
               Text(
-                AppStrings.of(context).bookingFlowSelectLocationFirst,
+                tr(AppStrings.of(context).bookingFlowSelectLocationFirst),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -1648,7 +1650,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           ),
           const SizedBox(height: 20),
           if (!_bulkMode) ...[
-            Text(AppStrings.of(context).bookingFlowDate, style: Theme.of(context).textTheme.titleMedium),
+            Text(tr(AppStrings.of(context).bookingFlowDate), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             SurfaceCard(
               padding: EdgeInsets.zero,
@@ -1668,7 +1670,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               ),
             ),
           ] else ...[
-            Text(AppStrings.of(context).bookingFlowWeekdays, style: Theme.of(context).textTheme.titleMedium),
+            Text(tr(AppStrings.of(context).bookingFlowWeekdays), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -1693,7 +1695,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               }).toList(),
             ),
             const SizedBox(height: 16),
-            Text(AppStrings.of(context).bookingFlowPeriod, style: Theme.of(context).textTheme.titleMedium),
+            Text(tr(AppStrings.of(context).bookingFlowPeriod), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -1759,16 +1761,16 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               const SizedBox(height: 12),
               SurfaceCard(
                 child: Text(
-                  _bulkPeriod == _BulkPeriod.specificMonth
+                  tr(_bulkPeriod == _BulkPeriod.specificMonth
                       ? AppStrings.of(context).bookingFlowBulkSummaryMonth(_generateBulkSlots().length, DateFormat('MMMM yyyy', LanguageService.instance.isGreek ? 'el_GR' : 'en_US').format(_bulkMonth), _selectedTime!)
-                      : AppStrings.of(context).bookingFlowBulkSummaryFour(_generateBulkSlots().length, _selectedTime!),
+                      : AppStrings.of(context).bookingFlowBulkSummaryFour(_generateBulkSlots().length, _selectedTime!)),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
             ],
           ],
           const SizedBox(height: 24),
-          Text(AppStrings.of(context).bookingFlowAvailableTimes, style: Theme.of(context).textTheme.titleMedium),
+          Text(tr(AppStrings.of(context).bookingFlowAvailableTimes), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           if (_loadingSlots)
             Center(
@@ -1797,7 +1799,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    AppStrings.of(context).bookingFlowWaitlistNotify,
+                    tr(AppStrings.of(context).bookingFlowWaitlistNotify),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   if (_nextAvailableSlotAfter(_selectedTime!) != null) ...[
@@ -1808,7 +1810,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                         if (next != null) _applySlotSelection(next);
                       },
                       child: Text(
-                        AppStrings.of(context).bookingFlowBookNextAlt(_nextAvailableSlotAfter(_selectedTime!)!.time),
+                        tr(AppStrings.of(context).bookingFlowBookNextAlt(_nextAvailableSlotAfter(_selectedTime!)!.time)),
                         style: TextStyle(color: _brand),
                       ),
                     ),

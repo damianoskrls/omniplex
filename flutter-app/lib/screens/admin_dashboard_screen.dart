@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../widgets/omni_design.dart';
 import '../services/auth_service.dart';
+import '../l10n/tr.dart';
+
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -84,13 +86,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Admin Dashboard', style: GoogleFonts.spaceGrotesk(
+              Text(tr('Admin Dashboard'), style: GoogleFonts.inter(
                 fontSize: 24, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.6)),
               const SizedBox(height: 3),
               Row(
                 children: [
-                  Text('FITNESS CLUB ATHENS', style: GoogleFonts.manrope(
+                  Text(tr('FITNESS CLUB ATHENS'), style: GoogleFonts.inter(
                     fontSize: 11, fontWeight: FontWeight.w700,
                     color: kLime, letterSpacing: 1.1)),
                   const SizedBox(width: 8),
@@ -144,10 +146,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('KEY METRICS', style: GoogleFonts.spaceGrotesk(
+            Text(tr('KEY METRICS'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700,
               color: _kGray9C, letterSpacing: 1.2)),
-            Text('REAL-TIME', style: GoogleFonts.manrope(
+            Text(tr('REAL-TIME'), style: GoogleFonts.inter(
               fontSize: 10, fontWeight: FontWeight.w700, color: kLime)),
           ],
         ),
@@ -161,23 +163,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           childAspectRatio: 1.85,
           children: [
             _buildMetricCard(
-              label: 'ACTIVE MEMBERS',
+              label: tr('ACTIVE MEMBERS'),
               value: _data != null ? '${_data!['active_members'] ?? _data!['total_clients'] ?? '—'}' : '—',
               badge: _loading ? null : '+', badgeColor: kLime,
               accentBorder: kLime,
             ),
             _buildMetricCard(
-              label: "TODAY'S BOOKINGS",
+              label: tr("TODAY'S BOOKINGS"),
               value: _data != null ? '${_data!['today_bookings'] ?? '—'}' : '—',
               accentBorder: kCyan,
             ),
             _buildMetricCard(
-              label: 'TOTAL CLIENTS',
+              label: tr('TOTAL CLIENTS'),
               value: _data != null ? '${_data!['total_clients'] ?? '—'}' : '—',
               accentBorder: Colors.white.withValues(alpha: 0.20),
             ),
             _buildMetricCard(
-              label: 'PENDING',
+              label: tr('PENDING'),
               value: _data != null ? '${_data!['pending_clients'] ?? '—'}' : '—',
               badge: (_data?['pending_clients'] ?? 0) > 0 ? '!' : null,
               badgeColor: _kRed,
@@ -218,7 +220,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 10, fontWeight: FontWeight.w700,
             color: _kGray6B, letterSpacing: 0.5)),
           const SizedBox(height: 4),
@@ -226,16 +228,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(value, style: GoogleFonts.spaceGrotesk(
+              Text(tr(value), style: GoogleFonts.inter(
                 fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
               if (badge != null) ...[
                 const SizedBox(width: 4),
-                Text(badge, style: GoogleFonts.manrope(
+                Text(tr(badge), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700, color: badgeColor)),
               ],
               if (sub != null) ...[
                 const SizedBox(width: 8),
-                Text(sub, style: GoogleFonts.manrope(
+                Text(tr(sub), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700, color: subColor)),
               ],
             ],
@@ -266,10 +268,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Revenue Performance', style: GoogleFonts.manrope(
+                  Text(tr('Revenue Performance'), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text('LAST 7 DAYS', style: GoogleFonts.manrope(
+                  Text(tr('LAST 7 DAYS'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: _kGray6B, letterSpacing: 1.0)),
                 ],
@@ -312,7 +314,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('MANAGEMENT & OPERATIONS', style: GoogleFonts.spaceGrotesk(
+        Text(tr('MANAGEMENT & OPERATIONS'), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: _kGray9C, letterSpacing: 1.2)),
         const SizedBox(height: 16),
@@ -351,14 +353,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(
                     color: badgeColor, borderRadius: BorderRadius.circular(9999)),
-                  child: Text(badge, style: GoogleFonts.manrope(
+                  child: Text(tr(badge), style: GoogleFonts.inter(
                     fontSize: 8, fontWeight: FontWeight.w800, color: kBg)),
                 ),
               ),
           ],
         ),
         const SizedBox(height: 8),
-        Text(label, style: GoogleFonts.manrope(
+        Text(tr(label), style: GoogleFonts.inter(
           fontSize: 9, fontWeight: FontWeight.w700,
           color: _kGray9C, letterSpacing: 0.12),
           textAlign: TextAlign.center),
@@ -373,10 +375,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('CRITICAL ALERTS', style: GoogleFonts.spaceGrotesk(
+            Text(tr('CRITICAL ALERTS'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700,
               color: _kGray9C, letterSpacing: 1.2)),
-            Text('VIEW ALL', style: GoogleFonts.manrope(
+            Text(tr('VIEW ALL'), style: GoogleFonts.inter(
               fontSize: 10, fontWeight: FontWeight.w700,
               color: _kGray6B, decoration: TextDecoration.underline)),
           ],
@@ -386,16 +388,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           icon: Icons.warning_amber_rounded, iconColor: _kRed,
           iconBg: _kRed.withValues(alpha: 0.10),
           borderColor: _kRed,
-          title: 'System Maintenance Failure',
-          detail: 'Automated locker system in Zone B is offline.',
+          title: tr('System Maintenance Failure'),
+          detail: tr('Automated locker system in Zone B is offline.'),
         ),
         const SizedBox(height: 12),
         _buildAlertCard(
           icon: Icons.emoji_events_outlined, iconColor: kLime,
           iconBg: kLime.withValues(alpha: 0.10),
           borderColor: kLime,
-          title: 'Monthly Target Reached!',
-          detail: 'Retention rate hit 94.2% - New record.',
+          title: tr('Monthly Target Reached!'),
+          detail: tr('Retention rate hit 94.2% - New record.'),
         ),
       ],
     );
@@ -428,9 +430,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.manrope(
+                Text(tr(title), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text(detail, style: GoogleFonts.manrope(
+                Text(tr(detail), style: GoogleFonts.inter(
                   fontSize: 10, color: _kGray6B)),
               ],
             ),

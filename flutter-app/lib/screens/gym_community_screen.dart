@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class GymCommunityScreen extends StatefulWidget {
   const GymCommunityScreen({super.key});
@@ -71,7 +73,7 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
                       child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 20)),
                     ),
                     const SizedBox(width: 16),
-                    Text('COMMUNITY', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('COMMUNITY'), style: GoogleFonts.inter(
                       fontSize: 20, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.5)),
                   ],
@@ -99,7 +101,7 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(e.value, style: GoogleFonts.manrope(
+                            Text(tr(e.value), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700,
                               color: active ? kLime : _kGray6B,
                               letterSpacing: 1.2)),
@@ -168,7 +170,7 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(color: kBg),
                             ),
-                            child: Text('PRO', style: GoogleFonts.manrope(
+                            child: Text(tr('PRO'), style: GoogleFonts.inter(
                               fontSize: 8, fontWeight: FontWeight.w900, color: kBg)),
                           ),
                         ),
@@ -178,9 +180,9 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Trainer Maria', style: GoogleFonts.manrope(
+                        Text(tr('Trainer Maria'), style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                        Text('Head Coach • 2h ago', style: GoogleFonts.manrope(
+                        Text(tr('Head Coach • 2h ago'), style: GoogleFonts.inter(
                           fontSize: 10, color: _kGray9C)),
                       ],
                     ),
@@ -195,10 +197,10 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: RichText(
               text: TextSpan(
-                style: GoogleFonts.manrope(fontSize: 13, color: const Color(0xFFE5E7EB)),
+                style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFFE5E7EB)),
                 children: [
                   const TextSpan(text: 'New '),
-                  TextSpan(text: 'HIIT workout', style: GoogleFonts.manrope(
+                  TextSpan(text: 'HIIT workout', style: GoogleFonts.inter(
                     fontSize: 13, fontWeight: FontWeight.w700, color: kCyan)),
                   const TextSpan(text: ' uploaded! Check it out in the Programs section. Let\'s push those limits! 🔥💪'),
                 ],
@@ -229,7 +231,7 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
                       children: [
                         const Icon(Icons.play_circle_outline, color: kLime, size: 18),
                         const SizedBox(width: 8),
-                        Text('WATCH PROGRAM', style: GoogleFonts.manrope(
+                        Text(tr('WATCH PROGRAM'), style: GoogleFonts.inter(
                           fontSize: 10, fontWeight: FontWeight.w700,
                           color: Colors.white, letterSpacing: 1.0)),
                       ],
@@ -294,9 +296,9 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Alex Thompson', style: GoogleFonts.manrope(
+                      Text(tr('Alex Thompson'), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                      Text('Gold Member • 5h ago', style: GoogleFonts.manrope(
+                      Text(tr('Gold Member • 5h ago'), style: GoogleFonts.inter(
                         fontSize: 10, color: _kGray9C)),
                     ],
                   ),
@@ -308,10 +310,10 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
           const SizedBox(height: 16),
           RichText(
             text: TextSpan(
-              style: GoogleFonts.spaceGrotesk(fontSize: 18, color: Colors.white, height: 1.25),
+              style: GoogleFonts.inter(fontSize: 18, color: Colors.white, height: 1.25),
               children: [
                 const TextSpan(text: '"Just hit a new PR on deadlifts! '),
-                TextSpan(text: '140kg!', style: GoogleFonts.spaceGrotesk(
+                TextSpan(text: '140kg!', style: GoogleFonts.inter(
                   fontSize: 18, color: kLime)),
                 const TextSpan(text: ' 🏋️‍♂️ Athens community, what are you hitting today?"'),
               ],
@@ -351,7 +353,7 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
       children: [
         Icon(icon, color: color, size: 18),
         const SizedBox(width: 8),
-        Text(count, style: GoogleFonts.manrope(
+        Text(tr(count), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700, color: color)),
       ],
     );
@@ -370,7 +372,7 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
         children: [
           Icon(icon, color: Colors.white, size: 12),
           const SizedBox(width: 8),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 10, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.25)),
         ],
@@ -384,7 +386,7 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 8),
-          child: Text('TRENDING GROUPS', style: GoogleFonts.spaceGrotesk(
+          child: Text(tr('TRENDING GROUPS'), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w700,
             color: _kGray6B, letterSpacing: 2.4)),
         ),
@@ -422,11 +424,11 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
               child: Icon(icon, color: Colors.white, size: 18),
             ),
             const SizedBox(height: 8),
-            Text(name, style: GoogleFonts.manrope(
+            Text(tr(name), style: GoogleFonts.inter(
               fontSize: 11, fontWeight: FontWeight.w700,
               color: Colors.white, height: 1.25)),
             const SizedBox(height: 4),
-            Text(members, style: GoogleFonts.manrope(
+            Text(tr(members), style: GoogleFonts.inter(
               fontSize: 9, color: _kGray6B)),
           ],
         ),
@@ -463,7 +465,7 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
         children: [
           Icon(icon, color: active ? kLime : _kGray6B, size: 22),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
         ],
@@ -487,7 +489,7 @@ class _GymCommunityScreenState extends State<GymCommunityScreen> {
             child: const Icon(Icons.person, color: Colors.white, size: 14),
           ),
           const SizedBox(height: 4),
-          Text('PROFILE', style: GoogleFonts.manrope(
+          Text(tr('PROFILE'), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: _kGray6B, letterSpacing: 0.9)),
         ],

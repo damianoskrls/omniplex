@@ -254,6 +254,84 @@ router.get('/me', requireGlobal, async (req, res) => {
   }
 });
 
+// DELETE /api/global/me — the signed-in person erases their OmniPlex account.
+router.delete('/me', requireGlobal, async (req, res) => {
+  const id = req.globalUser.globalUserId;
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[account]] = await conn.query(
+      'SELECT id, phone FROM global_users WHERE id = ? FOR UPDATE',
+      [id],
+    );
+    if (!account) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'Ο λογαριασμός δεν βρέθηκε' });
+    }
+
+    const [members] = await conn.query(
+      'SELECT id FROM users WHERE global_user_id = ?',
+      [id],
+    );
+    const memberIds = members.map((row) => row.id).filter(Boolean);
+
+    if (memberIds.length) {
+      await conn.query(
+        `UPDATE bookings
+         SET status = 'cancelled'
+         WHERE user_id IN (?)
+           AND starts_at > NOW()
+           AND status IN ('confirmed', 'pending', 'in_progress')`,
+        [memberIds],
+      );
+      await conn.query(
+        `UPDATE waitlist_entries
+         SET status = 'cancelled'
+         WHERE user_id IN (?) AND status IN ('waiting', 'offered')`,
+        [memberIds],
+      );
+      await conn.query(
+        `UPDATE dropin_bookings
+         SET status = 'cancelled', guest_name = NULL, guest_email = NULL, guest_phone = NULL
+         WHERE user_id IN (?)
+           AND status IN ('pending', 'confirmed')
+           AND booking_date >= CURDATE()`,
+        [memberIds],
+      );
+      await conn.query(
+        `UPDATE users
+         SET global_user_id = NULL,
+             full_name = 'Διαγραμμένος λογαριασμός',
+             email = NULL,
+             phone = NULL,
+             notes = NULL,
+             date_of_birth = NULL,
+             weight_kg = NULL,
+             deleted_at = NOW()
+         WHERE id IN (?)`,
+        [memberIds],
+      );
+    }
+
+    await conn.query('UPDATE staff SET global_user_id = NULL WHERE global_user_id = ?', [id]);
+    await conn.query('DELETE FROM gym_join_requests WHERE global_user_id = ?', [id]);
+    await conn.query('DELETE FROM global_user_notifications WHERE global_user_id = ?', [id]);
+    await conn.query('DELETE FROM global_device_tokens WHERE global_user_id = ?', [id]);
+    if (account.phone) {
+      await conn.query('DELETE FROM global_otps WHERE phone = ?', [account.phone]);
+    }
+    await conn.query('DELETE FROM global_users WHERE id = ?', [id]);
+    await conn.commit();
+    return res.json({ ok: true });
+  } catch (err) {
+    await conn.rollback();
+    console.error('[delete account]', err.message);
+    return res.status(500).json({ error: 'Η διαγραφή δεν ολοκληρώθηκε. Δοκίμασε ξανά.' });
+  } finally {
+    conn.release();
+  }
+});
+
 // ============================================================
 // GET /api/global/me/dashboard  (auth)
 // Upcoming bookings across all gyms

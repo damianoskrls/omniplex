@@ -7,6 +7,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 class NutritionConsultationBookingScreen extends StatefulWidget {
   const NutritionConsultationBookingScreen({
@@ -117,12 +119,12 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Το αίτημα καταχωρήθηκε — αναμένει επιβεβαίωση από τον διατροφολόγο')),
+        SnackBar(content: Text(tr('Το αίτημα καταχωρήθηκε — αναμένει επιβεβαίωση από τον διατροφολόγο'))),
       );
       Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -144,7 +146,7 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('Κράτηση διατροφολόγου'),
+        title: Text(tr('Κράτηση διατροφολόγου')),
         backgroundColor: AppColors.bg,
       ),
       body: _refreshing
@@ -156,32 +158,32 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.service.name, style: Theme.of(context).textTheme.titleMedium),
+                Text(tr(widget.service.name), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 6),
                 if (pending == null && upcoming == null)
                   Text(
-                    widget.service.isUnlimited
+                    tr(widget.service.isUnlimited
                         ? 'Απεριόριστες επισκέψεις'
-                        : 'Διαθέσιμες επισκέψεις: $remaining / $total',
+                        : tr('Διαθέσιμες επισκέψεις: $remaining / $total')),
                     style: Theme.of(context).textTheme.bodyMedium,
                   )
                 else if (pending != null)
                   Text(
-                    'Έχεις ενεργό αίτημα κράτησης — δεν είναι ακόμα επιβεβαιωμένο.',
+                    tr('Έχεις ενεργό αίτημα κράτησης — δεν είναι ακόμα επιβεβαιωμένο.'),
                     style: Theme.of(context).textTheme.bodyMedium,
                   )
                 else
                   Text(
-                    'Η κράτησή σου έχει επιβεβαιωθεί.',
+                    tr('Η κράτησή σου έχει επιβεβαιωθεί.'),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 const SizedBox(height: 6),
                 Text(
-                  pending != null
+                  tr(pending != null
                       ? 'Μόλις επιβεβαιωθεί, θα εμφανιστεί στις κρατήσεις του διατροφολόγου.'
                       : upcoming != null
                           ? 'Θα σε περιμένει ο διατροφολόγος την ημέρα και ώρα που έχεις επιλέξει.'
-                          : 'Η κράτηση θα είναι σε αναμονή μέχρι την επιβεβαίωση του διατροφολόγου.',
+                          : tr('Η κράτηση θα είναι σε αναμονή μέχρι την επιβεβαίωση του διατροφολόγου.')),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
                 ),
               ],
@@ -193,15 +195,15 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Αίτημα σε αναμονή', style: Theme.of(context).textTheme.titleSmall),
+                  Text(tr('Αίτημα σε αναμονή'), style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 8),
                   Text(
-                    _formatBookingTime(pending),
+                    tr(_formatBookingTime(pending)),
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Κατάσταση: Αναμονή επιβεβαίωσης',
+                    tr('Κατάσταση: Αναμονή επιβεβαίωσης'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
                   ),
                 ],
@@ -214,15 +216,15 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Επιβεβαιωμένο ραντεβού', style: Theme.of(context).textTheme.titleSmall),
+                  Text(tr('Επιβεβαιωμένο ραντεβού'), style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 8),
                   Text(
-                    _formatBookingTime(upcoming),
+                    tr(_formatBookingTime(upcoming)),
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Κατάσταση: Επιβεβαιωμένο',
+                    tr('Κατάσταση: Επιβεβαιωμένο'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.lime),
                   ),
                 ],
@@ -232,7 +234,7 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
           if (!_hasActiveBooking) ...[
           if (widget.needsNutritionistChoice) ...[
             const SizedBox(height: 16),
-            Text('Διατροφολόγος', style: Theme.of(context).textTheme.titleSmall),
+            Text(tr('Διατροφολόγος'), style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
             ...widget.nutritionists.map((n) {
               final id = n['id'] as String;
@@ -255,13 +257,13 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
             }),
             if (!_nutritionistReady)
               Text(
-                'Επίλεξε με ποιον διατροφολόγο θέλεις ραντεβού.',
+                tr('Επίλεξε με ποιον διατροφολόγο θέλεις ραντεβού.'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
               ),
           ],
           if (_nutritionistReady) ...[
           const SizedBox(height: 16),
-          Text('Ημερομηνία', style: Theme.of(context).textTheme.titleSmall),
+          Text(tr('Ημερομηνία'), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           SizedBox(
             height: 72,
@@ -286,11 +288,11 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
             ),
           ),
           const SizedBox(height: 16),
-          Text('Ώρα', style: Theme.of(context).textTheme.titleSmall),
+          Text(tr('Ώρα'), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           if (_loading) Center(child: const CircularProgressIndicator(color: AppColors.lime)),
           if (!_loading && _slots.isEmpty)
-            Text(_message ?? 'Δεν υπάρχουν διαθέσιμες ώρες', style: Theme.of(context).textTheme.bodyMedium),
+            Text(tr(_message ?? tr('Δεν υπάρχουν διαθέσιμες ώρες')), style: Theme.of(context).textTheme.bodyMedium),
           if (!_loading)
             Wrap(
               spacing: 8,
@@ -307,7 +309,7 @@ class _NutritionConsultationBookingScreenState extends State<NutritionConsultati
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _selectedTime == null || _submitting || !_nutritionistReady ? null : _book,
-            child: Text(_submitting ? 'Αποστολή...' : 'Αίτημα κράτησης'),
+            child: Text(tr(_submitting ? 'Αποστολή...' : tr('Αίτημα κράτησης'))),
           ),
           ],
           ],

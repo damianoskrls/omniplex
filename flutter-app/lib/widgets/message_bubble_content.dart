@@ -8,6 +8,8 @@ import '../theme/app_colors.dart';
 import '../utils/media_url.dart';
 import '../utils/message_content.dart';
 import 'image_lightbox.dart';
+import '../l10n/tr.dart';
+
 
 class MessageBubbleContent extends StatelessWidget {
   const MessageBubbleContent({
@@ -37,7 +39,7 @@ class MessageBubbleContent extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Η εικόνα δεν είναι πια διαθέσιμη (έληξε μετά από 24 ώρες)',
+              tr('Η εικόνα δεν είναι πια διαθέσιμη (έληξε μετά από 24 ώρες)'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
                 fontStyle: FontStyle.italic,
@@ -175,7 +177,7 @@ class _YouTubePreview extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(8),
               child: Text(
-                'YouTube',
+                tr('YouTube'),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,

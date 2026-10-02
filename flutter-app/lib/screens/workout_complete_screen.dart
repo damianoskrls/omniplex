@@ -21,6 +21,8 @@ import '../services/health_workout_service.dart';
 import '../widgets/workout_health_panel.dart';
 import '../widgets/workout_share_fullscreen.dart';
 import 'home_screen.dart';
+import '../l10n/tr.dart';
+
 
 class WorkoutCompleteScreen extends StatefulWidget {
   const WorkoutCompleteScreen({super.key, required this.booking, required this.api});
@@ -150,13 +152,13 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
       await _shareService.saveToGallery(_photoFile!);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.of(context).workoutCompletePhotoSaved)),
+          SnackBar(content: Text(tr(AppStrings.of(context).workoutCompletePhotoSaved))),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.of(context).workoutCompletePhotoError(e.toString()))),
+          SnackBar(content: Text(tr(AppStrings.of(context).workoutCompletePhotoError(e.toString())))),
         );
       }
     } finally {
@@ -209,7 +211,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
             ? AppStrings.of(context).workoutCompleteCaloriesFromWatch(health['calories_kcal'] as int)
             : '';
 
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$msg$healthMsg')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('$msg$healthMsg'))));
 
         if (_photoFile != null) {
           await _sharePhoto();
@@ -243,16 +245,16 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  AppStrings.of(context).workoutCompleteQuestion,
+                  tr(AppStrings.of(context).workoutCompleteQuestion),
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  widget.booking.scheduleLabel ?? widget.booking.serviceName,
+                  tr(widget.booking.scheduleLabel ?? widget.booking.serviceName),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
                 ),
                 Text(
-                  dateFmt.format(widget.booking.startsAt),
+                  tr(dateFmt.format(widget.booking.startsAt)),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.75)),
                 ),
               ],
@@ -267,7 +269,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      AppStrings.of(context).workoutCompleteEarlyMsg,
+                      tr(AppStrings.of(context).workoutCompleteEarlyMsg),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
                     ),
                   ),
@@ -313,7 +315,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(AppStrings.of(context).workoutCompleteGoalTarget(stats.goal.targetSessions),
+                  Text(tr(AppStrings.of(context).workoutCompleteGoalTarget(stats.goal.targetSessions)),
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 10),
                   ClipRRect(
@@ -327,14 +329,14 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    AppStrings.of(context).workoutCompleteSessions(stats.sessionsThisMonth, stats.goal.targetSessions),
+                    tr(AppStrings.of(context).workoutCompleteSessions(stats.sessionsThisMonth, stats.goal.targetSessions)),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   if (stats.goalMet)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        AppStrings.of(context).workoutCompleteGoalAchieved,
+                        tr(AppStrings.of(context).workoutCompleteGoalAchieved),
                         style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -349,7 +351,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
             icon: Icons.favorite_outline,
           ),
           const SizedBox(height: 24),
-          Text(AppStrings.of(context).workoutCompleteHowWas, style: Theme.of(context).textTheme.titleMedium),
+          Text(tr(AppStrings.of(context).workoutCompleteHowWas), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -374,7 +376,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Text(AppStrings.of(context).workoutCompletePhotoTitle, style: Theme.of(context).textTheme.titleMedium),
+          Text(tr(AppStrings.of(context).workoutCompletePhotoTitle), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
           if (_photoFile != null) ...[
             WorkoutShareThumbnail(
@@ -430,12 +432,12 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            AppStrings.of(context).workoutCompletePhotoNote,
+            tr(AppStrings.of(context).workoutCompletePhotoNote),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: AppColors.orange)),
+            Text(tr(_error!), style: const TextStyle(color: AppColors.orange)),
           ],
           const SizedBox(height: 24),
           SizedBox(
@@ -448,7 +450,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                     )
-                  : Text(AppStrings.of(context).workoutCompleteBtn),
+                  : Text(tr(AppStrings.of(context).workoutCompleteBtn)),
             ),
           ),
         ],

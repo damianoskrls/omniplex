@@ -4,6 +4,8 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
 import '../theme/app_colors.dart';
+import '../l10n/tr.dart';
+
 
 /// Shown when the user taps "Αγορά πακέτου".
 /// Collects user details (if not logged in), initiates Stripe Payment Sheet,
@@ -67,11 +69,11 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
     final password = _passwordCtrl.text;
 
     if (name.isEmpty || phone.isEmpty) {
-      setState(() => _error = 'Συμπλήρωσε ονοματεπώνυμο και κινητό');
+      setState(() => _error = tr('Συμπλήρωσε ονοματεπώνυμο και κινητό'));
       return;
     }
     if (!widget.globalAuth.isLoggedIn && password.length < 4) {
-      setState(() => _error = 'Ο κωδικός πρέπει να έχει τουλάχιστον 4 ψηφία');
+      setState(() => _error = tr('Ο κωδικός πρέπει να έχει τουλάχιστον 4 ψηφία'));
       return;
     }
 
@@ -94,7 +96,7 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
       );
       if (intentRes.statusCode != 200) {
         final b = jsonDecode(intentRes.body) as Map<String, dynamic>;
-        setState(() { _error = b['error'] as String? ?? 'Σφάλμα'; _loading = false; });
+        setState(() { _error = b['error'] as String? ?? tr('Σφάλμα'); _loading = false; });
         return;
       }
       final intentBody = jsonDecode(intentRes.body) as Map<String, dynamic>;
@@ -144,10 +146,10 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
         if (mounted) widget.onPurchased();
       } else {
         final b = jsonDecode(confirmRes.body) as Map<String, dynamic>;
-        setState(() { _error = b['error'] as String? ?? 'Σφάλμα επιβεβαίωσης'; _loading = false; });
+        setState(() { _error = b['error'] as String? ?? tr('Σφάλμα επιβεβαίωσης'); _loading = false; });
       }
     } on StripeException catch (e) {
-      final msg = e.error.localizedMessage ?? e.error.message ?? 'Η πληρωμή ακυρώθηκε';
+      final msg = e.error.localizedMessage ?? e.error.message ?? tr('Η πληρωμή ακυρώθηκε');
       setState(() { _error = msg; _loading = false; });
     } catch (e) {
       setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
@@ -179,7 +181,7 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
               color: AppColors.textPrimary, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Αγορά πακέτου',
+        title: Text(tr('Αγορά πακέτου'),
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary)),
       ),
@@ -211,21 +213,21 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(planName, style: const TextStyle(
+                        Text(tr(planName), style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary)),
-                        Text(widget.gymName, style: TextStyle(
+                        Text(tr(widget.gymName), style: TextStyle(
                             fontSize: 13, color: color, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Wrap(
                           spacing: 8,
                           children: [
                             if (sessions != null)
-                              Text('$sessions συνεδρίες',
+                              Text(tr('$sessions συνεδρίες'),
                                   style: const TextStyle(fontSize: 12,
                                       color: AppColors.textSecondary)),
                             if (days != null)
-                              Text('$days ημέρες',
+                              Text(tr('$days ημέρες'),
                                   style: const TextStyle(fontSize: 12,
                                       color: AppColors.textSecondary)),
                           ],
@@ -233,7 +235,7 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
                       ],
                     ),
                   ),
-                  Text(_fmtPrice(price),
+                  Text(tr(_fmtPrice(price)),
                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
                 ],
               ),
@@ -242,37 +244,37 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
             const SizedBox(height: 28),
 
             // User info form
-            const Text('Στοιχεία',
+            Text(tr('Στοιχεία'),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 14),
 
-            _label('Ονοματεπώνυμο'),
+            _label(tr('Ονοματεπώνυμο')),
             const SizedBox(height: 6),
-            _textField(_nameCtrl, 'Γιώργης Παπαδόπουλος'),
+            _textField(_nameCtrl, tr('Γιώργης Παπαδόπουλος')),
             const SizedBox(height: 12),
 
-            _label('Κινητό τηλέφωνο *'),
+            _label(tr('Κινητό τηλέφωνο *')),
             const SizedBox(height: 6),
             _textField(_phoneCtrl, '69XXXXXXXX', type: TextInputType.phone,
                 enabled: !isLoggedIn),
             const SizedBox(height: 12),
 
-            _label('Email (προαιρετικό)'),
+            _label(tr('Email (προαιρετικό)')),
             const SizedBox(height: 6),
             _textField(_emailCtrl, 'email@example.com',
                 type: TextInputType.emailAddress, enabled: !isLoggedIn),
 
             if (!isLoggedIn) ...[
               const SizedBox(height: 12),
-              _label('Κωδικός (για το OmniPlex account σου)'),
+              _label(tr('Κωδικός (για το OmniPlex account σου)')),
               const SizedBox(height: 6),
               TextField(
                 controller: _passwordCtrl,
                 obscureText: _obscure,
                 style: const TextStyle(color: AppColors.textPrimary),
                 decoration: InputDecoration(
-                  hintText: '••••',
+                  hintText: tr('••••'),
                   hintStyle: const TextStyle(color: AppColors.textSecondary),
                   filled: true,
                   fillColor: AppColors.surfaceLight,
@@ -291,7 +293,7 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              const Text('Θα δημιουργηθεί αυτόματα λογαριασμός OmniPlex.',
+              Text(tr('Θα δημιουργηθεί αυτόματα λογαριασμός OmniPlex.'),
                   style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             ],
 
@@ -303,7 +305,7 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
                   color: Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(_error!,
+                child: Text(tr(_error!),
                     style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
               ),
             ],
@@ -329,7 +331,7 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
                         children: [
                           const Icon(Icons.lock_rounded, size: 18),
                           const SizedBox(width: 8),
-                          Text('Πληρωμή ${_fmtPrice(price)}',
+                          Text(tr('Πληρωμή ${_fmtPrice(price)}'),
                               style: const TextStyle(
                                   fontSize: 17, fontWeight: FontWeight.w800)),
                         ],
@@ -338,13 +340,13 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
             ),
 
             const SizedBox(height: 12),
-            const Center(
+            Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.security_rounded, size: 14, color: AppColors.textSecondary),
                   SizedBox(width: 6),
-                  Text('Ασφαλής πληρωμή μέσω Stripe',
+                  Text(tr('Ασφαλής πληρωμή μέσω Stripe'),
                       style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
@@ -356,7 +358,7 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
   }
 }
 
-Widget _label(String text) => Text(text,
+Widget _label(String text) => Text(tr(text),
     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
         color: AppColors.textSecondary));
 
@@ -373,7 +375,7 @@ Widget _textField(
       style: TextStyle(
           color: enabled ? AppColors.textPrimary : AppColors.textSecondary),
       decoration: InputDecoration(
-        hintText: hint,
+        hintText: tr(hint),
         hintStyle: const TextStyle(color: AppColors.textSecondary),
         filled: true,
         fillColor: enabled ? AppColors.surfaceLight : AppColors.border.withAlpha(80),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kOrange = Color(0xFFFFA53E);
 const _kOrangeBg = Color(0xFF2B1D0E);
@@ -78,7 +80,7 @@ class StaffLeaveScreen extends StatelessWidget {
                                     child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
                                   ),
                                   const SizedBox(width: 16),
-                                  Text('My Leave', style: GoogleFonts.spaceGrotesk(
+                                  Text(tr('My Leave'), style: GoogleFonts.inter(
                                     fontSize: 20, fontWeight: FontWeight.w700,
                                     color: Colors.white, letterSpacing: -0.5)),
                                 ],
@@ -94,7 +96,7 @@ class StaffLeaveScreen extends StatelessWidget {
                                   children: [
                                     const Icon(Icons.add, color: kLime, size: 14),
                                     const SizedBox(width: 6),
-                                    Text('Request Leave', style: GoogleFonts.manrope(
+                                    Text(tr('Request Leave'), style: GoogleFonts.inter(
                                       fontSize: 12, fontWeight: FontWeight.w700, color: kLime)),
                                   ],
                                 ),
@@ -113,7 +115,7 @@ class StaffLeaveScreen extends StatelessWidget {
                           iconBorderColor: kLime.withValues(alpha: 0.30),
                           icon: Icons.flight_takeoff_outlined,
                           iconColor: kLime,
-                          title: 'Annual Leave',
+                          title: tr('Annual Leave'),
                           date: 'Oct 24',
                           badgeLabel: 'Approved',
                           badgeBg: const Color(0xFF1D2410),
@@ -166,7 +168,7 @@ class StaffLeaveScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('REMAINING LEAVE', style: GoogleFonts.manrope(
+              Text(tr('REMAINING LEAVE'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600,
                 color: kGray, letterSpacing: 0.3)),
               Container(
@@ -184,14 +186,14 @@ class StaffLeaveScreen extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('18', style: GoogleFonts.spaceGrotesk(
+              Text(tr('18'), style: GoogleFonts.inter(
                 fontSize: 36, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.9,
                 height: 1.1)),
               const SizedBox(width: 4),
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text('days', style: GoogleFonts.spaceGrotesk(
+                child: Text(tr('days'), style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w700,
                   color: kGray, letterSpacing: -0.9)),
               ),
@@ -201,9 +203,9 @@ class StaffLeaveScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Used 4 of 22 days this year', style: GoogleFonts.manrope(
+              Text(tr('Used 4 of 22 days this year'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
-              Text('18%', style: GoogleFonts.manrope(
+              Text(tr('18%'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
             ],
           ),
@@ -237,7 +239,7 @@ class StaffLeaveScreen extends StatelessWidget {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(title, style: GoogleFonts.spaceGrotesk(
+      child: Text(tr(title), style: GoogleFonts.inter(
         fontSize: 16, fontWeight: FontWeight.w700,
         color: Colors.white, letterSpacing: -0.4)),
     );
@@ -280,9 +282,9 @@ class StaffLeaveScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.manrope(
+                  Text(tr(title), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                  Text(date, style: GoogleFonts.manrope(
+                  Text(tr(date), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                 ],
               ),
@@ -295,7 +297,7 @@ class StaffLeaveScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(9999),
               border: Border.all(color: badgeBorderColor),
             ),
-            child: Text(badgeLabel, style: GoogleFonts.manrope(
+            child: Text(tr(badgeLabel), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700, color: badgeTextColor)),
           ),
         ],
@@ -331,9 +333,9 @@ class StaffLeaveScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Sick Leave', style: GoogleFonts.manrope(
+                      Text(tr('Sick Leave'), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                      Text('Nov 2-3', style: GoogleFonts.manrope(
+                      Text(tr('Nov 2-3'), style: GoogleFonts.inter(
                         fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                     ],
                   ),
@@ -346,7 +348,7 @@ class StaffLeaveScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(9999),
                   border: Border.all(color: _kOrange.withValues(alpha: 0.40)),
                 ),
-                child: Text('Pending', style: GoogleFonts.manrope(
+                child: Text(tr('Pending'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700, color: _kOrange)),
               ),
             ],
@@ -354,7 +356,7 @@ class StaffLeaveScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
-            child: Text('Cancel Request', style: GoogleFonts.manrope(
+            child: Text(tr('Cancel Request'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700, color: _kRed)),
           ),
         ],
@@ -388,15 +390,15 @@ class StaffLeaveScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.manrope(
+                  Text(tr(title), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700, color: kGray)),
-                  Text(date, style: GoogleFonts.manrope(
+                  Text(tr(date), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w600, color: kDim)),
                 ],
               ),
             ],
           ),
-          Text('Completed', style: GoogleFonts.manrope(
+          Text(tr('Completed'), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w700, color: kDim)),
         ],
       ),
@@ -415,7 +417,7 @@ class StaffLeaveScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Leave type
-          Text('Leave type', style: GoogleFonts.manrope(
+          Text(tr('Leave type'), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
           const SizedBox(height: 8),
           Container(
@@ -441,7 +443,7 @@ class StaffLeaveScreen extends StatelessWidget {
                       child: const Icon(Icons.flight_takeoff_outlined, color: kLime, size: 14),
                     ),
                     const SizedBox(width: 12),
-                    Text('Annual Leave', style: GoogleFonts.manrope(
+                    Text(tr('Annual Leave'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                   ],
                 ),
@@ -457,7 +459,7 @@ class StaffLeaveScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Start date', style: GoogleFonts.manrope(
+                    Text(tr('Start date'), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                     const SizedBox(height: 8),
                     Container(
@@ -471,7 +473,7 @@ class StaffLeaveScreen extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Nov 12', style: GoogleFonts.manrope(
+                          Text(tr('Nov 12'), style: GoogleFonts.inter(
                             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                           const Icon(Icons.calendar_month_outlined, color: kGray, size: 16),
                         ],
@@ -485,7 +487,7 @@ class StaffLeaveScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('End date', style: GoogleFonts.manrope(
+                    Text(tr('End date'), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                     const SizedBox(height: 8),
                     Container(
@@ -499,7 +501,7 @@ class StaffLeaveScreen extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Nov 14', style: GoogleFonts.manrope(
+                          Text(tr('Nov 14'), style: GoogleFonts.inter(
                             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                           const Icon(Icons.calendar_month_outlined, color: kGray, size: 16),
                         ],
@@ -512,7 +514,7 @@ class StaffLeaveScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           // Note
-          Text('Note', style: GoogleFonts.manrope(
+          Text(tr('Note'), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
           const SizedBox(height: 8),
           Container(
@@ -523,7 +525,7 @@ class StaffLeaveScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: kBorder),
             ),
-            child: Text('Add a note (optional)', style: GoogleFonts.manrope(
+            child: Text(tr('Add a note (optional)'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w600, color: kDim)),
           ),
           const SizedBox(height: 12),
@@ -542,7 +544,7 @@ class StaffLeaveScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.send_outlined, color: kBg, size: 16),
                 const SizedBox(width: 8),
-                Text('Submit Request', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Submit Request'), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: kBg, letterSpacing: -0.35)),
               ],
@@ -581,10 +583,10 @@ class StaffLeaveScreen extends StatelessWidget {
         children: [
           Icon(icon, color: active ? kLime : kDim, size: 22),
           const SizedBox(height: 6),
-          Text(label, style: active
-            ? GoogleFonts.spaceGrotesk(
+          Text(tr(label), style: active
+            ? GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
-            : GoogleFonts.manrope(
+            : GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w600, color: kGray),
             textAlign: TextAlign.center),
         ],

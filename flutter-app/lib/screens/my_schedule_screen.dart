@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class MyScheduleScreen extends StatefulWidget {
   const MyScheduleScreen({super.key});
@@ -106,11 +108,11 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('My Schedule', style: GoogleFonts.spaceGrotesk(
+            Text(tr('My Schedule'), style: GoogleFonts.inter(
               fontSize: 24, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: -0.6)),
             const SizedBox(height: 4),
-            Text('3 bookings this week', style: GoogleFonts.manrope(
+            Text(tr('3 bookings this week'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
           ],
         ),
@@ -148,7 +150,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
-                  child: Text(labels[i], style: GoogleFonts.spaceGrotesk(
+                  child: Text(tr(labels[i]), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w700,
                     color: active ? kBg : kGray,
                     letterSpacing: 0.3)),
@@ -170,7 +172,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
           onTap: () => setState(() => _selectedDay = i),
           child: Column(
             children: [
-              Text(_days[i], style: GoogleFonts.manrope(
+              Text(tr(_days[i]), style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                 color: active ? kLime : kGray)),
@@ -185,7 +187,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                   ] : null,
                 ),
                 child: Center(
-                  child: Text('${_dates[i]}', style: GoogleFonts.manrope(
+                  child: Text(tr('${_dates[i]}'), style: GoogleFonts.inter(
                     fontSize: 14, fontWeight: FontWeight.w700,
                     color: active ? kBg : Colors.white)),
                 ),
@@ -226,7 +228,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                       ),
                       const SizedBox(width: 8),
                     ],
-                    Text(_gymFilters[i], style: GoogleFonts.spaceGrotesk(
+                    Text(tr(_gymFilters[i]), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700,
                       color: active ? kBg : Colors.white,
                       letterSpacing: 0.3)),
@@ -247,11 +249,11 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
         // Day header row
         Row(
           children: [
-            Text(day, style: GoogleFonts.spaceGrotesk(
+            Text(tr(day), style: GoogleFonts.inter(
               fontSize: 16, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: -0.4)),
             const SizedBox(width: 12),
-            Text(date, style: GoogleFonts.manrope(
+            Text(tr(date), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
             const SizedBox(width: 12),
             const Expanded(child: Divider(color: kBorder, thickness: 1, height: 1)),
@@ -293,11 +295,11 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(b.time, style: GoogleFonts.spaceGrotesk(
+                Text(tr(b.time), style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w700,
                   color: Colors.white)),
                 const SizedBox(height: 2),
-                Text(b.duration, style: GoogleFonts.manrope(
+                Text(tr(b.duration), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w600, color: kGray)),
               ],
             ),
@@ -308,10 +310,10 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(b.className, style: GoogleFonts.manrope(
+                Text(tr(b.className), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(height: 2),
-                Text(b.gymName, style: GoogleFonts.manrope(
+                Text(tr(b.gymName), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w400, color: kGray)),
                 const SizedBox(height: 8),
                 Container(
@@ -326,7 +328,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                     children: [
                       const Icon(Icons.check, color: kLime, size: 10),
                       const SizedBox(width: 4),
-                      Text('Confirmed', style: GoogleFonts.spaceGrotesk(
+                      Text(tr('Confirmed'), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: kLime, letterSpacing: 0.25)),
                     ],
@@ -373,11 +375,11 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                   color: active ? kLime : kGray, size: 20),
               ),
               const SizedBox(height: 6),
-              Text(item.$2, style: active
-                ? GoogleFonts.spaceGrotesk(
+              Text(tr(item.$2), style: active
+                ? GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: kLime, letterSpacing: 0.166)
-                : GoogleFonts.manrope(
+                : GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w600, color: kGray)),
             ],
           );

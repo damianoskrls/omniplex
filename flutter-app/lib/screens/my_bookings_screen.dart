@@ -13,6 +13,8 @@ import '../widgets/ui_kit.dart';
 import 'completed_bookings_screen.dart';
 import 'reschedule_booking_screen.dart';
 import 'workout_complete_screen.dart';
+import '../l10n/tr.dart';
+
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -137,12 +139,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: Text(AppStrings.of(context).cancelWaitlistTitle),
-        content: Text(AppStrings.of(context).cancelWaitlistContent(entry.displayName)),
+        content: Text(tr(AppStrings.of(context).cancelWaitlistContent(entry.displayName))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).no)),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr(AppStrings.of(context).no))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(AppStrings.of(context).yes, style: const TextStyle(color: AppColors.orange)),
+            child: Text(tr(AppStrings.of(context).yes), style: const TextStyle(color: AppColors.orange)),
           ),
         ],
       ),
@@ -153,13 +155,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       await context.read<AuthService>().api.leaveWaitlist(entry.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.of(context).waitlistLeft)),
+          SnackBar(content: Text(tr(AppStrings.of(context).waitlistLeft))),
         );
         _load();
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     }
   }
@@ -187,31 +189,31 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   PillChip(
-                    label: entry.statusLabel,
+                    label: tr(entry.statusLabel),
                     color: entry.isOffered
                         ? AppColors.lime.withValues(alpha: 0.15)
                         : AppColors.orange.withValues(alpha: 0.15),
                     textColor: entry.isOffered ? AppColors.lime : AppColors.orange,
                   ),
                   const SizedBox(height: 8),
-                  Text(entry.displayName, style: Theme.of(context).textTheme.titleMedium),
+                  Text(tr(entry.displayName), style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 6),
                   Row(
                     children: [
                       const Icon(Icons.schedule, size: 14, color: AppColors.textSecondary),
                       const SizedBox(width: 6),
-                      Text(dateFmt.format(entry.startsAt), style: Theme.of(context).textTheme.bodyMedium),
+                      Text(tr(dateFmt.format(entry.startsAt)), style: Theme.of(context).textTheme.bodyMedium),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    AppStrings.of(context).waitlistPosition(entry.position),
+                    tr(AppStrings.of(context).waitlistPosition(entry.position)),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
                   ),
                   if (entry.isOffered) ...[
                     const SizedBox(height: 6),
                     Text(
-                      AppStrings.of(context).waitlistOpened,
+                      tr(AppStrings.of(context).waitlistOpened),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.lime,
                             fontSize: 13,
@@ -223,7 +225,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     alignment: Alignment.centerLeft,
                     child: TextButton(
                       onPressed: () => _leaveWaitlist(entry),
-                      child: Text(AppStrings.of(context).leaveWaitlist, style: const TextStyle(color: AppColors.orange)),
+                      child: Text(tr(AppStrings.of(context).leaveWaitlist), style: const TextStyle(color: AppColors.orange)),
                     ),
                   ),
                 ],
@@ -242,12 +244,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: Text(AppStrings.of(context).cancelBookingTitle),
-        content: Text(AppStrings.of(context).cancelBookingContent(booking.serviceName)),
+        content: Text(tr(AppStrings.of(context).cancelBookingContent(booking.serviceName))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).no)),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr(AppStrings.of(context).no))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(AppStrings.of(context).yes, style: const TextStyle(color: AppColors.orange)),
+            child: Text(tr(AppStrings.of(context).yes), style: const TextStyle(color: AppColors.orange)),
           ),
         ],
       ),
@@ -258,13 +260,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       await api.cancelBooking(booking.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppStrings.of(context).bookingCancelled)),
+          SnackBar(content: Text(tr(AppStrings.of(context).bookingCancelled))),
         );
         _load();
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     }
   }
@@ -289,10 +291,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 10),
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          Text(tr(title), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(width: 8),
           Text(
-            '$count',
+            tr('$count'),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
         ],
@@ -335,20 +337,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 children: [
                   if (nextLabel != null) ...[
                     PillChip(
-                      label: nextLabel,
+                      label: tr(nextLabel),
                       color: AppColors.lime.withValues(alpha: 0.15),
                       textColor: AppColors.lime,
                     ),
                     const SizedBox(height: 8),
                   ],
-                  Text(booking.serviceName, style: Theme.of(context).textTheme.titleMedium),
+                  Text(tr(booking.serviceName), style: Theme.of(context).textTheme.titleMedium),
                   if (_locations.length > 1 && (booking.locationName ?? '').isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         Icon(Icons.storefront_outlined, size: 14, color: accent),
                         const SizedBox(width: 6),
-                        Text(booking.locationName!, style: Theme.of(context).textTheme.bodyMedium),
+                        Text(tr(booking.locationName!), style: Theme.of(context).textTheme.bodyMedium),
                       ],
                     ),
                   ],
@@ -357,7 +359,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     children: [
                       const Icon(Icons.schedule, size: 14, color: AppColors.textSecondary),
                       const SizedBox(width: 6),
-                      Text(dateFmt.format(booking.startsAt), style: Theme.of(context).textTheme.bodyMedium),
+                      Text(tr(dateFmt.format(booking.startsAt)), style: Theme.of(context).textTheme.bodyMedium),
                     ],
                   ),
                   if (booking.staffName.isNotEmpty) ...[
@@ -371,7 +373,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          s.withStaff(booking.staffName),
+                          tr(s.withStaff(booking.staffName)),
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -388,10 +390,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(booking.scheduleRoom!, style: Theme.of(context).textTheme.bodyMedium),
+                              Text(tr(booking.scheduleRoom!), style: Theme.of(context).textTheme.bodyMedium),
                               if (booking.roomShortInfo != null && booking.roomShortInfo!.isNotEmpty)
                                 Text(
-                                  booking.roomShortInfo!,
+                                  tr(booking.roomShortInfo!),
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
                                 ),
                             ],
@@ -420,7 +422,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     if (_expandedTips.contains(booking.id))
                       PreparationTipsCard(
                         tips: booking.preparationTips,
-                        title: tipsTitle,
+                        title: tr(tipsTitle),
                         icon: tipsIcon,
                       ),
                   ],
@@ -431,12 +433,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       if (booking.isInProgress)
                         TextButton(
                           onPressed: () => _openWorkoutComplete(booking),
-                          child: Text(s.sharePhoto),
+                          child: Text(tr(s.sharePhoto)),
                         ),
                       if (booking.needsCheckIn)
                         TextButton(
                           onPressed: () => _openWorkoutComplete(booking),
-                          child: Text(s.confirmAttendance),
+                          child: Text(tr(s.confirmAttendance)),
                         ),
                       if (booking.isUpcoming) ...[
                         TextButton(
@@ -448,12 +450,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           ).then((changed) {
                             if (changed == true) _load();
                           }),
-                          child: Text(s.reschedule),
+                          child: Text(tr(s.reschedule)),
                         ),
                         TextButton(
                           onPressed: () => _cancel(booking),
                           style: TextButton.styleFrom(foregroundColor: AppColors.orange),
-                          child: Text(s.cancel),
+                          child: Text(tr(s.cancel)),
                         ),
                       ],
                     ],
@@ -477,7 +479,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     if (bookings.isEmpty) return [];
     final firstUpcomingId = bookings.where((b) => b.isUpcoming).map((b) => b.id).firstOrNull;
     return [
-      _sectionHeader(title: title, icon: icon, color: color, count: bookings.length),
+      _sectionHeader(title: tr(title), icon: icon, color: color, count: bookings.length),
       ...List.generate(bookings.length, (index) {
         final booking = bookings[index];
         return _bookingCard(
@@ -500,9 +502,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
+            Text(tr(_error!), style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: Text(AppStrings.of(context).retryBtn)),
+            ElevatedButton(onPressed: _load, child: Text(tr(AppStrings.of(context).retryBtn))),
           ],
         ),
       );
@@ -520,8 +522,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       final s2 = AppStrings.of(context);
       return EmptyState(
         icon: Icons.calendar_today_outlined,
-        title: s2.noBookings,
-        subtitle: s2.noBookingsSubtitle,
+        title: tr(s2.noBookings),
+        subtitle: tr(s2.noBookingsSubtitle),
       );
     }
 
@@ -532,7 +534,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
           if (showStores) ...[
-            Text('Κατάστημα', style: Theme.of(context).textTheme.bodyMedium),
+            Text(tr('Κατάστημα'), style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 8),
             SizedBox(
               height: 36,
@@ -555,7 +557,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(color: on ? accent : AppColors.border),
                       ),
-                      child: Text(name, style: TextStyle(
+                      child: Text(tr(name), style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: on ? AppColors.onFill(accent) : AppColors.textSecondary,
@@ -570,7 +572,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 24),
                 child: Text(
-                  'Δεν έχεις κρατήσεις σε αυτό το κατάστημα',
+                  tr('Δεν έχεις κρατήσεις σε αυτό το κατάστημα'),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
@@ -622,11 +624,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                AppStrings.of(context).pendingAttendanceSection,
+                                tr(AppStrings.of(context).pendingAttendanceSection),
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               Text(
-                                AppStrings.of(context).noCheckinCount(pendingAttendance.length),
+                                tr(AppStrings.of(context).noCheckinCount(pendingAttendance.length)),
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],
@@ -644,13 +646,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                '${booking.serviceName} · ${dateFmt.format(booking.startsAt)}',
+                                tr('${booking.serviceName} · ${dateFmt.format(booking.startsAt)}'),
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),
                             TextButton(
                               onPressed: () => _openWorkoutComplete(booking),
-                              child: Text(AppStrings.of(context).confirmAttendance),
+                              child: Text(tr(AppStrings.of(context).confirmAttendance)),
                             ),
                           ],
                         ),
@@ -683,11 +685,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              AppStrings.of(context).completedSection,
+                              tr(AppStrings.of(context).completedSection),
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             Text(
-                              '$_completedCount ${AppStrings.of(context).completedSubtitle}',
+                              tr('$_completedCount ${AppStrings.of(context).completedSubtitle}'),
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
@@ -717,9 +719,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        upcoming == 1
+                        tr(upcoming == 1
                             ? AppStrings.of(context).nextAppointment
-                            : AppStrings.of(context).upcomingAppointments(upcoming),
+                            : AppStrings.of(context).upcomingAppointments(upcoming)),
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
@@ -783,7 +785,7 @@ class _StatusChip extends StatelessWidget {
     final color = colors[status] ?? AppColors.textSecondary;
 
     return PillChip(
-      label: labels[status] ?? status,
+      label: tr(labels[status] ?? status),
       color: color.withValues(alpha: 0.15),
       textColor: color,
     );

@@ -1,3 +1,4 @@
+import '../l10n/tr.dart';
 class ScaleReading {
   const ScaleReading({
     required this.weightKg,
@@ -20,8 +21,8 @@ class ScaleReading {
 
   String get sourceLabel => switch (source) {
         'health' => 'Apple Health / Health Connect',
-        'ble' => deviceName ?? 'Ζυγαριά Bluetooth',
-        'demo' => 'Προσομοίωση iPhone',
+        'ble' => deviceName ?? tr('Ζυγαριά Bluetooth'),
+        'demo' => tr('Προσομοίωση iPhone'),
         _ => source,
       };
 }

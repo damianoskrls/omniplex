@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class ProgressDashboardScreen extends StatefulWidget {
   const ProgressDashboardScreen({super.key});
@@ -82,7 +84,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
               ),
               child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 20)),
             ),
-            Text('My Progress', style: GoogleFonts.spaceGrotesk(
+            Text(tr('My Progress'), style: GoogleFonts.inter(
               fontSize: 20, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: -0.5)),
             Container(
@@ -125,7 +127,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('CURRENT WEIGHT', style: GoogleFonts.manrope(
+                      Text(tr('CURRENT WEIGHT'), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: kLime, letterSpacing: 1.0)),
                       const SizedBox(height: 4),
@@ -133,10 +135,10 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text('82.5', style: GoogleFonts.spaceGrotesk(
+                          Text(tr('82.5'), style: GoogleFonts.inter(
                             fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white)),
                           const SizedBox(width: 4),
-                          Text('kg', style: GoogleFonts.manrope(
+                          Text(tr('kg'), style: GoogleFonts.inter(
                             fontSize: 14, color: _kGray9C)),
                         ],
                       ),
@@ -154,7 +156,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                       children: [
                         const Icon(Icons.arrow_downward, color: kLime, size: 14),
                         const SizedBox(width: 4),
-                        Text('0.5 kg', style: GoogleFonts.manrope(
+                        Text(tr('0.5 kg'), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w700, color: kLime)),
                       ],
                     ),
@@ -164,7 +166,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Text('GOAL: 80.0 KG', style: GoogleFonts.manrope(
+                  Text(tr('GOAL: 80.0 KG'), style: GoogleFonts.inter(
                     fontSize: 10, fontWeight: FontWeight.w700,
                     color: _kGray6B, letterSpacing: 0.5)),
                   const SizedBox(width: 12),
@@ -214,7 +216,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
             icon: Icons.percent,
             iconBg: kCyan.withValues(alpha: 0.10),
             iconColor: kCyan,
-            label: 'BODY FAT',
+            label: tr('BODY FAT'),
             value: '18.2',
             unit: '%',
             change: '1.2%',
@@ -228,7 +230,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
             icon: Icons.fitness_center,
             iconBg: Colors.white.withValues(alpha: 0.05),
             iconColor: Colors.white,
-            label: 'MUSCLE MASS',
+            label: tr('MUSCLE MASS'),
             value: '38.5',
             unit: 'kg',
             change: '0.8 kg',
@@ -271,7 +273,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
             child: Icon(icon, color: iconColor, size: 16),
           ),
           const SizedBox(height: 12),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 10, fontWeight: FontWeight.w700,
             color: _kGray9C, letterSpacing: 1.0)),
           const SizedBox(height: 4),
@@ -279,10 +281,10 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(value, style: GoogleFonts.spaceGrotesk(
+              Text(tr(value), style: GoogleFonts.inter(
                 fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
               const SizedBox(width: 2),
-              Text(unit, style: GoogleFonts.manrope(
+              Text(tr(unit), style: GoogleFonts.inter(
                 fontSize: 10, color: _kGray6B)),
             ],
           ),
@@ -293,7 +295,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                 changeDown ? Icons.arrow_downward : Icons.arrow_upward,
                 color: changeColor, size: 12),
               const SizedBox(width: 4),
-              Text(change, style: GoogleFonts.manrope(
+              Text(tr(change), style: GoogleFonts.inter(
                 fontSize: 10, color: changeColor)),
             ],
           ),
@@ -308,7 +310,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('WEIGHT TREND', style: GoogleFonts.spaceGrotesk(
+            Text(tr('WEIGHT TREND'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700,
               color: _kGray6B, letterSpacing: 2.4)),
             Container(
@@ -329,7 +331,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                         color: active ? _kBorder26 : Colors.transparent,
                         borderRadius: BorderRadius.circular(9999),
                       ),
-                      child: Text(e.value, style: GoogleFonts.manrope(
+                      child: Text(tr(e.value), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: active ? Colors.white : _kGray6B, letterSpacing: 0.25)),
                     ),
@@ -363,7 +365,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('COACH INSIGHTS', style: GoogleFonts.spaceGrotesk(
+        Text(tr('COACH INSIGHTS'), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: _kGray6B, letterSpacing: 2.4)),
         const SizedBox(height: 16),
@@ -392,11 +394,11 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '"Great consistency this week! Your weight drop is steady, and muscle mass is increasing. Increase your protein intake by 15g tomorrow."',
-                      style: GoogleFonts.manrope(
+                      tr('"Great consistency this week! Your weight drop is steady, and muscle mass is increasing. Increase your protein intake by 15g tomorrow."'),
+                      style: GoogleFonts.inter(
                         fontSize: 14, color: _kD1, height: 1.6)),
                     const SizedBox(height: 12),
-                    Text('— COACH ALEXANDER', style: GoogleFonts.manrope(
+                    Text(tr('— COACH ALEXANDER'), style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w700,
                       color: kCyan, letterSpacing: 1.0)),
                   ],
@@ -416,10 +418,10 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('BODY COMPARISON', style: GoogleFonts.spaceGrotesk(
+            Text(tr('BODY COMPARISON'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700,
               color: _kGray6B, letterSpacing: 2.4)),
-            Text('View All', style: GoogleFonts.manrope(
+            Text(tr('View All'), style: GoogleFonts.inter(
               fontSize: 12, fontWeight: FontWeight.w700, color: kLime)),
           ],
         ),
@@ -453,7 +455,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                           color: kBg.withValues(alpha: 0.80),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text('MONTH 1', style: GoogleFonts.manrope(
+                        child: Text(tr('MONTH 1'), style: GoogleFonts.inter(
                           fontSize: 9, fontWeight: FontWeight.w700,
                           color: Colors.white, letterSpacing: 0.9)),
                       ),
@@ -490,7 +492,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
                           color: kLime,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text('CURRENT', style: GoogleFonts.manrope(
+                        child: Text(tr('CURRENT'), style: GoogleFonts.inter(
                           fontSize: 9, fontWeight: FontWeight.w700,
                           color: kBg, letterSpacing: 0.9)),
                       ),
@@ -534,7 +536,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
         children: [
           Icon(icon, color: active ? kLime : _kGray6B, size: 22),
           const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
         ],
@@ -558,7 +560,7 @@ class _ProgressDashboardScreenState extends State<ProgressDashboardScreen> {
             child: const Icon(Icons.person, color: Colors.white, size: 14),
           ),
           const SizedBox(height: 4),
-          Text('PROFILE', style: GoogleFonts.manrope(
+          Text(tr('PROFILE'), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: _kGray6B, letterSpacing: 0.9)),
         ],

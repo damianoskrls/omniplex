@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
 import '../theme/brand.dart';
+import '../l10n/tr.dart';
+
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -91,27 +93,27 @@ class _GlobalProfileDetailsScreenState
 
               const SizedBox(height: 32),
 
-              Text('ΤΑ ΣΤΟΙΧΕΙΑ ΣΟΥ',
-                style: GoogleFonts.manrope(
+              Text(tr('ΤΑ ΣΤΟΙΧΕΙΑ ΣΟΥ'),
+                style: GoogleFonts.inter(
                   fontSize: 11, fontWeight: FontWeight.w600,
                   color: _kGray, letterSpacing: 1.5)),
               const SizedBox(height: 10),
-              Text('Πές μας\nλίγα για σένα.',
-                style: GoogleFonts.manrope(
+              Text(tr('Πές μας\nλίγα για σένα.'),
+                style: GoogleFonts.inter(
                   fontSize: 30, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: -0.75, height: 1.15)),
               const SizedBox(height: 8),
-              Text('Μόνο τα απαραίτητα — μπορείς να τα αλλάξεις αργότερα.',
-                style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.55)),
+              Text(tr('Μόνο τα απαραίτητα — μπορείς να τα αλλάξεις αργότερα.'),
+                style: GoogleFonts.inter(fontSize: 14, color: _kGray, height: 1.55)),
 
               const SizedBox(height: 36),
 
               // Full name (required)
-              _FieldLabel('Ονοματεπώνυμο *'),
+              _FieldLabel(tr('Ονοματεπώνυμο *')),
               const SizedBox(height: 8),
               _InputField(
                 controller: _nameCtrl,
-                hint: 'π.χ. Γιάννης Παπαδόπουλος',
+                hint: tr('π.χ. Γιάννης Παπαδόπουλος'),
                 keyboardType: TextInputType.name,
                 textCapitalization: TextCapitalization.words,
                 onChanged: (_) => setState(() {}),
@@ -121,7 +123,7 @@ class _GlobalProfileDetailsScreenState
               const SizedBox(height: 20),
 
               // Email (optional)
-              _FieldLabel('Email (προαιρετικά)'),
+              _FieldLabel(tr('Email (προαιρετικά)')),
               const SizedBox(height: 8),
               _InputField(
                 controller: _emailCtrl,
@@ -145,8 +147,8 @@ class _GlobalProfileDetailsScreenState
                       color: Color(0xFFF87171), size: 16),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(_error!,
-                        style: GoogleFonts.manrope(
+                      child: Text(tr(_error!),
+                        style: GoogleFonts.inter(
                           fontSize: 12.5, color: const Color(0xFFF87171))),
                     ),
                   ]),
@@ -179,8 +181,8 @@ class _GlobalProfileDetailsScreenState
                         width: 22, height: 22,
                         child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2.5))
-                    : Text('Συνέχεια',
-                        style: GoogleFonts.manrope(
+                    : Text(tr('Συνέχεια'),
+                        style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w700,
                           color: _valid ? Colors.white : _kGray)),
                 ),
@@ -199,8 +201,8 @@ class _FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text,
-      style: GoogleFonts.manrope(
+    return Text(tr(text),
+      style: GoogleFonts.inter(
         fontSize: 12, fontWeight: FontWeight.w600, color: _kGray, letterSpacing: 0.4));
   }
 }
@@ -237,11 +239,11 @@ class _InputField extends StatelessWidget {
         keyboardType: keyboardType,
         textCapitalization: textCapitalization,
         autofocus: autofocus,
-        style: GoogleFonts.manrope(color: Colors.white, fontSize: 15),
+        style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
         cursorColor: _kLime,
         decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: GoogleFonts.manrope(color: _kGray, fontSize: 15),
+          hintText: tr(hint),
+          hintStyle: GoogleFonts.inter(color: _kGray, fontSize: 15),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),

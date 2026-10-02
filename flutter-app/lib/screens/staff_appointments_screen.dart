@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 const _kOrange = Color(0xFFFFA53E);
 const _kOrangeBg = Color(0xFF2B1D0E);
@@ -73,7 +75,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Appointments', style: GoogleFonts.spaceGrotesk(
+                              Text(tr('Appointments'), style: GoogleFonts.inter(
                                 fontSize: 20, fontWeight: FontWeight.w700,
                                 color: Colors.white, letterSpacing: -0.5)),
                               Container(
@@ -113,7 +115,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                                     child: const Icon(Icons.fitness_center, color: kLime, size: 16),
                                   ),
                                   const SizedBox(width: 12),
-                                  Text('Fitness Club Athens', style: GoogleFonts.spaceGrotesk(
+                                  Text(tr('Fitness Club Athens'), style: GoogleFonts.inter(
                                     fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                                 ],
                               ),
@@ -146,10 +148,10 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Tue, Oct 21', style: GoogleFonts.spaceGrotesk(
+                              Text(tr('Tue, Oct 21'), style: GoogleFonts.inter(
                                 fontSize: 16, fontWeight: FontWeight.w700,
                                 color: Colors.white, letterSpacing: -0.4)),
-                              Text('3 appointments', style: GoogleFonts.manrope(
+                              Text(tr('3 appointments'), style: GoogleFonts.inter(
                                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                             ],
                           ),
@@ -190,11 +192,11 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
             border: isActive ? Border.all(color: kLime.withValues(alpha: 0.40)) : null,
           ),
           child: Center(
-            child: Text(label, style: isActive
-              ? GoogleFonts.spaceGrotesk(
+            child: Text(tr(label), style: isActive
+              ? GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700,
                   color: kLime, letterSpacing: 0.22)
-              : GoogleFonts.manrope(
+              : GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
           ),
         ),
@@ -237,9 +239,9 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Alex Papas', style: GoogleFonts.manrope(
+                            Text(tr('Alex Papas'), style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                            Text('Personal Training', style: GoogleFonts.manrope(
+                            Text(tr('Personal Training'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                           ],
                         ),
@@ -252,7 +254,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                         borderRadius: BorderRadius.circular(9999),
                         border: Border.all(color: _kOrange.withValues(alpha: 0.40)),
                       ),
-                      child: Text('PENDING', style: GoogleFonts.manrope(
+                      child: Text(tr('PENDING'), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: _kOrange, letterSpacing: 0.5)),
                     ),
@@ -279,7 +281,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                           children: [
                             const Icon(Icons.check, color: kBg, size: 14),
                             const SizedBox(width: 6),
-                            Text('Confirm', style: GoogleFonts.spaceGrotesk(
+                            Text(tr('Confirm'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
                           ],
                         ),
@@ -299,7 +301,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                           children: [
                             const Icon(Icons.close, color: _kRed, size: 14),
                             const SizedBox(width: 6),
-                            Text('Cancel', style: GoogleFonts.manrope(
+                            Text(tr('Cancel'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700, color: _kRed)),
                           ],
                         ),
@@ -365,9 +367,9 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Elena Kostas', style: GoogleFonts.manrope(
+                            Text(tr('Elena Kostas'), style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                            Text('Nutrition Consult', style: GoogleFonts.manrope(
+                            Text(tr('Nutrition Consult'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                           ],
                         ),
@@ -396,7 +398,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                           children: [
                             const Icon(Icons.check, color: kBg, size: 14),
                             const SizedBox(width: 6),
-                            Text('Complete', style: GoogleFonts.spaceGrotesk(
+                            Text(tr('Complete'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
                           ],
                         ),
@@ -417,7 +419,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                           children: [
                             const Icon(Icons.refresh, color: kCyan, size: 14),
                             const SizedBox(width: 6),
-                            Text('Reschedule', style: GoogleFonts.manrope(
+                            Text(tr('Reschedule'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700, color: kCyan)),
                           ],
                         ),
@@ -493,9 +495,9 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Nikos Dimou', style: GoogleFonts.manrope(
+                            Text(tr('Nikos Dimou'), style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-                            Text('Personal Training', style: GoogleFonts.manrope(
+                            Text(tr('Personal Training'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                           ],
                         ),
@@ -524,7 +526,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                           children: [
                             const Icon(Icons.check, color: kBg, size: 14),
                             const SizedBox(width: 6),
-                            Text('Complete', style: GoogleFonts.spaceGrotesk(
+                            Text(tr('Complete'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
                           ],
                         ),
@@ -545,7 +547,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
                           children: [
                             const Icon(Icons.refresh, color: kCyan, size: 14),
                             const SizedBox(width: 6),
-                            Text('Reschedule', style: GoogleFonts.manrope(
+                            Text(tr('Reschedule'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700, color: kCyan)),
                           ],
                         ),
@@ -595,7 +597,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
         borderRadius: BorderRadius.circular(9999),
         border: Border.all(color: kLime.withValues(alpha: 0.40)),
       ),
-      child: Text('CONFIRMED', style: GoogleFonts.manrope(
+      child: Text(tr('CONFIRMED'), style: GoogleFonts.inter(
         fontSize: 10, fontWeight: FontWeight.w700,
         color: kLime, letterSpacing: 0.5)),
     );
@@ -609,7 +611,7 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
           child: Icon(icon, color: kGray, size: 12),
         ),
         const SizedBox(width: 8),
-        Text(text, style: GoogleFonts.manrope(
+        Text(tr(text), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
       ],
     );
@@ -650,10 +652,10 @@ class _StaffAppointmentsScreenState extends State<StaffAppointmentsScreen> {
             child: Icon(icon, color: active ? kLime : kDim, size: 22),
           ),
           const SizedBox(height: 6),
-          Text(label, style: active
-            ? GoogleFonts.spaceGrotesk(
+          Text(tr(label), style: active
+            ? GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700, color: kLime)
-            : GoogleFonts.manrope(
+            : GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w600, color: kGray),
             textAlign: TextAlign.center),
         ],

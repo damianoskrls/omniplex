@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key, this.onUnreadChanged});
@@ -47,8 +49,8 @@ class NotificationsScreen extends StatelessWidget {
                     iconBg: const Color(0xFF1D2410),
                     iconBorder: kLime.withValues(alpha: 0.30),
                     iconColor: kLime,
-                    title: 'CrossFit starts in 1 hour',
-                    subtitle: 'Fitness Club Athens',
+                    title: tr('CrossFit starts in 1 hour'),
+                    subtitle: tr('Fitness Club Athens'),
                     time: '17:30',
                     unread: true,
                     hasLimeBar: true,
@@ -59,8 +61,8 @@ class NotificationsScreen extends StatelessWidget {
                     iconBg: const Color(0xFF2B2110),
                     iconBorder: const Color(0xFFFFB238).withValues(alpha: 0.30),
                     iconColor: const Color(0xFFFFB238),
-                    title: 'Membership expires in 5 days',
-                    subtitle: 'Urban Fitness · Monthly Unlimited',
+                    title: tr('Membership expires in 5 days'),
+                    subtitle: tr('Urban Fitness · Monthly Unlimited'),
                     time: '09:12',
                     unread: true,
                     hasLimeBar: true,
@@ -73,8 +75,8 @@ class NotificationsScreen extends StatelessWidget {
                     iconBg: const Color(0xFF1D2410),
                     iconBorder: kLime.withValues(alpha: 0.30),
                     iconColor: kLime,
-                    title: 'Booking confirmed',
-                    subtitle: 'Yoga · Tomorrow 20:00',
+                    title: tr('Booking confirmed'),
+                    subtitle: tr('Yoga · Tomorrow 20:00'),
                     time: 'Yesterday',
                     unread: false,
                     hasLimeBar: false,
@@ -85,8 +87,8 @@ class NotificationsScreen extends StatelessWidget {
                     iconBg: const Color(0xFF1D2410),
                     iconBorder: kLime.withValues(alpha: 0.30),
                     iconColor: kLime,
-                    title: 'Gym membership approved',
-                    subtitle: 'Iron Works Gym',
+                    title: tr('Gym membership approved'),
+                    subtitle: tr('Iron Works Gym'),
                     time: '2 days ago',
                     unread: false,
                     hasLimeBar: false,
@@ -97,8 +99,8 @@ class NotificationsScreen extends StatelessWidget {
                     iconBg: const Color(0xFF1F2024),
                     iconBorder: kBorder2,
                     iconColor: kGray,
-                    title: 'Payment successful\n€90.00',
-                    subtitle: '10 Class Pack · Fitness Club Athens',
+                    title: tr('Payment successful\n€90.00'),
+                    subtitle: tr('10 Class Pack · Fitness Club Athens'),
                     time: '3 days ago',
                     unread: false,
                     hasLimeBar: false,
@@ -129,18 +131,18 @@ class NotificationsScreen extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text('Notifications', style: GoogleFonts.spaceGrotesk(
+          child: Text(tr('Notifications'), style: GoogleFonts.inter(
             fontSize: 20, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.5)),
         ),
-        Text('Mark all as read', style: GoogleFonts.manrope(
+        Text(tr('Mark all as read'), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700, color: kLime)),
       ],
     );
   }
 
   Widget _buildSectionLabel(String label) {
-    return Text(label, style: GoogleFonts.manrope(
+    return Text(tr(label), style: GoogleFonts.inter(
       fontSize: 11, fontWeight: FontWeight.w700,
       color: kGray, letterSpacing: 1.1));
   }
@@ -189,14 +191,14 @@ class NotificationsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              child: Text(title, style: GoogleFonts.spaceGrotesk(
+                              child: Text(tr(title), style: GoogleFonts.inter(
                                 fontSize: 14, fontWeight: FontWeight.w700,
                                 color: Colors.white)),
                             ),
                             const SizedBox(width: 8),
                             Row(
                               children: [
-                                Text(time, style: GoogleFonts.manrope(
+                                Text(tr(time), style: GoogleFonts.inter(
                                   fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
                                 if (unread) ...[
                                   const SizedBox(width: 6),
@@ -216,7 +218,7 @@ class NotificationsScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(subtitle, style: GoogleFonts.manrope(
+                        Text(tr(subtitle), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w400, color: kGray)),
                       ],
                     ),

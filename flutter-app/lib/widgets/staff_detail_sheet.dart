@@ -4,6 +4,8 @@ import '../models/booking.dart';
 import '../theme/app_colors.dart';
 import 'staff_avatar.dart';
 import 'ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 Future<void> showStaffDetailSheet(
   BuildContext context, {
@@ -68,12 +70,12 @@ Future<void> showStaffDetailSheet(
                           color: Colors.black.withValues(alpha: 0.55),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.zoom_out_map, color: Colors.white, size: 16),
                             SizedBox(width: 4),
-                            Text('Μεγέθυνση', style: TextStyle(color: Colors.white, fontSize: 12)),
+                            Text(tr('Μεγέθυνση'), style: TextStyle(color: Colors.white, fontSize: 12)),
                           ],
                         ),
                       ),
@@ -82,29 +84,29 @@ Future<void> showStaffDetailSheet(
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  staff.fullName,
+                  tr(staff.fullName),
                   textAlign: TextAlign.center,
                   style: Theme.of(ctx).textTheme.headlineMedium,
                 ),
                 if (staff.role != null) ...[
                   const SizedBox(height: 6),
-                  PillChip(label: staff.role!, color: AppColors.purple.withValues(alpha: 0.2), textColor: AppColors.purple),
+                  PillChip(label: tr(staff.role!), color: AppColors.purple.withValues(alpha: 0.2), textColor: AppColors.purple),
                 ],
                 if (staff.bio != null && staff.bio!.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Σχετικά', style: Theme.of(ctx).textTheme.titleMedium),
+                    child: Text(tr('Σχετικά'), style: Theme.of(ctx).textTheme.titleMedium),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    staff.bio!,
+                    tr(staff.bio!),
                     style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(height: 1.5),
                   ),
                 ] else ...[
                   const SizedBox(height: 12),
                   Text(
-                    'Δεν υπάρχει διαθέσιμη περιγραφή.',
+                    tr('Δεν υπάρχει διαθέσιμη περιγραφή.'),
                     style: Theme.of(ctx).textTheme.bodyMedium,
                   ),
                 ],
@@ -117,7 +119,7 @@ Future<void> showStaffDetailSheet(
                         onSelect?.call();
                         Navigator.pop(ctx);
                       },
-                      child: Text(isSelected ? 'Επιλεγμένος' : 'Επιλογή γυμναστή'),
+                      child: Text(tr(isSelected ? 'Επιλεγμένος' : tr('Επιλογή γυμναστή'))),
                     ),
                   ),
                 ],
@@ -169,7 +171,7 @@ void _openStaffPhotoFullscreen(
             ),
             const SizedBox(height: 12),
             Text(
-              staff.fullName,
+              tr(staff.fullName),
               style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
             ),
           ],

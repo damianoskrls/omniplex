@@ -7,6 +7,8 @@ import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 class StaffScheduleScreen extends StatefulWidget {
   const StaffScheduleScreen({super.key});
@@ -129,7 +131,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
       );
       _load();
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
@@ -138,7 +140,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
       await context.read<AuthService>().api.claimBooking(bookingId);
       _load();
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
@@ -158,10 +160,10 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
         notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
       );
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Το δοκιμαστικό ανατέθηκε σε εσάς'), backgroundColor: Color(0xFF16A34A)));
+        SnackBar(content: Text(tr('Το δοκιμαστικό ανατέθηκε σε εσάς')), backgroundColor: Color(0xFF16A34A)));
       _load();
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
@@ -181,7 +183,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
       );
       _load();
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
@@ -201,12 +203,12 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
           Text(
-            'Σήμερα δεν έχεις ραντεβού.',
+            tr('Σήμερα δεν έχεις ραντεβού.'),
             style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
-            'Το επόμενο είναι $pretty.',
+            tr('Το επόμενο είναι $pretty.'),
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 15, height: 1.4),
           ),
           const SizedBox(height: 8),
@@ -217,7 +219,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
                 setState(() => _selectedDate = day);
                 _load();
               },
-              child: const Text('Άνοιξε αυτή την ημέρα'),
+              child: Text(tr('Άνοιξε αυτή την ημέρα')),
             ),
           ),
           ..._nextDayBookings.map((booking) => Padding(
@@ -260,9 +262,9 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
                   onTap: _pickDate,
                   child: Column(
                     children: [
-                      Text(dayLabel,
+                      Text(tr(dayLabel),
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.textPrimary)),
-                      Text(DateFormat('d MMMM yyyy', locale).format(_selectedDate),
+                      Text(tr(DateFormat('d MMMM yyyy', locale).format(_selectedDate)),
                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
@@ -279,7 +281,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
                   onPressed: () { setState(() => _selectedDate = DateTime.now()); _load(); },
                   style: TextButton.styleFrom(foregroundColor: AppColors.lime, padding: EdgeInsets.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                  child: Text(AppStrings.of(context).staffScheduleToday, style: const TextStyle(fontSize: 12)),
+                  child: Text(tr(AppStrings.of(context).staffScheduleToday), style: const TextStyle(fontSize: 12)),
                 ),
             ],
           ),
@@ -301,7 +303,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
                   children: [
                     const Icon(Icons.calendar_today_outlined, size: 16),
                     const SizedBox(width: 6),
-                    Text('Κρατήσεις${_bookings.isNotEmpty ? ' (${_bookings.length})' : ''}'),
+                    Text(tr('Κρατήσεις${_bookings.isNotEmpty ? ' (${_bookings.length})' : ''}')),
                   ],
                 ),
               ),
@@ -311,7 +313,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
                   children: [
                     const Icon(Icons.person_search_outlined, size: 16),
                     const SizedBox(width: 6),
-                    Text('Δοκιμαστικά${_trials.isNotEmpty ? ' (${_trials.length})' : ''}'),
+                    Text(tr('Δοκιμαστικά${_trials.isNotEmpty ? ' (${_trials.length})' : ''}')),
                   ],
                 ),
               ),
@@ -324,7 +326,7 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
           child: _loading
               ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
               : _error != null
-                  ? Center(child: Text(_error!))
+                  ? Center(child: Text(tr(_error!)))
                   : TabBarView(
                       controller: _tabController,
                       children: [
@@ -335,9 +337,9 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
                                 : EmptyState(
                                     icon: Icons.calendar_today_outlined,
                                     title: AppStrings.of(context).staffScheduleNoBookings,
-                                    subtitle: _isToday(_selectedDate)
+                                    subtitle: tr(_isToday(_selectedDate)
                                         ? AppStrings.of(context).staffScheduleNoneToday
-                                        : AppStrings.of(context).staffScheduleNoneDay,
+                                        : AppStrings.of(context).staffScheduleNoneDay),
                                   )
                             : RefreshIndicator(
                                 onRefresh: _load,
@@ -357,10 +359,10 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
 
                         // ── Trials tab ──
                         _trials.isEmpty
-                            ? const EmptyState(
+                            ? EmptyState(
                                 icon: Icons.person_search_outlined,
-                                title: 'Δεν υπάρχουν δοκιμαστικά',
-                                subtitle: 'Τα δοκιμαστικά του γυμναστηρίου εμφανίζονται εδώ.',
+                                title: tr('Δεν υπάρχουν δοκιμαστικά'),
+                                subtitle: tr('Τα δοκιμαστικά του γυμναστηρίου εμφανίζονται εδώ.'),
                               )
                             : RefreshIndicator(
                                 onRefresh: _load,
@@ -446,7 +448,7 @@ class _BookingCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Expanded(child: Text(serviceName,
+                        Expanded(child: Text(tr(serviceName),
                             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
                         if (isMine)
                           Container(
@@ -455,12 +457,12 @@ class _BookingCard extends StatelessWidget {
                               color: AppColors.lime.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text('Δικό μου',
+                            child: Text(tr('Δικό μου'),
                                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.lime)),
                           ),
                       ],
                     ),
-                    Text(time, style: TextStyle(fontSize: 13, color: accent, fontWeight: FontWeight.w600)),
+                    Text(tr(time), style: TextStyle(fontSize: 13, color: accent, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -471,9 +473,9 @@ class _BookingCard extends StatelessWidget {
             children: [
               const Icon(Icons.person_outline, size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 8),
-              Expanded(child: Text(clientName, style: const TextStyle(fontWeight: FontWeight.w600))),
+              Expanded(child: Text(tr(clientName), style: const TextStyle(fontWeight: FontWeight.w600))),
               if (clientPhone != null && clientPhone.isNotEmpty)
-                Text(clientPhone, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                Text(tr(clientPhone), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             ],
           ),
           if (locationName != null || roomName != null) ...[
@@ -482,7 +484,7 @@ class _BookingCard extends StatelessWidget {
               children: [
                 const Icon(Icons.place_outlined, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: 8),
-                Text([locationName, roomName].whereType<String>().join(' · '),
+                Text(tr([locationName, roomName].whereType<String>().join(' · ')),
                     style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ],
             ),
@@ -493,7 +495,7 @@ class _BookingCard extends StatelessWidget {
               children: [
                 const Icon(Icons.notes_outlined, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: 8),
-                Expanded(child: Text(notes, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                Expanded(child: Text(tr(notes), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))),
               ],
             ),
           ],
@@ -506,7 +508,7 @@ class _BookingCard extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: onClaim,
                     icon: const Icon(Icons.add_task, size: 16),
-                    label: const Text('Ανάθεση σε μένα'),
+                    label: Text(tr('Ανάθεση σε μένα')),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textSecondary,
                       side: const BorderSide(color: AppColors.border),
@@ -591,7 +593,7 @@ class _TrialCard extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(userName,
+                          child: Text(tr(userName),
                               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                         ),
                         Container(
@@ -600,13 +602,13 @@ class _TrialCard extends StatelessWidget {
                             color: AppColors.purple.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text('Δοκιμαστικό',
+                          child: Text(tr('Δοκιμαστικό'),
                               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.purple)),
                         ),
                       ],
                     ),
                     if (serviceName != null)
-                      Text(serviceName,
+                      Text(tr(serviceName),
                           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                   ],
                 ),
@@ -614,7 +616,7 @@ class _TrialCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(_fmtDate(trial['starts_at'] as String?),
+          Text(tr(_fmtDate(trial['starts_at'] as String?)),
               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           if (userPhone != null && userPhone.isNotEmpty) ...[
             const SizedBox(height: 4),
@@ -622,7 +624,7 @@ class _TrialCard extends StatelessWidget {
               children: [
                 const Icon(Icons.phone_outlined, size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 6),
-                Text(userPhone, style: const TextStyle(fontSize: 13)),
+                Text(tr(userPhone), style: const TextStyle(fontSize: 13)),
               ],
             ),
           ],
@@ -635,10 +637,10 @@ class _TrialCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: isUnassigned
-                    ? const Text('Μη αναθεμένο',
+                    ? Text(tr('Μη αναθεμένο'),
                         style: TextStyle(fontSize: 12, color: AppColors.orange))
                     : Text(
-                        isMine ? 'Δικό μου' : (assignedStaffName ?? 'Άλλος γυμναστής'),
+                        tr(isMine ? 'Δικό μου' : (assignedStaffName ?? tr('Άλλος γυμναστής'))),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -665,7 +667,7 @@ class _TrialCard extends StatelessWidget {
                 children: [
                   const Icon(Icons.notes_outlined, size: 14, color: AppColors.textSecondary),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(notes,
+                  Expanded(child: Text(tr(notes),
                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))),
                 ],
               ),
@@ -680,7 +682,7 @@ class _TrialCard extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: onClaim,
                     icon: const Icon(Icons.add_task, size: 16),
-                    label: const Text('Ανάθεση σε μένα'),
+                    label: Text(tr('Ανάθεση σε μένα')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.purple,
                       foregroundColor: Colors.white,
@@ -694,7 +696,7 @@ class _TrialCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onEditNote,
                   icon: const Icon(Icons.edit_note_outlined, size: 16),
-                  label: const Text('Σχόλιο'),
+                  label: Text(tr('Σχόλιο')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textSecondary,
                     side: const BorderSide(color: AppColors.border),
@@ -732,18 +734,18 @@ class _TrialClaimSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isClaim ? 'Ανάθεση δοκιμαστικού' : 'Σχόλιο για δοκιμαστικό',
+            tr(isClaim ? 'Ανάθεση δοκιμαστικού' : tr('Σχόλιο για δοκιμαστικό')),
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
           ),
           const SizedBox(height: 4),
-          Text(userName, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+          Text(tr(userName), style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
           const SizedBox(height: 20),
           TextField(
             controller: notesCtrl,
             maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'Σχόλιο / Παρατήρηση',
-              hintText: 'π.χ. Σκέφτεται να γίνει μέλος, ενδιαφέρεται για το πακέτο X...',
+            decoration: InputDecoration(
+              labelText: tr('Σχόλιο / Παρατήρηση'),
+              hintText: tr('π.χ. Σκέφτεται να γίνει μέλος, ενδιαφέρεται για το πακέτο X...'),
               prefixIcon: Icon(Icons.notes_outlined, color: AppColors.textSecondary),
               alignLabelWithHint: true,
             ),
@@ -758,7 +760,7 @@ class _TrialClaimSheet extends StatelessWidget {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: Text(isClaim ? 'Ανάθεση σε μένα' : 'Αποθήκευση',
+              child: Text(tr(isClaim ? 'Ανάθεση σε μένα' : tr('Αποθήκευση')),
                   style: const TextStyle(fontWeight: FontWeight.w700)),
             ),
           ),

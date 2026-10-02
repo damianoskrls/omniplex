@@ -1,3 +1,4 @@
+import '../l10n/tr.dart';
 class FitnessGoalOption {
   const FitnessGoalOption({required this.id, required this.label});
 
@@ -6,7 +7,7 @@ class FitnessGoalOption {
 
   factory FitnessGoalOption.fromJson(Map<String, dynamic> json) => FitnessGoalOption(
         id: json['id'] as String,
-        label: json['label'] as String,
+        label: tr(json['label'] as String),
       );
 }
 

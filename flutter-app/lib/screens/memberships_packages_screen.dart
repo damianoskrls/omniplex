@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class MembershipsPackagesScreen extends StatelessWidget {
   const MembershipsPackagesScreen({super.key,
@@ -59,11 +61,11 @@ class MembershipsPackagesScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Text('Choose your plan', style: GoogleFonts.spaceGrotesk(
+          Text(tr('Choose your plan'), style: GoogleFonts.inter(
             fontSize: 24, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.6)),
           const SizedBox(height: 4),
-          Text(gymName, style: GoogleFonts.manrope(
+          Text(tr(gymName), style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
         ],
       ),
@@ -89,10 +91,10 @@ class MembershipsPackagesScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: GoogleFonts.spaceGrotesk(
+              Text(tr(title), style: GoogleFonts.inter(
                 fontSize: 16, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.4)),
-              Text(subtitle, style: GoogleFonts.manrope(
+              Text(tr(subtitle), style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
             ],
           ),
@@ -106,7 +108,7 @@ class MembershipsPackagesScreen extends StatelessWidget {
       children: [
         const Icon(Icons.check_circle, color: kLime, size: 12),
         const SizedBox(width: 10),
-        Text(text, style: GoogleFonts.manrope(
+        Text(tr(text), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
       ],
     );
@@ -135,11 +137,11 @@ class MembershipsPackagesScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Monthly', style: GoogleFonts.spaceGrotesk(
+                Text(tr('Monthly'), style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: -0.45)),
                 const SizedBox(height: 4),
-                Text('UNLIMITED CLASSES', style: GoogleFonts.manrope(
+                Text(tr('UNLIMITED CLASSES'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700,
                   color: kCyan, letterSpacing: 0.3)),
                 const SizedBox(height: 12),
@@ -147,11 +149,11 @@ class MembershipsPackagesScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text('€45', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('€45'), style: GoogleFonts.inter(
                       fontSize: 36, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.9)),
                     const SizedBox(width: 4),
-                    Text('/month', style: GoogleFonts.manrope(
+                    Text(tr('/month'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
                   ],
                 ),
@@ -194,11 +196,11 @@ class MembershipsPackagesScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 8),
-                    Text('3 Months', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('3 Months'), style: GoogleFonts.inter(
                       fontSize: 18, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.45)),
                     const SizedBox(height: 4),
-                    Text('UNLIMITED CLASSES', style: GoogleFonts.manrope(
+                    Text(tr('UNLIMITED CLASSES'), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700,
                       color: kCyan, letterSpacing: 0.3)),
                     const SizedBox(height: 12),
@@ -206,15 +208,15 @@ class MembershipsPackagesScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Text('€120', style: GoogleFonts.spaceGrotesk(
+                        Text(tr('€120'), style: GoogleFonts.inter(
                           fontSize: 36, fontWeight: FontWeight.w700,
                           color: Colors.white, letterSpacing: -0.9)),
                         const SizedBox(width: 4),
-                        Text('total', style: GoogleFonts.manrope(
+                        Text(tr('total'), style: GoogleFonts.inter(
                           fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
                       ],
                     ),
-                    Text('Only €40/month · Save €15', style: GoogleFonts.manrope(
+                    Text(tr('Only €40/month · Save €15'), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700, color: kLime)),
                     const SizedBox(height: 16),
                     _buildFeatureRow('Access to all group classes'),
@@ -243,7 +245,7 @@ class MembershipsPackagesScreen extends StatelessWidget {
                     children: [
                       const Icon(Icons.bolt, color: kBg, size: 14),
                       const SizedBox(width: 4),
-                      Text('BEST VALUE', style: GoogleFonts.manrope(
+                      Text(tr('BEST VALUE'), style: GoogleFonts.inter(
                         fontSize: 12, fontWeight: FontWeight.w800,
                         color: kBg, letterSpacing: 0.4)),
                     ],
@@ -285,11 +287,11 @@ class MembershipsPackagesScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('10 Class Pack', style: GoogleFonts.spaceGrotesk(
+                        Text(tr('10 Class Pack'), style: GoogleFonts.inter(
                           fontSize: 18, fontWeight: FontWeight.w700,
                           color: Colors.white, letterSpacing: -0.45)),
                         const SizedBox(height: 4),
-                        Text('10 VISITS · VALID 90 DAYS', style: GoogleFonts.manrope(
+                        Text(tr('10 VISITS · VALID 90 DAYS'), style: GoogleFonts.inter(
                           fontSize: 12, fontWeight: FontWeight.w700,
                           color: kCyan, letterSpacing: 0.3)),
                       ],
@@ -310,11 +312,11 @@ class MembershipsPackagesScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text('€90', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('€90'), style: GoogleFonts.inter(
                       fontSize: 36, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.9)),
                     const SizedBox(width: 4),
-                    Text('total', style: GoogleFonts.manrope(
+                    Text(tr('total'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w600, color: kGray)),
                   ],
                 ),
@@ -363,10 +365,10 @@ class MembershipsPackagesScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Single\nDrop-in', style: GoogleFonts.spaceGrotesk(
+                      Text(tr('Single\nDrop-in'), style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w700,
                         color: Colors.white, letterSpacing: -0.35)),
-                      Text('Access for one day', style: GoogleFonts.manrope(
+                      Text(tr('Access for one day'), style: GoogleFonts.inter(
                         fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
                     ],
                   ),
@@ -375,10 +377,10 @@ class MembershipsPackagesScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text('€15', style: GoogleFonts.spaceGrotesk(
+                    Text(tr('€15'), style: GoogleFonts.inter(
                       fontSize: 20, fontWeight: FontWeight.w700,
                       color: Colors.white, letterSpacing: -0.5)),
-                    Text('/visit', style: GoogleFonts.manrope(
+                    Text(tr('/visit'), style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.w600, color: kGray)),
                   ],
                 ),
@@ -391,7 +393,7 @@ class MembershipsPackagesScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
-                    child: Text('Choose', style: GoogleFonts.manrope(
+                    child: Text(tr('Choose'), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
                   ),
                 ),
@@ -420,8 +422,8 @@ class MembershipsPackagesScreen extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                "You'll need to sign in or create an account to complete your purchase after choosing a plan.",
-                style: GoogleFonts.manrope(
+                tr("You'll need to sign in or create an account to complete your purchase after choosing a plan."),
+                style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w600,
                   color: kGray, height: 1.625)),
             ),
@@ -439,7 +441,7 @@ class MembershipsPackagesScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Center(
-        child: Text('Choose', style: GoogleFonts.manrope(
+        child: Text(tr('Choose'), style: GoogleFonts.inter(
           fontSize: 14, fontWeight: FontWeight.w700, color: kBg)),
       ),
     );

@@ -13,6 +13,8 @@ import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/nutrition_body_progress.dart';
 import '../widgets/ui_kit.dart';
+import '../l10n/tr.dart';
+
 const _mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 String _mealTypeForHour(int hour) {
@@ -159,7 +161,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
 
   void _showSnack(String message, {bool success = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: success ? AppColors.lime : AppColors.surface),
+      SnackBar(content: Text(tr(message)), backgroundColor: success ? AppColors.lime : AppColors.surface),
     );
   }
 
@@ -383,7 +385,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
               IconButton(
                 onPressed: _loading ? null : () => _shiftDay(-1),
                 icon: const Icon(Icons.chevron_left),
-                tooltip: s.nutritionPrevDay,
+                tooltip: tr(s.nutritionPrevDay),
               ),
               Expanded(
                 child: InkWell(
@@ -394,7 +396,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
                     child: Column(
                       children: [
                         Text(
-                          title,
+                          tr(title),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w800,
@@ -405,7 +407,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              s.nutritionToday,
+                              tr(s.nutritionToday),
                               style: const TextStyle(color: AppColors.lime, fontSize: 12, fontWeight: FontWeight.w600),
                             ),
                           ),
@@ -417,19 +419,19 @@ class _NutritionScreenState extends State<NutritionScreen> {
               IconButton(
                 onPressed: _loading ? null : () => _shiftDay(1),
                 icon: const Icon(Icons.chevron_right),
-                tooltip: s.nutritionNextDay,
+                tooltip: tr(s.nutritionNextDay),
               ),
               IconButton(
                 onPressed: _loading ? null : _pickDateFromCalendar,
                 icon: const Icon(Icons.calendar_month_outlined),
-                tooltip: s.nutritionCalendar,
+                tooltip: tr(s.nutritionCalendar),
               ),
             ],
           ),
           if (!_isViewingToday)
             TextButton(
               onPressed: _loading ? null : () => _goToDate(DateTime.now()),
-              child: Text(AppStrings.of(context).nutritionGoToToday),
+              child: Text(tr(AppStrings.of(context).nutritionGoToToday)),
             ),
         ],
       ),
@@ -446,11 +448,11 @@ class _NutritionScreenState extends State<NutritionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(AppStrings.of(context).nutritionPlan, style: Theme.of(context).textTheme.titleLarge),
+              Text(tr(AppStrings.of(context).nutritionPlan), style: Theme.of(context).textTheme.titleLarge),
               if (_hasMealPlan && currentMeal != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  _nowMealHint(currentMeal),
+                  tr(_nowMealHint(currentMeal)),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.lime,
                         fontWeight: FontWeight.w600,
@@ -460,7 +462,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
               if (_weekPlan?.effectiveFrom != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  AppStrings.of(context).nutritionPlanFrom(_weekPlan!.effectiveFrom ?? ''),
+                  tr(AppStrings.of(context).nutritionPlanFrom(_weekPlan!.effectiveFrom ?? '')),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -508,12 +510,12 @@ class _NutritionScreenState extends State<NutritionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  AppStrings.of(context).nutritionNoPlanYet,
+                  tr(AppStrings.of(context).nutritionNoPlanYet),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  AppStrings.of(context).nutritionNoPlanBody,
+                  tr(AppStrings.of(context).nutritionNoPlanBody),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -564,7 +566,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
         children: [
           SurfaceCard(
             child: Text(
-              AppStrings.of(context).nutritionNoPlanDay,
+              tr(AppStrings.of(context).nutritionNoPlanDay),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -615,9 +617,9 @@ class _NutritionScreenState extends State<NutritionScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(AppStrings.of(context).nutritionTrainerNotes, style: Theme.of(context).textTheme.titleMedium),
+                Text(tr(AppStrings.of(context).nutritionTrainerNotes), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                Text(_weekPlan!.notes!, style: Theme.of(context).textTheme.bodyMedium),
+                Text(tr(_weekPlan!.notes!), style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
           ),
@@ -634,7 +636,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        Text(AppStrings.of(context).nutritionOtherLogs, style: Theme.of(context).textTheme.titleMedium),
+        Text(tr(AppStrings.of(context).nutritionOtherLogs), style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         SurfaceCard(
           child: Column(
@@ -678,7 +680,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
             onLogMeasurement: _logMeasurement,
           ),
           const SizedBox(height: 20),
-          Text(AppStrings.of(context).nutritionGoalsTitle, style: Theme.of(context).textTheme.titleLarge),
+          Text(tr(AppStrings.of(context).nutritionGoalsTitle), style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
           SurfaceCard(
             child: Builder(builder: (context) {
@@ -699,7 +701,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _savingGoals ? null : _saveGoals,
-                  child: Text(_savingGoals ? s.nutritionSavingGoals : s.nutritionSaveGoals),
+                  child: Text(tr(_savingGoals ? s.nutritionSavingGoals : s.nutritionSaveGoals)),
                 ),
               ],
             );
@@ -715,7 +717,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
       controller: ctrl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(labelText: tr(label)),
     );
   }
 }
@@ -784,7 +786,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
               Row(
                 children: [
                   Expanded(
-                    child: Text(widget.slot.mealTypeLabel, style: Theme.of(context).textTheme.titleMedium),
+                    child: Text(tr(widget.slot.mealTypeLabel), style: Theme.of(context).textTheme.titleMedium),
                   ),
                   if (widget.isNow)
                     Container(
@@ -794,7 +796,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        AppStrings.of(context).nutritionNow,
+                        tr(AppStrings.of(context).nutritionNow),
                         style: const TextStyle(color: AppColors.bg, fontSize: 11, fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -807,7 +809,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
               const SizedBox(height: 10),
               if (widget.slot.options.isEmpty)
                 Text(
-                  AppStrings.of(context).nutritionNoPlanMeal,
+                  tr(AppStrings.of(context).nutritionNoPlanMeal),
                   style: Theme.of(context).textTheme.bodyMedium,
                 )
               else
@@ -829,7 +831,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
                 const SizedBox(height: 8),
                 const Divider(color: AppColors.border),
                 const SizedBox(height: 4),
-                Text(AppStrings.of(context).nutritionLogged2, style: Theme.of(context).textTheme.labelMedium),
+                Text(tr(AppStrings.of(context).nutritionLogged2), style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: 6),
                 ...widget.logs.map((log) => _LoggedMealRow(log: log, apiBase: widget.apiBase)),
               ],
@@ -885,7 +887,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
                             setState(() => _savingCustom = false);
                           }
                         },
-                  child: Text(_savingCustom ? AppStrings.of(context).nutritionSaving : AppStrings.of(context).nutritionLog),
+                  child: Text(tr(_savingCustom ? AppStrings.of(context).nutritionSaving : AppStrings.of(context).nutritionLog)),
                 ),
               ],
             ],
@@ -938,7 +940,7 @@ class _PlanOptionTile extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: Text(opt.title, style: Theme.of(context).textTheme.titleSmall)),
+              Expanded(child: Text(tr(opt.title), style: Theme.of(context).textTheme.titleSmall)),
               if (logged)
                 const Padding(
                   padding: EdgeInsets.only(left: 8),
@@ -949,13 +951,13 @@ class _PlanOptionTile extends StatelessWidget {
           if (opt.notes != null && opt.notes!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(opt.notes!, style: Theme.of(context).textTheme.bodySmall),
+              child: Text(tr(opt.notes!), style: Theme.of(context).textTheme.bodySmall),
             ),
           if (opt.portions.isNotEmpty) ...[
             const SizedBox(height: 6),
             ...opt.portions.map(
               (p) => Text(
-                '• ${p.ingredient}${p.amount != null ? ': ${p.amount} ${p.unit}' : ''}',
+                tr('• ${p.ingredient}${p.amount != null ? ': ${p.amount} ${p.unit}' : ''}'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -973,7 +975,7 @@ class _PlanOptionTile extends StatelessWidget {
                             width: 18,
                             child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                           )
-                        : Text(AppStrings.of(context).nutritionAteIt),
+                        : Text(tr(AppStrings.of(context).nutritionAteIt)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1009,7 +1011,7 @@ class _LoggedMealRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(log.description, style: Theme.of(context).textTheme.bodyMedium),
+                Text(tr(log.description), style: Theme.of(context).textTheme.bodyMedium),
                 if (log.photoUrl != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
@@ -1064,12 +1066,12 @@ class _ShoppingListSheet extends StatelessWidget {
             children: [
               const Icon(Icons.shopping_cart_outlined, color: AppColors.lime),
               const SizedBox(width: 10),
-              Expanded(child: Text(AppStrings.of(context).nutritionSmartShopping, style: Theme.of(context).textTheme.titleLarge)),
+              Expanded(child: Text(tr(AppStrings.of(context).nutritionSmartShopping), style: Theme.of(context).textTheme.titleLarge)),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            AppStrings.of(context).nutritionShoppingNote,
+            tr(AppStrings.of(context).nutritionShoppingNote),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 16),
@@ -1080,12 +1082,12 @@ class _ShoppingListSheet extends StatelessWidget {
             )
           else if (!hasPlan)
             Text(
-              AppStrings.of(context).nutritionShoppingNoList,
+              tr(AppStrings.of(context).nutritionShoppingNoList),
               style: Theme.of(context).textTheme.bodyMedium,
             )
           else if (items.isEmpty)
             Text(
-              AppStrings.of(context).nutritionNoIngredients,
+              tr(AppStrings.of(context).nutritionNoIngredients),
               style: Theme.of(context).textTheme.bodyMedium,
             )
           else ...[
@@ -1109,7 +1111,7 @@ class _ShoppingListSheet extends StatelessWidget {
                         : (item.neededAmount != null
                             ? Text(AppStrings.of(context).nutritionNeedAmount('${item.neededAmount}', item.neededUnit ?? ''), style: Theme.of(context).textTheme.bodySmall)
                             : null),
-                    trailing: Text(buy, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    trailing: Text(tr(buy), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
                   );
                 },
               ),

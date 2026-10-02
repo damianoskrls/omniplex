@@ -6,6 +6,8 @@ import '../services/global_auth_service.dart';
 import '../theme/app_colors.dart';
 import 'global_login_screen.dart';
 import 'package_purchase_screen.dart';
+import '../l10n/tr.dart';
+
 
 class ServiceDetailScreen extends StatefulWidget {
   const ServiceDetailScreen({
@@ -138,7 +140,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Name + meta
-                  Text(name, style: const TextStyle(
+                  Text(tr(name), style: const TextStyle(
                       fontSize: 26, fontWeight: FontWeight.w900,
                       color: AppColors.textPrimary)),
                   const SizedBox(height: 6),
@@ -150,7 +152,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                           color: color.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(widget.gymName,
+                        child: Text(tr(widget.gymName),
                             style: TextStyle(fontSize: 12, color: color,
                                 fontWeight: FontWeight.w700)),
                       ),
@@ -163,7 +165,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: AppColors.border),
                           ),
-                          child: Text('$duration λεπτά',
+                          child: Text(tr('$duration λεπτά'),
                               style: const TextStyle(
                                   fontSize: 12, color: AppColors.textSecondary)),
                         ),
@@ -173,17 +175,17 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
                   if (desc.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    Text(desc,
+                    Text(tr(desc),
                         style: const TextStyle(
                             fontSize: 14, color: AppColors.textSecondary, height: 1.65)),
                   ],
 
                   const SizedBox(height: 28),
-                  const Text('Πακέτα',
+                  Text(tr('Πακέτα'),
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary)),
                   const SizedBox(height: 4),
-                  Text('Επίλεξε πακέτο για να ξεκινήσεις',
+                  Text(tr('Επίλεξε πακέτο για να ξεκινήσεις'),
                       style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                   const SizedBox(height: 16),
 
@@ -197,8 +199,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: const Center(
-                        child: Text('Δεν υπάρχουν διαθέσιμα πακέτα',
+                      child: Center(
+                        child: Text(tr('Δεν υπάρχουν διαθέσιμα πακέτα'),
                             style: TextStyle(color: AppColors.textSecondary)),
                       ),
                     )
@@ -254,26 +256,26 @@ class _PackageTile extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(name,
+                child: Text(tr(name),
                     style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary)),
               ),
-              Text(fmtPrice(price),
+              Text(tr(fmtPrice(price)),
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
             ],
           ),
           if (desc.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(desc, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(tr(desc), style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           ],
           const SizedBox(height: 10),
           Wrap(
             spacing: 8, runSpacing: 6,
             children: [
               if (sessions != null)
-                _pill(Icons.fitness_center_rounded, '$sessions συνεδρίες', color),
+                _pill(Icons.fitness_center_rounded, tr('$sessions συνεδρίες'), color),
               if (days != null)
-                _pill(Icons.calendar_today_rounded, '$days ημέρες', color),
+                _pill(Icons.calendar_today_rounded, tr('$days ημέρες'), color),
             ],
           ),
           const SizedBox(height: 14),
@@ -287,7 +289,7 @@ class _PackageTile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Αγορά πακέτου',
+              child: Text(tr('Αγορά πακέτου'),
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
             ),
           ),
@@ -307,7 +309,7 @@ class _PackageTile extends StatelessWidget {
       children: [
         Icon(icon, size: 12, color: color),
         const SizedBox(width: 5),
-        Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+        Text(tr(label), style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
       ],
     ),
   );

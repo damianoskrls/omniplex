@@ -1,3 +1,4 @@
+import '../l10n/tr.dart';
 class UserGoal {
   UserGoal({required this.targetSessions, required this.period});
 
@@ -60,11 +61,11 @@ class PaymentRecord {
   final String? method;
 
   String get statusLabel {
-    const labels = {
-      'paid': 'Πληρωμένο',
-      'partial': 'Μερική πληρωμή',
-      'pending': 'Εκκρεμές',
-      'overdue': 'Ληξιπρόθεσμο',
+    final labels = {
+      'paid': tr('Πληρωμένο'),
+      'partial': tr('Μερική πληρωμή'),
+      'pending': tr('Εκκρεμές'),
+      'overdue': tr('Ληξιπρόθεσμο'),
     };
     return labels[status] ?? status;
   }

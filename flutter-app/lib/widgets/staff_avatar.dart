@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../config/tenant_config.dart';
 import '../models/booking.dart';
+import '../l10n/tr.dart';
+
 
 class StaffAvatar extends StatelessWidget {
   const StaffAvatar({
@@ -40,7 +42,7 @@ class StaffAvatar extends StatelessWidget {
       radius: radius,
       backgroundColor: color,
       child: Text(
-        staff.fullName.isNotEmpty ? staff.fullName[0].toUpperCase() : '?',
+        tr(staff.fullName.isNotEmpty ? staff.fullName[0].toUpperCase() : '?'),
         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: radius * 0.7),
       ),
     );

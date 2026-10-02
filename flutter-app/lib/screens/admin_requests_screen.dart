@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../widgets/omni_design.dart';
 import '../services/auth_service.dart';
+import '../l10n/tr.dart';
+
 
 const _kAmber = Color(0xFFFFB93D);
 const _kAmberBg = Color(0xFF2A210F);
@@ -52,7 +54,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+          SnackBar(content: Text(tr('Error: $e')), backgroundColor: Colors.red));
       }
     }
   }
@@ -65,7 +67,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+          SnackBar(content: Text(tr('Error: $e')), backgroundColor: Colors.red));
       }
     }
   }
@@ -130,10 +132,10 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Admin Dashboard', style: GoogleFonts.manrope(
+                                  Text(tr('Admin Dashboard'), style: GoogleFonts.inter(
                                     fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                                   const SizedBox(height: 4),
-                                  Text('Requests', style: GoogleFonts.spaceGrotesk(
+                                  Text(tr('Requests'), style: GoogleFonts.inter(
                                     fontSize: 20, fontWeight: FontWeight.w700,
                                     color: Colors.white, letterSpacing: -0.5)),
                                 ],
@@ -182,10 +184,10 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Membership Requests', style: GoogleFonts.spaceGrotesk(
+                            Text(tr('Membership Requests'), style: GoogleFonts.inter(
                               fontSize: 16, fontWeight: FontWeight.w700,
                               color: Colors.white, letterSpacing: -0.4)),
-                            Text('2 pending', style: GoogleFonts.manrope(
+                            Text(tr('2 pending'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                           ],
                         ),
@@ -194,7 +196,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                         if (_loadingData)
                           const Center(child: CircularProgressIndicator(color: kLime))
                         else if (_pendingClients.isEmpty)
-                          Center(child: Text('No pending requests', style: GoogleFonts.manrope(
+                          Center(child: Text(tr('No pending requests'), style: GoogleFonts.inter(
                             fontSize: 14, color: kGray)))
                         else
                           ...List.generate(_pendingClients.length, (i) {
@@ -216,7 +218,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                             Expanded(child: Container(height: 1, color: kBorder)),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text('OTHER CATEGORY', style: GoogleFonts.manrope(
+                              child: Text(tr('OTHER CATEGORY'), style: GoogleFonts.inter(
                                 fontSize: 10, fontWeight: FontWeight.w700,
                                 color: kDim, letterSpacing: 0.25)),
                             ),
@@ -228,10 +230,10 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Staff Requests', style: GoogleFonts.spaceGrotesk(
+                            Text(tr('Staff Requests'), style: GoogleFonts.inter(
                               fontSize: 16, fontWeight: FontWeight.w700,
                               color: Colors.white, letterSpacing: -0.4)),
-                            Text('1 pending', style: GoogleFonts.manrope(
+                            Text(tr('1 pending'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                           ],
                         ),
@@ -268,10 +270,10 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
         ),
         child: Row(
           children: [
-            Text(label.replaceAll('\n', ' '), style: active
-              ? GoogleFonts.spaceGrotesk(
+            Text(tr(label.replaceAll('\n', ' ')), style: active
+              ? GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700, color: kBg)
-              : GoogleFonts.manrope(
+              : GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
             const SizedBox(width: 8),
             Container(
@@ -281,7 +283,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: Text('$count', style: GoogleFonts.manrope(
+                child: Text(tr('$count'), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: active ? kLime : kGray)),
               ),
@@ -333,7 +335,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Flexible(
-                          child: Text(name, style: GoogleFonts.manrope(
+                          child: Text(tr(name), style: GoogleFonts.inter(
                             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                         ),
                         Container(
@@ -343,13 +345,13 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                             borderRadius: BorderRadius.circular(9999),
                             border: Border.all(color: _kAmber.withValues(alpha: 0.40)),
                           ),
-                          child: Text('Pending', style: GoogleFonts.spaceGrotesk(
+                          child: Text(tr('Pending'), style: GoogleFonts.inter(
                             fontSize: 10, fontWeight: FontWeight.w700, color: _kAmber)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 3),
-                    Text(description, style: GoogleFonts.manrope(
+                    Text(tr(description), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                   ],
                 ),
@@ -370,7 +372,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
               children: [
                 const Icon(Icons.verified_outlined, color: kLime, size: 10),
                 const SizedBox(width: 6),
-                Text('Verified via Membership ID', style: GoogleFonts.manrope(
+                Text(tr('Verified via Membership ID'), style: GoogleFonts.inter(
                   fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
               ],
             ),
@@ -381,7 +383,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
             children: [
               const Icon(Icons.schedule_outlined, color: kGray, size: 10),
               const SizedBox(width: 6),
-              Text(timeAgo, style: GoogleFonts.manrope(
+              Text(tr(timeAgo), style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
             ],
           ),
@@ -409,7 +411,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                           children: [
                             const Icon(Icons.check, color: kBg, size: 12),
                             const SizedBox(width: 8),
-                            Text('Approve', style: GoogleFonts.spaceGrotesk(
+                            Text(tr('Approve'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
                           ],
                         ),
@@ -432,7 +434,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                           children: [
                             const Icon(Icons.close, color: _kRed, size: 12),
                             const SizedBox(width: 8),
-                            Text('Reject', style: GoogleFonts.manrope(
+                            Text(tr('Reject'), style: GoogleFonts.inter(
                               fontSize: 12, fontWeight: FontWeight.w600, color: _kRed)),
                           ],
                         ),
@@ -488,7 +490,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Flexible(
-                          child: Text(name, style: GoogleFonts.manrope(
+                          child: Text(tr(name), style: GoogleFonts.inter(
                             fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                         ),
                         Container(
@@ -498,13 +500,13 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                             borderRadius: BorderRadius.circular(9999),
                             border: Border.all(color: _kPurple.withValues(alpha: 0.40)),
                           ),
-                          child: Text('Staff', style: GoogleFonts.spaceGrotesk(
+                          child: Text(tr('Staff'), style: GoogleFonts.inter(
                             fontSize: 10, fontWeight: FontWeight.w700, color: _kPurple)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 3),
-                    Text(description, style: GoogleFonts.manrope(
+                    Text(tr(description), style: GoogleFonts.inter(
                       fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
                   ],
                 ),
@@ -516,7 +518,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
             children: [
               const Icon(Icons.schedule_outlined, color: kGray, size: 10),
               const SizedBox(width: 6),
-              Text(timeAgo, style: GoogleFonts.manrope(
+              Text(tr(timeAgo), style: GoogleFonts.inter(
                 fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
             ],
           ),
@@ -541,7 +543,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                         children: [
                           const Icon(Icons.check, color: kBg, size: 12),
                           const SizedBox(width: 8),
-                          Text('Approve', style: GoogleFonts.spaceGrotesk(
+                          Text(tr('Approve'), style: GoogleFonts.inter(
                             fontSize: 12, fontWeight: FontWeight.w700, color: kBg)),
                         ],
                       ),
@@ -561,7 +563,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                         children: [
                           const Icon(Icons.close, color: _kRed, size: 12),
                           const SizedBox(width: 8),
-                          Text('Reject', style: GoogleFonts.manrope(
+                          Text(tr('Reject'), style: GoogleFonts.inter(
                             fontSize: 12, fontWeight: FontWeight.w600, color: _kRed)),
                         ],
                       ),

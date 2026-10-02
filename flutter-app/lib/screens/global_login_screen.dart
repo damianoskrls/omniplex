@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
 import 'global_register_screen.dart';
+import '../l10n/tr.dart';
+
 
 const _kBg     = Color(0xFF0A0A0A);
 const _kCard   = Color(0xFF16171B);
@@ -60,7 +62,7 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
     final email = _emailCtrl.text.trim();
     final pass  = _passCtrl.text;
     if (email.isEmpty || pass.isEmpty) {
-      setState(() => _error = 'Συμπλήρωσε email και κωδικό');
+      setState(() => _error = tr('Συμπλήρωσε email και κωδικό'));
       return;
     }
     setState(() { _loading = true; _error = null; });
@@ -84,7 +86,7 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
           }
         } else {
           final body = jsonDecode(res.body) as Map<String, dynamic>;
-          setState(() { _error = body['error'] as String? ?? 'Αδυναμία σύνδεσης'; _loading = false; });
+          setState(() { _error = body['error'] as String? ?? tr('Αδυναμία σύνδεσης'); _loading = false; });
         }
       } else {
         await widget.globalAuth.login(email, pass);
@@ -137,7 +139,7 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
                 ),
                 const Spacer(),
                 // OmniPlex logo text
-                Text('OmniPlex', style: GoogleFonts.manrope(
+                Text(tr('OmniPlex'), style: GoogleFonts.inter(
                   fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                 const Spacer(),
                 const SizedBox(width: 40),
@@ -150,13 +152,13 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Καλώς ήρθες\nξανά 👋',
-                      style: GoogleFonts.manrope(
+                    Text(tr('Καλώς ήρθες\nξανά 👋'),
+                      style: GoogleFonts.inter(
                         fontSize: 30, fontWeight: FontWeight.w700,
                         color: Colors.white, letterSpacing: -0.8, height: 1.1)),
                     const SizedBox(height: 8),
-                    Text('Σύνδεσε τον λογαριασμό σου στο OmniPlex.',
-                      style: GoogleFonts.manrope(fontSize: 14, color: _kGray, height: 1.5)),
+                    Text(tr('Σύνδεσε τον λογαριασμό σου στο OmniPlex.'),
+                      style: GoogleFonts.inter(fontSize: 14, color: _kGray, height: 1.5)),
                     const SizedBox(height: 32),
 
                     // Staff toggle
@@ -168,8 +170,8 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
                       ),
                       padding: const EdgeInsets.all(4),
                       child: Row(children: [
-                        _tabBtn('Μέλος', !_isStaff, () => setState(() { _isStaff = false; _error = null; })),
-                        _tabBtn('Προσωπικό', _isStaff, () => setState(() { _isStaff = true; _error = null; })),
+                        _tabBtn(tr('Μέλος'), !_isStaff, () => setState(() { _isStaff = false; _error = null; })),
+                        _tabBtn(tr('Προσωπικό'), _isStaff, () => setState(() { _isStaff = true; _error = null; })),
                       ]),
                     ),
                     const SizedBox(height: 24),
@@ -182,8 +184,8 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                         ),
-                        child: Text(_error!,
-                          style: GoogleFonts.manrope(color: Colors.redAccent, fontSize: 13)),
+                        child: Text(tr(_error!),
+                          style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13)),
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -197,7 +199,7 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    _fieldLabel('Κωδικός'),
+                    _fieldLabel(tr('Κωδικός')),
                     const SizedBox(height: 8),
                     _inputField(
                       ctrl: _passCtrl,
@@ -229,8 +231,8 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
                         child: _loading
                           ? const SizedBox(width: 22, height: 22,
                               child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                          : Text('Σύνδεση',
-                              style: GoogleFonts.manrope(
+                          : Text(tr('Σύνδεση'),
+                              style: GoogleFonts.inter(
                                 fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                       ),
                     ),
@@ -239,12 +241,12 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
                     // Register CTA
                     Center(
                       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Text('Δεν έχεις λογαριασμό; ',
-                          style: GoogleFonts.manrope(fontSize: 14, color: _kGray)),
+                        Text(tr('Δεν έχεις λογαριασμό; '),
+                          style: GoogleFonts.inter(fontSize: 14, color: _kGray)),
                         GestureDetector(
                           onTap: _goRegister,
-                          child: Text('Εγγραφή',
-                            style: GoogleFonts.manrope(
+                          child: Text(tr('Εγγραφή'),
+                            style: GoogleFonts.inter(
                               fontSize: 14, fontWeight: FontWeight.w700, color: _kAccent,
                               decoration: TextDecoration.underline,
                               decorationColor: _kAccent)),
@@ -274,7 +276,7 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
-          child: Text(label, style: GoogleFonts.manrope(
+          child: Text(tr(label), style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w700,
             color: active ? Colors.white : _kGray)),
         ),
@@ -282,7 +284,7 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
     );
   }
 
-  Widget _fieldLabel(String text) => Text(text, style: GoogleFonts.manrope(
+  Widget _fieldLabel(String text) => Text(tr(text), style: GoogleFonts.inter(
     fontSize: 13, fontWeight: FontWeight.w600, color: _kGray));
 
   Widget _inputField({
@@ -296,10 +298,10 @@ class _GlobalLoginScreenState extends State<GlobalLoginScreen> {
       controller: ctrl,
       keyboardType: type,
       obscureText: obscure,
-      style: GoogleFonts.manrope(color: Colors.white, fontSize: 15),
+      style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.manrope(color: _kGray),
+        hintText: tr(hint),
+        hintStyle: GoogleFonts.inter(color: _kGray),
         suffixIcon: suffix,
         filled: true,
         fillColor: _kCard,

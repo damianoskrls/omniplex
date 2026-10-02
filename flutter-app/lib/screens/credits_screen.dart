@@ -14,6 +14,8 @@ import '../widgets/ui_kit.dart';
 import 'add_service_screen.dart';
 import '../widgets/payment_sheet.dart';
 import 'nutrition_consultation_booking_screen.dart';
+import '../l10n/tr.dart';
+
 
 class CreditsScreen extends StatefulWidget {
   const CreditsScreen({super.key});
@@ -104,7 +106,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
   }
 
   String _periodLabel(String? period) {
-    const map = {'monthly': 'Μηνιαίο', 'yearly': 'Ετήσιο', 'weekly': 'Εβδομαδιαίο'};
+    final map = {'monthly': tr('Μηνιαίο'), 'yearly': tr('Ετήσιο'), 'weekly': tr('Εβδομαδιαίο')};
     return map[period] ?? period ?? '';
   }
 
@@ -137,7 +139,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppStrings.of(context).creditsCancelQuestion),
+            Text(tr(AppStrings.of(context).creditsCancelQuestion)),
             const SizedBox(height: 12),
             TextField(
               controller: reasonCtrl,
@@ -150,10 +152,10 @@ class _CreditsScreenState extends State<CreditsScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr(AppStrings.of(context).cancel))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(AppStrings.of(context).creditsCancelBtn, style: const TextStyle(color: AppColors.orange)),
+            child: Text(tr(AppStrings.of(context).creditsCancelBtn), style: const TextStyle(color: AppColors.orange)),
           ),
         ],
       ),
@@ -166,23 +168,23 @@ class _CreditsScreenState extends State<CreditsScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppStrings.of(context).creditsCancelled)),
+        SnackBar(content: Text(tr(AppStrings.of(context).creditsCancelled))),
       );
       _load();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     }
   }
 
   List<String> _nutritionFeatures(MembershipCredit credit) {
     final features = <String>[];
-    if (credit.nutritionIncludesMealPlan == true) features.add('Πλάνο γευμάτων');
-    if (credit.nutritionIncludesMeasurements == true) features.add('Μετρήσεις');
-    if (credit.nutritionIncludesFoodDiary == true) features.add('Ημερολόγιο διατροφής');
+    if (credit.nutritionIncludesMealPlan == true) features.add(tr('Πλάνο γευμάτων'));
+    if (credit.nutritionIncludesMeasurements == true) features.add(tr('Μετρήσεις'));
+    if (credit.nutritionIncludesFoodDiary == true) features.add(tr('Ημερολόγιο διατροφής'));
     if (credit.nutritionIncludesConsultations == true) {
       final n = credit.nutritionConsultationSessions;
-      features.add(n != null ? '$n επισκέψεις διατροφολόγου' : 'Επισκέψεις διατροφολόγου');
+      features.add(n != null ? '$n επισκέψεις διατροφολόγου' : tr('Επισκέψεις διατροφολόγου'));
     }
     return features;
   }
@@ -198,9 +200,9 @@ class _CreditsScreenState extends State<CreditsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
+            Text(tr(_error!), style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: Text(AppStrings.of(context).retryBtn)),
+            ElevatedButton(onPressed: _load, child: Text(tr(AppStrings.of(context).retryBtn))),
           ],
         ),
       );
@@ -210,7 +212,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
       return EmptyState(
         icon: Icons.card_membership_outlined,
         title: AppStrings.of(context).creditsNoPackages,
-        subtitle: 'Πρόσθεσε άλλη υπηρεσία του γυμναστηρίου και πάρε πακέτο.',
+        subtitle: tr('Πρόσθεσε άλλη υπηρεσία του γυμναστηρίου και πάρε πακέτο.'),
         action: ElevatedButton(
           onPressed: () async {
             final added = await Navigator.push<bool>(context, MaterialPageRoute(
@@ -218,7 +220,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
             ));
             if (added == true) _load();
           },
-          child: const Text('Πρόσθεσε υπηρεσία'),
+          child: Text(tr('Πρόσθεσε υπηρεσία')),
         ),
       );
     }
@@ -243,7 +245,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 if (added == true) _load();
               },
               icon: const Icon(Icons.add),
-              label: const Text('Πρόσθεσε άλλη υπηρεσία και πάρε πακέτο'),
+              label: Text(tr('Πρόσθεσε άλλη υπηρεσία και πάρε πακέτο')),
             );
           }
           if (hasPendingBalance && index == 0) {
@@ -288,20 +290,20 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: Theme.of(context).textTheme.titleLarge),
+                    Text(tr(title), style: Theme.of(context).textTheme.titleLarge),
                     if (credit.isNutritionProgram)
                       Text(
-                        AppStrings.of(context).creditsNutritionProgram,
+                        tr(AppStrings.of(context).creditsNutritionProgram),
                         style: const TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w600, fontSize: 13),
                       )
                     else if (credit.isNutritionConsultation)
                       Text(
-                        AppStrings.of(context).creditsNutritionVisitsSect,
+                        tr(AppStrings.of(context).creditsNutritionVisitsSect),
                         style: const TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w600, fontSize: 13),
                       )
                     else if (credit.serviceDescription != null)
                       Text(
-                        credit.serviceDescription!,
+                        tr(credit.serviceDescription!),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium,
@@ -322,7 +324,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Η συνδρομή έληξε — περίοδος χάριτος ${credit.daysInGraceLeft ?? 0} ημέρες. Ανένεωσε για να συνεχίσεις.',
+                  tr('Η συνδρομή έληξε — περίοδος χάριτος ${credit.daysInGraceLeft ?? 0} ημέρες. Ανένεωσε για να συνεχίσεις.'),
                   style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               ),
@@ -333,7 +335,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
               spacing: 8,
               runSpacing: 8,
               children: features.map((f) => PillChip(
-                label: f,
+                label: tr(f),
                 color: const Color(0xFF0f766e).withValues(alpha: 0.12),
                 textColor: const Color(0xFF0f766e),
               )).toList(),
@@ -351,7 +353,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 children: [
                   const Icon(Icons.restaurant_menu_outlined, size: 18, color: Color(0xFF0f766e)),
                   const SizedBox(width: 8),
-                  Text(AppStrings.of(context).creditsActivePlan, style: const TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w700)),
+                  Text(tr(AppStrings.of(context).creditsActivePlan), style: const TextStyle(color: Color(0xFF0f766e), fontWeight: FontWeight.w700)),
                 ],
               ),
             )
@@ -360,7 +362,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(AppStrings.of(context).creditsSessionsBalance, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                Text(tr(AppStrings.of(context).creditsSessionsBalance), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 ...credit.planServices!.map((svc) {
                   final svcName = svc['service_name'] as String? ?? '';
@@ -373,11 +375,11 @@ class _CreditsScreenState extends State<CreditsScreen> {
                       children: [
                         Icon(isUnlim ? Icons.all_inclusive : Icons.fitness_center, size: 15, color: accent),
                         const SizedBox(width: 8),
-                        Expanded(child: Text(svcName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+                        Expanded(child: Text(tr(svcName), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
                         Text(
-                          isUnlim
+                          tr(isUnlim
                               ? AppStrings.of(context).creditsUnlimitedSessions
-                              : AppStrings.of(context).creditsSessionsThisMonth(remaining ?? 0, perPeriod ?? 0),
+                              : AppStrings.of(context).creditsSessionsThisMonth(remaining ?? 0, perPeriod ?? 0)),
                           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: accent),
                         ),
                       ],
@@ -397,7 +399,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 children: [
                   const Icon(Icons.all_inclusive, size: 18, color: AppColors.lime),
                   const SizedBox(width: 8),
-                  Text(AppStrings.of(context).creditsUnlimitedSessionsLabel, style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w700)),
+                  Text(tr(AppStrings.of(context).creditsUnlimitedSessionsLabel), style: const TextStyle(color: AppColors.lime, fontWeight: FontWeight.w700)),
                 ],
               ),
             )
@@ -405,9 +407,9 @@ class _CreditsScreenState extends State<CreditsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(AppStrings.of(context).creditsBalance, style: Theme.of(context).textTheme.bodyMedium),
+                Text(tr(AppStrings.of(context).creditsBalance), style: Theme.of(context).textTheme.bodyMedium),
                 Text(
-                  '${credit.remaining} / ${credit.totalSessions}',
+                  tr('${credit.remaining} / ${credit.totalSessions}'),
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: accent),
                 ),
               ],
@@ -425,7 +427,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
           ],
           const SizedBox(height: 16),
           _InfoRow(icon: Icons.event, label: AppStrings.of(context).creditsStart, value: started),
-          _InfoRow(icon: Icons.autorenew, label: credit.isNutritionProgram ? AppStrings.of(context).creditsExpiry : AppStrings.of(context).creditsNextRenewal, value: renewal),
+          _InfoRow(icon: Icons.autorenew, label: tr(credit.isNutritionProgram ? AppStrings.of(context).creditsExpiry : AppStrings.of(context).creditsNextRenewal), value: renewal),
           if (credit.lastPaymentDate != null)
             _InfoRow(
               icon: Icons.receipt_long_outlined,
@@ -439,7 +441,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
           if (credit.notes != null && credit.notes!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(credit.notes!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
+              child: Text(tr(credit.notes!), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
             ),
           if (credit.isNutritionConsultation && _nutritionConsultService != null) ...[
             const SizedBox(height: 16),
@@ -451,8 +453,8 @@ class _CreditsScreenState extends State<CreditsScreen> {
                   color: Colors.amber.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Έχεις αίτημα κράτησης σε αναμονή επιβεβαίωσης.',
+                child: Text(
+                  tr('Έχεις αίτημα κράτησης σε αναμονή επιβεβαίωσης.'),
                   style: TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               )
@@ -464,8 +466,8 @@ class _CreditsScreenState extends State<CreditsScreen> {
                   color: AppColors.lime.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Έχεις επιβεβαιωμένο ραντεβού με τον διατροφολόγο.',
+                child: Text(
+                  tr('Έχεις επιβεβαιωμένο ραντεβού με τον διατροφολόγο.'),
                   style: TextStyle(color: AppColors.lime, fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               )
@@ -525,7 +527,7 @@ class _PaymentBanner extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  AppStrings.of(context).creditsPendingPayment(_eur(totalCents)),
+                  tr(AppStrings.of(context).creditsPendingPayment(_eur(totalCents))),
                   style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.orange),
                 ),
               ),
@@ -594,8 +596,8 @@ class _InfoRow extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: AppColors.textSecondary),
           const SizedBox(width: 8),
-          Text('$label: ', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13)),
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          Text(tr('$label: '), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13)),
+          Text(tr(value), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
         ],
       ),
     );

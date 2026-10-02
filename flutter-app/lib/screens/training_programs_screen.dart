@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class TrainingProgramsScreen extends StatefulWidget {
   const TrainingProgramsScreen({super.key});
@@ -60,7 +62,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                       _buildFilters(),
                       const SizedBox(height: 32),
                       _buildProgramCard(
-                        title: 'Strength\nFoundation',
+                        title: tr('Strength\nFoundation'),
                         levelTag: 'Pro Level',
                         levelColor: kLime,
                         typeTag: 'Strength',
@@ -76,7 +78,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                       ),
                       const SizedBox(height: 24),
                       _buildProgramCard(
-                        title: 'HIIT Mastery',
+                        title: tr('HIIT Mastery'),
                         levelTag: 'All Levels',
                         levelColor: kCyan,
                         typeTag: 'HIIT',
@@ -127,7 +129,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
             ),
             child: const Center(child: Icon(Icons.chevron_left, color: Colors.white, size: 20)),
           ),
-          Text('TRAINING PROGRAMS', style: GoogleFonts.spaceGrotesk(
+          Text(tr('TRAINING PROGRAMS'), style: GoogleFonts.inter(
             fontSize: 20, fontWeight: FontWeight.w800,
             color: Colors.white, letterSpacing: -0.5)),
           Container(
@@ -162,7 +164,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                 borderRadius: BorderRadius.circular(9999),
                 border: active ? null : Border.all(color: Colors.white.withValues(alpha: 0.10)),
               ),
-              child: Text(_filters[i].toUpperCase(), style: GoogleFonts.manrope(
+              child: Text(tr(_filters[i].toUpperCase()), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700,
                 color: active ? kBg : _kGray9C, letterSpacing: 1.2)),
             ),
@@ -258,7 +260,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                         color: levelColor,
                         borderRadius: BorderRadius.circular(9999),
                       ),
-                      child: Text(levelTag.toUpperCase(), style: GoogleFonts.manrope(
+                      child: Text(tr(levelTag.toUpperCase()), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w900,
                         color: kBg, letterSpacing: -0.5)),
                     ),
@@ -270,7 +272,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                         borderRadius: BorderRadius.circular(9999),
                         border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
                       ),
-                      child: Text(typeTag.toUpperCase(), style: GoogleFonts.manrope(
+                      child: Text(tr(typeTag.toUpperCase()), style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w900,
                         color: Colors.white, letterSpacing: -0.5)),
                     ),
@@ -292,7 +294,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title, style: GoogleFonts.spaceGrotesk(
+                          Text(tr(title), style: GoogleFonts.inter(
                             fontSize: 24, fontWeight: FontWeight.w900,
                             color: Colors.white, letterSpacing: -0.21, height: 1.25)),
                           const SizedBox(height: 4),
@@ -300,7 +302,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                             children: [
                               const Icon(Icons.access_time, color: Color(0xFF9CA3AF), size: 10),
                               const SizedBox(width: 8),
-                              Text(duration.toUpperCase(), style: GoogleFonts.manrope(
+                              Text(tr(duration.toUpperCase()), style: GoogleFonts.inter(
                                 fontSize: 12, fontWeight: FontWeight.w700,
                                 color: _kGray9C, letterSpacing: 1.2)),
                             ],
@@ -321,7 +323,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                           child: const Icon(Icons.person, color: Colors.white, size: 16),
                         ),
                         const SizedBox(height: 4),
-                        Text(coachName, style: GoogleFonts.manrope(
+                        Text(tr(coachName), style: GoogleFonts.inter(
                           fontSize: 10, fontWeight: FontWeight.w700,
                           color: _kGray6B, letterSpacing: 1.0), textAlign: TextAlign.right),
                       ],
@@ -329,7 +331,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                Text(description, style: GoogleFonts.manrope(
+                Text(tr(description), style: GoogleFonts.inter(
                   fontSize: 14, color: _kGray9C, height: 1.625)),
                 const SizedBox(height: 14),
                 Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
@@ -359,7 +361,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('START PROGRAM', style: GoogleFonts.manrope(
+                        Text(tr('START PROGRAM'), style: GoogleFonts.inter(
                           fontSize: 16, fontWeight: FontWeight.w900,
                           color: buttonActive ? kBg : Colors.white,
                           letterSpacing: 1.6)),
@@ -381,11 +383,11 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
   Widget _buildStat(String value, String label, Color color) {
     return Column(
       children: [
-        Text(value.toUpperCase(), style: GoogleFonts.manrope(
+        Text(tr(value.toUpperCase()), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: color, letterSpacing: 0.14)),
         const SizedBox(height: 2),
-        Text(label.toUpperCase(), style: GoogleFonts.manrope(
+        Text(tr(label.toUpperCase()), style: GoogleFonts.inter(
           fontSize: 9, fontWeight: FontWeight.w500,
           color: _kGray6B, letterSpacing: 0.13)),
       ],
@@ -421,7 +423,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
         children: [
           Icon(icon, color: active ? kLime : _kGray6B, size: 20),
           const SizedBox(height: 6),
-          Text(label, style: GoogleFonts.manrope(
+          Text(tr(label), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: active ? kLime : _kGray6B, letterSpacing: 0.9)),
         ],
@@ -445,7 +447,7 @@ class _TrainingProgramsScreenState extends State<TrainingProgramsScreen> {
             child: const Icon(Icons.person, color: Colors.white, size: 14),
           ),
           const SizedBox(height: 6),
-          Text('PROFILE', style: GoogleFonts.manrope(
+          Text(tr('PROFILE'), style: GoogleFonts.inter(
             fontSize: 9, fontWeight: FontWeight.w700,
             color: _kGray6B, letterSpacing: 0.9)),
         ],

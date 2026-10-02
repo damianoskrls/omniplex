@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class StaffMessagesScreen extends StatefulWidget {
   const StaffMessagesScreen({super.key});
@@ -43,7 +45,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> {
       if (!mounted) return;
       if (contacts.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Δεν υπάρχουν πελάτες για μήνυμα')),
+          SnackBar(content: Text(tr('Δεν υπάρχουν πελάτες για μήνυμα'))),
         );
         return;
       }
@@ -59,11 +61,11 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Text('Νέο μήνυμα', style: GoogleFonts.spaceGrotesk(
+                child: Text(tr('Νέο μήνυμα'), style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
               ...contacts.map((c) => ListTile(
-                title: Text(c['client_name'] as String? ?? 'Πελάτης',
+                title: Text(c['client_name'] as String? ?? tr('Πελάτης'),
                   style: const TextStyle(color: Colors.white)),
                 subtitle: Text(c['client_phone'] as String? ?? '',
                   style: const TextStyle(color: kGray)),
@@ -86,7 +88,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> {
       _load();
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
       }
     }
   }
@@ -103,7 +105,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
               child: Row(
                 children: [
-                  Expanded(child: Text('Μηνύματα', style: GoogleFonts.spaceGrotesk(
+                  Expanded(child: Text(tr('Μηνύματα'), style: GoogleFonts.inter(
                     fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white))),
                   IconButton(
                     onPressed: _openNew,
@@ -122,14 +124,14 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> {
                         ? ListView(children: [
                             Padding(
                               padding: const EdgeInsets.all(24),
-                              child: Text(_error!, style: const TextStyle(color: Colors.white70)),
+                              child: Text(tr(_error!), style: const TextStyle(color: Colors.white70)),
                             ),
                           ])
                         : _threads.isEmpty
-                            ? ListView(children: const [
+                            ? ListView(children: [
                                 Padding(
                                   padding: EdgeInsets.all(24),
-                                  child: Text('Δεν υπάρχουν συνομιλίες ακόμα.',
+                                  child: Text(tr('Δεν υπάρχουν συνομιλίες ακόμα.'),
                                     style: TextStyle(color: kGray)),
                                 ),
                               ])
@@ -147,8 +149,8 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> {
                                       ));
                                       _load();
                                     },
-                                    title: Text(t['client_name'] as String? ?? 'Πελάτης',
-                                      style: GoogleFonts.manrope(
+                                    title: Text(t['client_name'] as String? ?? tr('Πελάτης'),
+                                      style: GoogleFonts.inter(
                                         color: Colors.white, fontWeight: FontWeight.w700)),
                                     subtitle: Text(
                                       t['last_message_preview'] as String? ?? '',
@@ -161,7 +163,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.end,
                                       children: [
                                         if (when != null)
-                                          Text(DateFormat('d/M HH:mm').format(when.toLocal()),
+                                          Text(tr(DateFormat('d/M HH:mm').format(when.toLocal())),
                                             style: const TextStyle(color: kGray, fontSize: 11)),
                                         if (unread > 0)
                                           Container(
@@ -171,7 +173,7 @@ class _StaffMessagesScreenState extends State<StaffMessagesScreen> {
                                               color: kCyan,
                                               borderRadius: BorderRadius.circular(99),
                                             ),
-                                            child: Text('$unread', style: const TextStyle(
+                                            child: Text(tr('$unread'), style: const TextStyle(
                                               color: Colors.black, fontSize: 11, fontWeight: FontWeight.w700)),
                                           ),
                                       ],
@@ -241,7 +243,7 @@ class _StaffChatScreenState extends State<_StaffChatScreen> {
       _text.clear();
       await _load();
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -249,13 +251,13 @@ class _StaffChatScreenState extends State<_StaffChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.thread['client_name'] as String? ?? 'Πελάτης';
+    final name = widget.thread['client_name'] as String? ?? tr('Πελάτης');
     return Scaffold(
       backgroundColor: kBg,
       appBar: AppBar(
         backgroundColor: kBg,
         foregroundColor: Colors.white,
-        title: Text(name, style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+        title: Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
       ),
       body: Column(
         children: [
@@ -263,7 +265,7 @@ class _StaffChatScreenState extends State<_StaffChatScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: kCyan))
                 : _error != null
-                    ? Center(child: Text(_error!, style: const TextStyle(color: Colors.white70)))
+                    ? Center(child: Text(tr(_error!), style: const TextStyle(color: Colors.white70)))
                     : ListView.builder(
                         reverse: true,
                         padding: const EdgeInsets.all(16),
@@ -282,7 +284,7 @@ class _StaffChatScreenState extends State<_StaffChatScreen> {
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(color: kBorder),
                               ),
-                              child: Text(m['body'] as String? ?? '',
+                              child: Text(tr(m['body'] as String? ?? ''),
                                 style: const TextStyle(color: Colors.white)),
                             ),
                           );
@@ -300,7 +302,7 @@ class _StaffChatScreenState extends State<_StaffChatScreen> {
                       controller: _text,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'Μήνυμα',
+                        hintText: tr('Μήνυμα'),
                         hintStyle: const TextStyle(color: kGray),
                         filled: true,
                         fillColor: kCard,

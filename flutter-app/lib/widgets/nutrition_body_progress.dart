@@ -9,6 +9,8 @@ import '../services/demo_metrics_service.dart';
 import '../theme/app_colors.dart';
 import 'scale_sync_sheet.dart';
 import 'ui_kit.dart';
+import '../l10n/tr.dart';
+
 
 class NutritionBodyProgressPanel extends StatefulWidget {
   const NutritionBodyProgressPanel({
@@ -46,11 +48,11 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
   TimeOfDay _exactTime = TimeOfDay.now();
   bool _seedingDemo = false;
 
-  static const _timeOfDayOptions = [
-    ('morning', 'Πρωί'),
-    ('noon', 'Μεσημέρι'),
-    ('afternoon', 'Απόγευμα'),
-    ('evening', 'Βράδυ'),
+  static final _timeOfDayOptions = [
+    ('morning', tr('Πρωί')),
+    ('noon', tr('Μεσημέρι')),
+    ('afternoon', tr('Απόγευμα')),
+    ('evening', tr('Βράδυ')),
   ];
 
   @override
@@ -82,9 +84,9 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
       initialDate: _selectedDate,
       firstDate: DateTime(DateTime.now().year - 2),
       lastDate: DateTime.now(),
-      helpText: 'Πότε έκανες τη μέτρηση;',
-      cancelText: 'Άκυρο',
-      confirmText: 'ΟΚ',
+      helpText: tr('Πότε έκανες τη μέτρηση;'),
+      cancelText: tr('Άκυρο'),
+      confirmText: tr('ΟΚ'),
     );
     if (picked != null) setState(() => _selectedDate = DateTime(picked.year, picked.month, picked.day));
   }
@@ -93,9 +95,9 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
     final picked = await showTimePicker(
       context: context,
       initialTime: _exactTime,
-      helpText: 'Ώρα μέτρησης',
-      cancelText: 'Άκυρο',
-      confirmText: 'ΟΚ',
+      helpText: tr('Ώρα μέτρησης'),
+      cancelText: tr('Άκυρο'),
+      confirmText: tr('ΟΚ'),
     );
     if (picked != null) setState(() => _exactTime = picked);
   }
@@ -118,7 +120,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
       _exactTime = TimeOfDay(hour: reading.measuredAt.hour, minute: reading.measuredAt.minute);
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Έτοιμο: ${reading.weightKg} kg από ${reading.sourceLabel}')),
+      SnackBar(content: Text(tr('Έτοιμο: ${reading.weightKg} kg από ${reading.sourceLabel}'))),
     );
   }
 
@@ -145,7 +147,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Φορτώθηκαν 6 εβδομαδιαίες μετρήσεις demo')),
+        SnackBar(content: Text(tr('Φορτώθηκαν 6 εβδομαδιαίες μετρήσεις demo'))),
       );
     } finally {
       if (mounted) setState(() => _seedingDemo = false);
@@ -160,7 +162,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
       bmi: reading.bmi,
       measuredOn: _isoDate(reading.measuredAt),
       measuredTime: formatMeasuredTime(reading.measuredAt),
-      notes: 'Συγχρονισμός: ${reading.sourceLabel}',
+      notes: tr('Συγχρονισμός: ${reading.sourceLabel}'),
     );
     if (!mounted) return;
     _weightCtrl.clear();
@@ -171,7 +173,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
     final weight = _parse(_weightCtrl.text);
     if (weight == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Βάλε το βάρος σου σε kg')),
+        SnackBar(content: Text(tr('Βάλε το βάρος σου σε kg'))),
       );
       return;
     }
@@ -218,9 +220,9 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Σώμα & στόχοι', style: Theme.of(context).textTheme.titleLarge),
+                  Text(tr('Σώμα & στόχοι'), style: Theme.of(context).textTheme.titleLarge),
                   Text(
-                    'Καταγράφε το βάρος σου και παρακολούθησε την πρόοδο.',
+                    tr('Καταγράφε το βάρος σου και παρακολούθησε την πρόοδο.'),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
                   ),
                 ],
@@ -239,14 +241,14 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Νέα μέτρηση',
+                      tr('Νέα μέτρηση'),
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                   OutlinedButton.icon(
                     onPressed: widget.saving ? null : _openScaleSync,
                     icon: const Icon(Icons.bluetooth_connected, size: 16),
-                    label: const Text('Ζυγαριά'),
+                    label: Text(tr('Ζυγαριά')),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.lime,
                       side: BorderSide(color: AppColors.lime.withValues(alpha: 0.4)),
@@ -257,7 +259,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
               ),
               const SizedBox(height: 4),
               Text(
-                'Health (Zepp Life) ή Bluetooth Xiaomi',
+                tr('Health (Zepp Life) ή Bluetooth Xiaomi'),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
@@ -265,15 +267,15 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(8),
                 child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Ημερομηνία',
+                  decoration: InputDecoration(
+                    labelText: tr('Ημερομηνία'),
                     suffixIcon: Icon(Icons.calendar_today_outlined, size: 20),
                   ),
-                  child: Text(_formatDateLabel(_selectedDate)),
+                  child: Text(tr(_formatDateLabel(_selectedDate))),
                 ),
               ),
               const SizedBox(height: 12),
-              Text('Στιγμή ημέρας', style: Theme.of(context).textTheme.labelMedium),
+              Text(tr('Στιγμή ημέρας'), style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -295,7 +297,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                   ChoiceChip(
                     label: Text(_useExactTime
                         ? 'Ώρα ${_measuredTimeParam()}'
-                        : 'Ακριβής ώρα'),
+                        : tr('Ακριβής ώρα')),
                     selected: _useExactTime,
                     onSelected: (v) async {
                       if (v) {
@@ -315,7 +317,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                   child: TextButton.icon(
                     onPressed: _pickExactTime,
                     icon: const Icon(Icons.access_time, size: 18),
-                    label: Text('Αλλαγή ώρας (${_measuredTimeParam()})'),
+                    label: Text(tr('Αλλαγή ώρας (${_measuredTimeParam()})')),
                   ),
                 ),
               const SizedBox(height: 12),
@@ -326,7 +328,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                       controller: _weightCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                      decoration: const InputDecoration(labelText: 'Βάρος (kg) *', hintText: 'π.χ. 72.5'),
+                      decoration: InputDecoration(labelText: tr('Βάρος (kg) *'), hintText: tr('π.χ. 72.5')),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -335,7 +337,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                       controller: _bodyFatCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                      decoration: const InputDecoration(labelText: 'Λίπος % (προαιρ.)'),
+                      decoration: InputDecoration(labelText: tr('Λίπος % (προαιρ.)')),
                     ),
                   ),
                 ],
@@ -350,7 +352,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                         child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
                       )
                     : const Icon(Icons.save_outlined, size: 18),
-                label: Text(widget.saving ? 'Αποθήκευση...' : 'Αποθήκευση μέτρησης'),
+                label: Text(widget.saving ? 'Αποθήκευση...' : tr('Αποθήκευση μέτρησης')),
               ),
               if (kDebugMode) ...[
                 const SizedBox(height: 12),
@@ -363,7 +365,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.show_chart_outlined, size: 18),
-                  label: Text(_seedingDemo ? 'Φόρτωση demo...' : 'Demo γράφημα (6 εβδομάδες)'),
+                  label: Text(_seedingDemo ? 'Φόρτωση demo...' : tr('Demo γράφημα (6 εβδομάδες)')),
                   style: OutlinedButton.styleFrom(foregroundColor: AppColors.orange),
                 ),
               ],
@@ -381,13 +383,13 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                     children: [
                       Expanded(
                         child: AnimatedGoalRing(
-                          label: 'Βάρος',
+                          label: tr('Βάρος'),
                           valueLabel: latest?.weightKg != null
                               ? '${_fmt(latest!.weightKg)} kg'
                               : _fmt(goals?.weightKg) != '—'
                                   ? '${_fmt(goals?.weightKg)} kg'
                                   : '—',
-                          targetLabel: 'Στόχος ${_fmt(goals?.targetWeightKg)} kg',
+                          targetLabel: tr('Στόχος ${_fmt(goals?.targetWeightKg)} kg'),
                           percent: progress.weightGoalPct ?? 0,
                           color: AppColors.lime,
                         ),
@@ -396,9 +398,9 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                         const SizedBox(width: 16),
                         Expanded(
                           child: AnimatedGoalRing(
-                            label: 'Λίπος',
+                            label: tr('Λίπος'),
                             valueLabel: latest?.bodyFatPct != null ? '${_fmt(latest!.bodyFatPct)}%' : '—',
-                            targetLabel: 'Στόχος ${_fmt(goals?.targetBodyFatPct)}%',
+                            targetLabel: tr('Στόχος ${_fmt(goals?.targetBodyFatPct)}%'),
                             percent: progress.bodyFatGoalPct ?? 0,
                             color: AppColors.teal,
                           ),
@@ -409,7 +411,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                   const SizedBox(height: 20),
                 ],
                 if (weightSeries.length >= 2) ...[
-                  Text('Εξέλιξη βάρους', style: Theme.of(context).textTheme.labelLarge),
+                  Text(tr('Εξέλιξη βάρους'), style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   SizedBox(
                     height: 120,
@@ -423,7 +425,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                   const SizedBox(height: 16),
                 ],
                 if (fatSeries.length >= 2) ...[
-                  Text('Εξέλιξη λίπους %', style: Theme.of(context).textTheme.labelLarge),
+                  Text(tr('Εξέλιξη λίπους %'), style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   SizedBox(
                     height: 120,
@@ -437,7 +439,7 @@ class _NutritionBodyProgressPanelState extends State<NutritionBodyProgressPanel>
                   const SizedBox(height: 16),
                 ],
                 if (progress.visits.isNotEmpty) ...[
-                  Text('Ιστορικό μετρήσεων', style: Theme.of(context).textTheme.labelLarge),
+                  Text(tr('Ιστορικό μετρήσεων'), style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   ...progress.visits.take(8).map((v) => _VisitTile(visit: v, fmt: _fmt)),
                 ],
@@ -483,21 +485,21 @@ class _VisitTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  visit.measuredWhen ?? visit.date,
+                  tr(visit.measuredWhen ?? visit.date),
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 Text(
-                  isAthlete ? 'Από εσένα' : 'Μετρήσεις διατροφολόγου',
+                  tr(isAthlete ? 'Από εσένα' : tr('Μετρήσεις διατροφολόγου')),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),
           ),
           if (visit.weightKg != null)
-            Text('${fmt(visit.weightKg)} kg', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(tr('${fmt(visit.weightKg)} kg'), style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
           if (visit.bodyFatPct != null) ...[
             const SizedBox(width: 8),
-            Text('${fmt(visit.bodyFatPct)}%', style: Theme.of(context).textTheme.bodySmall),
+            Text(tr('${fmt(visit.bodyFatPct)}%'), style: Theme.of(context).textTheme.bodySmall),
           ],
         ],
       ),
@@ -574,16 +576,16 @@ class AnimatedGoalRing extends StatelessWidget {
                 painter: _RingPainter(progress: value, color: color),
                 child: Center(
                   child: Text(
-                    '${(value * 100).round()}%',
+                    tr('${(value * 100).round()}%'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: color),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 8),
-            Text(label, style: Theme.of(context).textTheme.labelMedium),
-            Text(valueLabel, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-            Text(targetLabel, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+            Text(tr(label), style: Theme.of(context).textTheme.labelMedium),
+            Text(tr(valueLabel), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            Text(tr(targetLabel), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
           ],
         );
       },

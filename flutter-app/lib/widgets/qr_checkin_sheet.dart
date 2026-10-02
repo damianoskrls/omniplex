@@ -4,6 +4,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../services/auth_service.dart';
 import '../screens/qr_checkin_screen.dart';
 import '../l10n/app_strings.dart';
+import '../l10n/tr.dart';
+
 
 /// Shows a bottom sheet asking the user whether to scan or show their QR code.
 Future<void> showQrCheckinSheet(BuildContext context) {
@@ -71,7 +73,7 @@ class _ChoiceView extends StatelessWidget {
           ),
         ),
         Text(
-          s.qrTitle,
+          tr(s.qrTitle),
           style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 24),
@@ -79,14 +81,14 @@ class _ChoiceView extends StatelessWidget {
           children: [
             Expanded(child: _OptionCard(
               icon: Icons.qr_code_scanner_rounded,
-              label: s.qrScanOption,
+              label: tr(s.qrScanOption),
               desc: s.qrScanDesc,
               onTap: onScan,
             )),
             const SizedBox(width: 12),
             Expanded(child: _OptionCard(
               icon: Icons.qr_code_rounded,
-              label: s.qrShowOption,
+              label: tr(s.qrShowOption),
               desc: s.qrShowDesc,
               accent: true,
               onTap: onShowQr,
@@ -140,13 +142,13 @@ class _OptionCard extends StatelessWidget {
               child: Icon(icon, color: accent ? lime : Colors.white70, size: 22),
             ),
             const SizedBox(height: 14),
-            Text(label, style: TextStyle(
+            Text(tr(label), style: TextStyle(
               color: accent ? lime : Colors.white,
               fontSize: 15,
               fontWeight: FontWeight.w700,
             )),
             const SizedBox(height: 4),
-            Text(desc, style: const TextStyle(
+            Text(tr(desc), style: const TextStyle(
               color: Colors.white38,
               fontSize: 12,
               height: 1.4,
@@ -184,7 +186,7 @@ class _MyQrView extends StatelessWidget {
               child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white54, size: 18),
             ),
             const SizedBox(width: 12),
-            Text(s.qrShowOption, style: const TextStyle(
+            Text(tr(s.qrShowOption), style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -222,12 +224,12 @@ class _MyQrView extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          s.qrMemberId,
+          tr(s.qrMemberId),
           style: const TextStyle(color: Colors.white38, fontSize: 12, letterSpacing: 1.5),
         ),
         const SizedBox(height: 4),
         Text(
-          '#${user.id.toUpperCase().replaceAll('-', '').substring(0, 8)}',
+          tr('#${user.id.toUpperCase().replaceAll('-', '').substring(0, 8)}'),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -237,7 +239,7 @@ class _MyQrView extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          s.qrPresent,
+          tr(s.qrPresent),
           textAlign: TextAlign.center,
           style: const TextStyle(color: Colors.white30, fontSize: 12, height: 1.5),
         ),

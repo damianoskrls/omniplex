@@ -6,6 +6,8 @@ import '../services/biometric_auth_service.dart';
 import '../services/global_auth_service.dart';
 import '../theme/app_colors.dart';
 import 'business_selector_screen.dart';
+import '../l10n/tr.dart';
+
 
 class GlobalDashboardScreen extends StatefulWidget {
   const GlobalDashboardScreen({
@@ -84,12 +86,12 @@ class _GlobalDashboardScreenState extends State<GlobalDashboardScreen> {
         context: context,
         builder: (_) => AlertDialog(
           backgroundColor: const Color(0xFF16171B),
-          title: const Text('Σφάλμα', style: TextStyle(color: Colors.white)),
-          content: Text(msg, style: const TextStyle(color: Colors.white70)),
+          title: Text(tr('Σφάλμα'), style: TextStyle(color: Colors.white)),
+          content: Text(tr(msg), style: const TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('OK', style: TextStyle(color: Color(0xFFC6FF3D))),
+              child: Text(tr('OK'), style: TextStyle(color: Color(0xFFC6FF3D))),
             ),
           ],
         ),
@@ -123,7 +125,7 @@ class _GlobalDashboardScreenState extends State<GlobalDashboardScreen> {
     if (iso == null || iso.isEmpty) return '';
     try {
       final d = DateTime.parse(iso);
-      const months = ['Ιαν','Φεβ','Μαρ','Απρ','Μαΐ','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+      final months = [tr('Ιαν'),tr('Φεβ'),tr('Μαρ'),tr('Απρ'),tr('Μαΐ'),tr('Ιουν'),tr('Ιουλ'),tr('Αυγ'),tr('Σεπ'),tr('Οκτ'),tr('Νοε'),tr('Δεκ')];
       return '${d.day} ${months[d.month - 1]}';
     } catch (_) { return iso; }
   }
@@ -153,14 +155,14 @@ class _GlobalDashboardScreenState extends State<GlobalDashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Γεια σου, $firstName 👋',
+                                tr('Γεια σου, $firstName 👋'),
                                 style: const TextStyle(
                                   fontSize: 22, fontWeight: FontWeight.w900,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
                               Text(
-                                '${gyms.length} γυμναστήρι${gyms.length == 1 ? 'ο' : 'α'}',
+                                tr('${gyms.length} γυμναστήρι${gyms.length == 1 ? 'ο' : 'α'}'),
                                 style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                               ),
                             ],
@@ -178,8 +180,8 @@ class _GlobalDashboardScreenState extends State<GlobalDashboardScreen> {
                     const SizedBox(height: 24),
 
                     // My Gyms section
-                    const Text(
-                      'Τα Γυμναστήριά Μου',
+                    Text(
+                      tr('Τα Γυμναστήριά Μου'),
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                     ),
                     const SizedBox(height: 12),
@@ -218,8 +220,8 @@ class _GlobalDashboardScreenState extends State<GlobalDashboardScreen> {
                             children: [
                               const Icon(Icons.add_rounded, color: AppColors.lime, size: 20),
                               const SizedBox(width: 8),
-                              const Text(
-                                'Προσθήκη γυμναστηρίου',
+                              Text(
+                                tr('Προσθήκη γυμναστηρίου'),
                                 style: TextStyle(
                                   color: AppColors.lime,
                                   fontWeight: FontWeight.w700,
@@ -235,8 +237,8 @@ class _GlobalDashboardScreenState extends State<GlobalDashboardScreen> {
                     // Upcoming bookings
                     if (_upcomingBookings.isNotEmpty) ...[
                       const SizedBox(height: 28),
-                      const Text(
-                        'Επόμενες Κρατήσεις',
+                      Text(
+                        tr('Επόμενες Κρατήσεις'),
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                       ),
                       const SizedBox(height: 12),
@@ -289,10 +291,10 @@ class _GymCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(gym.appName, style: const TextStyle(
+                  Text(tr(gym.appName), style: const TextStyle(
                     fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textPrimary)),
                   if (gym.businessType.isNotEmpty)
-                    Text(_typeLabel(gym.businessType), style: const TextStyle(
+                    Text(tr(_typeLabel(gym.businessType)), style: const TextStyle(
                       fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
@@ -303,7 +305,7 @@ class _GymCard extends StatelessWidget {
                 color: accentColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text('Είσοδος', style: TextStyle(
+              child: Text(tr('Είσοδος'), style: TextStyle(
                 color: accentColor, fontWeight: FontWeight.w700, fontSize: 13)),
             ),
           ],
@@ -313,7 +315,7 @@ class _GymCard extends StatelessWidget {
   }
 
   String _typeLabel(String t) {
-    const m = {'gym': 'Γυμναστήριο', 'pilates': 'Pilates/Yoga', 'salon': 'Κομμωτήριο', 'spa': 'Spa'};
+    final m = {'gym': tr('Γυμναστήριο'), 'pilates': 'Pilates/Yoga', 'salon': tr('Κομμωτήριο'), 'spa': 'Spa'};
     return m[t] ?? t;
   }
 }
@@ -325,7 +327,7 @@ class _Initial extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Text(
-      name.isNotEmpty ? name[0].toUpperCase() : '?',
+      tr(name.isNotEmpty ? name[0].toUpperCase() : '?'),
       style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w800),
     ),
   );
@@ -357,8 +359,8 @@ class _BookingRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(date, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              Text(time, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.lime)),
+              Text(tr(date), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Text(tr(time), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.lime)),
             ],
           ),
           const SizedBox(width: 14),
@@ -366,9 +368,9 @@ class _BookingRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(service, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                Text(tr(service), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 Text(
-                  gymName + (staffName != null ? ' · $staffName' : ''),
+                  tr(gymName + (staffName != null ? ' · $staffName' : '')),
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],

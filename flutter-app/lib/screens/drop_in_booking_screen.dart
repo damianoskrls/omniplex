@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class DropInBookingScreen extends StatelessWidget {
   const DropInBookingScreen({super.key,
@@ -92,7 +94,7 @@ class DropInBookingScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          Text('Book a Drop-in', style: GoogleFonts.spaceGrotesk(
+          Text(tr('Book a Drop-in'), style: GoogleFonts.inter(
             fontSize: 24, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.6)),
         ],
@@ -124,7 +126,7 @@ class DropInBookingScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(gymName, style: GoogleFonts.spaceGrotesk(
+                Text(tr(gymName), style: GoogleFonts.inter(
                   fontSize: 16, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: -0.4)),
                 const SizedBox(height: 4),
@@ -132,7 +134,7 @@ class DropInBookingScreen extends StatelessWidget {
                   children: [
                     const Icon(Icons.location_on_outlined, color: kGray, size: 10),
                     const SizedBox(width: 4),
-                    Text(gymLocation, style: GoogleFonts.manrope(
+                    Text(tr(gymLocation), style: GoogleFonts.inter(
                       fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
                   ],
                 ),
@@ -170,10 +172,10 @@ class DropInBookingScreen extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: GoogleFonts.spaceGrotesk(
+            Text(tr(title), style: GoogleFonts.inter(
               fontSize: 16, fontWeight: FontWeight.w700,
               color: Colors.white, letterSpacing: -0.4)),
-            Text(subtitle, style: GoogleFonts.manrope(
+            Text(tr(subtitle), style: GoogleFonts.inter(
               fontSize: 11, fontWeight: FontWeight.w600, color: kGray)),
           ],
         ),
@@ -205,11 +207,11 @@ class DropInBookingScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: GoogleFonts.manrope(
+                Text(tr(label), style: GoogleFonts.inter(
                   fontSize: 11, fontWeight: FontWeight.w700,
                   color: kGray, letterSpacing: 0.275)),
                 const SizedBox(height: 2),
-                Text(value, style: GoogleFonts.spaceGrotesk(
+                Text(tr(value), style: GoogleFonts.inter(
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: Colors.white, letterSpacing: -0.35)),
               ],
@@ -234,9 +236,9 @@ class DropInBookingScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Drop-in fee', style: GoogleFonts.manrope(
+              Text(tr('Drop-in fee'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
-              Text(price, style: GoogleFonts.manrope(
+              Text(tr(price), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
             ],
           ),
@@ -246,10 +248,10 @@ class DropInBookingScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total', style: GoogleFonts.spaceGrotesk(
+              Text(tr('Total'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: -0.35)),
-              Text(price, style: GoogleFonts.spaceGrotesk(
+              Text(tr(price), style: GoogleFonts.inter(
                 fontSize: 20, fontWeight: FontWeight.w700,
                 color: kLime, letterSpacing: -0.5)),
             ],
@@ -267,7 +269,7 @@ class DropInBookingScreen extends StatelessWidget {
         children: [
           const Icon(Icons.add, color: kLime, size: 14),
           const SizedBox(width: 8),
-          Text('Add payment method', style: GoogleFonts.manrope(
+          Text(tr('Add payment method'), style: GoogleFonts.inter(
             fontSize: 14, fontWeight: FontWeight.w700, color: kLime)),
         ],
       ),
@@ -296,8 +298,8 @@ class DropInBookingScreen extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text('Sign in required to complete this booking',
-              style: GoogleFonts.manrope(
+            child: Text(tr('Sign in required to complete this booking'),
+              style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w600, color: kGray)),
           ),
         ],
@@ -321,7 +323,7 @@ class DropInBookingScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Continue to Payment', style: GoogleFonts.manrope(
+            Text(tr('Continue to Payment'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w700, color: kBg)),
             const SizedBox(width: 10),
             const Icon(Icons.arrow_forward, color: kBg, size: 14),

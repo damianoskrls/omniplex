@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../l10n/tr.dart';
+
 
 class BiometricAuthService {
   BiometricAuthService._();
@@ -65,8 +67,8 @@ class BiometricAuthService {
     if (types.contains(BiometricType.face))
       return Platform.isIOS ? 'Face ID' : 'Face Unlock';
     if (types.contains(BiometricType.fingerprint))
-      return Platform.isIOS ? 'Touch ID' : 'Δακτυλικό';
-    return 'Βιομετρικά';
+      return Platform.isIOS ? 'Touch ID' : tr('Δακτυλικό');
+    return tr('Βιομετρικά');
   }
 
   Future<IconData> biometricIcon() async {
@@ -75,10 +77,11 @@ class BiometricAuthService {
     return Icons.fingerprint;
   }
 
-  Future<bool> authenticate({String reason = 'Επιβεβαίωσε την ταυτότητά σου για είσοδο'}) async {
+  Future<bool> authenticate({String? reason}) async {
+    final prompt = tr(reason ?? 'Επιβεβαίωσε την ταυτότητά σου για είσοδο');
     try {
       return await _localAuth.authenticate(
-        localizedReason: reason,
+        localizedReason: prompt,
         options: const AuthenticationOptions(
           biometricOnly: false,
           stickyAuth:    true,

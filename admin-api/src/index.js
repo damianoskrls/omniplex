@@ -30,6 +30,7 @@ const loyaltyRoutes         = require('./routes/loyalty.routes');
 const memberIntakeRoutes    = require('./routes/member_intake.routes');
 const planRequestRoutes     = require('./routes/plan_requests.routes');
 const { router: globalRoutes } = require('./routes/global.routes');
+const i18nRoutes            = require('./routes/i18n.routes');
 const { startNotificationWorker } = require('./lib/notification_worker');
 const { startMessageAttachmentWorker } = require('./lib/message_attachments');
 const { startReminderWorker } = require('./lib/reminder_worker');
@@ -77,6 +78,7 @@ app.use('/api/loyalty',         loyaltyRoutes);
 app.use('/api/member',          memberIntakeRoutes);
 app.use('/api/client-admin/plan-requests', planRequestRoutes);
 app.use('/api/global',          globalRoutes);
+app.use('/api/i18n',            i18nRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

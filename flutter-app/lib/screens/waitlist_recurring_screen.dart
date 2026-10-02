@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/omni_design.dart';
+import '../l10n/tr.dart';
+
 
 class WaitlistRecurringScreen extends StatefulWidget {
   const WaitlistRecurringScreen({super.key});
@@ -94,7 +96,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
             ),
             child: const Icon(Icons.chevron_left, color: Colors.white, size: 20),
           ),
-          Text(title, style: GoogleFonts.manrope(
+          Text(tr(title), style: GoogleFonts.inter(
             fontSize: 18, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.45)),
           Container(
@@ -151,7 +153,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
                 color: _kRed.withValues(alpha: 0.90),
                 borderRadius: BorderRadius.circular(9999),
               ),
-              child: Text('CLASS FULL', style: GoogleFonts.manrope(
+              child: Text(tr('CLASS FULL'), style: GoogleFonts.inter(
                 fontSize: 10, fontWeight: FontWeight.w700,
                 color: Colors.white, letterSpacing: 1.0)),
             ),
@@ -169,11 +171,11 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('ADVANCED PILATES', style: GoogleFonts.manrope(
+            Text(tr('ADVANCED PILATES'), style: GoogleFonts.inter(
               fontSize: 24, fontWeight: FontWeight.w900,
               fontStyle: FontStyle.italic,
               color: Colors.white, letterSpacing: -1.2)),
-            Text('with Sarah Jenkins', style: GoogleFonts.manrope(
+            Text(tr('with Sarah Jenkins'), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w500,
               color: kLime)),
           ],
@@ -188,9 +190,9 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Duration', style: GoogleFonts.manrope(
+              Text(tr('Duration'), style: GoogleFonts.inter(
                 fontSize: 12, color: _kGrayA1)),
-              Text('60 min', style: GoogleFonts.manrope(
+              Text(tr('60 min'), style: GoogleFonts.inter(
                 fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
             ],
           ),
@@ -222,9 +224,9 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("You're on the waitlist", style: GoogleFonts.manrope(
+                  Text(tr("You're on the waitlist"), style: GoogleFonts.inter(
                     fontSize: 16, fontWeight: FontWeight.w700, color: kLime)),
-                  Text("We'll notify you if a spot opens up.", style: GoogleFonts.manrope(
+                  Text(tr("We'll notify you if a spot opens up."), style: GoogleFonts.inter(
                     fontSize: 14, color: _kGrayA1)),
                 ],
               ),
@@ -239,10 +241,10 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('YOUR STATUS', style: GoogleFonts.manrope(
+                  Text(tr('YOUR STATUS'), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w700,
                     color: _kGray71, letterSpacing: 1.2)),
-                  Text('Position: #3', style: GoogleFonts.manrope(
+                  Text(tr('Position: #3'), style: GoogleFonts.inter(
                     fontSize: 18, fontWeight: FontWeight.w800,
                     color: Colors.white)),
                 ],
@@ -254,7 +256,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
                   borderRadius: BorderRadius.circular(9999),
                   border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
                 ),
-                child: Text('Leave Waitlist', style: GoogleFonts.manrope(
+                child: Text(tr('Leave Waitlist'), style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ],
@@ -289,9 +291,9 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: GoogleFonts.manrope(
+            Text(tr(title), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w600, color: _kGrayD4)),
-            Text(sub, style: GoogleFonts.manrope(
+            Text(tr(sub), style: GoogleFonts.inter(
               fontSize: 12, color: _kGray71)),
           ],
         ),
@@ -325,16 +327,16 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
                   text: TextSpan(children: [
                     TextSpan(
                       text: 'REMAINING SESSION WILL BE ADDED TO YOUR ',
-                      style: GoogleFonts.manrope(
+                      style: GoogleFonts.inter(
                         fontSize: 10, color: _kGray71, letterSpacing: 1.0)),
                     TextSpan(
                       text: 'INDIVIDUAL WAITLIST',
-                      style: GoogleFonts.manrope(
+                      style: GoogleFonts.inter(
                         fontSize: 10, fontWeight: FontWeight.w700,
                         color: Colors.white, letterSpacing: 1.0)),
                     TextSpan(
                       text: ' AUTOMATICALLY',
-                      style: GoogleFonts.manrope(
+                      style: GoogleFonts.inter(
                         fontSize: 10, color: _kGray71, letterSpacing: 1.0)),
                   ]),
                 ),
@@ -359,7 +361,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
             child: const Icon(Icons.close, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 24),
-          Text('Book Repeatedly', style: GoogleFonts.manrope(
+          Text(tr('Book Repeatedly'), style: GoogleFonts.inter(
             fontSize: 18, fontWeight: FontWeight.w700,
             color: Colors.white, letterSpacing: -0.45)),
         ],
@@ -371,7 +373,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('SELECT DAYS', style: GoogleFonts.manrope(
+        Text(tr('SELECT DAYS'), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: _kGray71, letterSpacing: 1.2)),
         const SizedBox(height: 12),
@@ -402,7 +404,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
                       : null,
                 ),
                 child: Center(
-                  child: Text(_dayLabels[i], style: GoogleFonts.manrope(
+                  child: Text(tr(_dayLabels[i]), style: GoogleFonts.inter(
                     fontSize: 12, fontWeight: FontWeight.w700,
                     color: selected ? kBg : _kGray71)),
                 ),
@@ -421,7 +423,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('TIME', style: GoogleFonts.manrope(
+              Text(tr('TIME'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700,
                 color: _kGray71, letterSpacing: 1.2)),
               const SizedBox(height: 12),
@@ -435,7 +437,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('07:00', style: GoogleFonts.manrope(
+                    Text(tr('07:00'), style: GoogleFonts.inter(
                       fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                     const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 12),
                   ],
@@ -449,7 +451,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('DURATION', style: GoogleFonts.manrope(
+              Text(tr('DURATION'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700,
                 color: _kGray71, letterSpacing: 1.2)),
               const SizedBox(height: 12),
@@ -463,7 +465,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Entire Month', style: GoogleFonts.manrope(
+                    Text(tr('Entire Month'), style: GoogleFonts.inter(
                       fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
                     const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 12),
                   ],
@@ -493,11 +495,11 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('8 BOOKINGS', style: GoogleFonts.manrope(
+                  Text(tr('8 BOOKINGS'), style: GoogleFonts.inter(
                     fontSize: 24, fontWeight: FontWeight.w900,
                     fontStyle: FontStyle.italic,
                     color: Colors.white, letterSpacing: -1.2)),
-                  Text('Found for October 2023', style: GoogleFonts.manrope(
+                  Text(tr('Found for October 2023'), style: GoogleFonts.inter(
                     fontSize: 12, color: _kGrayA1)),
                 ],
               ),
@@ -508,7 +510,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: _kYellow.withValues(alpha: 0.30)),
                 ),
-                child: Text('ACTION REQUIRED', style: GoogleFonts.manrope(
+                child: Text(tr('ACTION REQUIRED'), style: GoogleFonts.inter(
                   fontSize: 10, fontWeight: FontWeight.w700,
                   color: _kYellow, letterSpacing: 0.05)),
               ),
@@ -523,7 +525,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
           const SizedBox(height: 24),
           Divider(color: _kDark33, height: 1),
           const SizedBox(height: 20),
-          Text('RECOMMENDED ALTERNATIVES', style: GoogleFonts.manrope(
+          Text(tr('RECOMMENDED ALTERNATIVES'), style: GoogleFonts.inter(
             fontSize: 10, fontWeight: FontWeight.w900,
             color: _kGray71, letterSpacing: 2.0)),
           const SizedBox(height: 12),
@@ -547,12 +549,12 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
           children: [
             Icon(icon, color: iconColor, size: 16),
             const SizedBox(width: 12),
-            Text(date, style: GoogleFonts.manrope(
+            Text(tr(date), style: GoogleFonts.inter(
               fontSize: 14, fontWeight: FontWeight.w500,
               color: dateColor)),
           ],
         ),
-        Text(status, style: GoogleFonts.manrope(
+        Text(tr(status), style: GoogleFonts.inter(
           fontSize: 12, fontWeight: FontWeight.w700,
           color: status == 'CLASS FULL' ? _kRed : _kGray71)),
       ],
@@ -570,11 +572,11 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(time, style: GoogleFonts.manrope(
+          Text(tr(time), style: GoogleFonts.inter(
             fontSize: 10, fontWeight: FontWeight.w700,
             color: kLime, letterSpacing: 0.02)),
           const SizedBox(height: 6),
-          Text(date, style: GoogleFonts.manrope(
+          Text(tr(date), style: GoogleFonts.inter(
             fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
         ],
       ),
@@ -594,7 +596,7 @@ class _WaitlistRecurringScreenState extends State<WaitlistRecurringScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('CONFIRM 7 BOOKINGS', style: GoogleFonts.manrope(
+          Text(tr('CONFIRM 7 BOOKINGS'), style: GoogleFonts.inter(
             fontSize: 18, fontWeight: FontWeight.w900,
             fontStyle: FontStyle.italic,
             color: kBg, letterSpacing: -0.45)),
