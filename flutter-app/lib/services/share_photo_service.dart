@@ -78,9 +78,14 @@ class SharePhotoService {
 
     double y = pad;
     final accent = _colorFromHex(details.accentColorHex);
-    y = _drawLabel(canvas, 'ΠΡΟΠΟΝΗΣΗ', pad, y, 18 * scale, accent, letterSpacing: 1.2);
-    y += lineGap * 0.4;
-    y = _drawLabel(canvas, details.workoutTitle.toUpperCase(), pad, y, 40 * scale, Colors.white, bold: true, maxWidth: w - pad * 2);
+    final custom = details.caption?.trim();
+    if (details.caption == null) {
+      y = _drawLabel(canvas, 'ΠΡΟΠΟΝΗΣΗ', pad, y, 18 * scale, accent, letterSpacing: 1.2);
+      y += lineGap * 0.4;
+      y = _drawLabel(canvas, details.workoutTitle.toUpperCase(), pad, y, 40 * scale, Colors.white, bold: true, maxWidth: w - pad * 2);
+    } else if (custom != null && custom.isNotEmpty) {
+      y = _drawLabel(canvas, custom, pad, y, 36 * scale, Colors.white, bold: true, maxWidth: w - pad * 2);
+    }
     y += lineGap;
 
     y = _drawLabel(canvas, _capitalize(details.dateLine), pad, y, 26 * scale, Colors.white.withValues(alpha: 0.95));

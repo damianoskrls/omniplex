@@ -957,15 +957,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                   Text('${index + 1} από ${_exercises.length}',
                       style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                   const Spacer(),
-                  TextButton.icon(
-                    onPressed: _sharingPhoto ? null : _pickSharePhoto,
-                    icon: Icon(Icons.add_a_photo_outlined, size: 18, color: primary),
-                    label: Text('Φωτογραφία', style: TextStyle(color: primary, fontWeight: FontWeight.w800)),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                  ),
+                  if (media == null) _ShareIconButton(busy: _sharingPhoto, onTap: _pickSharePhoto),
                 ],
               ),
               const SizedBox(height: 8),
@@ -986,11 +978,20 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             children: [
               if (media != null)
-                _MediaFull(
-                  key: ValueKey('${exercise['id']}-$media'),
-                  url: media,
-                  poster: poster,
-                  paused: paused,
+                Stack(
+                  children: [
+                    _MediaFull(
+                      key: ValueKey('${exercise['id']}-$media'),
+                      url: media,
+                      poster: poster,
+                      paused: paused,
+                    ),
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: _ShareIconButton(busy: _sharingPhoto, onTap: _pickSharePhoto),
+                    ),
+                  ],
                 ),
               if (media != null) const SizedBox(height: 16),
               Text(title, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),
@@ -1053,6 +1054,44 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     );
   }
 
+  Future<String?> _askShareCaption() async {
+    final controller = TextEditingController();
+    final caption = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Τι να γράφει στη φωτογραφία;', style: TextStyle(color: Colors.white, fontSize: 18)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Το λογότυπο, η μέρα και η ώρα μπαίνουν μόνα τους. Εδώ γράφεις ό,τι θέλεις εσύ, όχι το όνομα του προγράμματος.',
+              style: TextStyle(color: AppColors.textSecondary, height: 1.35, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 80,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'π.χ. Τα κατάφερα σήμερα',
+                hintStyle: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Άκυρο')),
+          TextButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Έτοιμο')),
+        ],
+      ),
+    );
+    controller.dispose();
+    return caption;
+  }
+
   Future<void> _pickSharePhoto() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -1078,6 +1117,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     if (source == null || !mounted) return;
     final picked = await ImagePicker().pickImage(source: source, imageQuality: 90);
     if (picked == null || !mounted) return;
+    final caption = await _askShareCaption();
+    if (caption == null || !mounted) return;
     setState(() => _sharingPhoto = true);
     try {
       final config = context.read<TenantConfig>();
@@ -1087,13 +1128,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         apiBaseUrl: config.apiBaseUrl,
       );
       final now = DateTime.now();
-      final name = widget.program['program_name']?.toString() ?? 'Προπόνηση';
       final file = await _sharePhotos.composeWorkoutShare(
         photoBytes: bytes,
         logoBytes: logoBytes,
         details: WorkoutShareDetails(
           gymName: config.appName,
-          workoutTitle: name,
+          workoutTitle: '',
+          caption: caption,
           startsAt: _startedAt ?? now,
           endsAt: now,
           accentColorHex: config.primaryColor,
@@ -1131,7 +1172,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             const Text('Φωτογραφία προπόνησης', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 6),
             const Text(
-              'Λογότυπο, ημερομηνία, ώρα και εικονίδιο γυμναστηρίου.',
+              'Πάνω είναι το κείμενό σου, η μέρα και η ώρα. Κάτω το λογότυπο.',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -1215,54 +1256,105 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     if (ok == true) _stopSession();
   }
 
+  String? _exerciseThumb(Map<String, dynamic> exercise) {
+    final apiBase = context.read<AuthService>().api.config.apiBaseUrl;
+    for (final key in ['thumbnail_url', 'animation_url']) {
+      final raw = exercise[key]?.toString();
+      if (raw == null || raw.isEmpty || _isVideoUrl(raw)) continue;
+      return _resolveMediaUrl(raw, apiBase);
+    }
+    return null;
+  }
+
   Widget _doneView(Color primary, Color onFill) {
     final timed = _startedAt != null;
     final elapsed = _elapsed;
     final kcal = _totalKcal;
+    final finished = _exercises.where((ex) {
+      final id = ex['id']?.toString();
+      return id != null && _done.contains(id);
+    }).toList();
+    final shown = finished.isNotEmpty ? finished : _exercises;
     return ListView(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
       children: [
+        Center(child: Icon(_stopped ? Icons.stop_circle_outlined : Icons.check_circle_rounded, color: primary, size: 64)),
         const SizedBox(height: 12),
-        Center(child: Icon(_stopped ? Icons.stop_circle_outlined : Icons.check_circle_rounded, color: primary, size: 72)),
-        const SizedBox(height: 16),
         Text(_stopped ? 'Σταμάτησες την προπόνηση' : 'Τελείωσες το πρόγραμμα',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
         const SizedBox(height: 16),
         if (timed) ...[
-          _SummaryRow(label: 'Χρόνος', value: _clock(elapsed)),
-          _SummaryRow(label: 'Ασκήσεις', value: '${_done.length} από ${_exercises.length}'),
-          if (kcal != null) _SummaryRow(label: 'Θερμίδες', value: 'περίπου $kcal kcal'),
-          if (_watchKcal != null) _SummaryRow(label: 'Ρολόι', value: '$_watchKcal kcal'),
-          if (_watchHr != null) _SummaryRow(label: 'Παλμοί', value: '$_watchHr bpm'),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _FinishChip(icon: Icons.timer_outlined, label: _clock(elapsed), color: primary),
+              _FinishChip(icon: Icons.fitness_center, label: '${_done.length}/${_exercises.length}', color: primary),
+              if (kcal != null) _FinishChip(icon: Icons.local_fire_department_outlined, label: '~$kcal kcal', color: primary),
+              if (_watchKcal != null) _FinishChip(icon: Icons.watch_rounded, label: '$_watchKcal kcal', color: primary),
+              if (_watchHr != null) _FinishChip(icon: Icons.favorite_rounded, label: '$_watchHr bpm', color: primary),
+            ],
+          ),
           if (_syncWatch && _watchKcal == null && _watchHr == null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             const Text(
               'Δεν βρέθηκαν μετρήσεις από το ρολόι για αυτό το διάστημα.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textSecondary, height: 1.4, fontSize: 13),
             ),
           ],
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           const Text(
-            'Οι θερμίδες είναι ενδεικτικές, από το βάρος και τον στόχο σου. Οι μετρήσεις ρολογιού φαίνονται χωριστά.',
+            'Οι θερμίδες είναι ενδεικτικές, από το βάρος και τον στόχο σου.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textSecondary, height: 1.4, fontSize: 13),
           ),
-          if (_kcalByExercise.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            ..._exercises.map((ex) {
-              final id = ex['id']?.toString();
-              final n = id == null ? null : _kcalByExercise[id];
-              if (n == null) return const SizedBox.shrink();
-              return _SummaryRow(label: ex['exercise_name']?.toString() ?? 'Άσκηση', value: '$n kcal');
-            }),
-          ],
+          const SizedBox(height: 18),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = (constraints.maxWidth - 10) / 2;
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final ex in shown)
+                    SizedBox(
+                      width: width,
+                      child: _ExerciseResultCard(
+                        name: ex['exercise_name']?.toString() ?? 'Άσκηση',
+                        imageUrl: _exerciseThumb(ex),
+                        kcal: _kcalByExercise[ex['id']?.toString()],
+                        color: primary,
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ] else
           const Text('Οι ασκήσεις σημειώθηκαν για σήμερα. Αύριο ξεκινάς ξανά από την αρχή.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textSecondary, height: 1.4)),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _sharingPhoto ? null : _pickSharePhoto,
+            icon: _sharingPhoto
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.ios_share_rounded),
+            label: const Text('Φωτογραφία για share', style: TextStyle(fontWeight: FontWeight.w800)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: AppColors.border),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
         SizedBox(
           width: double.infinity,
           child: FilledButton(
@@ -1277,6 +1369,122 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ShareIconButton extends StatelessWidget {
+  const _ShareIconButton({required this.busy, required this.onTap});
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.55),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: busy ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: busy
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+class _FinishChip extends StatelessWidget {
+  const _FinishChip({required this.icon, required this.label, required this.color});
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExerciseResultCard extends StatelessWidget {
+  const _ExerciseResultCard({
+    required this.name,
+    required this.color,
+    this.imageUrl,
+    this.kcal,
+  });
+  final String name;
+  final String? imageUrl;
+  final int? kcal;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 88,
+              width: double.infinity,
+              child: imageUrl == null
+                  ? ColoredBox(
+                      color: AppColors.surfaceLight,
+                      child: Icon(Icons.fitness_center, color: color, size: 28),
+                    )
+                  : Image.network(
+                      imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => ColoredBox(
+                        color: AppColors.surfaceLight,
+                        child: Icon(Icons.fitness_center, color: color, size: 28),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, height: 1.2),
+          ),
+          if (kcal != null) ...[
+            const SizedBox(height: 6),
+            Text('~$kcal kcal', style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -1306,26 +1514,6 @@ class _SessionAction extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
-          const Spacer(),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-        ],
       ),
     );
   }

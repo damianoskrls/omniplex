@@ -9,12 +9,16 @@ class WorkoutShareDetails {
     this.trainerName,
     this.durationMins,
     this.accentColorHex = '#B8F55E',
+    this.caption,
   });
 
   final String gymName;
   final String workoutTitle;
   final DateTime startsAt;
   final DateTime endsAt;
+  /// When set, this text is drawn instead of the program name.
+  /// Logo, day and time stay on the photo.
+  final String? caption;
   final String? trainerName;
   final int? durationMins;
   final String accentColorHex;
