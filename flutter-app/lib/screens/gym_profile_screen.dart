@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
@@ -466,8 +467,15 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   }
 
   Future<void> _enterGym() async {
-    if (widget.globalAuth == null || _gym == null) return;
+    if (widget.globalAuth == null || _gym == null || _enteringGym) return;
     setState(() => _enteringGym = true);
+    final nav = Navigator.of(context);
+    final name = _gym?['app_name'] as String? ?? _gym?['name'] as String? ?? tr('Γυμναστήριο');
+    unawaited(showGymEntrySplash(
+      context,
+      name: name,
+      logoUrl: _gym?['logo_url'] as String?,
+    ));
     try {
       final bizId = _gym!['business_id'] as String;
       GlobalGym? staffHere;
@@ -480,32 +488,26 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       final gymToken = _memberLinked
           ? await widget.globalAuth!.getGymToken(bizId)
           : await widget.globalAuth!.getTrainerToken(bizId, asKind: staffHere?.staffKind);
-      await BiometricAuthService.instance.saveToken(bizId, gymToken);
+      await BiometricAuthService.instance.storeSessionToken(bizId, gymToken);
       final api = 'https://passionate-grace-production-98ad.up.railway.app';
       final config = await TenantConfig.openFast(
         businessId: bizId,
         slug: _slug!,
-        appName: _gym?['app_name'] as String? ?? _gym?['name'] as String? ?? tr('Γυμναστήριο'),
+        appName: name,
         apiBaseUrl: api,
         primaryColor: _gym?['primary_color'] as String? ?? '#00b33e',
         logoUrl: _gym?['logo_url'] as String?,
       );
       if (!mounted) return;
-      await showGymEntrySplash(
-        context,
-        name: _gym?['app_name'] as String? ?? _gym?['name'] as String? ?? tr('Γυμναστήριο'),
-        slug: _slug ?? '',
-        logoUrl: _gym?['logo_url'] as String?,
-        coverUrl: _gym?['cover_url'] as String?,
-      );
-      if (!mounted) return;
       if (widget.onEnterGym != null) {
         widget.onEnterGym!(config);
       } else {
+        if (nav.canPop()) nav.pop();
         widget.onLoggedIn?.call();
         if (mounted) Navigator.of(context).pop();
       }
     } catch (e) {
+      if (nav.canPop()) nav.pop();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(tr(e.toString())), backgroundColor: Colors.red.shade700),

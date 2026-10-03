@@ -959,7 +959,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                   Text(tr('${index + 1} από ${_exercises.length}'),
                       style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                   const Spacer(),
-                  if (media == null) _ShareIconButton(busy: _sharingPhoto, onTap: _pickSharePhoto),
+                  _ShareIconButton(busy: _sharingPhoto, onTap: _pickSharePhoto),
                 ],
               ),
               const SizedBox(height: 8),
@@ -980,20 +980,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             children: [
               if (media != null)
-                Stack(
-                  children: [
-                    _MediaFull(
-                      key: ValueKey('${exercise['id']}-$media'),
-                      url: media,
-                      poster: poster,
-                      paused: paused,
-                    ),
-                    Positioned(
-                      top: 10,
-                      right: 10,
-                      child: _ShareIconButton(busy: _sharingPhoto, onTap: _pickSharePhoto),
-                    ),
-                  ],
+                _MediaFull(
+                  key: ValueKey('${exercise['id']}-$media'),
+                  url: media,
+                  poster: poster,
+                  paused: paused,
                 ),
               if (media != null) const SizedBox(height: 16),
               Text(tr(title), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),

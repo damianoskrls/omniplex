@@ -70,6 +70,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   Map<String, dynamic>? _dashboard;
   bool _loading = true;
   bool _enteringGym = false;
+  bool _dashboardLoad = false;
   int _unreadNotifications = 0;
   Timer? _notifTimer;
 
@@ -210,6 +211,8 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
       if (mounted) setState(() => _loading = false);
       return;
     }
+    if (_dashboardLoad) return;
+    _dashboardLoad = true;
     if (_dashboard == null) setState(() => _loading = true);
     try {
       final results = await Future.wait([
@@ -224,6 +227,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
         setState(() => _dashboard = jsonDecode(res.body) as Map<String, dynamic>);
       }
     } catch (_) {}
+    _dashboardLoad = false;
     if (mounted) setState(() => _loading = false);
   }
 
@@ -292,29 +296,24 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
 
   Future<void> _enterGym(GlobalGym gym) async {
     debugPrint('[MemberHome._enterGym] businessId=${gym.businessId} slug=${gym.slug} type=${gym.userType}');
+    if (_enteringGym) return;
     setState(() => _enteringGym = true);
+    final nav = Navigator.of(context);
+    unawaited(showGymEntrySplash(context, name: gym.appName, logoUrl: gym.logoUrl));
     try {
       final gymToken = gym.isStaff
           ? await widget.globalAuth.getTrainerToken(gym.businessId, asKind: gym.staffKind)
           : await widget.globalAuth.getGymToken(gym.businessId);
       debugPrint('[MemberHome._enterGym] Got gymToken, saving...');
-      // Disable biometrics first (setBiometricEnabled clears old token), then save fresh token
-      await BiometricAuthService.instance.setBiometricEnabled(gym.businessId, false);
-      await BiometricAuthService.instance.saveToken(gym.businessId, gymToken);
+      await BiometricAuthService.instance.storeSessionToken(gym.businessId, gymToken);
       debugPrint('[MemberHome._enterGym] Token saved, loading TenantConfig...');
       final config = await _configForGym(gym);
       debugPrint('[MemberHome._enterGym] Config loaded: slug=${config.slug} bizId=${config.businessId}');
       if (!mounted) return;
-      await showGymEntrySplash(
-        context,
-        name: gym.appName,
-        slug: gym.slug,
-        logoUrl: gym.logoUrl,
-      );
-      if (!mounted) return;
       debugPrint('[MemberHome._enterGym] Calling onEnterGym...');
       widget.onEnterGym(config);
     } catch (e) {
+      if (nav.canPop()) nav.pop();
       debugPrint('[MemberHome._enterGym] ERROR: $e');
       if (!mounted) return;
       final msg = e.toString().replaceFirst('Exception: ', '');
@@ -1924,6 +1923,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   int _weekOffset = 0;
   String? _gymId;
   String? _locationId;
+  bool _keepSelection = false;
 
   @override
   void initState() {
@@ -1944,6 +1944,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   }
 
   void _autoSelectFirstBooking() {
+    if (_keepSelection) return;
     final all = _scoped;
     if (all.isEmpty) return;
     final todayKey = _dateKey(DateTime.now());
@@ -1970,7 +1971,12 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     if (pick == null) return;
     final monday = startOfToday.subtract(Duration(days: startOfToday.weekday - 1));
     final weekOffset = pick.difference(monday).inDays ~/ 7;
-    if (mounted) setState(() { _selected = pick!; _weekOffset = weekOffset; });
+    if (!mounted || _keepSelection) return;
+    setState(() {
+      if (_keepSelection) return;
+      _selected = pick!;
+      _weekOffset = weekOffset;
+    });
   }
 
   List<Map<String, dynamic>> get _all =>
@@ -2077,12 +2083,18 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                     const SizedBox(width: 8),
                     _NavBtn(
                       icon: Icons.chevron_left_rounded,
-                      onTap: () => setState(() => _weekOffset--),
+                      onTap: () => setState(() {
+                        _weekOffset--;
+                        _keepSelection = true;
+                      }),
                     ),
                     const SizedBox(width: 8),
                     _NavBtn(
                       icon: Icons.chevron_right_rounded,
-                      onTap: () => setState(() => _weekOffset++),
+                      onTap: () => setState(() {
+                        _weekOffset++;
+                        _keepSelection = true;
+                      }),
                     ),
                   ]),
                 ],
@@ -2125,7 +2137,10 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                   final hasBooking = _bookedDates.contains(_dateKey(day));
 
                   return GestureDetector(
-                    onTap: () => setState(() => _selected = day),
+                    onTap: () => setState(() {
+                      _selected = DateTime(day.year, day.month, day.day);
+                      _keepSelection = true;
+                    }),
                     child: Container(
                       width: 44,
                       margin: const EdgeInsets.symmetric(horizontal: 3),

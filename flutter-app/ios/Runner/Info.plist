@@ -28,6 +28,12 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Χρειαζόμαστε την κάμερα για QR check-in και φωτογραφία μετά την προπόνηση.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Χρειαζόμαστε το μικρόφωνο για να μιλάς στον βοηθό του γυμναστηρίου.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Η αναγνώριση ομιλίας μετατρέπει αυτό που λες σε κείμενο για τον βοηθό.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Χρησιμοποιούμε Face ID για γρήγορη και ασφαλή είσοδο στην εφαρμογή.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

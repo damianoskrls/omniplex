@@ -44,6 +44,15 @@ class BiometricAuthService {
     await _storage.write(key: _tokenKey(businessId), value: token);
   }
 
+  /// Turns biometrics off and stores the session token in one step.
+  Future<void> storeSessionToken(String businessId, String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.setBool(_biometricEnabledKey(businessId), false),
+      _storage.write(key: _tokenKey(businessId), value: token),
+    ]);
+  }
+
   Future<String?> readToken(String businessId) =>
       _storage.read(key: _tokenKey(businessId));
 

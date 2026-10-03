@@ -353,6 +353,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         screen: const GymDashboardScreen(),
       ),
       _TabItem(
+        key: 'appointments',
+        icon: Icons.calendar_month_outlined,
+        label: tr(s.navAppointments),
+        screen: const MyBookingsScreen(),
+      ),
+      _TabItem(
         key: 'booking',
         icon: Icons.fitness_center_outlined,
         label: tr(s.navBook),
@@ -364,13 +370,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           icon: Icons.fitness_center_rounded,
           label: tr(s.navWorkout),
           screen: const WorkoutProgramsScreen(),
-        )
-      else
-        _TabItem(
-          key: 'appointments',
-          icon: Icons.calendar_month_outlined,
-          label: tr(s.navAppointments),
-          screen: const MyBookingsScreen(),
         ),
       _TabItem(
         key: 'goals',
@@ -378,13 +377,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         label: tr(s.goals),
         screen: const GoalsScreen(),
       ),
-      if (_hasWorkoutPrograms)
-        _TabItem(
-          key: 'appointments',
-          icon: Icons.calendar_month_outlined,
-          label: tr(s.navAppointments),
-          screen: const MyBookingsScreen(),
-        ),
       _TabItem(
         key: 'community',
         icon: Icons.people_outline_rounded,
@@ -643,9 +635,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     final firstName = user.fullName.split(' ').first;
     final tabs = _tabItems;
-    final centerKey = !user.isStaff
-        ? null
-        : (user.isNutritionist ? 'nutrition_bookings' : 'schedule');
+    final centerKey = (user.isNutritionist && user.staffKind == 'nutritionist')
+        ? 'nutrition_bookings'
+        : (user.isStaff ? 'schedule' : 'booking');
     final sideTabs = centerKey == null
         ? tabs
         : tabs.where((t) => t.key != centerKey).toList();
@@ -714,7 +706,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           final idx = tabs.indexWhere((t) => t.key == visibleTabs[i].key);
           if (idx < 0) return;
           setState(() => _index = idx);
-          if (tabs[idx].key == 'gym_dashboard' || tabs[idx].key == 'booking') {
+          if (tabs[idx].key == 'gym_dashboard') {
             _loadNutritionAccess();
           }
         },
@@ -724,9 +716,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             FloatingNavItem(icon: Icons.grid_view_rounded, label: AppStrings.of(context).more),
         ],
         centerAction: () {
-          final key = centerKey ?? 'booking';
-          final idx = tabs.indexWhere((t) => t.key == key);
-          if (idx >= 0) setState(() => _index = idx);
+          final idx = tabs.indexWhere((t) => t.key == centerKey);
+          if (idx < 0) return;
+          setState(() => _index = idx);
+          if (centerKey == 'booking') _loadNutritionAccess();
         },
         centerIcon: Icons.event_available_rounded,
         activeColor: context.tenantPrimary,

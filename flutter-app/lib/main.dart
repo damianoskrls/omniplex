@@ -24,6 +24,7 @@ import 'services/notification_service.dart';
 import 'services/push_service.dart';
 import 'services/user_notification_sync.dart';
 
+import 'screens/gym_entry_splash.dart';
 import 'widgets/splash_screen.dart' show SplashScreen, GymSplashScreen;
 import './l10n/tr.dart';
 
@@ -93,6 +94,8 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
   bool _showGlobalDashboard = false;
   bool _showExplore    = false; // guest explore without login
   bool _switchingRole  = false;
+  String? _entrySplashName;
+  String? _entrySplashLogo;
   final _globalAuth = GlobalAuthService();
   String _selectorApiBase = 'https://passionate-grace-production-98ad.up.railway.app';
 
@@ -331,11 +334,15 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
     debugPrint('[TenantLoaded] slug=${config.slug} bizId=${config.businessId}');
     setState(() {
       _needsTenantSelection = false;
+      _showGlobalDashboard = false;
+      _showExplore = false;
       _config = config;
+      _auth = null;
       _error = null;
+      _entrySplashName = config.appName;
+      _entrySplashLogo = config.logoUrl;
     });
-    // Now finish bootstrap with the selected config
-    _bootstrapWithConfig(config);
+    _bootstrapWithConfig(config, quick: true);
   }
 
   Future<void> _bootstrapWithConfig(TenantConfig config, {bool quick = false}) async {
@@ -357,16 +364,30 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
       final seenOnboarding = await hasSeenOnboarding();
       if (!mounted) return;
       if (!seenOnboarding) {
-        setState(() { _auth = auth; _showOnboarding = true; });
+        setState(() {
+          _auth = auth;
+          _showOnboarding = true;
+          _entrySplashName = null;
+          _entrySplashLogo = null;
+        });
       } else {
-        setState(() => _auth = auth);
+        setState(() {
+          _auth = auth;
+          _entrySplashName = null;
+          _entrySplashLogo = null;
+        });
       }
       unawaited(_initBackgroundServices());
     } catch (e) {
       debugPrint('[Bootstrap] ERROR: $e');
       if (!mounted) return;
-      if (quick) rethrow;
-      setState(() { _error = e.toString(); _config = null; });
+      setState(() {
+        _error = e.toString();
+        _config = null;
+        _entrySplashName = null;
+        _entrySplashLogo = null;
+        if (quick && _globalAuth.isLoggedIn) _needsTenantSelection = true;
+      });
     }
   }
 
@@ -512,6 +533,16 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
               ),
             ),
         ],
+      );
+    }
+
+    if (_entrySplashName != null) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: GymEntrySplashView(
+          name: _entrySplashName!,
+          logoUrl: _entrySplashLogo,
+        ),
       );
     }
 
