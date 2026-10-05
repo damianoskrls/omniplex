@@ -822,6 +822,28 @@ async function bootstrapSchema() {
   }
 
   try {
+    await db.query(`ALTER TABLE admin_notifications ADD COLUMN location_id VARCHAR(36) NULL`);
+    console.log('✓ Schema: admin_notifications.location_id added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_NO_SUCH_TABLE') {
+      console.warn('admin_notifications.location_id skipped:', err.message);
+    }
+  }
+  try {
+    await db.query(`
+      UPDATE admin_notifications
+      SET location_id = JSON_UNQUOTE(JSON_EXTRACT(payload, '$.location_id'))
+      WHERE location_id IS NULL
+        AND payload IS NOT NULL
+        AND JSON_VALID(payload)
+        AND JSON_TYPE(JSON_EXTRACT(payload, '$.location_id')) = 'STRING'
+        AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.location_id')) <> ''
+    `);
+  } catch (err) {
+    console.warn('admin notification location backfill skipped:', err.message);
+  }
+
+  try {
     await db.query(`ALTER TABLE orders ADD COLUMN location_id VARCHAR(36) NULL`);
     console.log('✓ Schema: orders.location_id added');
   } catch (err) {

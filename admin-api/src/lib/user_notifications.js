@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { sendFcm, getUserFcmTokens } = require('./push');
+const { sendFcm, getUserFcmTokens, getGlobalUserFcmTokens } = require('./push');
 
 async function createUserNotification(dbConn, {
   businessId, userId, bookingId, type, title, body, payload, imageUrl, sendPush = true,
@@ -41,4 +41,28 @@ async function createUserNotification(dbConn, {
   return { id, sentPush };
 }
 
-module.exports = { createUserNotification };
+/** Inbox row plus push. The open app polls this row; a closed app gets the push. */
+async function notifyGlobalUser(dbConn, {
+  globalUserId, type, title, body, data,
+}) {
+  if (!globalUserId || !title) return { id: null, sent: 0 };
+  const id = uuidv4();
+  try {
+    await dbConn.query(
+      `INSERT INTO global_user_notifications (id, global_user_id, type, title, body)
+       VALUES (?, ?, ?, ?, ?)`,
+      [id, globalUserId, type || 'notice', title, body || null],
+    );
+  } catch (err) {
+    console.error('global notification insert failed:', err.message);
+  }
+  const tokens = await getGlobalUserFcmTokens(dbConn, globalUserId);
+  const result = await sendFcm(tokens, {
+    title,
+    body,
+    data: { ...(data || {}), type: type || 'notice', notification_id: id },
+  });
+  return { id, sent: result.sent || 0 };
+}
+
+module.exports = { createUserNotification, notifyGlobalUser };

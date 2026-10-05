@@ -117,6 +117,7 @@ export default function NotificationBell() {
                       <div className="notification-item__body">{n.body}</div>
                     )}
                     <div className="notification-item__meta">
+                      {n.location_name ? `${n.location_name} · ` : ''}
                       {new Date(n.created_at).toLocaleString('el-GR')}
                       {path && <span className="notification-item__hint">Πατήστε για μετάβαση →</span>}
                     </div>

@@ -1200,18 +1200,17 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero image
             SizedBox(
               height: 176,
               child: Stack(
                 fit: StackFit.expand,
+                clipBehavior: Clip.none,
                 children: [
                   coverUrl != null
                     ? Image.network(coverUrl, fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _gymPlaceholder(color, name))
                     : _gymPlaceholder(color, name),
 
-                  // Bottom gradient
                   Positioned.fill(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
@@ -1227,26 +1226,6 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                       ),
                     ),
                   ),
-
-                  // Logo badge (always visible)
-                  Positioned(
-                    bottom: -24, left: 16,
-                    child: Container(
-                      width: 56, height: 56,
-                      decoration: BoxDecoration(
-                        color: _kCard,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _kBg, width: 2),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: logoUrl != null
-                        ? Image.network(logoUrl, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _logoFallback(color, name))
-                        : _logoFallback(color, name),
-                    ),
-                  ),
-
-                  // Drop-in / Membership badge (results mode)
                   if (!showLogoBadge)
                     Positioned(
                       top: 12, right: 12,
@@ -1267,13 +1246,29 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                         ),
                       ),
                     ),
+                  Positioned(
+                    left: 16,
+                    bottom: -32,
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _kBg, width: 2),
+                      ),
+                      child: logoUrl != null
+                        ? Image.network(logoUrl, fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => _logoFallback(color, name))
+                        : _logoFallback(color, name),
+                    ),
+                  ),
                 ],
               ),
             ),
-
-            // Info section
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 36, 16, 14),
+              padding: const EdgeInsets.fromLTRB(16, 44, 16, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

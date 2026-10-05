@@ -367,7 +367,8 @@ async function createOneBooking(conn, {
       type: bookingStatus === 'pending' ? 'booking_pending' : 'booking_created',
       title: bookingStatus === 'pending' ? 'Αίτημα κράτησης διατροφής' : 'Νέα κράτηση',
       body: `${user.full_name} — ${service.name} στις ${date} ${time}`,
-      payload: { booking_id: bookingId, user_id: userId, service_id, starts_at: startsAt },
+      locationId: finalLocationId || null,
+      payload: { booking_id: bookingId, user_id: userId, service_id, starts_at: startsAt, location_id: finalLocationId || null },
     });
 
     if (bookingStatus === 'pending') {

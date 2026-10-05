@@ -61,9 +61,20 @@ async function sendFcm(tokens, { title, body, data = {}, imageUrl }) {
             channelId: 'bookup_push',
             sound: 'default',
             priority: 'high',
+            defaultSound: true,
+            visibility: 'public',
           },
         },
-        apns: { payload: { aps: { sound: 'default' } } },
+        apns: {
+          headers: { 'apns-priority': '10', 'apns-push-type': 'alert' },
+          payload: {
+            aps: {
+              alert: { title: title || '', body: body || '' },
+              sound: 'default',
+              badge: 1,
+            },
+          },
+        },
       });
       sent++;
     } catch (e) {
@@ -201,8 +212,11 @@ async function sendFcmMany(tokens, payload) {
       tokens: chunk,
       notification: { title: payload.title, body: payload.body },
       data: stringData,
-      android: { priority: 'high', notification: { channelId: 'bookup_push', sound: 'default', priority: 'high' } },
-      apns: { payload: { aps: { sound: 'default' } } },
+      android: { priority: 'high', notification: { channelId: 'bookup_push', sound: 'default', priority: 'high', defaultSound: true, visibility: 'public' } },
+      apns: {
+        headers: { 'apns-priority': '10', 'apns-push-type': 'alert' },
+        payload: { aps: { alert: { title: payload.title || '', body: payload.body || '' }, sound: 'default', badge: 1 } },
+      },
     });
     sent += res.successCount || 0;
     failure += res.failureCount || 0;

@@ -82,10 +82,14 @@ router.post('/register', async (req, res) => {
       [id, hash]
     );
 
+    let storeId = null;
     if (location_id) {
       const locs = await listLocations(db, business_id, { activeOnly: true });
       const valid = locs.find(l => l.id === location_id);
-      if (valid) await replaceUserLocations(db, id, [location_id]);
+      if (valid) {
+        storeId = location_id;
+        await replaceUserLocations(db, id, [location_id]);
+      }
     }
 
     await createAdminNotification(db, {
@@ -93,7 +97,8 @@ router.post('/register', async (req, res) => {
       type: 'client_pending_approval',
       title: 'Νέα αίτηση εγγραφής',
       body: `${full_name.trim()} (${normalizedPhone}) περιμένει έγκριση για σύνδεση στην εφαρμογή.`,
-      payload: { user_id: id, phone: normalizedPhone, full_name: full_name.trim() },
+      locationId: storeId,
+      payload: { user_id: id, phone: normalizedPhone, full_name: full_name.trim(), location_id: storeId },
     });
 
     return res.status(201).json({

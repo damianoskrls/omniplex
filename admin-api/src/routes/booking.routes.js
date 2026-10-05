@@ -223,10 +223,11 @@ router.get('/:bizId/locations', softAuth, async (req, res) => {
     const { service_id } = req.query;
 
     let locations;
+    const staffId = req.user?.staffId || null;
     if (service_id) {
-      locations = await listLocationsForService(db, req.params.bizId, service_id, { userId });
+      locations = await listLocationsForService(db, req.params.bizId, service_id, { userId, staffId });
     } else {
-      locations = await listLocations(db, req.params.bizId, { activeOnly: true, userId });
+      locations = await listLocations(db, req.params.bizId, { activeOnly: true, userId, staffId });
     }
 
     return res.json({
@@ -449,7 +450,8 @@ router.post('/:bizId/plan-request', softAuth, async (req, res) => {
         type: 'plan_request',
         title: kind === 'trial' ? 'Αίτημα δοκιμαστικού' : 'Αίτημα πακέτου',
         body: `${user?.full_name || 'Πελάτης'} ζήτησε ${label}: ${plan.name}${when}${locationName ? ` · ${locationName}` : ''}.`,
-        payload: { request_id: id, user_id: userId, plan_id, kind },
+        locationId,
+        payload: { request_id: id, user_id: userId, plan_id, kind, location_id: locationId },
       });
     } catch (_) {}
     return res.json({
@@ -1571,6 +1573,7 @@ router.patch('/:bizId/my-credits/:membershipId/cancel', softAuth, requireActiveC
       type: 'membership_cancelled',
       title: 'Αίτημα διακοπής συνδρομής',
       body: `Πελάτης ζήτησε διακοπή συνδρομής${reason ? `: ${reason.trim()}` : ''}.`,
+      userId,
       payload: { membership_id: req.params.membershipId, user_id: userId },
     });
 
@@ -1643,6 +1646,7 @@ router.post('/:bizId/waitlist', softAuth, requireActiveCustomer, async (req, res
       serviceName: service.name,
       userName: user?.full_name || 'Πελάτης',
       autoBook: !!auto_book,
+      locationId: location_id || null,
     });
 
     await conn.commit();

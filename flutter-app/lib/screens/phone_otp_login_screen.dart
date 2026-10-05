@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
+import '../services/push_service.dart';
 import 'global_role_picker_screen.dart';
 import 'global_profile_details_screen.dart';
 import '../l10n/tr.dart';
@@ -133,11 +132,8 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
 
   Future<void> _registerFcmToken() async {
     try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null && token.isNotEmpty) {
-        final platform = Platform.isIOS ? 'ios' : 'android';
-        await widget.globalAuth.registerFcmToken(token, platform: platform);
-      }
+      await PushService.instance.init();
+      await PushService.instance.registerGlobal(widget.globalAuth);
     } catch (_) {}
   }
 

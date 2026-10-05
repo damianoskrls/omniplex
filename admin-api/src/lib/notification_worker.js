@@ -384,6 +384,7 @@ async function processMembershipReminders(conn) {
           type: 'membership_expired_admin',
           title: 'Λήξη συνδρομής πελάτη',
           body: `${m.user_name} — ${m.service_name || 'Συνδρομή'} έληξε σήμερα. Ανανέωση / πληρωμή.`,
+          userId: m.user_id,
           payload: { membership_id: m.membership_id, user_id: m.user_id },
         });
       }

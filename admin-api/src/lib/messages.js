@@ -4,7 +4,7 @@ const { createAdminNotification } = require('./notifications');
 const { validateAttachmentUrl } = require('./message_upload');
 const { assertImageUploadAllowed } = require('./message_attachments');
 const { sendFcm, getUserFcmTokens } = require('./push');
-const { createUserNotification } = require('./user_notifications');
+const { createUserNotification, notifyGlobalUser } = require('./user_notifications');
 
 function buildMessagePreview({ body, message_type: messageType, attachment_url: attachmentUrl }) {
   if (messageType === 'image') {
@@ -1023,24 +1023,39 @@ async function sendClientMessage(conn, actor, { body, threadId, peer: peerInput,
       staffId = nut?.staff_id || null;
     }
     if (staffId) {
-      const tokens = await getUserFcmTokens(conn, staffId);
-      if (tokens.length) {
-        await sendFcm(tokens, {
+      const [[staffRow]] = await conn.execute(
+        'SELECT global_user_id FROM staff WHERE id = ?',
+        [staffId],
+      );
+      if (staffRow?.global_user_id) {
+        await notifyGlobalUser(conn, {
+          globalUserId: staffRow.global_user_id,
+          type: 'message',
           title: senderName,
           body: previewText,
-          data: { type: 'message', thread_id: threadRow.id },
+          data: { thread_id: threadRow.id, action: 'open_messages' },
         });
+      } else {
+        const tokens = await getUserFcmTokens(conn, staffId);
+        if (tokens.length) {
+          await sendFcm(tokens, {
+            title: senderName,
+            body: previewText,
+            data: { type: 'message', thread_id: threadRow.id, action: 'open_messages' },
+          });
+        }
       }
     }
   } catch (_) {}
 
   if (threadMeta[0]?.peer_role === 'admin') {
     try {
-      await createAdminNotification(conn, actor.businessId, {
+      await createAdminNotification(conn, {
+        businessId: actor.businessId,
         type: 'client_message',
         title: 'Νέο μήνυμα πελάτη',
         body: `${senderName}: ${preview}`,
-        link: `/messages?client=${actor.userId}`,
+        payload: { user_id: actor.userId, link: `/messages?client=${actor.userId}` },
       });
     } catch {
       /* non-fatal */

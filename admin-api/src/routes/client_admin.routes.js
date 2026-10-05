@@ -124,7 +124,7 @@ const {
   toBillingMonthDate,
   formatBillingMonth,
 } = require('../lib/payments');
-const { createUserNotification } = require('../lib/user_notifications');
+const { createUserNotification, notifyGlobalUser } = require('../lib/user_notifications');
 const { getUserStats } = require('../lib/loyalty');
 const { mountTrainerPortal } = require('./trainer_portal.routes');
 const messagesStaffRoutes = require('./messages_staff.routes');
@@ -1056,17 +1056,14 @@ router.post('/clients/add-global', requireClientAdmin, async (req, res) => {
       const [[biz]] = await db.query(`SELECT name FROM businesses WHERE id = ?`, [bizId]);
       const gymName = biz?.name || 'το γυμναστήριο';
 
-      // Push notification (preferred — user has app installed)
-      const { sendFcm }              = require('../lib/push');
-      const { getGlobalUserFcmTokens } = require('./global.routes');
-      const tokens = await getGlobalUserFcmTokens(global_user_id);
-      if (tokens.length) {
-        await sendFcm(tokens, {
-          title: `${gymName} σε πρόσθεσε!`,
-          body:  `Άνοιξε το OmniPlex για να δεις τα πακέτα σου.`,
-          data:  { type: 'gym_added', gym_name: gymName },
-        });
-      } else if (gu.phone) {
+      const pushed = await notifyGlobalUser(db, {
+        globalUserId: global_user_id,
+        type: 'gym_added',
+        title: `${gymName} σε πρόσθεσε!`,
+        body: 'Άνοιξε το OmniPlex για να δεις τα πακέτα σου.',
+        data: { gym_name: gymName },
+      });
+      if (!pushed.sent && gu.phone) {
         // Fallback to SMS if no push token (app not yet installed)
         const { sendSms } = require('../lib/sms');
         await sendSms(gu.phone,
@@ -5040,18 +5037,39 @@ router.get('/calendar', requireClientAdmin, async (req, res) => {
 // ============================================================
 // NOTIFICATIONS
 // ============================================================
+function notificationLocationSql(admin, alias = '') {
+  if (!admin.locationId) return { sql: '', params: [] };
+  const col = alias ? `${alias}.location_id` : 'location_id';
+  const payload = alias ? `${alias}.payload` : 'payload';
+  return {
+    sql: ` AND (
+      ${col} = ?
+      OR (
+        ${col} IS NULL
+        AND JSON_VALID(${payload})
+        AND JSON_UNQUOTE(JSON_EXTRACT(${payload}, '$.location_id')) = ?
+      )
+    )`,
+    params: [admin.locationId, admin.locationId],
+  };
+}
+
 router.get('/notifications', requireClientAdmin, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 30, 100);
+  const scope = notificationLocationSql(req.admin, 'n');
   const [rows] = await db.query(`
-    SELECT id, type, title, body, payload, is_read, created_at
-    FROM admin_notifications
-    WHERE business_id = ?
-    ORDER BY created_at DESC
+    SELECT n.id, n.type, n.title, n.body, n.payload, n.is_read, n.created_at, n.location_id,
+           l.name AS location_name
+    FROM admin_notifications n
+    LEFT JOIN locations l ON l.id = n.location_id
+    WHERE n.business_id = ?${scope.sql}
+    ORDER BY n.created_at DESC
     LIMIT ?
-  `, [req.admin.businessId, limit]);
+  `, [req.admin.businessId, ...scope.params, limit]);
+  const countScope = notificationLocationSql(req.admin);
   const [[{ unread }]] = await db.query(
-    'SELECT COUNT(*) AS unread FROM admin_notifications WHERE business_id = ? AND is_read = 0',
-    [req.admin.businessId]
+    `SELECT COUNT(*) AS unread FROM admin_notifications WHERE business_id = ? AND is_read = 0${countScope.sql}`,
+    [req.admin.businessId, ...countScope.params]
   );
   const notifications = rows.map((row) => ({
     ...row,
@@ -5062,18 +5080,20 @@ router.get('/notifications', requireClientAdmin, async (req, res) => {
   return res.json({ notifications, unread_count: unread });
 });
 
-router.patch('/notifications/:id/read', requireClientAdmin, async (req, res) => {
+router.patch('/notifications/read-all', requireClientAdmin, async (req, res) => {
+  const scope = notificationLocationSql(req.admin);
   await db.query(
-    'UPDATE admin_notifications SET is_read = 1 WHERE id = ? AND business_id = ?',
-    [req.params.id, req.admin.businessId]
+    `UPDATE admin_notifications SET is_read = 1 WHERE business_id = ? AND is_read = 0${scope.sql}`,
+    [req.admin.businessId, ...scope.params]
   );
   return res.json({ ok: true });
 });
 
-router.patch('/notifications/read-all', requireClientAdmin, async (req, res) => {
+router.patch('/notifications/:id/read', requireClientAdmin, async (req, res) => {
+  const scope = notificationLocationSql(req.admin);
   await db.query(
-    'UPDATE admin_notifications SET is_read = 1 WHERE business_id = ? AND is_read = 0',
-    [req.admin.businessId]
+    `UPDATE admin_notifications SET is_read = 1 WHERE id = ? AND business_id = ?${scope.sql}`,
+    [req.params.id, req.admin.businessId, ...scope.params]
   );
   return res.json({ ok: true });
 });
@@ -8998,29 +9018,22 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
       try {
         const [[biz]] = await db.query('SELECT name, app_name FROM businesses WHERE id = ?', [req.admin.businessId]);
         const gymName = biz?.app_name || biz?.name || 'το γυμναστήριο';
-        const { sendFcm } = require('../lib/push');
-        const { getGlobalUserFcmTokens } = require('./global.routes');
-        const tokens = await getGlobalUserFcmTokens(jr.global_user_id);
-        if (tokens.length) {
-          const isStaff = jr.role === 'staff';
-          const approved = status === 'approved';
-          const staffLabel = staffSpecialtyKind(jr.specialty) === 'nutritionist' ? 'διατροφολόγος'
-            : staffSpecialtyKind(jr.specialty) === 'physiotherapist' ? 'φυσιοθεραπευτής'
-            : 'trainer';
-          await sendFcm(tokens, {
-            title: approved
-              ? (isStaff ? `Εγκρίθηκες ως ${staffLabel} στο ${gymName}` : `Εγκρίθηκες στο ${gymName}`)
-              : (isStaff ? `Το αίτημα προσωπικού απορρίφθηκε` : `Το αίτημα απορρίφθηκε`),
-            body: approved
-              ? `Άνοιξε το OmniPlex για να μπεις στο ${gymName}.`
-              : `Ο διαχειριστής του ${gymName} δεν ενέκρινε το αίτημά σου.`,
-            data: {
-              type: approved ? 'join_approved' : 'join_rejected',
-              gym_name: gymName,
-              role: jr.role || 'member',
-            },
-          });
-        }
+        const isStaff = jr.role === 'staff';
+        const approved = status === 'approved';
+        const staffLabel = staffSpecialtyKind(jr.specialty) === 'nutritionist' ? 'διατροφολόγος'
+          : staffSpecialtyKind(jr.specialty) === 'physiotherapist' ? 'φυσιοθεραπευτής'
+          : 'trainer';
+        await notifyGlobalUser(db, {
+          globalUserId: jr.global_user_id,
+          type: approved ? 'join_approved' : 'join_rejected',
+          title: approved
+            ? (isStaff ? `Εγκρίθηκες ως ${staffLabel} στο ${gymName}` : `Εγκρίθηκες στο ${gymName}`)
+            : (isStaff ? 'Το αίτημα προσωπικού απορρίφθηκε' : 'Το αίτημα απορρίφθηκε'),
+          body: approved
+            ? `Άνοιξε το OmniPlex για να μπεις στο ${gymName}.`
+            : `Ο διαχειριστής του ${gymName} δεν ενέκρινε το αίτημά σου.`,
+          data: { gym_name: gymName, role: jr.role || 'member' },
+        });
       } catch (pushErr) {
         console.error('[NOTIFY] join-request push failed:', pushErr.message);
       }

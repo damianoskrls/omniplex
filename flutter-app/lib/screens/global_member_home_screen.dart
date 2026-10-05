@@ -867,19 +867,19 @@ class _GymLogo extends StatelessWidget {
       );
     }
     return Container(
-      width: 88,
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      width: 72,
+      height: 72,
+      padding: const EdgeInsets.all(6),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Image.network(
         url!,
         fit: BoxFit.contain,
-        width: 76,
-        height: 48,
+        width: 60,
+        height: 60,
         errorBuilder: (_, _, _) => Text(tr(initials), style: GoogleFonts.inter(color: const Color(0xFF111111), fontWeight: FontWeight.w800)),
       ),
     );
@@ -1549,6 +1549,25 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                   ]),
                 ),
               ),
+            if (widget.roles.length < 2)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(children: [
+                  _EntryConnectButton(
+                    enabled: widget.roles.isNotEmpty,
+                    color: accent,
+                    onFill: onFill,
+                    label: tr(widget.roles.isEmpty ? 'Είσοδος' : 'Είσοδος ως ${_label(widget.roles.first)}'),
+                    onTap: widget.roles.isEmpty ? null : () => widget.onEnter(widget.roles.first),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _NewRoleChip(onTap: widget.onAddRole),
+                  ),
+                ]),
+              )
+            else ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
               child: Row(children: [
@@ -1611,10 +1630,11 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                 enabled: selected != null,
                 color: accent,
                 onFill: onFill,
-                label: tr(selected == null ? 'Επίλεξε πρώτα ρόλο' : tr('Σύνδεση ως ${_label(selected)}')),
+                label: tr(selected == null ? 'Επίλεξε πρώτα ρόλο' : 'Σύνδεση ως ${_label(selected)}'),
                 onTap: selected == null ? null : () => widget.onEnter(selected),
               ),
             ),
+            ],
           ],
         ],
       ),
@@ -2096,23 +2116,58 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     return true;
   }).toList();
 
+  List<({String id, String name})> get _gymOptions {
+    final seen = <String>{};
+    final options = <({String id, String name})>[];
+    for (final gym in widget.gyms) {
+      if (gym.businessId.isEmpty || !seen.add(gym.businessId)) continue;
+      options.add((id: gym.businessId, name: gym.appName));
+    }
+    return options;
+  }
+
   List<Map<String, dynamic>> get _stores {
     final raw = widget.dashboard?['locations'];
     final fromApi = raw is List
-        ? raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).where((l) {
-            if (_gymId == null) return true;
-            return l['business_id']?.toString() == _gymId;
-          }).toList()
+        ? raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
         : <Map<String, dynamic>>[];
-    if (fromApi.isNotEmpty) return fromApi;
-    final seen = <String, String>{};
-    for (final b in _all) {
-      if (_gymId != null && b['business_id']?.toString() != _gymId) continue;
-      final id = b['location_id']?.toString() ?? '';
-      final name = b['location_name']?.toString() ?? '';
-      if (id.isNotEmpty && name.isNotEmpty) seen[id] = name;
+    final source = fromApi.isNotEmpty
+        ? fromApi
+        : () {
+            final seen = <String, Map<String, dynamic>>{};
+            for (final b in _all) {
+              final id = b['location_id']?.toString() ?? '';
+              final name = b['location_name']?.toString() ?? '';
+              if (id.isEmpty || name.isEmpty) continue;
+              seen[id] = {
+                'id': id,
+                'name': name,
+                'business_id': b['business_id'],
+              };
+            }
+            return seen.values.toList();
+          }();
+    final unique = <String, Map<String, dynamic>>{};
+    for (final store in source) {
+      if (_gymId != null && store['business_id']?.toString() != _gymId) continue;
+      final id = store['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      unique[id] = store;
     }
-    return seen.entries.map((e) => {'id': e.key, 'name': e.value}).toList();
+    return unique.values.toList();
+  }
+
+  String _storeChipName(Map<String, dynamic> store) {
+    final name = store['name']?.toString() ?? '';
+    final sameName = _stores.where((s) => s['name']?.toString() == name).length;
+    if (sameName < 2 || _gymId != null) return name;
+    final bizId = store['business_id']?.toString();
+    for (final gym in widget.gyms) {
+      if (gym.businessId == bizId && gym.appName.isNotEmpty) {
+        return '$name · ${gym.appName}';
+      }
+    }
+    return name;
   }
 
   Set<String> get _bookedDates =>
@@ -2207,12 +2262,12 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                 ],
               ),
             ),
-            if (widget.gyms.length > 1) ...[
+            if (_gymOptions.length > 1) ...[
               const SizedBox(height: 14),
               _filterRow(
                 label: tr('Γυμναστήριο'),
                 selected: _gymId,
-                options: widget.gyms.map((g) => (id: g.businessId, name: g.appName)).toList(),
+                options: _gymOptions,
                 onPick: (id) => setState(() {
                   _gymId = id;
                   _locationId = null;
@@ -2224,7 +2279,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
               _filterRow(
                 label: tr('Κατάστημα'),
                 selected: _locationId,
-                options: _stores.map((l) => (id: l['id']?.toString() ?? '', name: l['name']?.toString() ?? '')).toList(),
+                options: _stores.map((l) => (id: l['id']?.toString() ?? '', name: _storeChipName(l))).toList(),
                 onPick: (id) => setState(() => _locationId = id),
               ),
             ],

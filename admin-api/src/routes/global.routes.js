@@ -79,6 +79,57 @@ function makeGlobalToken(user) {
 // ── Helpers ──────────────────────────────────────────────────
 const autoLinkAt = new Map();
 
+async function locationsForMember(dbConn, { bizIds, memberIds, staffIds }) {
+  if (!bizIds.length) return [];
+  const clauses = [];
+  const params = [bizIds];
+  const add = (sql, ids) => {
+    if (!ids.length) return;
+    clauses.push(sql);
+    params.push(ids);
+  };
+  add(`EXISTS (SELECT 1 FROM user_locations ul WHERE ul.location_id = l.id AND ul.user_id IN (?))`, memberIds);
+  add(`l.id IN (
+    SELECT b.location_id FROM bookings b
+    WHERE b.user_id IN (?) AND b.location_id IS NOT NULL
+      AND b.status IN ('pending','confirmed')
+      AND b.starts_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+  )`, memberIds);
+  add(`(
+    (SELECT COUNT(*) FROM locations lx WHERE lx.business_id = l.business_id AND lx.is_active = 1) = 1
+    AND EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id IN (?) AND u.business_id = l.business_id AND u.deleted_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM user_locations ul WHERE ul.user_id = u.id)
+    )
+  )`, memberIds);
+  add(`EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.location_id = l.id AND sl.staff_id IN (?))`, staffIds);
+  add(`l.id IN (
+    SELECT b.location_id FROM bookings b
+    WHERE b.staff_id IN (?) AND b.location_id IS NOT NULL
+      AND b.status IN ('pending','confirmed')
+      AND b.starts_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+  )`, staffIds);
+  add(`(
+    (SELECT COUNT(*) FROM locations lx WHERE lx.business_id = l.business_id AND lx.is_active = 1) = 1
+    AND EXISTS (
+      SELECT 1 FROM staff s
+      WHERE s.id IN (?) AND s.business_id = l.business_id AND s.is_active = 1
+        AND NOT EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = s.id)
+    )
+  )`, staffIds);
+  if (!clauses.length) return [];
+  const [rows] = await dbConn.query(
+    `SELECT DISTINCT l.id, l.business_id, l.name
+     FROM locations l
+     WHERE l.is_active = 1 AND l.business_id IN (?)
+       AND (${clauses.join(' OR ')})
+     ORDER BY l.name`,
+    params,
+  );
+  return rows;
+}
+
 async function getGymsForGlobalUser(globalUserId) {
   const [[gu]] = await db.query('SELECT phone, email FROM global_users WHERE id = ?', [globalUserId]);
   const lastLink = autoLinkAt.get(globalUserId) || 0;
@@ -423,14 +474,7 @@ router.get('/me/dashboard', requireGlobal, async (req, res) => {
     );
 
     const bizIds = [...new Set(gyms.map((g) => g.business_id).filter(Boolean))];
-    const [locations] = bizIds.length
-      ? await db.query(
-          `SELECT id, business_id, name FROM locations
-           WHERE business_id IN (?) AND is_active = 1
-           ORDER BY name`,
-          [bizIds],
-        )
-      : [[]];
+    const locations = await locationsForMember(db, { bizIds, memberIds, staffIds });
 
     let memberships = [];
     if (memberIds.length) {
@@ -1210,6 +1254,7 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
             location_id: locationId,
             location_name: locationName || '',
           },
+          locationId,
         });
       } catch (_) {}
     };
@@ -1361,6 +1406,23 @@ router.delete('/gyms/:businessId', requireGlobal, async (req, res) => {
   const unlinkMember = !role || role === 'member';
   const unlinkStaff = !role || role === 'staff';
   try {
+    const [memberPlaces] = unlinkMember ? await db.query(`
+      SELECT DISTINCT ul.location_id
+      FROM users u
+      JOIN user_locations ul ON ul.user_id = u.id
+      WHERE u.global_user_id = ? AND u.business_id = ? AND u.deleted_at IS NULL
+    `, [req.globalUser.globalUserId, businessId]) : [[]];
+    const [staffPlaces] = unlinkStaff ? await db.query(`
+      SELECT DISTINCT sl.location_id
+      FROM staff s
+      JOIN staff_locations sl ON sl.staff_id = s.id
+      WHERE s.global_user_id = ? AND s.business_id = ? AND s.is_active = 1
+    `, [req.globalUser.globalUserId, businessId]) : [[]];
+    const leaveLocations = [...new Set([
+      ...memberPlaces.map((row) => row.location_id),
+      ...staffPlaces.map((row) => row.location_id),
+    ].filter(Boolean))];
+
     let memberRows = 0;
     let staffRows = 0;
     if (unlinkMember) {
@@ -1398,18 +1460,20 @@ router.delete('/gyms/:businessId', requireGlobal, async (req, res) => {
         [businessId],
       );
       const gymName = biz?.app_name || 'γυμναστήριο';
-      const { v4: uuidv4n } = require('uuid');
+      const { createAdminNotification } = require('../lib/notifications');
       const leftAs = staffRows && memberRows ? 'μέλος και trainer'
         : staffRows ? 'trainer' : 'ασκούμενος';
-      await db.query(
-        `INSERT INTO admin_notifications (id, business_id, type, title, body, payload)
-         VALUES (?, ?, 'member_left', 'Αποχώρηση', ?, ?)`,
-        [
-          uuidv4n(), businessId,
-          `${userName} αφαιρέθηκε ως ${leftAs} από το ${gymName}.`,
-          JSON.stringify({ global_user_id: req.globalUser.globalUserId, user_name: userName, role: role || 'both' }),
-        ],
-      );
+      const places = leaveLocations.length ? leaveLocations : [null];
+      for (const locationId of places) {
+        await createAdminNotification(db, {
+          businessId,
+          type: 'member_left',
+          title: 'Αποχώρηση',
+          body: `${userName} αφαιρέθηκε ως ${leftAs} από το ${gymName}.`,
+          locationId,
+          payload: { global_user_id: req.globalUser.globalUserId, user_name: userName, role: role || 'both', location_id: locationId },
+        });
+      }
     } catch (notifErr) {
       console.error('[NOTIFY] gym-remove admin notification failed:', notifErr.message);
     }
@@ -1834,6 +1898,7 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
         plan: businessPlan,
         paid: true,
         intentId: intent_id,
+        locationId: location_id || null,
       });
       await conn.commit();
     } else {

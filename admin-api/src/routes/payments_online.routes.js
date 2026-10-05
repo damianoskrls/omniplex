@@ -454,6 +454,7 @@ router.post('/:bizId/pay-in-store', softAuth, requireActiveCustomer, async (req,
       type: 'pay_in_store',
       title: 'Πληρωμή στο κατάστημα',
       body: `${user?.full_name || 'Μέλος'} θα πληρώσει από κοντά${payment.description ? ` · ${payment.description}` : ''} (€${(balance / 100).toFixed(2)})`,
+      userId: payment.user_id,
       payload: { payment_id, user_id: payment.user_id },
     });
 

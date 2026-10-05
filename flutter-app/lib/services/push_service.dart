@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -25,6 +26,9 @@ class PushService {
   AuthService? _auth;
   GlobalAuthService? _global;
   String? _pendingTapPayload;
+  Timer? _tokenRetry;
+  int _tokenAttempts = 0;
+  bool _tokenBusy = false;
 
   bool get isReady => _ready;
 
@@ -69,13 +73,17 @@ class PushService {
   }
 
   /// On iOS, [FirebaseMessaging.getToken] throws until APNS has delivered a
-  /// token. A personal team has no push entitlement, so that call must not
-  /// run or it looks like entering the gym failed.
+  /// token. Retry instead of giving up on the first empty result.
   Future<String?> _messagingToken() async {
     try {
       final messaging = FirebaseMessaging.instance;
       if (!kIsWeb && Platform.isIOS) {
-        final apns = await messaging.getAPNSToken();
+        String? apns;
+        for (var i = 0; i < 6; i++) {
+          apns = await messaging.getAPNSToken();
+          if (apns != null && apns.isNotEmpty) break;
+          await Future.delayed(Duration(milliseconds: 400 * (i + 1)));
+        }
         if (apns == null || apns.isEmpty) return null;
       }
       final token = await messaging.getToken();
@@ -87,16 +95,45 @@ class PushService {
     }
   }
 
+  void _scheduleTokenRetry() {
+    if (_tokenRetry != null) return;
+    _tokenAttempts = 0;
+    _tokenRetry = Timer.periodic(const Duration(seconds: 8), (_) async {
+      if (_tokenBusy) return;
+      _tokenAttempts++;
+      if (_tokenAttempts > 15) {
+        _tokenRetry?.cancel();
+        _tokenRetry = null;
+        return;
+      }
+      _tokenBusy = true;
+      try {
+        final global = _global;
+        if (global != null && global.isLoggedIn) await registerGlobal(global);
+        final auth = _auth;
+        if (auth != null && auth.isLoggedIn) await registerWithAuth(auth);
+      } finally {
+        _tokenBusy = false;
+      }
+    });
+  }
+
   Future<void> registerGlobal(GlobalAuthService global) async {
     _global = global;
     if (!_ready || !global.isLoggedIn) return;
     try {
       final token = await _messagingToken();
-      if (token == null) return;
+      if (token == null) {
+        _scheduleTokenRetry();
+        return;
+      }
+      _tokenRetry?.cancel();
+      _tokenRetry = null;
       await global.registerFcmToken(token, platform: _platformLabel());
       debugPrint('FCM global token registered');
     } catch (e) {
       debugPrint('FCM global registration failed: $e');
+      _scheduleTokenRetry();
     }
   }
 
@@ -105,7 +142,12 @@ class PushService {
     if (!_ready || !auth.isLoggedIn) return;
     try {
       final token = await _messagingToken();
-      if (token == null) return;
+      if (token == null) {
+        _scheduleTokenRetry();
+        return;
+      }
+      _tokenRetry?.cancel();
+      _tokenRetry = null;
       await auth.api.registerDeviceToken(token, platform: _platformLabel());
       debugPrint('FCM token registered');
     } catch (e) {
@@ -148,7 +190,11 @@ class PushService {
     final title = notification?.title ?? message.data['title'] as String? ?? tr('Ειδοποίηση');
     final body = notification?.body ?? message.data['body'] as String? ?? '';
     final payload = payloadFromData(message.data);
-    NotificationService.instance.showInstant(title: tr(title), body: body, payload: payload);
+    // iOS shows the system banner itself while the app is open.
+    // Android does not, so the banner is drawn locally.
+    if (kIsWeb || !Platform.isIOS || notification == null) {
+      NotificationService.instance.showInstant(title: tr(title), body: body, payload: payload);
+    }
     onForegroundData?.call(Map<String, dynamic>.from(message.data));
   }
 

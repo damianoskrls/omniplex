@@ -13,7 +13,7 @@ async function isMultiLocationEnabled(dbConn, bizId) {
   return Number(cnt) > 1;
 }
 
-async function listLocations(dbConn, bizId, { activeOnly = true, userId = null } = {}) {
+async function listLocations(dbConn, bizId, { activeOnly = true, userId = null, staffId = null } = {}) {
   let sql = `
     SELECT l.id, l.business_id, l.name, l.slug, l.address, l.city, l.phone, l.email,
            l.opening_hours, l.is_active, l.sort_order, l.accepts_drop_in
@@ -30,6 +30,13 @@ async function listLocations(dbConn, bizId, { activeOnly = true, userId = null }
       OR EXISTS (SELECT 1 FROM user_locations ul WHERE ul.user_id = ? AND ul.location_id = l.id)
     )`;
     params.push(userId, userId);
+  }
+  if (staffId) {
+    sql += ` AND (
+      NOT EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = ?)
+      OR EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = ? AND sl.location_id = l.id)
+    )`;
+    params.push(staffId, staffId);
   }
   sql += ' ORDER BY l.sort_order, l.name';
   const [rows] = await dbConn.query(sql, params);
@@ -242,8 +249,8 @@ async function ensureDefaultLocation(dbConn, bizId, name = 'Κεντρικό') {
   return id;
 }
 
-async function listLocationsForService(dbConn, bizId, serviceId, { userId = null } = {}) {
-  const all = await listLocations(dbConn, bizId, { activeOnly: true, userId });
+async function listLocationsForService(dbConn, bizId, serviceId, { userId = null, staffId = null } = {}) {
+  const all = await listLocations(dbConn, bizId, { activeOnly: true, userId, staffId });
   const [[restricted]] = await dbConn.query(
     'SELECT 1 FROM service_locations WHERE service_id = ? LIMIT 1',
     [serviceId],

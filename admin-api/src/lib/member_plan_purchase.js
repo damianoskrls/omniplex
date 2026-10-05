@@ -130,7 +130,7 @@ async function loadPlanForBusiness(db, bizId, planId) {
   return plan;
 }
 
-async function grantPlanMembership(conn, { bizId, userId, plan, paid, intentId }) {
+async function grantPlanMembership(conn, { bizId, userId, plan, paid, intentId, locationId = null }) {
   const today = ymd(new Date());
   const until = addMonthsEnd(today, periodMonths(plan.billing_period));
   const sessions = planSessionsToMembershipTotal(plan.sessions);
@@ -189,7 +189,9 @@ async function grantPlanMembership(conn, { bizId, userId, plan, paid, intentId }
       type: 'package_purchase',
       title: 'Νέο πακέτο από την εφαρμογή',
       body: `${user?.full_name || 'Πελάτης'} πήρε το πακέτο ${plan.name}${svc?.name ? ` (${svc.name})` : ''}.`,
-      payload: { user_id: userId, plan_id: plan.id, membership_id: membershipId, paid: !!paid },
+      locationId,
+      userId: locationId ? null : userId,
+      payload: { user_id: userId, plan_id: plan.id, membership_id: membershipId, paid: !!paid, location_id: locationId },
     });
   } catch (err) {
     console.warn('member plan notification skipped:', err.message);

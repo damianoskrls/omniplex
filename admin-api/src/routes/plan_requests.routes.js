@@ -162,6 +162,7 @@ router.post('/:id/accept', requireAdmin, async (req, res) => {
         userId: row.user_id,
         plan,
         paid: false,
+        locationId: row.location_id || null,
       });
       await createUserNotification(conn, {
         businessId: req.bizId,

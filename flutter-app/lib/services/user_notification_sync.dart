@@ -64,7 +64,7 @@ class UserNotificationSync {
     _globalTimer?.cancel();
     _loadShownIds().then((_) {
       _pollGlobal();
-      _globalTimer = Timer.periodic(const Duration(seconds: 20), (_) => _pollGlobal());
+      _globalTimer = Timer.periodic(const Duration(seconds: 8), (_) => _pollGlobal());
     });
   }
 

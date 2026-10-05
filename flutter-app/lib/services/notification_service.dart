@@ -150,7 +150,12 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
         ),
-        iOS: DarwinNotificationDetails(badgeNumber: 0),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBanner: true,
+          presentList: true,
+          presentSound: true,
+        ),
       ),
       payload: payload,
     );

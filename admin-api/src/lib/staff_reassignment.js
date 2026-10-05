@@ -300,6 +300,7 @@ async function deleteStaffWithReassignment(conn, bizId, staffId, { transferToSta
         deleted_staff_name: preview.staff.full_name,
         general_pool_staff_id: pool.id,
       },
+      staffId,
     });
   }
 

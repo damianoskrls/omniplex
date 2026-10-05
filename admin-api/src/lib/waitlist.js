@@ -171,6 +171,7 @@ async function promoteFromWaitlist(conn, businessId, serviceId, startsAt, servic
         type: 'waitlist_auto_booked',
         title: 'Αυτόματη κράτηση από λίστα αναμονής',
         body: `Θέση κλείστηκε αυτόματα για ${svcName} (${parseDateTimeParts(startsAt).date}).`,
+        locationId: await slotLocationId(conn, businessId, serviceId, startsAt),
         payload: { booking_id: bookingId, waitlist_id: waiter.id },
       });
       return waiter;
@@ -198,6 +199,7 @@ async function promoteFromWaitlist(conn, businessId, serviceId, startsAt, servic
       type: 'waitlist_slot_opened',
       title: 'Θέση διαθέσιμη — λίστα αναμονής',
       body: `Προσφέρθηκε θέση για ${serviceName} στις ${parseDateTimeParts(startsAt).date} ${parseDateTimeParts(startsAt).time}. Εκκρεμεί επιβεβαίωση.`,
+      locationId: await slotLocationId(conn, businessId, serviceId, startsAt),
       payload: { waitlist_id: waiter.id, user_id: waiter.user_id, service_id: serviceId, starts_at: startsAt },
     });
     await logPromotion(conn, {
@@ -268,8 +270,18 @@ async function processExpiredWaitlistOffers(conn) {
 
 // ── Join waitlist ────────────────────────────────────────────────────────────
 
+async function slotLocationId(conn, businessId, serviceId, startsAt) {
+  const [[row]] = await conn.query(
+    `SELECT location_id FROM bookings
+     WHERE business_id = ? AND service_id = ? AND starts_at = ? AND location_id IS NOT NULL
+     LIMIT 1`,
+    [businessId, serviceId, startsAt],
+  );
+  return row?.location_id || null;
+}
+
 async function joinWaitlist(conn, {
-  businessId, userId, serviceId, staffId, startsAt, endsAt, serviceName, userName, autoBook = false,
+  businessId, userId, serviceId, staffId, startsAt, endsAt, serviceName, userName, autoBook = false, locationId = null,
 }) {
   const position = await getWaitlistPosition(conn, businessId, serviceId, startsAt);
   const id = uuidv4();
@@ -288,7 +300,8 @@ async function joinWaitlist(conn, {
     type: 'waitlist_joined',
     title: 'Νέα εγγραφή σε λίστα αναμονής',
     body: `${userName} μπήκε σε αναμονή για ${serviceName} στις ${dateStr} ${timeStr} (θέση #${position}).`,
-    payload: { waitlist_id: id, user_id: userId, service_id: serviceId, starts_at: startsAt },
+    locationId,
+    payload: { waitlist_id: id, user_id: userId, service_id: serviceId, starts_at: startsAt, location_id: locationId },
   });
 
   await createUserNotification(conn, {
