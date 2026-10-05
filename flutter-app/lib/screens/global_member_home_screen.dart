@@ -940,7 +940,8 @@ class _HomeGymCarouselState extends State<_HomeGymCarousel> {
   double get _height {
     final maxRoles = widget.groups.fold<int>(1, (max, roles) => roles.length > max ? roles.length : max);
     final withPackage = widget.groups.any((roles) => widget.packageLine(roles.first.businessId) != null);
-    return 92 + maxRoles * 118 + 72 + (withPackage ? 52 : 0);
+    final withPlace = widget.groups.any((roles) => roles.first.locations.isNotEmpty);
+    return 92 + maxRoles * 118 + 72 + (withPackage ? 52 : 0) + (withPlace ? 18 : 0);
   }
 
   @override
@@ -1112,10 +1113,19 @@ class _HomeGymSlide extends StatelessWidget {
               _GymLogo(url: gym.logoUrl, name: gym.appName, accent: accentColor),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(tr(gym.appName),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(tr(gym.appName),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                  if (gym.locations.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(tr(gym.locations.map((l) => l.name).join(' · ')),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: _kGray)),
+                  ],
+                ]),
               ),
               GestureDetector(
                 onTap: () => _showQr(context),
@@ -1490,8 +1500,12 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text(tr(_typeLabel(gym)),
-                    style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
+                  Text(
+                    tr(gym.locations.isEmpty ? _typeLabel(gym) : gym.locations.map((l) => l.name).join(' · ')),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(fontSize: 12, color: _kGray),
+                  ),
                   if (!isPending && widget.packageLine != null) ...[
                     const SizedBox(height: 2),
                     Text(tr(widget.packageLine!),
@@ -2112,7 +2126,10 @@ class _ScheduleTabState extends State<_ScheduleTab> {
 
   List<Map<String, dynamic>> get _scoped => _all.where((b) {
     if (_gymId != null && b['business_id']?.toString() != _gymId) return false;
-    if (_locationId != null && b['location_id']?.toString() != _locationId) return false;
+    final allowed = _stores.map((s) => s['id']?.toString()).whereType<String>().toSet();
+    final bookingLoc = b['location_id']?.toString() ?? '';
+    if (allowed.isNotEmpty && bookingLoc.isNotEmpty && !allowed.contains(bookingLoc)) return false;
+    if (_locationId != null && bookingLoc != _locationId) return false;
     return true;
   }).toList();
 
@@ -2127,32 +2144,16 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   }
 
   List<Map<String, dynamic>> get _stores {
-    final raw = widget.dashboard?['locations'];
-    final fromApi = raw is List
-        ? raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
-        : <Map<String, dynamic>>[];
-    final source = fromApi.isNotEmpty
-        ? fromApi
-        : () {
-            final seen = <String, Map<String, dynamic>>{};
-            for (final b in _all) {
-              final id = b['location_id']?.toString() ?? '';
-              final name = b['location_name']?.toString() ?? '';
-              if (id.isEmpty || name.isEmpty) continue;
-              seen[id] = {
-                'id': id,
-                'name': name,
-                'business_id': b['business_id'],
-              };
-            }
-            return seen.values.toList();
-          }();
     final unique = <String, Map<String, dynamic>>{};
-    for (final store in source) {
-      if (_gymId != null && store['business_id']?.toString() != _gymId) continue;
-      final id = store['id']?.toString() ?? '';
-      if (id.isEmpty) continue;
-      unique[id] = store;
+    for (final gym in widget.gyms) {
+      if (_gymId != null && gym.businessId != _gymId) continue;
+      for (final place in gym.locations) {
+        unique[place.id] = {
+          'id': place.id,
+          'name': place.name,
+          'business_id': gym.businessId,
+        };
+      }
     }
     return unique.values.toList();
   }
@@ -2262,24 +2263,26 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                 ],
               ),
             ),
-            if (_gymOptions.length > 1) ...[
+            if (_gymOptions.isNotEmpty) ...[
               const SizedBox(height: 14),
               _filterRow(
                 label: tr('Γυμναστήριο'),
-                selected: _gymId,
+                selected: _gymOptions.length == 1 ? _gymOptions.first.id : _gymId,
                 options: _gymOptions,
+                allowAll: _gymOptions.length > 1,
                 onPick: (id) => setState(() {
                   _gymId = id;
                   _locationId = null;
                 }),
               ),
             ],
-            if (_stores.length > 1) ...[
+            if (_stores.isNotEmpty) ...[
               const SizedBox(height: 10),
               _filterRow(
-                label: tr('Κατάστημα'),
-                selected: _locationId,
+                label: tr('Περιοχή'),
+                selected: _stores.length == 1 ? _stores.first['id']?.toString() : _locationId,
                 options: _stores.map((l) => (id: l['id']?.toString() ?? '', name: _storeChipName(l))).toList(),
+                allowAll: _stores.length > 1,
                 onPick: (id) => setState(() => _locationId = id),
               ),
             ],
@@ -2413,9 +2416,10 @@ class _ScheduleTabState extends State<_ScheduleTab> {
     required String? selected,
     required List<({String id, String name})> options,
     required ValueChanged<String?> onPick,
+    bool allowAll = true,
   }) {
     final chips = <({String? id, String name})>[
-      (id: null, name: tr('Συνολικά')),
+      if (allowAll) (id: null, name: tr('Συνολικά')),
       ...options.where((o) => o.id.isNotEmpty && o.name.isNotEmpty).map((o) => (id: o.id, name: o.name)),
     ];
     return Column(

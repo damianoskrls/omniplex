@@ -89,12 +89,6 @@ async function locationsForMember(dbConn, { bizIds, memberIds, staffIds }) {
     params.push(ids);
   };
   add(`EXISTS (SELECT 1 FROM user_locations ul WHERE ul.location_id = l.id AND ul.user_id IN (?))`, memberIds);
-  add(`l.id IN (
-    SELECT b.location_id FROM bookings b
-    WHERE b.user_id IN (?) AND b.location_id IS NOT NULL
-      AND b.status IN ('pending','confirmed')
-      AND b.starts_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
-  )`, memberIds);
   add(`(
     (SELECT COUNT(*) FROM locations lx WHERE lx.business_id = l.business_id AND lx.is_active = 1) = 1
     AND EXISTS (
@@ -104,12 +98,6 @@ async function locationsForMember(dbConn, { bizIds, memberIds, staffIds }) {
     )
   )`, memberIds);
   add(`EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.location_id = l.id AND sl.staff_id IN (?))`, staffIds);
-  add(`l.id IN (
-    SELECT b.location_id FROM bookings b
-    WHERE b.staff_id IN (?) AND b.location_id IS NOT NULL
-      AND b.status IN ('pending','confirmed')
-      AND b.starts_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
-  )`, staffIds);
   add(`(
     (SELECT COUNT(*) FROM locations lx WHERE lx.business_id = l.business_id AND lx.is_active = 1) = 1
     AND EXISTS (
@@ -174,6 +162,16 @@ async function getGymsForGlobalUser(globalUserId) {
     return true;
   }).sort((a, b) => a.name.localeCompare(b.name));
 
+  const memberIds = [...new Set(all.filter((r) => r.user_type === 'member').map((r) => r.user_id))];
+  const staffIds = [...new Set(all.filter((r) => r.user_type === 'staff').map((r) => r.staff_id || r.user_id))];
+  const bizIds = [...new Set(all.map((r) => r.business_id).filter(Boolean))];
+  const places = await locationsForMember(db, { bizIds, memberIds, staffIds });
+  const placesByBiz = {};
+  for (const place of places) {
+    if (!placesByBiz[place.business_id]) placesByBiz[place.business_id] = [];
+    placesByBiz[place.business_id].push({ id: place.id, name: place.name });
+  }
+
   return all.map(r => ({
     user_id:       r.user_id,
     business_id:   r.business_id,
@@ -187,6 +185,7 @@ async function getGymsForGlobalUser(globalUserId) {
     user_type:     r.user_type,
     staff_id:      r.staff_id || null,
     staff_kind:    r.user_type === 'staff' ? (r.staff_kind || staffKindFromRow(r)) : null,
+    locations:     placesByBiz[r.business_id] || [],
   }));
 }
 

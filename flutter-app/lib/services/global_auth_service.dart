@@ -23,6 +23,7 @@ class GlobalGym {
   final String userType; // 'member' | 'staff'
   final String? staffId;
   final String? staffKind; // trainer | nutritionist | physiotherapist
+  final List<({String id, String name})> locations;
 
   const GlobalGym({
     required this.userId,
@@ -37,6 +38,7 @@ class GlobalGym {
     this.userType = 'member',
     this.staffId,
     this.staffKind,
+    this.locations = const [],
   });
 
   bool get isStaff => userType == 'staff';
@@ -55,6 +57,14 @@ class GlobalGym {
     userType:     j['user_type'] as String? ?? 'member',
     staffId:      j['staff_id'] as String?,
     staffKind:    j['staff_kind'] as String?,
+    locations:    ((j['locations'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((row) => (
+          id: row['id']?.toString() ?? '',
+          name: row['name']?.toString() ?? '',
+        ))
+        .where((row) => row.id.isNotEmpty && row.name.isNotEmpty)
+        .toList(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -70,6 +80,7 @@ class GlobalGym {
     'user_type':     userType,
     'staff_id':      staffId,
     'staff_kind':    staffKind,
+    'locations':     locations.map((row) => {'id': row.id, 'name': row.name}).toList(),
   };
 }
 
