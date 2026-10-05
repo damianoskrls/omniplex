@@ -311,6 +311,7 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
       debugPrint('[MemberHome._enterGym] Config loaded: slug=${config.slug} bizId=${config.businessId}');
       if (!mounted) return;
       debugPrint('[MemberHome._enterGym] Calling onEnterGym...');
+      dismissGymEntrySplash(nav);
       widget.onEnterGym(config);
     } catch (e) {
       if (nav.canPop()) nav.pop();
@@ -551,6 +552,112 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
   }
 }
 
+class _HomeEmptyGyms extends StatelessWidget {
+  const _HomeEmptyGyms({
+    required this.loggedIn,
+    required this.pendingNames,
+    required this.onAdd,
+    required this.onPending,
+  });
+
+  final bool loggedIn;
+  final List<String> pendingNames;
+  final VoidCallback onAdd;
+  final VoidCallback onPending;
+
+  @override
+  Widget build(BuildContext context) {
+    final waiting = pendingNames.isNotEmpty;
+    final title = !loggedIn
+        ? 'Βρες το γυμναστήριό σου'
+        : waiting
+            ? 'Περιμένει έγκριση'
+            : 'Δεν έχεις γυμναστήριο ακόμα';
+    final body = !loggedIn
+        ? 'Ψάξε γυμναστήρια κοντά σου. Η σύνδεση ζητιέται όταν θες πακέτο.'
+        : waiting
+            ? 'Το αίτημά σου δεν έχει εγκριθεί ακόμα. Μπορείς να προσθέσεις και άλλο γυμναστήριο.'
+            : 'Βρες ένα γυμναστήριο και κάνε εγγραφή ή αγόρασε το πρώτο σου πακέτο.';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: _kBrandGradient,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                waiting ? Icons.hourglass_top_rounded : Icons.fitness_center_rounded,
+                color: Colors.white,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              tr(title),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              tr(body),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(fontSize: 14, height: 1.4, color: _kGray),
+            ),
+            if (waiting) ...[
+              const SizedBox(height: 10),
+              Text(
+                tr(pendingNames.join(' · ')),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFFFFA500)),
+              ),
+              TextButton(
+                onPressed: onPending,
+                child: Text(
+                  tr('Δες τα αιτήματα'),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: _kBrandGradient,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: TextButton(
+                  onPressed: onAdd,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(
+                    tr(loggedIn ? 'Πρόσθεσε γυμναστήριο' : 'Αναζήτηση'),
+                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─────────────────────────────────────────
 // HOME TAB
 // ─────────────────────────────────────────
@@ -652,16 +759,16 @@ class _HomeTab extends StatelessWidget {
                     children: [
                       const SizedBox(height: 8),
 
-                      // My Gym card
                       if (homeGroups.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Text(
-                            tr(globalAuth.isLoggedIn
-                                ? 'Τα γυμναστήρια που περιμένουν έγκριση είναι στα Gyms.'
-                                : tr('Βρες γυμναστήριο από την Αναζήτηση. Η σύνδεση ζητιέται όταν θες πακέτο.')),
-                            style: GoogleFonts.inter(fontSize: 14, color: _kGray, height: 1.4),
-                          ),
+                        _HomeEmptyGyms(
+                          loggedIn: globalAuth.isLoggedIn,
+                          pendingNames: gyms
+                              .where((g) => !g.isStaff && g.userStatus == 'pending')
+                              .map((g) => g.appName)
+                              .toSet()
+                              .toList(),
+                          onAdd: () => onTabChange(1),
+                          onPending: () => onTabChange(3),
                         ),
 
                       if (homeGroups.isNotEmpty) ...[

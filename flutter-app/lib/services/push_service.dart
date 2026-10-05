@@ -68,12 +68,31 @@ class PushService {
     }
   }
 
+  /// On iOS, [FirebaseMessaging.getToken] throws until APNS has delivered a
+  /// token. A personal team has no push entitlement, so that call must not
+  /// run or it looks like entering the gym failed.
+  Future<String?> _messagingToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      if (!kIsWeb && Platform.isIOS) {
+        final apns = await messaging.getAPNSToken();
+        if (apns == null || apns.isEmpty) return null;
+      }
+      final token = await messaging.getToken();
+      if (token == null || token.isEmpty) return null;
+      return token;
+    } catch (e) {
+      debugPrint('FCM token unavailable: $e');
+      return null;
+    }
+  }
+
   Future<void> registerGlobal(GlobalAuthService global) async {
     _global = global;
     if (!_ready || !global.isLoggedIn) return;
     try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null || token.isEmpty) return;
+      final token = await _messagingToken();
+      if (token == null) return;
       await global.registerFcmToken(token, platform: _platformLabel());
       debugPrint('FCM global token registered');
     } catch (e) {
@@ -85,8 +104,8 @@ class PushService {
     _auth = auth;
     if (!_ready || !auth.isLoggedIn) return;
     try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null || token.isEmpty) return;
+      final token = await _messagingToken();
+      if (token == null) return;
       await auth.api.registerDeviceToken(token, platform: _platformLabel());
       debugPrint('FCM token registered');
     } catch (e) {
@@ -98,8 +117,8 @@ class PushService {
   Future<void> unregisterFromCurrentGym(AuthService auth) async {
     if (!_ready || !auth.isLoggedIn) return;
     try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null || token.isEmpty) return;
+      final token = await _messagingToken();
+      if (token == null) return;
       await auth.api.unregisterDeviceToken(token);
       debugPrint('FCM token unregistered from gym ${auth.api.bizId}');
     } catch (e) {

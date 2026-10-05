@@ -664,6 +664,10 @@ async function bootstrapSchema() {
     ['longitude',       'DECIMAL(11,8) NULL'],
     ['description',     'TEXT NULL'],
     ['is_discoverable', 'TINYINT(1) NOT NULL DEFAULT 0'],
+    ['address',         'VARCHAR(255) NULL'],
+    ['area',            'VARCHAR(120) NULL'],
+    ['program_tags',    'TEXT NULL'],
+    ['amenity_tags',    'TEXT NULL'],
   ];
   for (const [col, def] of bizCols) {
     try {

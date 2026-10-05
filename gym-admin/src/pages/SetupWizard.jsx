@@ -238,7 +238,7 @@ function DescriptionStep({ onSaved }) {
       <StepNote>Σύντομη περιγραφή για όποιον βρίσκει το γυμναστήριο. Η πλήρης προβολή είναι στην Αγορά.</StepNote>
       <textarea className="form-input" rows={5} value={text} onChange={(e) => setText(e.target.value)} placeholder="Τι προσφέρει το γυμναστήριο" />
       <button type="button" className="btn btn-primary" style={{ marginTop: 10 }} onClick={save} disabled={saving}>{saving ? '...' : 'Αποθήκευση περιγραφής'}</button>
-      <div style={{ marginTop: 10 }}><Link to="/discovery-profile">Άνοιξε την πλήρη προβολή στην αγορά</Link></div>
+      <div style={{ marginTop: 10 }}><Link to="/settings">Άνοιξε το προφίλ στις γενικές ρυθμίσεις</Link></div>
     </div>
   );
 }

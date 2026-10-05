@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import '../services/stripe_checkout.dart';
 import 'package:provider/provider.dart';
 import '../models/booking.dart';
 import '../models/location.dart';
@@ -578,15 +579,11 @@ class _DropinBookSheetState extends State<_DropinBookSheet> {
         if (secret == null || key == null || id == null) {
           throw ApiException(tr('Η πληρωμή με κάρτα δεν είναι διαθέσιμη'));
         }
-        Stripe.publishableKey = key;
-        await Stripe.instance.initPaymentSheet(
-          paymentSheetParameters: SetupPaymentSheetParameters(
-            paymentIntentClientSecret: secret,
-            merchantDisplayName: 'OmniPlex',
-            style: ThemeMode.dark,
-          ),
+        await presentCardPaymentSheet(
+          publishableKey: key,
+          clientSecret: secret,
+          merchantDisplayName: 'OmniPlex',
         );
-        await Stripe.instance.presentPaymentSheet();
         intentId = id;
       }
 

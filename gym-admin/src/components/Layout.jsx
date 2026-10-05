@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck, Zap, Globe, Image, CalendarDays, Gift,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck, Zap, Image, CalendarDays, Gift,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
@@ -101,7 +101,6 @@ function buildNavGroups({ features, featureNutrition }) {
       links: [
         { to: '/setup', icon: ClipboardCheck, label: 'Οδηγός έναρξης' },
         { to: '/settings', icon: Settings, label: 'Γενικές Ρυθμίσεις' },
-        { to: '/discovery-profile', icon: Globe, label: 'Προβολή στην Αγορά' },
         { to: '/online-payments', icon: CreditCard, label: 'Online Πληρωμές' },
         { to: '/gdpr', icon: ShieldCheck, label: 'Ηλεκτρονικές εγγραφές' },
         { to: '/reminders', icon: Bell, label: 'Αυτόματες Υπενθυμίσεις' },

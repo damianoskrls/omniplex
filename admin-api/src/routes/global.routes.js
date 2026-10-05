@@ -672,16 +672,17 @@ router.get('/discovery/gyms', async (req, res) => {
   const lng = parseFloat(req.query.lng);
   const hasLocation = !isNaN(lat) && !isNaN(lng);
 
-  // Require is_discoverable only for pure browse (no query, no service filter)
-  const requireDiscoverable = !q.trim() && !service.trim() && !city.trim();
+  // A typed name can still find a gym. Filters and nearby only list gyms that opted in.
+  const requireDiscoverable = q.trim().length < 2;
   const conditions = requireDiscoverable
     ? ['b.is_active = 1', 'b.is_discoverable = 1']
     : ['b.is_active = 1'];
   const params = [];
 
   if (q.trim().length >= 2) {
-    conditions.push('(b.name LIKE ? OR b.slug LIKE ? OR c.app_name LIKE ?)');
-    params.push(`%${q.trim()}%`, `%${q.trim()}%`, `%${q.trim()}%`);
+    const like = `%${q.trim()}%`;
+    conditions.push('(b.name LIKE ? OR b.slug LIKE ? OR c.app_name LIKE ? OR b.city LIKE ? OR b.area LIKE ? OR b.address LIKE ? OR b.program_tags LIKE ?)');
+    params.push(like, like, like, like, like, like, like);
   }
   if (city.trim()) {
     conditions.push('b.city LIKE ?');
@@ -697,47 +698,51 @@ router.get('/discovery/gyms', async (req, res) => {
        )))`
     : 'NULL';
 
-  try {
-    let sql;
-    const distParams = hasLocation ? [lat, lat, lng] : [];
-
-    if (service.trim()) {
-      sql = `
-        SELECT DISTINCT b.id, b.slug, b.name, b.business_type, b.city, b.description,
-               b.latitude, b.longitude,
-               c.app_name, c.primary_color, c.logo_url,
-               (SELECT url FROM gym_photos WHERE business_id = b.id ORDER BY is_cover DESC, display_order ASC, created_at ASC LIMIT 1) AS cover_url,
-               (b.accepts_drop_in = 1
-                 OR EXISTS (SELECT 1 FROM locations dl WHERE dl.business_id = b.id AND dl.is_active = 1 AND dl.accepts_drop_in = 1)
-                 OR EXISTS (SELECT 1 FROM dropin_offers dof WHERE dof.business_id = b.id AND dof.is_active = 1)
-               ) AS has_drop_in,
-               ${distanceExpr} AS distance_km
-        FROM businesses b
-        LEFT JOIN business_configs c ON c.business_id = b.id
-        JOIN services s ON s.business_id = b.id AND s.is_active = 1 AND s.name LIKE ?
-        WHERE ${conditions.join(' AND ')}
-        ORDER BY ${hasLocation ? 'distance_km IS NULL ASC, distance_km ASC' : 'b.name ASC'}
-        LIMIT 30
-      `;
-      params.unshift(`%${service.trim()}%`);
-    } else {
-      sql = `
-        SELECT b.id, b.slug, b.name, b.business_type, b.city, b.description,
-               b.latitude, b.longitude,
-               c.app_name, c.primary_color, c.logo_url,
-               (SELECT url FROM gym_photos WHERE business_id = b.id ORDER BY is_cover DESC, display_order ASC, created_at ASC LIMIT 1) AS cover_url,
-               (b.accepts_drop_in = 1
-                 OR EXISTS (SELECT 1 FROM locations dl WHERE dl.business_id = b.id AND dl.is_active = 1 AND dl.accepts_drop_in = 1)
-                 OR EXISTS (SELECT 1 FROM dropin_offers dof WHERE dof.business_id = b.id AND dof.is_active = 1)
-               ) AS has_drop_in,
-               ${distanceExpr} AS distance_km
-        FROM businesses b
-        LEFT JOIN business_configs c ON c.business_id = b.id
-        WHERE ${conditions.join(' AND ')}
-        ORDER BY ${hasLocation ? 'distance_km IS NULL ASC, distance_km ASC' : 'b.name ASC'}
-        LIMIT 30
-      `;
+  const tagAliases = {
+    δύναμη: ['Δύναμη', 'Strength'],
+    strength: ['Δύναμη', 'Strength'],
+    κολύμβηση: ['Κολύμβηση', 'Swimming'],
+    swimming: ['Κολύμβηση', 'Swimming'],
+  };
+  const programs = String(service).split(',').map((s) => s.trim()).filter(Boolean);
+  if (programs.length) {
+    const ors = [];
+    for (const program of programs) {
+      const names = tagAliases[program.toLowerCase()] || [program];
+      for (const name of names) {
+        ors.push(`(b.program_tags LIKE ? OR EXISTS (
+          SELECT 1 FROM services sv
+          WHERE sv.business_id = b.id AND sv.is_active = 1 AND sv.name LIKE ?
+        ))`);
+        params.push(`%${name}%`, `%${name}%`);
+      }
     }
+    conditions.push(`(${ors.join(' OR ')})`);
+  }
+  const amenities = String(req.query.amenities || '').split(',').map((s) => s.trim()).filter(Boolean);
+  for (const amenity of amenities) {
+    conditions.push('b.amenity_tags LIKE ?');
+    params.push(`%${amenity}%`);
+  }
+
+  try {
+    const distParams = hasLocation ? [lat, lat, lng] : [];
+    const sql = `
+        SELECT b.id, b.slug, b.name, b.business_type, b.city, b.area, b.address, b.description,
+               b.latitude, b.longitude,
+               c.app_name, c.primary_color, c.logo_url,
+               (SELECT url FROM gym_photos WHERE business_id = b.id ORDER BY is_cover DESC, display_order ASC, created_at ASC LIMIT 1) AS cover_url,
+               (b.accepts_drop_in = 1
+                 OR EXISTS (SELECT 1 FROM locations dl WHERE dl.business_id = b.id AND dl.is_active = 1 AND dl.accepts_drop_in = 1)
+                 OR EXISTS (SELECT 1 FROM dropin_offers dof WHERE dof.business_id = b.id AND dof.is_active = 1)
+               ) AS has_drop_in,
+               ${distanceExpr} AS distance_km
+        FROM businesses b
+        LEFT JOIN business_configs c ON c.business_id = b.id
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY ${hasLocation ? 'distance_km IS NULL ASC, distance_km ASC' : 'b.name ASC'}
+        LIMIT 60
+      `;
 
     const [rows] = await db.query(sql, [...distParams, ...params]);
 
@@ -793,13 +798,22 @@ router.get('/discovery/gyms', async (req, res) => {
       }
     }
 
-    return res.json(rows.map(r => ({
+    const maxDistance = parseFloat(req.query.max_distance);
+    const limited = rows.filter((r) => {
+      if (Number.isNaN(maxDistance)) return true;
+      const km = r.distance_km == null ? null : Number(r.distance_km);
+      return km != null && km <= maxDistance;
+    }).slice(0, 30);
+
+    return res.json(limited.map(r => ({
       business_id:   r.id,
       slug:          r.slug,
       name:          r.name,
       app_name:      r.app_name || r.name,
       business_type: r.business_type,
       city:          r.city || null,
+      area:          r.area || null,
+      address:       r.address || null,
       description:   r.description || null,
       primary_color: r.primary_color || '#B8F55E',
       logo_url:      r.logo_url || null,
@@ -823,7 +837,7 @@ router.get('/discovery/gyms', async (req, res) => {
 router.get('/discovery/gyms/:slug', async (req, res) => {
   try {
     const [rows] = await db.query(`
-      SELECT b.id, b.slug, b.name, b.business_type, b.city, b.description, b.latitude, b.longitude,
+      SELECT b.id, b.slug, b.name, b.business_type, b.city, b.area, b.address, b.description, b.latitude, b.longitude,
              b.accepts_drop_in, b.drop_in_price_cents,
              c.app_name, c.primary_color, c.secondary_color, c.logo_url, c.feature_online_payments
       FROM businesses b
@@ -885,7 +899,7 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
           id: null,
           name: biz.app_name || biz.name,
           city: biz.city || null,
-          address: null,
+          address: biz.address || null,
           accepts_drop_in: !!biz.accepts_drop_in,
           hours: businessHours.days,
           hours_summary: businessHours.summary,
@@ -947,6 +961,8 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       app_name:          biz.app_name || biz.name,
       business_type:     biz.business_type,
       city:              biz.city || null,
+      area:              biz.area || null,
+      address:           biz.address || null,
       description:       biz.description || null,
       latitude:          biz.latitude,
       longitude:         biz.longitude,

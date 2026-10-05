@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../l10n/tr.dart';
 
+/// Removes the logo splash pushed by [showGymEntrySplash].
+/// Call this before the parent replaces the shell, otherwise the route stays
+/// on top of the next screen and the gym never appears.
+void dismissGymEntrySplash(NavigatorState nav) {
+  if (nav.canPop()) nav.pop();
+}
+
 /// Covers the screen with the gym logo while the gym session is opening.
 /// Stays up until the route is removed. The caller does the loading underneath.
 Future<void> showGymEntrySplash(

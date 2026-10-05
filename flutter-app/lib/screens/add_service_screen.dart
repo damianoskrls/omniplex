@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import '../services/stripe_checkout.dart';
 import 'package:provider/provider.dart';
 import '../models/location.dart';
 import '../services/api_service.dart';
@@ -203,15 +204,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       final result = await api.buyExtraPlan(planId);
       var message = result['message'] as String? ?? tr('Η υπηρεσία προστέθηκε.');
       if (result['mode'] == 'stripe') {
-        Stripe.publishableKey = result['publishable_key'] as String;
-        await Stripe.instance.initPaymentSheet(
-          paymentSheetParameters: SetupPaymentSheetParameters(
-            paymentIntentClientSecret: result['client_secret'] as String,
-            merchantDisplayName: 'OmniPlex',
-            style: ThemeMode.dark,
-          ),
+        await presentCardPaymentSheet(
+          publishableKey: result['publishable_key'] as String,
+          clientSecret: result['client_secret'] as String,
+          merchantDisplayName: 'OmniPlex',
         );
-        await Stripe.instance.presentPaymentSheet();
         final confirmed = await api.confirmExtraPlan(
           planId: planId,
           intentId: result['intent_id'] as String,

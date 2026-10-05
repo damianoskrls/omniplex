@@ -19,6 +19,19 @@ const TABS = [
 
 const DAYS = ['', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
 
+const PROGRAM_TYPES = [
+  'CrossFit', 'Yoga', 'Pilates', 'Functional', 'HIIT', 'Boxing',
+  'Κολύμβηση', 'Personal Training', 'Δύναμη', 'Cardio',
+];
+const AMENITIES = [
+  ['Parking', 'Πάρκινγκ'],
+  ['Showers', 'Ντους'],
+  ['Locker rooms', 'Αποδυτήρια'],
+  ['Pool', 'Πισίνα'],
+  ['Cafe', 'Καφέ'],
+  ['Towel service', 'Πετσέτες'],
+];
+
 const CLASS_COLORS = [
   '#C52473', '#B48CFF', '#3EE6FF', '#FF6FD8', '#FFB23E',
   '#FF5252', '#69FF47', '#40C4FF', '#FF6E40', '#EEFF41',
@@ -28,10 +41,11 @@ const CLASS_COLORS = [
 
 function InfoSection() {
   const [form, setForm] = useState({
-    city: '', country: 'GR', latitude: '', longitude: '',
+    city: '', country: 'GR', address: '', area: '', latitude: '', longitude: '',
     description: '', is_discoverable: false, accepts_drop_in: false,
-    drop_in_price_cents: '',
+    drop_in_price_cents: '', program_tags: [], amenity_tags: [],
   });
+  const [lockCoordinates, setLockCoordinates] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
@@ -43,12 +57,16 @@ function InfoSection() {
       setForm({
         city:                d.city || '',
         country:             d.country || 'GR',
+        address:             d.address || '',
+        area:                d.area || '',
         latitude:            d.latitude != null ? String(d.latitude) : '',
         longitude:           d.longitude != null ? String(d.longitude) : '',
         description:         d.description || '',
         is_discoverable:     !!d.is_discoverable,
         accepts_drop_in:     !!d.accepts_drop_in,
         drop_in_price_cents: d.drop_in_price_cents ? String(d.drop_in_price_cents / 100) : '',
+        program_tags:        Array.isArray(d.program_tags) ? d.program_tags : [],
+        amenity_tags:        Array.isArray(d.amenity_tags) ? d.amenity_tags : [],
       });
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -58,16 +76,31 @@ function InfoSection() {
     e.preventDefault();
     setSaving(true); setError(null); setSaved(false);
     try {
-      await api.patch('/client-admin/discovery-profile', {
+      const savedProfile = await api.patch('/client-admin/discovery-profile', {
         city:                form.city || null,
         country:             form.country || null,
+        address:             form.address || null,
+        area:                form.area || null,
         latitude:            form.latitude ? parseFloat(form.latitude) : null,
         longitude:           form.longitude ? parseFloat(form.longitude) : null,
         description:         form.description || null,
         is_discoverable:     form.is_discoverable ? 1 : 0,
         accepts_drop_in:     form.accepts_drop_in ? 1 : 0,
         drop_in_price_cents: form.drop_in_price_cents ? Math.round(parseFloat(form.drop_in_price_cents) * 100) : 0,
+        program_tags:        form.program_tags,
+        amenity_tags:        form.amenity_tags,
+        lock_coordinates:    lockCoordinates,
       });
+      if (savedProfile.data?.latitude != null && savedProfile.data?.longitude != null) {
+        setForm(f => ({
+          ...f,
+          latitude: String(savedProfile.data.latitude),
+          longitude: String(savedProfile.data.longitude),
+        }));
+      }
+      if (savedProfile.data && savedProfile.data.geocoded === false && !lockCoordinates && (form.address || form.area || form.city)) {
+        setError('Η διεύθυνση αποθηκεύτηκε, αλλά δεν εντοπίστηκε στον χάρτη. Συμπλήρωσε πλάτος και μήκος.');
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
@@ -155,6 +188,16 @@ function InfoSection() {
           <span className="font-semibold text-gray-900 dark:text-white text-sm">Τοποθεσία</span>
         </div>
         <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Διεύθυνση</label>
+            <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Οδός και αριθμός"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Περιοχή</label>
+            <input value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} placeholder="π.χ. Κηφισιά"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Πόλη</label>
             <input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder="π.χ. Αθήνα"
@@ -181,6 +224,52 @@ function InfoSection() {
           <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             rows={3} placeholder="Σύντομη περιγραφή του γυμναστηρίου σας που θα βλέπουν οι χρήστες"
             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+        </div>
+        <label className="flex items-center gap-2 text-xs text-gray-500">
+          <input type="checkbox" checked={lockCoordinates} onChange={e => setLockCoordinates(e.target.checked)} />
+          Κράτα τις συντεταγμένες που έγραψα. Αλλιώς υπολογίζονται από τη διεύθυνση και την περιοχή, για τα «κοντά μου».
+        </label>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Tag size={16} className="text-gray-400" />
+          <span className="font-semibold text-gray-900 dark:text-white text-sm">Είδος προγράμματος</span>
+        </div>
+        <p className="text-xs text-gray-500">Ό,τι επιλέξεις εμφανίζεται όταν ο χρήστης φιλτράρει την αναζήτηση με το ίδιο είδος.</p>
+        <div className="flex flex-wrap gap-2">
+          {PROGRAM_TYPES.map(tag => {
+            const on = form.program_tags.includes(tag);
+            return (
+              <button type="button" key={tag}
+                onClick={() => setForm(f => ({
+                  ...f,
+                  program_tags: on ? f.program_tags.filter(t => t !== tag) : [...f.program_tags, tag],
+                }))}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${on ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600'}`}>
+                {tag}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-2 pt-2">
+          <Tag size={16} className="text-gray-400" />
+          <span className="font-semibold text-gray-900 dark:text-white text-sm">Παροχές</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {AMENITIES.map(([key, label]) => {
+            const on = form.amenity_tags.includes(key);
+            return (
+              <button type="button" key={key}
+                onClick={() => setForm(f => ({
+                  ...f,
+                  amenity_tags: on ? f.amenity_tags.filter(t => t !== key) : [...f.amenity_tags, key],
+                }))}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${on ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600'}`}>
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -998,17 +1087,16 @@ function PackagesSection() {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function DiscoveryProfile() {
+export default function DiscoveryProfile({ embedded = false }) {
   const [tab, setTab] = useState('info');
 
-  return (
-    <Layout>
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+  const body = (
+      <div className={embedded ? 'space-y-6' : 'max-w-4xl mx-auto p-6 space-y-6'}>
         <div className="flex items-center gap-3">
           <Globe className="text-indigo-500" size={24} />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Προβολή στην Αγορά</h1>
-            <p className="text-sm text-gray-500">Διαχείριση όλων των πληροφοριών που βλέπουν οι χρήστες στο app</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Προφίλ γυμναστηρίου</h1>
+            <p className="text-sm text-gray-500">Όσα βλέπουν οι χρήστες στην αναζήτηση: διεύθυνση, περιοχή, είδη και παροχές</p>
           </div>
         </div>
 
@@ -1034,6 +1122,8 @@ export default function DiscoveryProfile() {
           {tab === 'packages' && <PackagesSection />}
         </div>
       </div>
-    </Layout>
   );
+
+  if (embedded) return body;
+  return <Layout>{body}</Layout>;
 }

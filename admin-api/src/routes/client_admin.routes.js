@@ -8023,37 +8023,114 @@ router.delete('/my-programs/:programId/session', async (req, res) => {
 // GET /api/client-admin/discovery-profile  — get discovery settings
 // PATCH /api/client-admin/discovery-profile — set city, lat, lng, description, is_discoverable
 // ============================================================
+function parseStoredTags(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map(String);
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function geocodeGym({ address, area, city, country }) {
+  const query = [address, area, city, country || 'Greece'].filter(Boolean).join(', ');
+  if (!query.trim()) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+    const req = require('https').get(url, {
+      headers: { 'User-Agent': 'OmniPlexGymSearch/1.0', Accept: 'application/json' },
+    }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const rows = JSON.parse(data);
+          if (!rows[0]) return resolve(null);
+          const latitude = Number(rows[0].lat);
+          const longitude = Number(rows[0].lon);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return resolve(null);
+          resolve({ latitude, longitude });
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(6000, () => { req.destroy(); resolve(null); });
+  });
+}
+
 router.get('/discovery-profile', requireClientAdmin, async (req, res) => {
   try {
     const [[biz]] = await db.query(
-      'SELECT city, country, latitude, longitude, description, is_discoverable, accepts_drop_in, drop_in_price_cents FROM businesses WHERE id = ?',
+      `SELECT b.city, b.country, b.latitude, b.longitude, b.description, b.is_discoverable,
+              b.accepts_drop_in, b.drop_in_price_cents, b.address, b.area, b.program_tags, b.amenity_tags,
+              c.gym_address
+       FROM businesses b
+       LEFT JOIN business_configs c ON c.business_id = b.id
+       WHERE b.id = ?`,
       [req.admin.businessId],
     );
-    return res.json(biz || {});
+    if (!biz) return res.json({});
+    return res.json({
+      ...biz,
+      address: biz.address || biz.gym_address || '',
+      program_tags: parseStoredTags(biz.program_tags),
+      amenity_tags: parseStoredTags(biz.amenity_tags),
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
 
 router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
-  const { city, country, latitude, longitude, description, is_discoverable, accepts_drop_in, drop_in_price_cents } = req.body;
+  const {
+    city, country, latitude, longitude, description, is_discoverable, accepts_drop_in, drop_in_price_cents,
+    address, area, program_tags, amenity_tags, lock_coordinates,
+  } = req.body;
   try {
+    let lat = latitude ?? null;
+    let lng = longitude ?? null;
+    let geocoded = false;
+    const hasPlace = [address, area, city].some((part) => String(part || '').trim());
+    if (!lock_coordinates && hasPlace) {
+      const found = await geocodeGym({ address, area, city, country });
+      if (found) {
+        lat = found.latitude;
+        lng = found.longitude;
+        geocoded = true;
+      }
+    }
+    const programs = Array.isArray(program_tags) ? JSON.stringify(program_tags) : null;
+    const amenities = Array.isArray(amenity_tags) ? JSON.stringify(amenity_tags) : null;
     await db.query(
       `UPDATE businesses SET
          city = COALESCE(?, city),
          country = COALESCE(?, country),
+         address = COALESCE(?, address),
+         area = COALESCE(?, area),
          latitude = COALESCE(?, latitude),
          longitude = COALESCE(?, longitude),
          description = COALESCE(?, description),
          is_discoverable = COALESCE(?, is_discoverable),
          accepts_drop_in = COALESCE(?, accepts_drop_in),
-         drop_in_price_cents = COALESCE(?, drop_in_price_cents)
+         drop_in_price_cents = COALESCE(?, drop_in_price_cents),
+         program_tags = COALESCE(?, program_tags),
+         amenity_tags = COALESCE(?, amenity_tags)
        WHERE id = ?`,
-      [city ?? null, country ?? null, latitude ?? null, longitude ?? null,
+      [city ?? null, country ?? null, address ?? null, area ?? null, lat, lng,
        description ?? null, is_discoverable ?? null, accepts_drop_in ?? null,
-       drop_in_price_cents ?? null, req.admin.businessId],
+       drop_in_price_cents ?? null, programs, amenities, req.admin.businessId],
     );
-    return res.json({ ok: true });
+    if (address) {
+      await db.query(
+        'UPDATE business_configs SET gym_address = ? WHERE business_id = ?',
+        [address, req.admin.businessId],
+      ).catch(() => {});
+    }
+    return res.json({ ok: true, geocoded, latitude: lat, longitude: lng });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

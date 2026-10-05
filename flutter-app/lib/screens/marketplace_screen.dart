@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import '../services/stripe_checkout.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
@@ -606,15 +607,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       );
       final payment = result['payment'];
       if (payment is Map && payment['client_secret'] != null) {
-        Stripe.publishableKey = payment['publishable_key']?.toString() ?? '';
-        await Stripe.instance.initPaymentSheet(
-          paymentSheetParameters: SetupPaymentSheetParameters(
-            paymentIntentClientSecret: payment['client_secret'].toString(),
-            merchantDisplayName: 'OmniPlex',
-            style: ThemeMode.dark,
-          ),
+        await presentCardPaymentSheet(
+          publishableKey: payment['publishable_key']?.toString() ?? '',
+          clientSecret: payment['client_secret'].toString(),
+          merchantDisplayName: 'OmniPlex',
         );
-        await Stripe.instance.presentPaymentSheet();
       }
       if (!mounted) return true;
       setState(_cart.clear);

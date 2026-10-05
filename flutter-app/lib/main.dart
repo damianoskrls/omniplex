@@ -361,7 +361,11 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
       }
       debugPrint('[Bootstrap] auth.isLoggedIn=${auth.isLoggedIn}');
       if (!mounted) return;
-      final seenOnboarding = await hasSeenOnboarding();
+      // Entering from the OmniPlex list already passed the app intro.
+      // Showing onboarding here keeps a non-dismissible splash on the same
+      // navigator and the gym never appears.
+      final seenOnboarding = quick || await hasSeenOnboarding();
+      if (quick) unawaited(markOnboardingDone());
       if (!mounted) return;
       if (!seenOnboarding) {
         setState(() {
@@ -434,6 +438,7 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
     if (_needsTenantSelection) {
       if (_globalAuth.isLoggedIn || _showExplore) {
         return MaterialApp(
+          key: const ValueKey('shell-omni'),
           debugShowCheckedModeBanner: false,
           home: GlobalMemberHomeScreen(
             key: const ValueKey('omni-shell'),
@@ -468,6 +473,7 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
 
     if (_config != null && _auth != null && _showOnboarding) {
       return MaterialApp(
+        key: const ValueKey('shell-onboarding'),
         debugShowCheckedModeBanner: false,
         home: OnboardingScreen(
           onDone: () {
@@ -494,7 +500,9 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
 
     if (_config != null && _auth != null) {
       final user = _auth!.user;
-      return Stack(
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: Stack(
         fit: StackFit.expand,
         children: [
           AnimatedSwitcher(
@@ -533,11 +541,13 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
               ),
             ),
         ],
+        ),
       );
     }
 
     if (_entrySplashName != null) {
       return MaterialApp(
+        key: const ValueKey('shell-entry'),
         debugShowCheckedModeBanner: false,
         home: GymEntrySplashView(
           name: _entrySplashName!,

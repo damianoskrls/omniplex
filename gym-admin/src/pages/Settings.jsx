@@ -5,6 +5,7 @@ import api from '../api/client';
 import toast from 'react-hot-toast';
 import { Save, Upload, Download } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
+import DiscoveryProfile from './DiscoveryProfile';
 
 function GymCapacitySection() {
   const [capacity, setCapacity] = useState('');
@@ -189,6 +190,9 @@ export default function Settings() {
           <div className="form-group">
             <label className="form-label">Διεύθυνση</label>
             <input className="form-input" value={form.gym_address} onChange={e => setForm({ ...form, gym_address: e.target.value })} placeholder="Οδός, Αριθμός, Πόλη" />
+            <p className="text-muted" style={{ marginTop: 6, fontSize: '0.78rem' }}>
+              Η διεύθυνση και η περιοχή που χρησιμοποιεί η αναζήτηση ορίζονται στο προφίλ παρακάτω.
+            </p>
           </div>
           <div className="form-grid-2">
             <div className="form-group">
@@ -281,6 +285,10 @@ export default function Settings() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 20 }}>
+        <DiscoveryProfile embedded />
       </div>
     </Layout>
   );

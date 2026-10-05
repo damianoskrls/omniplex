@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/user_stats.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/stripe_checkout.dart';
 import '../theme/app_colors.dart';
 import '../l10n/tr.dart';
 
@@ -69,15 +70,11 @@ class _PaymentSheetState extends State<PaymentSheet> {
       if (secret == null || publishable == null || intentId == null) {
         throw ApiException(tr('Η πληρωμή με κάρτα δεν είναι διαθέσιμη'));
       }
-      Stripe.publishableKey = publishable;
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: secret,
-          merchantDisplayName: 'OmniPlex',
-          style: ThemeMode.dark,
-        ),
+      await presentCardPaymentSheet(
+        publishableKey: publishable,
+        clientSecret: secret,
+        merchantDisplayName: 'OmniPlex',
       );
-      await Stripe.instance.presentPaymentSheet();
       await api.confirmOnlinePayment(paymentId: widget.payment.id, intentId: intentId);
       if (!mounted) return;
       widget.onPaid();

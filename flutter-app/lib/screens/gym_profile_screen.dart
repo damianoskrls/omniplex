@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
+import '../services/stripe_checkout.dart';
 import '../config/tenant_config.dart';
 import '../theme/brand.dart';
 import 'global_profile_details_screen.dart';
@@ -500,6 +501,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       );
       if (!mounted) return;
       if (widget.onEnterGym != null) {
+        dismissGymEntrySplash(nav);
         widget.onEnterGym!(config);
       } else {
         if (nav.canPop()) nav.pop();
@@ -664,27 +666,11 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       final publishableKey  = body['publishable_key'] as String;
       final intentId        = body['intent_id'] as String;
 
-      Stripe.publishableKey = publishableKey;
-
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: _gym?['app_name'] as String? ?? 'OmniPlex',
-          style: ThemeMode.dark,
-          appearance: const PaymentSheetAppearance(
-            colors: PaymentSheetAppearanceColors(
-              primary: _kLime,
-              background: _kBg,
-              componentBackground: _kCard,
-              componentBorder: _kBorder,
-              primaryText: Colors.white,
-              secondaryText: _kGray,
-            ),
-          ),
-        ),
+      await presentCardPaymentSheet(
+        publishableKey: publishableKey,
+        clientSecret: clientSecret,
+        merchantDisplayName: _gym?['app_name'] as String? ?? 'OmniPlex',
       );
-
-      await Stripe.instance.presentPaymentSheet();
       if (!mounted) return;
 
       showDialog(
@@ -1976,15 +1962,11 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
         if (secret == null || key == null || intentId == null) {
           throw Exception(tr('Η πληρωμή με κάρτα δεν είναι διαθέσιμη'));
         }
-        Stripe.publishableKey = key;
-        await Stripe.instance.initPaymentSheet(
-          paymentSheetParameters: SetupPaymentSheetParameters(
-            paymentIntentClientSecret: secret,
-            merchantDisplayName: 'OmniPlex',
-            style: ThemeMode.dark,
-          ),
+        await presentCardPaymentSheet(
+          publishableKey: key,
+          clientSecret: secret,
+          merchantDisplayName: 'OmniPlex',
         );
-        await Stripe.instance.presentPaymentSheet();
       }
       final res = await http.post(
         Uri.parse('${widget.apiBase}/booking/${widget.bizId}/dropin/book'),

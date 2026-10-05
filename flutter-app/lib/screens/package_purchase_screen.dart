@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import '../services/stripe_checkout.dart';
 import 'package:http/http.dart' as http;
 import '../services/global_auth_service.dart';
 import '../theme/app_colors.dart';
@@ -104,24 +105,11 @@ class _PackagePurchaseScreenState extends State<PackagePurchaseScreen> {
       final publishableKey = intentBody['publishable_key'] as String;
 
       // Step 2: init Stripe + show Payment Sheet
-      Stripe.publishableKey = publishableKey;
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: widget.gymName,
-          style: ThemeMode.dark,
-          appearance: PaymentSheetAppearance(
-            colors: PaymentSheetAppearanceColors(
-              primary: Color(widget.gymColor.value),
-              background: const Color(0xFF1A1A1A),
-              componentBackground: const Color(0xFF2A2A2A),
-              primaryText: const Color(0xFFFFFFFF),
-              secondaryText: const Color(0xFF999999),
-            ),
-          ),
-        ),
+      await presentCardPaymentSheet(
+        publishableKey: publishableKey,
+        clientSecret: clientSecret,
+        merchantDisplayName: widget.gymName,
       );
-      await Stripe.instance.presentPaymentSheet();
 
       // Step 3: confirm on backend → create user + membership
       final confirmRes = await http.post(

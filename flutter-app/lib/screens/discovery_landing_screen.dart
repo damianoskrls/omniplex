@@ -1164,6 +1164,8 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     final logoUrl  = gym['logo_url'] as String?;
     final coverUrl = _mediaUrl(gym['cover_url'] as String? ?? gym['cover_image_url'] as String?);
     final city     = gym['city'] as String? ?? '';
+    final area     = gym['area'] as String? ?? '';
+    final place    = [area, city].where((part) => part.trim().isNotEmpty).join(' · ');
     final distKm   = (gym['distance_km'] as num?);
     final distLabel = distKm != null
         ? (distKm < 1 ? '${(distKm * 1000).round()} m' : '${distKm.toStringAsFixed(1)} km')
@@ -1303,7 +1305,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                       const SizedBox(width: 2),
                       Text(tr(distLabel),
                         style: GoogleFonts.inter(fontSize: 12, color: _kLime, fontWeight: FontWeight.w600)),
-                    ] else if (city.isNotEmpty) ...[
+                    ] else if (place.isNotEmpty) ...[
                       if (rating != null) ...[
                         const SizedBox(width: 8),
                         Container(width: 4, height: 4,
@@ -1311,7 +1313,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
                             color: _kDot, shape: BoxShape.circle)),
                         const SizedBox(width: 8),
                       ],
-                      Text(tr(city),
+                      Text(tr(place),
                         style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
                     ],
                   ]),
