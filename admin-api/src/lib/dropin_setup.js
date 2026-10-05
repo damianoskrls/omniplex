@@ -17,25 +17,33 @@ function weekdayFromDate(dateStr) {
   return js === 0 ? 6 : js - 1;
 }
 
-async function listDropinSetup(db, bizId) {
+async function listDropinSetup(db, bizId, locationId = null) {
+  const loc = locationId || null;
   const [services] = await db.query(
-    `SELECT id, name, duration_mins FROM services
-     WHERE business_id = ? AND is_active = 1
-       AND (category IS NULL OR category <> 'nutrition_consultation')
-     ORDER BY name`,
-    [bizId],
+    `SELECT id, name, duration_mins FROM services s
+     WHERE s.business_id = ? AND s.is_active = 1
+       AND (s.category IS NULL OR s.category <> 'nutrition_consultation')
+       AND (? IS NULL
+         OR EXISTS (SELECT 1 FROM service_locations sl WHERE sl.service_id = s.id AND sl.location_id = ?)
+         OR NOT EXISTS (SELECT 1 FROM service_locations sl2 WHERE sl2.service_id = s.id))
+     ORDER BY s.name`,
+    [bizId, loc, loc],
   );
   const [locations] = await db.query(
     `SELECT id, name, opening_hours FROM locations
      WHERE business_id = ? AND is_active = 1
+       AND (? IS NULL OR id = ?)
      ORDER BY sort_order, name`,
-    [bizId],
+    [bizId, loc, loc],
   );
   const [staff] = await db.query(
     `SELECT s.id, s.full_name FROM staff s
      WHERE ${GYM_STAFF_WHERE_ALIAS}
+       AND (? IS NULL
+         OR EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = s.id AND sl.location_id = ?)
+         OR NOT EXISTS (SELECT 1 FROM staff_locations sl2 WHERE sl2.staff_id = s.id))
      ORDER BY s.full_name`,
-    [bizId],
+    [bizId, loc, loc],
   );
   const [offers] = await db.query(
     `SELECT o.id, o.service_id, o.location_id, o.price_cents, o.is_active,
@@ -44,8 +52,9 @@ async function listDropinSetup(db, bizId) {
      JOIN services s ON s.id = o.service_id
      JOIN locations l ON l.id = o.location_id
      WHERE o.business_id = ?
+       AND (? IS NULL OR o.location_id = ?)
      ORDER BY l.name, s.name`,
-    [bizId],
+    [bizId, loc, loc],
   );
   const policy = await getDropinPolicy(db, bizId);
   if (!offers.length) return { services, locations, staff, offers: [], policy };

@@ -475,7 +475,11 @@ router.get('/:bizId/at-risk', authenticate, async (req, res) => {
   const days = parseInt(req.query.days, 10) || 14;
   const conn = await db.getConnection();
   try {
-    const members = await getAtRiskMembers(conn, req.params.bizId, days);
+    if (req.user?.businessId && req.user.businessId !== req.params.bizId) {
+      return res.status(403).json({ error: 'Δεν έχεις πρόσβαση' });
+    }
+    const locationId = req.user?.locationId || null;
+    const members = await getAtRiskMembers(conn, req.params.bizId, days, locationId);
     return res.json({ members, days });
   } catch (err) {
     return res.status(500).json({ error: err.message });

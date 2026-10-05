@@ -44,7 +44,8 @@ export default function Kiosk() {
   const loadCheckins = useCallback(async () => {
     if (!bizId) return;
     try {
-      const res = await api.get(`/booking/${bizId}/qr-checkins`);
+      const loc = business?.location_id ? `?location_id=${encodeURIComponent(business.location_id)}` : '';
+      const res = await api.get(`/booking/${bizId}/qr-checkins${loc}`);
       const fresh = res.data;
       if (fresh.length > 0 && fresh[0].id !== lastSeenIdRef.current) {
         lastSeenIdRef.current = fresh[0].id;
@@ -54,7 +55,7 @@ export default function Kiosk() {
       }
       setCheckins(fresh);
     } catch (_) {}
-  }, [bizId]);
+  }, [bizId, business?.location_id]);
 
   useEffect(() => {
     loadCheckins();

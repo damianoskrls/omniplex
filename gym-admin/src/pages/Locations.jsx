@@ -137,6 +137,73 @@ function LocationCard({ loc, onPatch, onRemove }) {
       </div>
 
       <LocationTeam locationId={loc.id} gymHours={hours} />
+      <StoreAdmins locationId={loc.id} />
+    </div>
+  );
+}
+
+function StoreAdmins({ locationId }) {
+  const [admins, setAdmins] = useState([]);
+  const [form, setForm] = useState({ full_name: '', email: '', password: '' });
+  const [saving, setSaving] = useState(false);
+
+  const load = () => api.get('/client-admin/location-admins', { params: { location_id: locationId } })
+    .then((r) => setAdmins(r.data || []))
+    .catch(() => {});
+
+  useEffect(() => { load(); }, [locationId]);
+
+  const addAdmin = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.post('/client-admin/location-admins', { ...form, location_id: locationId });
+      toast.success('Ο διαχειριστής δημιουργήθηκε');
+      setForm({ full_name: '', email: '', password: '' });
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeAdmin = async (admin) => {
+    if (!window.confirm(`Να αφαιρεθεί ο ${admin.full_name};`)) return;
+    try {
+      await api.delete(`/client-admin/location-admins/${admin.id}`);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα');
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>Διαχειριστές καταστήματος</div>
+      <div className="text-muted" style={{ fontSize: '0.78rem', marginBottom: 12 }}>
+        Μπαίνουν με το δικό τους email και κωδικό και βλέπουν μόνο αυτό το κατάστημα.
+      </div>
+      {admins.map((admin) => (
+        <div key={admin.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+          <div>
+            <div style={{ fontWeight: 600 }}>{admin.full_name}</div>
+            <div className="text-muted" style={{ fontSize: '0.78rem' }}>{admin.email}</div>
+          </div>
+          <button type="button" className="btn btn-danger btn-sm" onClick={() => removeAdmin(admin)}>
+            <Trash2 size={14} />
+          </button>
+        </div>
+      ))}
+      <form onSubmit={addAdmin} style={{ display: 'grid', gap: 8, marginTop: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+        <input className="form-input" placeholder="Ονοματεπώνυμο" value={form.full_name} required
+          onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+        <input className="form-input" type="email" placeholder="Email" value={form.email} required
+          onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        <input className="form-input" type="password" placeholder="Κωδικός" value={form.password} required minLength={6}
+          onChange={(e) => setForm({ ...form, password: e.target.value })} />
+        <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? '...' : 'Προσθήκη'}</button>
+      </form>
     </div>
   );
 }

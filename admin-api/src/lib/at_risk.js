@@ -6,7 +6,8 @@ const { sendSms } = require('./sms');
 
 const RETURN_WINDOW_DAYS = 14;
 
-async function getAtRiskMembers(conn, bizId, days) {
+async function getAtRiskMembers(conn, bizId, days, locationId = null) {
+  const loc = locationId || null;
   const [rows] = await conn.query(`
     SELECT
       u.id AS user_id,
@@ -21,15 +22,19 @@ async function getAtRiskMembers(conn, bizId, days) {
       ON b.user_id = u.id AND b.business_id = ?
       AND b.status IN ('confirmed', 'completed', 'attended')
       AND b.starts_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+      AND (? IS NULL OR b.location_id = ? OR b.location_id IS NULL)
     LEFT JOIN qr_checkins ci
       ON ci.user_id = u.id AND ci.business_id = ?
       AND ci.checked_in_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
     WHERE u.deleted_at IS NULL
+      AND (? IS NULL OR EXISTS (
+        SELECT 1 FROM user_locations ul WHERE ul.user_id = u.id AND ul.location_id = ?
+      ))
     GROUP BY u.id, u.full_name, u.phone, u.email
     HAVING last_activity IS NULL
         OR last_activity < DATE_SUB(NOW(), INTERVAL ? DAY)
     ORDER BY last_activity ASC
-  `, [bizId, bizId, bizId, days]);
+  `, [bizId, bizId, loc, loc, bizId, loc, loc, days]);
 
   // Compute usual frequency: bookings_90d / 13 weeks → per-week
   return rows.map(r => ({

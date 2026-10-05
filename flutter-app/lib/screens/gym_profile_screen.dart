@@ -152,12 +152,14 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       if (!mounted || res.statusCode != 200) return;
       final list = jsonDecode(res.body) as List;
       final bizId = widget.gymData?['business_id'] as String? ?? _gym?['business_id'] as String?;
+      final openedLocation = _openedLocationId();
       var memberPending = false;
       var staffPending = false;
       for (final raw in list) {
         final r = raw as Map<String, dynamic>;
         if (bizId == null || r['business_id'] != bizId) continue;
         if (r['status'] != 'pending') continue;
+        if (!_requestIsForOpenedStore(r, openedLocation)) continue;
         if (r['role'] == 'staff') staffPending = true;
         else memberPending = true;
       }
@@ -169,6 +171,25 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   }
 
   bool get _showAddGym => !_canEnter && !_memberPending && !_staffPending;
+
+  String? _openedLocationId() {
+    final passed = widget.locationId;
+    if (passed != null && passed.isNotEmpty) return passed;
+    final locations = ((_gym?['locations'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    if (locations.length == 1) return locations.first['id'] as String?;
+    return null;
+  }
+
+  bool _requestIsForOpenedStore(Map<String, dynamic> request, String? openedLocation) {
+    final requestLocation = request['location_id']?.toString();
+    if (openedLocation != null && openedLocation.isNotEmpty) {
+      return requestLocation == openedLocation;
+    }
+    return requestLocation == null || requestLocation.isEmpty;
+  }
 
   Future<void> _addToMyGyms() async {
     if (widget.globalAuth == null || !widget.globalAuth!.isLoggedIn) {
@@ -225,13 +246,15 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         .whereType<Map>()
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
-    String? locationId;
-    if (locations.length > 1) {
-      final picked = await _showLocationPicker(locations);
-      if (picked == null || !mounted) return;
-      locationId = picked;
-    } else if (locations.length == 1) {
-      locationId = locations.first['id'] as String?;
+    String? locationId = _openedLocationId();
+    if (locationId == null || locationId.isEmpty) {
+      if (locations.length > 1) {
+        final picked = await _showLocationPicker(locations);
+        if (picked == null || !mounted) return;
+        locationId = picked;
+      } else if (locations.length == 1) {
+        locationId = locations.first['id'] as String?;
+      }
     }
 
     final picked = await _showRolePicker();

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { AnimatedCounter, WeekBarChart, DonutChart } from '../components/dashboard/DashboardCharts';
@@ -79,12 +80,13 @@ function Panel({ title, icon: Icon, children, className = '' }) {
 }
 
 export default function Reports() {
+  const { business, isLocationAdmin } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('overview');
   const [from, setFrom] = useState(`${YEAR}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
-  const [locationId, setLocationId] = useState('');
+  const [locationId, setLocationId] = useState(business?.location_id || '');
   const [serviceId, setServiceId] = useState('');
   const [staffId, setStaffId] = useState('');
   const [planId, setPlanId] = useState('');
@@ -94,7 +96,8 @@ export default function Reports() {
     setLoading(true);
     try {
       const params = { from, to, inactive_days: inactiveDays };
-      if (locationId) params.location_id = locationId;
+      const storeId = isLocationAdmin ? (business?.location_id || locationId) : locationId;
+      if (storeId) params.location_id = storeId;
       if (serviceId) params.service_id = serviceId;
       if (staffId) params.staff_id = staffId;
       if (planId) params.plan_id = planId;
@@ -105,7 +108,7 @@ export default function Reports() {
     } finally {
       setLoading(false);
     }
-  }, [from, to, locationId, serviceId, staffId, planId, inactiveDays]);
+  }, [from, to, locationId, serviceId, staffId, planId, inactiveDays, isLocationAdmin, business?.location_id]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -141,9 +144,9 @@ export default function Reports() {
             </label>
             <label>
               <span>Τοποθεσία</span>
-              <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-                <option value="">Όλες</option>
-                {(opts.locations || []).map((l) => (
+              <select value={isLocationAdmin ? (business?.location_id || '') : locationId} disabled={isLocationAdmin} onChange={(e) => setLocationId(e.target.value)}>
+                {!isLocationAdmin && <option value="">Όλες</option>}
+                {(opts.locations || []).filter((l) => !isLocationAdmin || l.id === business?.location_id).map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
               </select>

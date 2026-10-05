@@ -96,6 +96,7 @@ export function AuthProvider({ children }) {
       isNutritionist: role === 'nutritionist',
       isTrainer: role === 'trainer',
       isOwner: role === 'client_admin',
+      isLocationAdmin: role === 'client_admin' && !!business?.location_admin,
       isGym,
       features: {
         programs: isGym && (business?.feature_programs ?? 1),

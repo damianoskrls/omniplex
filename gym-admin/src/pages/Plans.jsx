@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Edit2, PlusCircle, X } from 'lucide-react';
 import { buildPlanNamePreview } from '../lib/planNames';
@@ -12,6 +13,7 @@ const EMPTY_SINGLE = {
   duration_mins: 60,
   price_cents: '',
   billing_period: 'monthly',
+  location_ids: [],
 };
 
 const EMPTY_COMBO = {
@@ -20,6 +22,7 @@ const EMPTY_COMBO = {
   service_items: [{ service_id: '', sessions: '', duration_mins: '' }],
   price_cents: '',
   billing_period: 'monthly',
+  location_ids: [],
 };
 
 function SessionChip({ label, checked, onClick, unlimited }) {
@@ -86,7 +89,7 @@ function ServiceItemRow({ item, idx, services, onChange, onRemove, canRemove }) 
   );
 }
 
-function PlanForm({ form, setForm, services, onSubmit, onCancel, submitLabel }) {
+function PlanForm({ form, setForm, services, locations, onSubmit, onCancel, submitLabel }) {
   const selectedService = services.find(s => s.id === form.service_id);
   const previewName = useMemo(() => {
     if (form.mode !== 'single' || !selectedService) return '';
@@ -115,7 +118,9 @@ function PlanForm({ form, setForm, services, onSubmit, onCancel, submitLabel }) 
               cursor: 'pointer', fontSize: '0.85rem', fontWeight: form.mode === opt.v ? 600 : 400,
             }}>
               <input type="radio" name="mode" value={opt.v} checked={form.mode === opt.v}
-                onChange={() => setForm(opt.v === 'single' ? { ...EMPTY_SINGLE } : { ...EMPTY_COMBO })}
+                onChange={() => setForm(opt.v === 'single'
+                  ? { ...EMPTY_SINGLE, location_ids: form.location_ids || [] }
+                  : { ...EMPTY_COMBO, location_ids: form.location_ids || [] })}
                 style={{ display: 'none' }} />
               {opt.label}
             </label>
@@ -214,10 +219,46 @@ function PlanForm({ form, setForm, services, onSubmit, onCancel, submitLabel }) 
           ))}
         </div>
       </div>
+      {locations.length > 1 && (
+        <div className="form-group">
+          <label className="form-label">Καταστήματα *</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {locations.map((loc) => {
+              const on = (form.location_ids || []).includes(loc.id);
+              return (
+                <button
+                  key={loc.id}
+                  type="button"
+                  onClick={() => {
+                    const current = form.location_ids || [];
+                    setForm({
+                      ...form,
+                      location_ids: on ? current.filter((id) => id !== loc.id) : [...current, loc.id],
+                    });
+                  }}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: '0.85rem',
+                    border: `1.5px solid ${on ? '#76C043' : '#e2e8f0'}`,
+                    background: on ? '#f0fdf4' : '#fff',
+                    color: on ? '#3f6212' : '#64748b',
+                    fontWeight: on ? 700 : 400,
+                  }}
+                >
+                  {loc.name}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 6 }}>
+            Το πακέτο φαίνεται μόνο στα καταστήματα που επιλέγεις.
+          </div>
+        </div>
+      )}
       <div className="modal-footer">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>Ακύρωση</button>
         <button type="submit" className="btn btn-primary"
-          disabled={form.mode === 'single' ? !form.service_id : (!form.name || form.service_items.some(i => !i.service_id))}>
+          disabled={(form.mode === 'single' ? !form.service_id : (!form.name || form.service_items.some(i => !i.service_id)))
+            || (locations.length > 1 && !(form.location_ids || []).length)}>
           {submitLabel}
         </button>
       </div>
@@ -226,19 +267,23 @@ function PlanForm({ form, setForm, services, onSubmit, onCancel, submitLabel }) 
 }
 
 export default function Plans() {
+  const { isLocationAdmin } = useAuth();
   const [plans, setPlans] = useState([]);
   const [services, setServices] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY_SINGLE);
   const [editingId, setEditingId] = useState(null);
 
   const load = async () => {
-    const [plansRes, servicesRes] = await Promise.all([
+    const [plansRes, servicesRes, locationsRes] = await Promise.all([
       api.get('/client-admin/plans'),
       api.get('/client-admin/services'),
+      api.get('/client-admin/locations'),
     ]);
     setPlans(plansRes.data);
     setServices(servicesRes.data.filter(s => s.is_active));
+    setLocations((locationsRes.data || []).filter((l) => l.is_active !== 0 && l.is_active !== false));
   };
 
   useEffect(() => { load().catch(() => {}); }, []);
@@ -254,6 +299,7 @@ export default function Plans() {
         service_items: plan.service_items.map(i => ({ service_id: i.service_id, sessions: i.sessions ?? '', duration_mins: i.duration_mins ?? '' })),
         price_cents: (plan.price_cents / 100).toFixed(2),
         billing_period: plan.billing_period || 'monthly',
+        location_ids: plan.location_ids || [],
       });
     } else {
       setForm({
@@ -263,6 +309,7 @@ export default function Plans() {
         duration_mins: plan.duration_mins ?? '',
         price_cents: (plan.price_cents / 100).toFixed(2),
         billing_period: plan.billing_period || 'monthly',
+        location_ids: plan.location_ids || [],
       });
     }
     setEditingId(plan.id);
@@ -282,6 +329,7 @@ export default function Plans() {
         })),
         price_cents: Math.round(Number(form.price_cents) * 100),
         billing_period: form.billing_period,
+        location_ids: form.location_ids || [],
       };
     }
     let sessions = null;
@@ -295,6 +343,7 @@ export default function Plans() {
       duration_mins: form.sessions === '' || form.duration_mins === '' ? null : Number(form.duration_mins),
       price_cents: Math.round(Number(form.price_cents) * 100),
       billing_period: form.billing_period,
+      location_ids: form.location_ids || [],
     };
   };
 
@@ -342,7 +391,7 @@ export default function Plans() {
       <div className="card">
         <table>
           <thead>
-            <tr><th>Υπηρεσία</th><th>Πακέτο</th><th>Συνεδρίες</th><th>Διάρκεια</th><th>Τιμή</th><th>Περίοδος</th><th></th></tr>
+            <tr><th>Υπηρεσία</th><th>Πακέτο</th><th>Κατάστημα</th><th>Συνεδρίες</th><th>Διάρκεια</th><th>Τιμή</th><th>Περίοδος</th><th></th></tr>
           </thead>
           <tbody>
             {plans.map(p => {
@@ -355,6 +404,7 @@ export default function Plans() {
                       : (p.service_name || '—')}
                   </td>
                   <td>{p.name}</td>
+                  <td>{(p.location_names || []).join(', ') || 'Όλα'}</td>
                   <td>
                     {isCombo
                       ? p.service_items.map(i => i.sessions == null ? '∞' : i.sessions).join(' / ')
@@ -370,7 +420,7 @@ export default function Plans() {
                 </tr>
               );
             })}
-            {!plans.length && <tr><td colSpan={7} className="loading">Δεν υπάρχουν πακέτα</td></tr>}
+            {!plans.length && <tr><td colSpan={8} className="loading">Δεν υπάρχουν πακέτα</td></tr>}
           </tbody>
         </table>
       </div>
@@ -380,6 +430,7 @@ export default function Plans() {
           <div className="modal">
             <div className="modal-title">{modal === 'edit' ? 'Επεξεργασία πακέτου' : 'Νέο πακέτο'}</div>
             <PlanForm form={form} setForm={setForm} services={services}
+              locations={isLocationAdmin ? [] : locations}
               onSubmit={modal === 'edit' ? handleEdit : handleCreate}
               onCancel={closeModal}
               submitLabel={modal === 'edit' ? 'Αποθήκευση' : 'Δημιουργία'} />

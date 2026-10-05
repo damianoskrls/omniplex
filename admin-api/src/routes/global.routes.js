@@ -944,8 +944,11 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
              JOIN service_locations sl ON sl.service_id = psi.service_id
              WHERE psi.plan_id = bp.id AND sl.location_id = ?
            ))
+         AND (? IS NULL
+           OR NOT EXISTS (SELECT 1 FROM plan_locations pl WHERE pl.plan_id = bp.id)
+           OR EXISTS (SELECT 1 FROM plan_locations pl WHERE pl.plan_id = bp.id AND pl.location_id = ?))
        ORDER BY bp.sort_order, bp.price_cents`,
-      [biz.id, locationId, locationId],
+      [biz.id, locationId, locationId, locationId, locationId],
     );
     const [schedule] = await db.query(
       `SELECT sss.id, sss.weekday AS day_of_week, sss.start_time,
@@ -1213,14 +1216,17 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
 
     const [existing] = await db.query(
       `SELECT id, status FROM gym_join_requests
-       WHERE global_user_id = ? AND business_id = ? AND role = ?`,
-      [globalUserId, business_id, isStaff ? 'staff' : 'member'],
+       WHERE global_user_id = ? AND business_id = ? AND role = ?
+         AND location_id <=> ?`,
+      [globalUserId, business_id, isStaff ? 'staff' : 'member', locationId],
     );
     if (existing.length) {
-      if (existing[0].status === 'pending') {
+      const current = existing.find((row) => row.status === 'pending') || existing[0];
+      if (current.status === 'pending') {
         return res.json({
           status: 'pending',
           role: isStaff ? 'staff' : 'member',
+          location_id: locationId,
           message: 'Το αίτημά σου εκκρεμεί έγκριση',
         });
       }
@@ -1228,9 +1234,9 @@ router.post('/join-requests', requireGlobal, async (req, res) => {
         `UPDATE gym_join_requests
          SET status = 'pending', full_name = ?, email = ?, phone = ?, specialty = ?, date_of_birth = ?, location_id = ?
          WHERE id = ?`,
-        [name, email || '', phone || null, specialty || null, date_of_birth || null, locationId, existing[0].id],
+        [name, email || '', phone || null, specialty || null, date_of_birth || null, locationId, current.id],
       );
-      await notifyAdmin(existing[0].id);
+      await notifyAdmin(current.id);
       return res.json({
         status: 'pending',
         role: isStaff ? 'staff' : 'member',
@@ -1529,9 +1535,12 @@ router.get('/discovery/gyms/:slug/packages', async (req, res) => {
             JOIN service_locations sl ON sl.service_id = x.service_id
             WHERE x.plan_id = bp.id AND sl.location_id = ?
           ))
+        AND (? IS NULL
+          OR NOT EXISTS (SELECT 1 FROM plan_locations pl WHERE pl.plan_id = bp.id)
+          OR EXISTS (SELECT 1 FROM plan_locations pl WHERE pl.plan_id = bp.id AND pl.location_id = ?))
       GROUP BY bp.id
       ORDER BY bp.sort_order ASC, bp.price_cents ASC
-    `, [biz.id, locationId, locationId]);
+    `, [biz.id, locationId, locationId, locationId, locationId]);
     return res.json(plans);
   } catch (err) {
     return res.status(500).json({ error: err.message });

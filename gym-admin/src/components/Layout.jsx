@@ -14,7 +14,21 @@ import api from '../api/client';
 import useMessagesUnreadCount from '../hooks/useMessagesUnreadCount';
 import useMarketplacePending from '../hooks/useMarketplacePending';
 
-function buildNavGroups({ features, featureNutrition }) {
+const STORE_ADMIN_HIDDEN = new Set([
+  '/locations',
+  '/marketplace',
+  '/marketplace/shipping',
+  '/marketplace/payment-methods',
+  '/export',
+  '/setup',
+  '/settings',
+  '/online-payments',
+  '/gdpr',
+  '/reminders',
+  '/nutrition/nutritionists',
+]);
+
+function buildNavGroups({ features, featureNutrition, locationAdmin }) {
   return [
     {
       key: 'clients',
@@ -106,7 +120,10 @@ function buildNavGroups({ features, featureNutrition }) {
         { to: '/reminders', icon: Bell, label: 'Αυτόματες Υπενθυμίσεις' },
       ],
     },
-  ];
+  ].map((group) => ({
+    ...group,
+    links: locationAdmin ? group.links.filter((link) => !STORE_ADMIN_HIDDEN.has(link.to)) : group.links,
+  })).filter((group) => group.links.length);
 }
 
 const NUTRITION_LINKS = [
@@ -223,7 +240,7 @@ function NutritionNav({ isOwner, unreadCount }) {
 }
 
 export default function Layout({ children, title, variant, headerActions }) {
-  const { logout, business, isNutritionist, isTrainer, isOwner, features } = useAuth();
+  const { logout, business, isNutritionist, isTrainer, isOwner, isLocationAdmin, features } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
@@ -258,7 +275,11 @@ export default function Layout({ children, title, variant, headerActions }) {
 
   const staffLabel = business?.type === 'gym' ? 'Γυμναστής' : 'Συνεργάτης';
 
-  const ownerGroups = buildNavGroups({ features: features || {}, featureNutrition });
+  const ownerGroups = buildNavGroups({
+    features: features || {},
+    featureNutrition,
+    locationAdmin: isLocationAdmin,
+  });
 
   return (
     <div className={`layout ${variant === 'nutrition' || isNutritionist ? 'layout--nutrition' : ''} ${variant === 'trainer' || isTrainer ? 'layout--trainer' : ''}`}>

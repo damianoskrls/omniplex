@@ -313,7 +313,27 @@ router.delete('/:bizId/admin/products/:productId', authenticate, async (req, res
 // GET /api/marketplace/:bizId/admin/orders
 router.get('/:bizId/admin/orders', authenticate, async (req, res) => {
   const { status, limit = 50, offset = 0 } = req.query;
+  if (req.user?.businessId && req.user.businessId !== req.params.bizId) {
+    return res.status(403).json({ error: 'Δεν έχεις πρόσβαση' });
+  }
+  const loc = req.user?.locationId || null;
   try {
+    const params = [req.params.bizId];
+    let where = 'WHERE o.business_id = ?';
+    if (status) {
+      where += ' AND o.status = ?';
+      params.push(status);
+    }
+    if (loc) {
+      where += ` AND (
+        o.location_id = ?
+        OR (o.location_id IS NULL AND EXISTS (
+          SELECT 1 FROM user_locations ul WHERE ul.user_id = o.user_id AND ul.location_id = ?
+        ))
+      )`;
+      params.push(loc, loc);
+    }
+    params.push(Number(limit), Number(offset));
     const [orders] = await db.query(`
       SELECT o.id, o.status, o.total_cents, o.created_at, o.notes,
              o.provider_txn_id, o.mydata_mark, o.payment_method, o.source,
@@ -325,14 +345,11 @@ router.get('/:bizId/admin/orders', authenticate, async (req, res) => {
       FROM orders o
       LEFT JOIN users u ON u.id = o.user_id
       JOIN order_items oi ON oi.order_id = o.id
-      WHERE o.business_id = ?
-        ${status ? 'AND o.status = ?' : ''}
+      ${where}
       GROUP BY o.id
       ORDER BY o.created_at DESC
       LIMIT ? OFFSET ?
-    `, status
-       ? [req.params.bizId, status, Number(limit), Number(offset)]
-       : [req.params.bizId, Number(limit), Number(offset)]);
+    `, params);
     return res.json({ orders });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -498,11 +515,11 @@ router.post('/:bizId/admin/orders/in-store', authenticate, async (req, res) => {
 
     const orderId = uuidv4();
     await conn.query(`
-      INSERT INTO orders (id, business_id, user_id, status, total_cents, notes, payment_method, source)
-      VALUES (?, ?, NULL, 'fulfilled', ?, ?, ?, 'in_store')
+      INSERT INTO orders (id, business_id, user_id, status, total_cents, notes, payment_method, source, location_id)
+      VALUES (?, ?, NULL, 'fulfilled', ?, ?, ?, 'in_store', ?)
     `, [orderId, req.params.bizId, total_cents,
         [customer_name ? `Πελάτης: ${customer_name}` : 'Πελάτης καταστήματος', notes].filter(Boolean).join(' | '),
-        payment_method || 'cash']);
+        payment_method || 'cash', req.user?.locationId || null]);
 
     for (const line of lines) {
       await conn.query(

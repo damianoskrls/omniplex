@@ -796,6 +796,42 @@ async function bootstrapSchema() {
 
   try {
     await db.query(`
+      CREATE TABLE IF NOT EXISTS plan_locations (
+        plan_id VARCHAR(36) NOT NULL,
+        location_id VARCHAR(36) NOT NULL,
+        PRIMARY KEY (plan_id, location_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS location_admins (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        business_id VARCHAR(36) NOT NULL,
+        location_id VARCHAR(36) NOT NULL,
+        full_name VARCHAR(120) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_location_admin_email (email),
+        INDEX idx_location_admins_biz (business_id, location_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    console.log('✓ Schema: store admins and plan locations ready');
+  } catch (err) {
+    console.warn('store admins skipped:', err.message);
+  }
+
+  try {
+    await db.query(`ALTER TABLE orders ADD COLUMN location_id VARCHAR(36) NULL`);
+    console.log('✓ Schema: orders.location_id added');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_NO_SUCH_TABLE') {
+      console.warn('orders.location_id skipped:', err.message);
+    }
+  }
+
+  try {
+    await db.query(`
       CREATE TABLE IF NOT EXISTS dropin_offers (
         id VARCHAR(36) NOT NULL PRIMARY KEY,
         business_id VARCHAR(36) NOT NULL,

@@ -15,6 +15,7 @@ function requireAdmin(req, res, next) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     req.bizId = payload.businessId;
+    if (payload.locationId) req.query.location_id = payload.locationId;
     next();
   } catch {
     return res.status(401).json({ error: 'Unauthorized' });

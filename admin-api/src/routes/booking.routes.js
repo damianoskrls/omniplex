@@ -1992,6 +1992,7 @@ router.post('/:bizId/qr-checkin', softAuth, requireActiveCustomer, async (req, r
 router.get('/:bizId/qr-checkins', async (req, res) => {
   const { bizId } = req.params;
   try {
+    const loc = String(req.query.location_id || '').trim() || null;
     const [rows] = await db.query(
       `SELECT qc.id, qc.checked_in_at, qc.session_deducted, qc.membership_id,
               u.full_name, u.email,
@@ -2001,9 +2002,12 @@ router.get('/:bizId/qr-checkins', async (req, res) => {
        LEFT JOIN user_memberships um ON um.id = qc.membership_id
        WHERE qc.business_id = ?
          AND DATE(qc.checked_in_at) = CURDATE()
+         AND (? IS NULL OR EXISTS (
+           SELECT 1 FROM user_locations ul WHERE ul.user_id = qc.user_id AND ul.location_id = ?
+         ))
        ORDER BY qc.checked_in_at DESC
        LIMIT 20`,
-      [bizId]
+      [bizId, loc, loc]
     );
     return res.json(rows);
   } catch (err) {

@@ -285,6 +285,22 @@ function requireClientAdmin(req, res, next) {
     const d = jwt.verify(token, process.env.JWT_SECRET);
     if (d.role !== 'client_admin') return res.status(403).json({ error: 'Not a business admin' });
     req.admin = d;
+    if (d.locationId) {
+      req.query.location_id = d.locationId;
+      const write = req.method !== 'GET' && req.method !== 'HEAD';
+      const gymWide = req.path === '/locations'
+        || req.path.startsWith('/location-admins')
+        || req.path.startsWith('/settings')
+        || req.path.startsWith('/online-payments')
+        || (req.method === 'DELETE' && /^\/locations\/[^/]+$/.test(req.path));
+      if (write && gymWide) {
+        return res.status(403).json({ error: 'Αυτό το ρυθμίζει ο κεντρικός διαχειριστής' });
+      }
+      const locMatch = req.path.match(/^\/locations\/([^/]+)/);
+      if (write && locMatch && locMatch[1] !== d.locationId) {
+        return res.status(403).json({ error: 'Δεν έχεις πρόσβαση σε αυτό το κατάστημα' });
+      }
+    }
     next();
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
@@ -380,6 +396,44 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    const [storeAdmins] = await db.query(`
+      SELECT a.id, a.business_id, a.location_id, a.full_name, a.email, a.password_hash,
+             b.name, b.slug, b.business_type, l.name AS location_name
+      FROM location_admins a
+      JOIN businesses b ON b.id = a.business_id
+      JOIN locations l ON l.id = a.location_id
+      WHERE a.email = ? AND a.is_active = 1 AND b.is_active = 1 AND l.is_active = 1
+    `, [email]);
+    if (storeAdmins.length) {
+      const admin = storeAdmins[0];
+      const ok = await bcrypt.compare(password, admin.password_hash);
+      if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+      const token = jwt.sign(
+        {
+          businessId: admin.business_id,
+          email,
+          role: 'client_admin',
+          name: admin.full_name,
+          locationId: admin.location_id,
+          locationAdminId: admin.id,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '12h' },
+      );
+      const business = await businessLoginPayload(admin.business_id, admin.name, admin.slug, admin.business_type);
+      return res.json({
+        token,
+        role: 'client_admin',
+        business: {
+          ...business,
+          location_id: admin.location_id,
+          location_name: admin.location_name,
+          location_admin: true,
+          name: `${business.name} · ${admin.location_name}`,
+        },
+      });
+    }
+
     const [nutRows] = await db.query(`
       SELECT n.id AS nutritionist_id, n.business_id, n.full_name, n.email,
              p.password_hash, b.name, b.slug, b.business_type
@@ -465,24 +519,34 @@ router.post('/login', async (req, res) => {
 // ============================================================
 router.get('/dashboard', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
+  const loc = String(req.query.location_id || '').trim() || null;
+  const book = loc ? ' AND location_id = ?' : '';
+  const bookB = loc ? ' AND b.location_id = ?' : '';
+  const userHere = loc
+    ? ' AND EXISTS (SELECT 1 FROM user_locations ul WHERE ul.user_id = users.id AND ul.location_id = ?)'
+    : '';
+  const memberHere = loc
+    ? ' AND EXISTS (SELECT 1 FROM user_locations ul WHERE ul.user_id = u.id AND ul.location_id = ?)'
+    : '';
+  const p = (...extra) => (loc ? [bizId, loc, ...extra] : [bizId, ...extra]);
   try {
     const [[todayBookings]] = await db.query(
-      "SELECT COUNT(*) AS total FROM bookings WHERE business_id=? AND DATE(starts_at)=CURDATE() AND status NOT IN ('cancelled','no_show')",
-      [bizId]
+      `SELECT COUNT(*) AS total FROM bookings WHERE business_id=?${book} AND DATE(starts_at)=CURDATE() AND status NOT IN ('cancelled','no_show')`,
+      p()
     );
     const [[monthBookings]] = await db.query(
       `SELECT COUNT(*) AS total FROM bookings
-       WHERE business_id=? AND MONTH(starts_at)=MONTH(NOW()) AND YEAR(starts_at)=YEAR(NOW())
+       WHERE business_id=?${book} AND MONTH(starts_at)=MONTH(NOW()) AND YEAR(starts_at)=YEAR(NOW())
          AND status NOT IN ('cancelled', 'no_show')`,
-      [bizId]
+      p()
     );
     const [[clients]] = await db.query(
-      `SELECT COUNT(*) AS total FROM users WHERE business_id=? AND ${sqlActiveClients()}`,
-      [bizId]
+      `SELECT COUNT(*) AS total FROM users WHERE business_id=? AND ${sqlActiveClients()}${userHere}`,
+      p()
     );
     const [[pendingClients]] = await db.query(
-      `SELECT COUNT(*) AS total FROM users WHERE business_id=? AND account_status='pending' AND ${sqlActiveClients()}`,
-      [bizId]
+      `SELECT COUNT(*) AS total FROM users WHERE business_id=? AND account_status='pending' AND ${sqlActiveClients()}${userHere}`,
+      p()
     );
     const [[activeMembers]] = await db.query(
       `SELECT COUNT(DISTINCT m.user_id) AS total
@@ -491,16 +555,16 @@ router.get('/dashboard', requireClientAdmin, async (req, res) => {
        WHERE m.business_id = ?
          AND m.valid_until >= CURDATE()
          AND ${sqlActiveMembershipCredit('m')}
-         AND u.deleted_at IS NULL`,
-      [bizId]
+         AND u.deleted_at IS NULL${memberHere}`,
+      p()
     );
     const [[pendingBookings]] = await db.query(
-      "SELECT COUNT(*) AS total FROM bookings WHERE business_id=? AND status='pending' AND starts_at > NOW()",
-      [bizId]
+      `SELECT COUNT(*) AS total FROM bookings WHERE business_id=?${book} AND status='pending' AND starts_at > NOW()`,
+      p()
     );
     const [[tomorrowBookings]] = await db.query(
-      "SELECT COUNT(*) AS total FROM bookings WHERE business_id=? AND DATE(starts_at)=DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND status NOT IN ('cancelled','no_show')",
-      [bizId]
+      `SELECT COUNT(*) AS total FROM bookings WHERE business_id=?${book} AND DATE(starts_at)=DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND status NOT IN ('cancelled','no_show')`,
+      p()
     );
 
     const [todaySessions] = await db.query(
@@ -514,29 +578,29 @@ router.get('/dashboard', requireClientAdmin, async (req, res) => {
        JOIN services sv ON sv.id = b.service_id
        LEFT JOIN staff st ON st.id = b.staff_id
        LEFT JOIN locations loc ON loc.id = b.location_id
-       WHERE b.business_id = ? AND DATE(b.starts_at) = CURDATE()
+       WHERE b.business_id = ?${bookB} AND DATE(b.starts_at) = CURDATE()
          AND b.status NOT IN ('cancelled', 'no_show')
        ORDER BY b.starts_at ASC
        LIMIT 15`,
-      [bizId],
+      p(),
     );
 
     const [recentClients] = await db.query(
       `SELECT id, full_name, email, phone, created_at, account_status
-       FROM users WHERE business_id = ?
+       FROM users WHERE business_id = ?${userHere}
        ORDER BY created_at DESC LIMIT 6`,
-      [bizId],
+      p(),
     );
 
     const [weekRows] = await db.query(
       `SELECT DATE_FORMAT(DATE(starts_at), '%Y-%m-%d') AS day, COUNT(*) AS count
        FROM bookings
-       WHERE business_id = ? AND DATE(starts_at) >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+       WHERE business_id = ?${book} AND DATE(starts_at) >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
          AND DATE(starts_at) <= CURDATE()
          AND status NOT IN ('cancelled', 'no_show')
        GROUP BY DATE_FORMAT(DATE(starts_at), '%Y-%m-%d')
        ORDER BY day ASC`,
-      [bizId],
+      p(),
     );
 
     const [[dates]] = await db.query(
@@ -559,12 +623,12 @@ router.get('/dashboard', requireClientAdmin, async (req, res) => {
       `SELECT sv.name AS service_name, COUNT(*) AS count
        FROM bookings b
        JOIN services sv ON sv.id = b.service_id
-       WHERE b.business_id = ? AND DATE(b.starts_at) = CURDATE()
+       WHERE b.business_id = ?${bookB} AND DATE(b.starts_at) = CURDATE()
          AND b.status NOT IN ('cancelled', 'no_show')
        GROUP BY sv.id, sv.name
        ORDER BY count DESC
        LIMIT 6`,
-      [bizId],
+      p(),
     );
 
     const [[waitlistPending]] = await db.query(
@@ -3732,15 +3796,38 @@ router.patch('/bookings/:id', requireClientAdmin, async (req, res) => {
 // BUSINESS PLANS (ανεξάρτητα πλάνα επιχείρησης)
 // ============================================================
 
+async function replacePlanLocations(planId, locationIds, bizId) {
+  const ids = [...new Set((locationIds || []).filter(Boolean))];
+  if (ids.length) {
+    const [owned] = await db.query(
+      'SELECT id FROM locations WHERE business_id = ? AND id IN (?) AND is_active = 1',
+      [bizId, ids],
+    );
+    if (owned.length !== ids.length) {
+      const err = new Error('Κάποιο κατάστημα δεν βρέθηκε');
+      err.status = 400;
+      throw err;
+    }
+  }
+  await db.query('DELETE FROM plan_locations WHERE plan_id = ?', [planId]);
+  for (const locationId of ids) {
+    await db.query('INSERT INTO plan_locations (plan_id, location_id) VALUES (?, ?)', [planId, locationId]);
+  }
+}
+
 router.get('/plans', requireClientAdmin, async (req, res) => {
   const type = req.query.type || 'service';
+  const loc = req.query.location_id || null;
   const [rows] = await db.query(
     `SELECT bp.*, s.name AS service_name
      FROM business_plans bp
      LEFT JOIN services s ON s.id = bp.service_id
      WHERE bp.business_id = ? AND bp.plan_type = ?
+       AND (? IS NULL
+         OR NOT EXISTS (SELECT 1 FROM plan_locations pl WHERE pl.plan_id = bp.id)
+         OR EXISTS (SELECT 1 FROM plan_locations pl WHERE pl.plan_id = bp.id AND pl.location_id = ?))
      ORDER BY bp.sort_order, bp.price_cents`,
-    [req.admin.businessId, type]
+    [req.admin.businessId, type, loc, loc]
   );
   // Attach service_items for combo plans
   const planIds = rows.map(r => r.id);
@@ -3760,7 +3847,27 @@ router.get('/plans', requireClientAdmin, async (req, res) => {
       itemsByPlan[item.plan_id].push(item);
     }
   }
-  return res.json(rows.map(r => ({ ...r, service_items: itemsByPlan[r.id] || [] })));
+  const placesByPlan = {};
+  if (planIds.length) {
+    const [places] = await db.query(
+      `SELECT pl.plan_id, pl.location_id, l.name AS location_name
+       FROM plan_locations pl
+       JOIN locations l ON l.id = pl.location_id
+       WHERE pl.plan_id IN (${planIds.map(() => '?').join(',')})
+       ORDER BY l.name`,
+      planIds,
+    );
+    for (const place of places) {
+      if (!placesByPlan[place.plan_id]) placesByPlan[place.plan_id] = [];
+      placesByPlan[place.plan_id].push(place);
+    }
+  }
+  return res.json(rows.map(r => ({
+    ...r,
+    service_items: itemsByPlan[r.id] || [],
+    location_ids: (placesByPlan[r.id] || []).map((p) => p.location_id),
+    location_names: (placesByPlan[r.id] || []).map((p) => p.location_name),
+  })));
 });
 
 router.post('/plans', requireClientAdmin, async (req, res) => {
@@ -3773,6 +3880,7 @@ router.post('/plans', requireClientAdmin, async (req, res) => {
     price_cents,
     billing_period = 'monthly',
     sort_order = 0,
+    location_ids,
   } = req.body;
 
   if (price_cents === undefined) {
@@ -3780,6 +3888,17 @@ router.post('/plans', requireClientAdmin, async (req, res) => {
   }
 
   const bizId = req.admin.businessId;
+  let storeIds = req.admin.locationId
+    ? [req.admin.locationId]
+    : [...new Set((location_ids || []).filter(Boolean))];
+  if (!storeIds.length) {
+    const [places] = await db.query(
+      'SELECT id FROM locations WHERE business_id = ? AND is_active = 1',
+      [bizId],
+    );
+    if (places.length > 1) return res.status(400).json({ error: 'Διάλεξε κατάστημα' });
+    if (places.length === 1) storeIds = [places[0].id];
+  }
   const isCombo = Array.isArray(service_items) && service_items.length > 1;
 
   if (isCombo) {
@@ -3804,6 +3923,7 @@ router.post('/plans', requireClientAdmin, async (req, res) => {
         [item.service_id, id]
       );
     }
+    await replacePlanLocations(id, storeIds, bizId);
     return res.status(201).json({ id, name: customName });
   }
 
@@ -3831,12 +3951,22 @@ router.post('/plans', requireClientAdmin, async (req, res) => {
     'INSERT IGNORE INTO service_plan_assignments (service_id, plan_id) VALUES (?,?)',
     [service_id, id]
   );
+  await replacePlanLocations(id, storeIds, bizId);
   return res.status(201).json({ id, name });
 });
 
 router.patch('/plans/:id', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const { service_id, service_items, name: customName, sessions, duration_mins, price_cents, billing_period, is_active } = req.body;
+  const { service_id, service_items, name: customName, sessions, duration_mins, price_cents, billing_period, is_active, location_ids } = req.body;
+  let storeIds = req.admin.locationId ? null : location_ids;
+  if (Array.isArray(storeIds) && !storeIds.filter(Boolean).length) {
+    const [places] = await db.query(
+      'SELECT id FROM locations WHERE business_id = ? AND is_active = 1',
+      [bizId],
+    );
+    if (places.length > 1) return res.status(400).json({ error: 'Διάλεξε κατάστημα' });
+    if (places.length === 1) storeIds = [places[0].id];
+  }
 
   // Combo plan update
   if (Array.isArray(service_items) && service_items.length > 1) {
@@ -3853,6 +3983,7 @@ router.patch('/plans/:id', requireClientAdmin, async (req, res) => {
         [uuidv4(), req.params.id, item.service_id, sessVal, item.duration_mins || null, i]);
       await db.query('INSERT IGNORE INTO service_plan_assignments (service_id, plan_id) VALUES (?,?)', [item.service_id, req.params.id]);
     }
+    if (Array.isArray(storeIds)) await replacePlanLocations(req.params.id, storeIds, bizId);
     return res.json({ ok: true, name: customName });
   }
 
@@ -3906,6 +4037,7 @@ router.patch('/plans/:id', requireClientAdmin, async (req, res) => {
       [nextServiceId, req.params.id]
     );
   }
+  if (Array.isArray(storeIds)) await replacePlanLocations(req.params.id, storeIds, bizId);
   return res.json({ ok: true, name });
 });
 
@@ -4176,8 +4308,11 @@ router.get('/services', requireClientAdmin, async (req, res) => {
       (SELECT COUNT(*) FROM service_locations sl WHERE sl.service_id = s.id) AS location_count
      FROM services s
      WHERE s.business_id = ?
+       AND (? IS NULL
+         OR EXISTS (SELECT 1 FROM service_locations sl WHERE sl.service_id = s.id AND sl.location_id = ?)
+         OR NOT EXISTS (SELECT 1 FROM service_locations sl2 WHERE sl2.service_id = s.id))
      ORDER BY s.category, s.name`,
-    [bizId],
+    [bizId, req.query.location_id || null, req.query.location_id || null],
   );
   return res.json(rows);
 });
@@ -4240,8 +4375,9 @@ router.post('/services', requireClientAdmin, async (req, res) => {
     [id, req.admin.businessId, name, description || null, is_open_access ? null : (duration_mins || null), price_cents || 0,
      category || null, hide_staff_selection ? 1 : 0, slot_label_mode || 'time_only', is_open_access ? 1 : 0]
   );
-  if (Array.isArray(location_ids) && location_ids.length) {
-    await replaceServiceLocations(db, id, location_ids);
+  const linkedLocations = req.admin.locationId ? [req.admin.locationId] : location_ids;
+  if (Array.isArray(linkedLocations) && linkedLocations.length) {
+    await replaceServiceLocations(db, id, linkedLocations);
   }
   return res.status(201).json({ id });
 });
@@ -4566,7 +4702,11 @@ router.get('/staff', requireClientAdmin, async (req, res) => {
     s.location_ids = await getStaffLocationIds(db, s.id);
     s.portal_enabled = !!s.portal_email && s.is_active && Number(s.has_portal_password) > 0;
   }
-  return res.json(staff);
+  const loc = req.query.location_id || null;
+  const visible = loc
+    ? staff.filter((s) => !s.location_ids?.length || s.location_ids.includes(loc))
+    : staff;
+  return res.json(visible);
 });
 
 async function linkStaffPhone(staffId, businessId, phoneRaw) {
@@ -4624,6 +4764,7 @@ router.post('/staff', requireClientAdmin, async (req, res) => {
     [id, req.admin.businessId, full_name, role, bio || null, color_hex || '#607D8B', avatar_url || null, String(phone).trim()]
   );
   await linkStaffPhone(id, req.admin.businessId, phone);
+  if (req.admin.locationId) await replaceStaffLocations(db, id, [req.admin.locationId]);
   return res.status(201).json({ id });
 });
 
@@ -5092,7 +5233,8 @@ router.delete('/services/:serviceId/class-types/:ctId', requireClientAdmin, asyn
 
 // ── Locations (branches) ───────────────────────────────────────
 router.get('/locations', requireClientAdmin, async (req, res) => {
-  const rows = await listLocations(db, req.admin.businessId, { activeOnly: false });
+  let rows = await listLocations(db, req.admin.businessId, { activeOnly: false });
+  if (req.admin.locationId) rows = rows.filter((row) => row.id === req.admin.locationId);
   return res.json(rows);
 });
 
@@ -5182,6 +5324,92 @@ router.put('/locations/:id/team', requireClientAdmin, async (req, res) => {
   }
 });
 
+function rejectStoreAdmin(req, res) {
+  if (!req.admin.locationId) return false;
+  res.status(403).json({ error: 'Αυτό το ρυθμίζει ο κεντρικός διαχειριστής' });
+  return true;
+}
+
+router.get('/location-admins', requireClientAdmin, async (req, res) => {
+  if (rejectStoreAdmin(req, res)) return;
+  const locationId = String(req.query.location_id || '').trim();
+  const params = [req.admin.businessId];
+  let sql = `
+    SELECT a.id, a.location_id, a.full_name, a.email, a.is_active, a.created_at, l.name AS location_name
+    FROM location_admins a
+    JOIN locations l ON l.id = a.location_id
+    WHERE a.business_id = ?`;
+  if (locationId) {
+    sql += ' AND a.location_id = ?';
+    params.push(locationId);
+  }
+  sql += ' ORDER BY l.name, a.full_name';
+  const [rows] = await db.query(sql, params);
+  return res.json(rows);
+});
+
+router.post('/location-admins', requireClientAdmin, async (req, res) => {
+  if (rejectStoreAdmin(req, res)) return;
+  const { location_id, full_name, email, password } = req.body || {};
+  if (!location_id || !full_name || !email || !password) {
+    return res.status(400).json({ error: 'Συμπλήρωσε κατάστημα, όνομα, email και κωδικό' });
+  }
+  const [[place]] = await db.query(
+    'SELECT id FROM locations WHERE id = ? AND business_id = ? AND is_active = 1',
+    [location_id, req.admin.businessId],
+  );
+  if (!place) return res.status(404).json({ error: 'Το κατάστημα δεν βρέθηκε' });
+  const cleanEmail = String(email).trim().toLowerCase();
+  const [[owner]] = await db.query(
+    'SELECT id FROM businesses WHERE id = ? AND owner_email = ?',
+    [req.admin.businessId, cleanEmail],
+  );
+  if (owner) return res.status(400).json({ error: 'Αυτό το email ανήκει στον κεντρικό διαχειριστή' });
+  try {
+    const id = uuidv4();
+    const password_hash = await bcrypt.hash(String(password), 10);
+    await db.query(
+      `INSERT INTO location_admins (id, business_id, location_id, full_name, email, password_hash)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, req.admin.businessId, location_id, String(full_name).trim(), cleanEmail, password_hash],
+    );
+    return res.status(201).json({ id });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Αυτό το email χρησιμοποιείται ήδη' });
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/location-admins/:id', requireClientAdmin, async (req, res) => {
+  if (rejectStoreAdmin(req, res)) return;
+  const [[row]] = await db.query(
+    'SELECT id FROM location_admins WHERE id = ? AND business_id = ?',
+    [req.params.id, req.admin.businessId],
+  );
+  if (!row) return res.status(404).json({ error: 'Ο διαχειριστής δεν βρέθηκε' });
+  const { full_name, email, password, is_active } = req.body || {};
+  const sets = [];
+  const params = [];
+  if (full_name != null) { sets.push('full_name = ?'); params.push(String(full_name).trim()); }
+  if (email != null) { sets.push('email = ?'); params.push(String(email).trim().toLowerCase()); }
+  if (password) { sets.push('password_hash = ?'); params.push(await bcrypt.hash(String(password), 10)); }
+  if (is_active != null) { sets.push('is_active = ?'); params.push(is_active ? 1 : 0); }
+  if (!sets.length) return res.json({ ok: true });
+  try {
+    await db.query(`UPDATE location_admins SET ${sets.join(', ')} WHERE id = ?`, [...params, req.params.id]);
+    return res.json({ ok: true });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Αυτό το email χρησιμοποιείται ήδη' });
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/location-admins/:id', requireClientAdmin, async (req, res) => {
+  if (rejectStoreAdmin(req, res)) return;
+  await db.query('DELETE FROM location_admins WHERE id = ? AND business_id = ?', [req.params.id, req.admin.businessId]);
+  return res.json({ ok: true });
+});
+
 router.get('/staff/:id/places', requireClientAdmin, async (req, res) => {
   try {
     const data = await getStaffPlaces(db, req.admin.businessId, req.params.id);
@@ -5206,7 +5434,7 @@ router.get('/staff/:id/locations', requireClientAdmin, async (req, res) => {
 });
 
 router.put('/staff/:id/locations', requireClientAdmin, async (req, res) => {
-  const { location_ids = [] } = req.body;
+  const location_ids = req.admin.locationId ? [req.admin.locationId] : (req.body.location_ids || []);
   await replaceStaffLocations(db, req.params.id, location_ids);
   return res.json({ ok: true });
 });
@@ -5228,7 +5456,7 @@ router.get('/services/:id/locations', requireClientAdmin, async (req, res) => {
 });
 
 router.put('/services/:id/locations', requireClientAdmin, async (req, res) => {
-  const { location_ids = [] } = req.body;
+  const location_ids = req.admin.locationId ? [req.admin.locationId] : (req.body.location_ids || []);
   await replaceServiceLocations(db, req.params.id, location_ids);
   return res.json({ ok: true });
 });
@@ -5342,7 +5570,7 @@ router.delete('/closures/:id', requireClientAdmin, async (req, res) => {
 
 router.get('/dropin-setup', requireClientAdmin, async (req, res) => {
   try {
-    const data = await listDropinSetup(db, req.admin.businessId);
+    const data = await listDropinSetup(db, req.admin.businessId, req.query.location_id || null);
     return res.json(data);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -7367,7 +7595,20 @@ router.get('/programs', requireClientAdmin, async (req, res) => {
     'SELECT * FROM workout_programs WHERE business_id=? ORDER BY created_at DESC',
     [req.admin.businessId]
   );
-  res.json(await withServiceIds(rows));
+  let programs = await withServiceIds(rows);
+  const loc = req.query.location_id || null;
+  if (loc) {
+    const [linked] = await db.query(
+      'SELECT service_id FROM service_locations WHERE location_id = ?',
+      [loc],
+    );
+    const allowed = new Set(linked.map((row) => row.service_id));
+    programs = programs.filter((program) => {
+      const ids = program.service_ids || [];
+      return !ids.length || ids.some((id) => allowed.has(id));
+    });
+  }
+  res.json(programs);
 });
 
 router.get('/programs/:id', requireClientAdmin, async (req, res) => {
@@ -8624,16 +8865,27 @@ async function ensureJoinedNutritionist(dbConn, { bizId, staffId, fullName, emai
 // ============================================================
 router.get('/join-requests', requireClientAdmin, async (req, res) => {
   const { status = 'pending' } = req.query;
+  const loc = String(req.query.location_id || '').trim();
   try {
+    const params = [req.admin.businessId];
+    let where = 'WHERE jr.business_id = ?';
+    if (status !== 'all') {
+      where += ' AND jr.status = ?';
+      params.push(status);
+    }
+    if (loc) {
+      where += ' AND jr.location_id = ?';
+      params.push(loc);
+    }
     const [rows] = await db.query(`
       SELECT jr.id, jr.global_user_id, jr.full_name, jr.email, jr.phone,
              jr.status, jr.role, jr.date_of_birth, jr.specialty, jr.admin_note, jr.created_at,
              jr.location_id, l.name AS location_name
       FROM gym_join_requests jr
       LEFT JOIN locations l ON l.id = jr.location_id AND l.business_id = jr.business_id
-      WHERE jr.business_id = ? ${status !== 'all' ? 'AND jr.status = ?' : ''}
+      ${where}
       ORDER BY jr.created_at DESC
-    `, status !== 'all' ? [req.admin.businessId, status] : [req.admin.businessId]);
+    `, params);
     return res.json(rows);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -8649,6 +8901,9 @@ router.patch('/join-requests/:id', requireClientAdmin, async (req, res) => {
       [req.params.id, req.admin.businessId],
     );
     if (!jr) return res.status(404).json({ error: 'Not found' });
+    if (req.admin.locationId && jr.location_id !== req.admin.locationId) {
+      return res.status(403).json({ error: 'Δεν έχεις πρόσβαση σε αυτό το κατάστημα' });
+    }
 
     await db.query(
       'UPDATE gym_join_requests SET status = ?, admin_note = ? WHERE id = ?',
