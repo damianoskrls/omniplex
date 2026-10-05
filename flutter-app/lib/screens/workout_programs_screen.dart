@@ -274,6 +274,25 @@ Set<String> _doneIds(Map<String, dynamic> program) {
   return raw.map((e) => e.toString()).toSet();
 }
 
+String? _field(Map<String, dynamic> program, String key) {
+  final value = program[key]?.toString().trim();
+  if (value == null || value.isEmpty) return null;
+  return value;
+}
+
+int? _difficultyOf(Map<String, dynamic> program) {
+  final raw = program['difficulty'];
+  final n = raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
+  if (n == null || n < 1 || n > 5) return null;
+  return n;
+}
+
+String? _programImage(BuildContext context, Map<String, dynamic> program) {
+  final raw = _field(program, 'image_url');
+  if (raw == null) return null;
+  return _resolveMediaUrl(raw, context.read<AuthService>().api.config.apiBaseUrl);
+}
+
 List<Map<String, dynamic>> _exercisesOf(Map<String, dynamic> program) {
   return (program['exercises'] as List?)
           ?.map((e) => Map<String, dynamic>.from(e as Map))
@@ -449,15 +468,31 @@ class _ProgramPickCard extends StatelessWidget {
     final primary = context.tenantPrimary;
     final partial = done > 0 && !finished;
     final label = finished ? 'Ολοκληρώθηκε' : (partial ? 'Συνέχισε' : tr('Ξεκίνα'));
+    final image = _programImage(context, program);
+    final description = _field(program, 'program_description');
+    final focus = _field(program, 'focus');
+    final difficulty = _difficultyOf(program);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
-      child: Padding(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (image != null)
+            Image.network(
+              image,
+              height: 140,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,6 +508,28 @@ class _ProgramPickCard extends StatelessWidget {
                       child: Text(tr(names.join(' · ')), style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w700)),
                     ),
                   Text(tr(name), style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
+                  if (difficulty != null || focus != null) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        if (difficulty != null)
+                          _MetaChip(label: tr('Δυσκολία $difficulty/5'), color: primary),
+                        if (focus != null)
+                          _MetaChip(label: tr(focus), color: primary),
+                      ],
+                    ),
+                  ],
+                  if (description != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      tr(description),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: AppColors.textSecondary, height: 1.35, fontSize: 13),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(99),
@@ -532,7 +589,27 @@ class _ProgramPickCard extends StatelessWidget {
             ],
           ],
         ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({required this.label, required this.color});
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(tr(label), style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800)),
     );
   }
 }
@@ -830,14 +907,51 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   Widget _startView(String name, Color primary, Color onFill) {
     final continuing = _done.isNotEmpty;
-    return Padding(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.timer_outlined, color: primary, size: 64),
-          const SizedBox(height: 16),
+    final image = _programImage(context, widget.program);
+    final description = _field(widget.program, 'program_description');
+    final focus = _field(widget.program, 'focus');
+    final protein = _field(widget.program, 'protein_note');
+    final difficulty = _difficultyOf(widget.program);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+      children: [
+          if (image != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                image,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ] else ...[
+            Icon(Icons.timer_outlined, color: primary, size: 64),
+            const SizedBox(height: 16),
+          ],
           Text(tr(name), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+          if (difficulty != null || focus != null) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (difficulty != null) _MetaChip(label: tr('Δυσκολία $difficulty/5'), color: primary),
+                if (focus != null) _MetaChip(label: tr(focus), color: primary),
+              ],
+            ),
+          ],
+          if (description != null) ...[
+            const SizedBox(height: 14),
+            Text(tr(description), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, height: 1.45, fontSize: 15)),
+          ],
+          if (protein != null) ...[
+            const SizedBox(height: 12),
+            Text(tr(protein), textAlign: TextAlign.center, style: TextStyle(color: primary, height: 1.4, fontWeight: FontWeight.w700)),
+          ],
           const SizedBox(height: 10),
           Text(
             tr(continuing ? 'Συνεχίζεις τώρα;' : tr('Αρχίζεις τώρα;')),
@@ -901,7 +1015,6 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             ),
           ],
         ],
-      ),
     );
   }
 
@@ -1034,7 +1147,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: Text(tr(_busy ? 'Αποθήκευση...' : tr('Την έκανα')),
+                  child: Text(tr(_busy ? 'Αποθήκευση...' : 'Επόμενη άσκηση'),
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 ),
               ),
@@ -1351,10 +1464,24 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         SizedBox(
           width: double.infinity,
           child: FilledButton(
-            onPressed: _busy ? null : _restart,
+            onPressed: () => Navigator.pop(context, _changed),
             style: FilledButton.styleFrom(
               backgroundColor: primary,
               foregroundColor: onFill,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: Text(tr('Τέλος προγράμματος'), style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _busy ? null : _restart,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: AppColors.border),
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),

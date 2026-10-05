@@ -659,6 +659,11 @@ function ExerciseForm({ initial, onSave, onClose }) {
 function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) {
   const [name, setName] = useState(program?.name || '');
   const [description, setDescription] = useState(program?.description || '');
+  const [difficulty, setDifficulty] = useState(program?.difficulty ? String(program.difficulty) : '');
+  const [focus, setFocus] = useState(program?.focus || '');
+  const [proteinNote, setProteinNote] = useState(program?.protein_note || '');
+  const [imageUrl, setImageUrl] = useState(program?.image_url || '');
+  const [imageFile, setImageFile] = useState(null);
   const [serviceIds, setServiceIds] = useState(() => {
     if (Array.isArray(program?.service_ids) && program.service_ids.length) return program.service_ids;
     return program?.service_id ? [program.service_id] : [];
@@ -736,6 +741,9 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
     try {
       const payload = {
         name, description,
+        difficulty: difficulty ? Number(difficulty) : null,
+        focus,
+        protein_note: proteinNote,
         service_ids: serviceIds,
         service_id: serviceIds[0] || null,
         exercises: items.map(it => ({
@@ -747,13 +755,21 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
           notes: it.notes || null,
         })),
       };
-      if (program?.id) {
-        await api.patch(`/client-admin/programs/${program.id}`, payload);
-        toast.success('Πρόγραμμα ενημερώθηκε');
+      let programId = program?.id;
+      if (programId) {
+        await api.patch(`/client-admin/programs/${programId}`, payload);
       } else {
-        await api.post('/client-admin/programs', payload);
-        toast.success('Πρόγραμμα δημιουργήθηκε');
+        const created = await api.post('/client-admin/programs', payload);
+        programId = created.data.id;
       }
+      if (imageFile && programId) {
+        const fd = new FormData();
+        fd.append('image', imageFile);
+        const uploaded = await api.post(`/client-admin/programs/${programId}/image`, fd);
+        setImageUrl(uploaded.data.url || '');
+        setImageFile(null);
+      }
+      toast.success(program?.id ? 'Πρόγραμμα ενημερώθηκε' : 'Πρόγραμμα δημιουργήθηκε');
       onSave();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
@@ -764,7 +780,7 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
 
   return (
     <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}>
-      <div style={{ flexShrink: 0, display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ flexShrink: 0, maxHeight: 280, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f1f5f9' }}>
         <div>
           <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Τίτλος</label>
           <input className="form-input" value={name} onChange={e => setName(e.target.value)}
@@ -772,9 +788,11 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
             style={{ fontWeight: 700, fontSize: '0.9rem' }} />
         </div>
         <div>
-          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Περιγραφή</label>
-          <input className="form-input" value={description} onChange={e => setDescription(e.target.value)}
-            placeholder="Προαιρετικά..." style={{ fontSize: '0.82rem' }} />
+          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Δυσκολία</label>
+          <select className="form-input" value={difficulty} onChange={e => setDifficulty(e.target.value)} style={{ fontSize: '0.82rem' }}>
+            <option value="">Χωρίς</option>
+            {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} / 5</option>)}
+          </select>
         </div>
         <div>
           <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Υπηρεσίες</label>
@@ -800,6 +818,40 @@ function ProgramBuilder({ program, exercises, services = [], onSave, onClose }) 
           <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4, lineHeight: 1.35 }}>
             Μπορείς να τσεκάρεις περισσότερες από μία. Η αποθήκευση περνάει όλο το πρόγραμμα σε όλες.
           </div>
+        </div>
+        <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Στόχος</label>
+            <input className="form-input" value={focus} onChange={e => setFocus(e.target.value)}
+              placeholder="π.χ. Ενδυνάμωση" style={{ fontSize: '0.82rem' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Πρωτεΐνη</label>
+            <input className="form-input" value={proteinNote} onChange={e => setProteinNote(e.target.value)}
+              placeholder="π.χ. Μετά, 25g πρωτεΐνη" style={{ fontSize: '0.82rem' }} />
+          </div>
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Περιγραφή προγράμματος</label>
+          <textarea className="form-input" rows={3} value={description} onChange={e => setDescription(e.target.value)}
+            placeholder="Τι δουλεύει το πρόγραμμα και για ποιον είναι." style={{ fontSize: '0.82rem', resize: 'vertical' }} />
+        </div>
+        <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {(imageFile || imageUrl) && (
+            <img
+              src={imageFile ? URL.createObjectURL(imageFile) : mediaUrl(imageUrl)}
+              alt=""
+              style={{ width: 72, height: 48, objectFit: 'cover', borderRadius: 8, background: '#f1f5f9' }}
+            />
+          )}
+          <label className="btn btn-secondary" style={{ fontSize: '0.78rem', cursor: 'pointer' }}>
+            <UploadCloud size={14} /> Φωτογραφία προγράμματος
+            <input type="file" accept="image/*" hidden onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) setImageFile(file);
+              e.target.value = '';
+            }} />
+          </label>
         </div>
       </div>
 
@@ -1181,9 +1233,13 @@ export default function Programs() {
               <div key={prog.id} style={{ border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', cursor: 'pointer', gap: 12 }}
                   onClick={() => setExpandedProgram(expandedProgram === prog.id ? null : prog.id)}>
-                  <div style={{ width: 42, height: 42, borderRadius: 10, background: 'linear-gradient(135deg,#3b82f6,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Dumbbell size={20} color="#fff" />
-                  </div>
+                  {prog.image_url ? (
+                    <img src={mediaUrl(prog.image_url)} alt="" style={{ width: 42, height: 42, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 42, height: 42, borderRadius: 10, background: 'linear-gradient(135deg,#3b82f6,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Dumbbell size={20} color="#fff" />
+                    </div>
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700 }}>{prog.name}</div>
                     {prog.description && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>{prog.description}</div>}

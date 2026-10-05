@@ -1081,6 +1081,10 @@ async function bootstrapSchema() {
     'ALTER TABLE exercises ADD COLUMN description TEXT NULL',
     'ALTER TABLE exercises ADD COLUMN animation_url TEXT NULL',
     'ALTER TABLE workout_programs ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1',
+    'ALTER TABLE workout_programs ADD COLUMN difficulty TINYINT NULL',
+    'ALTER TABLE workout_programs ADD COLUMN focus VARCHAR(80) NULL',
+    'ALTER TABLE workout_programs ADD COLUMN protein_note VARCHAR(255) NULL',
+    'ALTER TABLE workout_programs ADD COLUMN image_url VARCHAR(500) NULL',
   ]) {
     await db.query(col).catch((err) => {
       if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_NO_SUCH_TABLE') {

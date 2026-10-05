@@ -27,7 +27,7 @@ class AppStrings {
   String get nutrition    => _isEl ? 'Διατροφή'       : 'Nutrition';
   String get workouts     => _isEl ? 'Προπονήσεις'    : 'Workouts';
   String get more         => _isEl ? 'Περισσότερα'    : 'More';
-  String get navMyGym    => _isEl ? 'Το γυμναστήριό μου' : 'My Gym';
+  String get navMyGym    => _isEl ? 'Gym' : 'My Gym';
   String get navBook     => _isEl ? 'Κράτηση'        : 'Book';
   String get navWorkout  => _isEl ? 'Προπόνηση'      : 'Workout';
   String get navAppointments => _isEl ? 'Ραντεβού'   : 'Appointments';

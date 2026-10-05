@@ -225,6 +225,15 @@ const staffPhotoUpload = r2Multer({
   maxSizeMb: 5,
 });
 
+const programImageUpload = r2Multer({
+  keyFn: (req, file) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    return `uploads/${req.admin.businessId}/programs/${req.params.id}-${Date.now()}${ext}`;
+  },
+  allowedMimes: IMAGE_MIMES,
+  maxSizeMb: 8,
+});
+
 const servicePhotoUpload = r2Multer({
   keyFn: (req, file) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
@@ -7366,14 +7375,33 @@ router.get('/programs/:id', requireClientAdmin, async (req, res) => {
   res.json({ ...withIds, exercises: items });
 });
 
+function programDifficulty(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1 || n > 5) return false;
+  return n;
+}
+
+function clipText(value, max) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const text = String(value).trim();
+  return text ? text.slice(0, max) : null;
+}
+
 router.post('/programs', requireClientAdmin, async (req, res) => {
   const { name, description, exercises = [] } = req.body;
   if (!name) return res.status(400).json({ error: 'Το όνομα είναι υποχρεωτικό' });
+  const difficulty = programDifficulty(req.body.difficulty);
+  if (difficulty === false) return res.status(400).json({ error: 'Η δυσκολία είναι από 1 έως 5' });
+  const focus = clipText(req.body.focus, 80);
+  const protein = clipText(req.body.protein_note, 255);
   const serviceIds = serviceIdsFromBody(req.body) || [];
   const id = uuidv4();
   await db.query(
-    'INSERT INTO workout_programs (id,business_id,service_id,name,description) VALUES (?,?,?,?,?)',
-    [id, req.admin.businessId, serviceIds[0] || null, name, description||null]
+    'INSERT INTO workout_programs (id,business_id,service_id,name,description,difficulty,focus,protein_note) VALUES (?,?,?,?,?,?,?,?)',
+    [id, req.admin.businessId, serviceIds[0] || null, name, description||null, difficulty ?? null, focus ?? null, protein ?? null]
   );
   await replaceProgramServices(req.admin.businessId, id, serviceIds);
   for (let i = 0; i < exercises.length; i++) {
@@ -7392,6 +7420,14 @@ router.patch('/programs/:id', requireClientAdmin, async (req, res) => {
   const vals = [];
   if (name !== undefined) { fields.push('name=?'); vals.push(name); }
   if (description !== undefined) { fields.push('description=?'); vals.push(description||null); }
+  if (req.body.difficulty !== undefined) {
+    const difficulty = programDifficulty(req.body.difficulty);
+    if (difficulty === false) return res.status(400).json({ error: 'Η δυσκολία είναι από 1 έως 5' });
+    fields.push('difficulty=?');
+    vals.push(difficulty);
+  }
+  if (req.body.focus !== undefined) { fields.push('focus=?'); vals.push(clipText(req.body.focus, 80)); }
+  if (req.body.protein_note !== undefined) { fields.push('protein_note=?'); vals.push(clipText(req.body.protein_note, 255)); }
   if (is_active !== undefined) { fields.push('is_active=?'); vals.push(is_active ? 1 : 0); }
   if (fields.length) {
     vals.push(req.params.id, req.admin.businessId);
@@ -7417,6 +7453,22 @@ router.patch('/programs/:id', requireClientAdmin, async (req, res) => {
     }
   }
   res.json({ ok: true });
+});
+
+router.post('/programs/:id/image', requireClientAdmin, (req, res, next) => {
+  programImageUpload.single('image')(req, res, next);
+}, async (req, res) => {
+  if (!req.file?.publicUrl) return res.status(400).json({ error: 'Δεν ανέβηκε φωτογραφία' });
+  const [[owns]] = await db.query(
+    'SELECT id FROM workout_programs WHERE id=? AND business_id=?',
+    [req.params.id, req.admin.businessId]
+  );
+  if (!owns) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+  await db.query(
+    'UPDATE workout_programs SET image_url=? WHERE id=? AND business_id=?',
+    [req.file.publicUrl, req.params.id, req.admin.businessId]
+  );
+  res.json({ url: req.file.publicUrl });
 });
 
 router.delete('/programs/:id', requireClientAdmin, async (req, res) => {
@@ -7668,7 +7720,7 @@ router.get('/my-programs', async (req, res) => {
   const [assignments] = await db.query(
     `SELECT cp.id as assignment_id, cp.assigned_at, cp.notes as assignment_notes,
             wp.id as program_id, wp.name as program_name, wp.description as program_description,
-            wp.service_id
+            wp.difficulty, wp.focus, wp.protein_note, wp.image_url, wp.service_id
      FROM client_programs cp
      JOIN workout_programs wp
        ON (wp.id COLLATE utf8mb4_unicode_ci) = (cp.program_id COLLATE utf8mb4_unicode_ci)
@@ -7708,7 +7760,7 @@ router.get('/my-programs', async (req, res) => {
     const [rows] = await db.query(
       `SELECT NULL as assignment_id, wp.created_at as assigned_at, NULL as assignment_notes,
               wp.id as program_id, wp.name as program_name, wp.description as program_description,
-              links.service_id
+              wp.difficulty, wp.focus, wp.protein_note, wp.image_url, links.service_id
        FROM workout_programs wp
        JOIN (${PROGRAM_LINKS_SQL}) links ON links.program_id = (wp.id COLLATE utf8mb4_unicode_ci)
        JOIN services sv ON (sv.id COLLATE utf8mb4_unicode_ci) = links.service_id
