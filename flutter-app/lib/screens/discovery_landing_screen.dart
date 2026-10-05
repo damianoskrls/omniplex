@@ -228,6 +228,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => GymProfileScreen(
         slug: gym['slug'] as String,
+        locationId: gym['location_id'] as String?,
         globalAuth: widget.globalAuth,
         onLoggedIn: widget.onLoggedIn,
         onEnterGym: widget.onEnterGym,

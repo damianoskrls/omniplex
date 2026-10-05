@@ -30,6 +30,7 @@ const {
   filterSlotsByOffer,
   buildDropinSlotMap,
   weekdayFromDate,
+  getDropinPolicy,
 } = require('../lib/dropin_setup');
 const {
   listClientThreads,
@@ -1306,7 +1307,37 @@ router.patch('/:bizId/my-bookings/:bookingId/cancel', softAuth, requireActiveCus
     await conn.beginTransaction();
     const booking = await getOwnedBooking(req.params.bookingId, req.user.userId, req.params.bizId, conn);
     if (!booking) throw new Error('Η κράτηση δεν βρέθηκε.');
-    assertBookingModifiable(booking);
+
+    const isDropin = booking.source === 'dropin';
+    let dropinRefundNote = null;
+    let dropinRow = null;
+    if (isDropin) {
+      const allowed = ['pending', 'confirmed'];
+      if (!allowed.includes(booking.status)) throw new Error('Αυτή η κράτηση δεν μπορεί να τροποποιηθεί.');
+      if (new Date(booking.starts_at) <= new Date()) throw new Error('Η ώρα του drop-in έχει ήδη περάσει.');
+      const policy = await getDropinPolicy(conn, req.params.bizId);
+      if (!policy.allow_cancel) throw new Error('Το γυμναστήριο δεν επιτρέπει ακύρωση drop-in.');
+      const [[row]] = await conn.query(
+        `SELECT id, payment_status, payment_intent_id, price_cents
+         FROM dropin_bookings WHERE booking_id = ? AND business_id = ? LIMIT 1`,
+        [booking.id, req.params.bizId],
+      );
+      dropinRow = row || null;
+      const hoursUntil = (new Date(booking.starts_at).getTime() - Date.now()) / 36e5;
+      const refundHours = Number(policy.refund_hours || 0);
+      const paid = dropinRow && dropinRow.payment_status === 'paid' && dropinRow.payment_intent_id;
+      if (paid && refundHours > 0 && hoursUntil >= refundHours) {
+        const { refundIntent } = require('../lib/online_payments');
+        await refundIntent(conn, req.params.bizId, dropinRow.payment_intent_id, dropinRow.price_cents);
+        dropinRefundNote = 'Το ποσό επιστρέφεται.';
+      } else if (paid && refundHours > 0) {
+        dropinRefundNote = `Η κράτηση ακυρώθηκε χωρίς επιστροφή. Η επιστροφή γίνεται μόνο ${refundHours} ώρες πριν.`;
+      } else if (paid) {
+        dropinRefundNote = 'Η κράτηση ακυρώθηκε χωρίς επιστροφή χρημάτων.';
+      }
+    } else {
+      assertBookingModifiable(booking);
+    }
 
     const [[service]] = await conn.query('SELECT * FROM services WHERE id = ?', [booking.service_id]);
 
@@ -1314,7 +1345,15 @@ router.patch('/:bizId/my-bookings/:bookingId/cancel', softAuth, requireActiveCus
       `UPDATE bookings SET status = 'cancelled' WHERE id = ?`,
       [booking.id]
     );
-    await refundBookingCredit(conn, req.user.userId, req.params.bizId, service);
+    if (dropinRow) {
+      await conn.query(
+        `UPDATE dropin_bookings
+         SET status = 'cancelled', payment_status = IF(? = 1, 'refunded', payment_status)
+         WHERE id = ?`,
+        [dropinRefundNote && dropinRefundNote.startsWith('Το ποσό') ? 1 : 0, dropinRow.id],
+      );
+    }
+    if (!isDropin) await refundBookingCredit(conn, req.user.userId, req.params.bizId, service);
 
     const waiter = await notifyWaitlistOnCancel(
       conn, req.params.bizId, booking.service_id, booking.starts_at, booking.service_name
@@ -1322,9 +1361,12 @@ router.patch('/:bizId/my-bookings/:bookingId/cancel', softAuth, requireActiveCus
 
     await conn.commit();
     return res.json({
-      message: 'Η κράτηση ακυρώθηκε.',
+      message: dropinRefundNote
+        ? (dropinRefundNote.startsWith('Το ποσό') ? `Η κράτηση ακυρώθηκε. ${dropinRefundNote}` : dropinRefundNote)
+        : 'Η κράτηση ακυρώθηκε.',
       status: 'cancelled',
       waitlist_notified: !!waiter,
+      refunded: !!(dropinRefundNote && dropinRefundNote.startsWith('Το ποσό')),
     });
   } catch (err) {
     await conn.rollback();
@@ -2314,6 +2356,21 @@ router.post('/:bizId/dropin/book', softAuth, async (req, res) => {
       [service_id, bizId],
     );
     if (!svc) { await conn.rollback(); return res.status(404).json({ error: 'Υπηρεσία δεν βρέθηκε' }); }
+
+    const policy = await getDropinPolicy(conn, bizId);
+    if (!policy.accepts_drop_in) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'Το γυμναστήριο δεν δέχεται drop-in' });
+    }
+    const slotTimeEarly = String(time).slice(0, 5);
+    const dropinStart = new Date(`${String(date).slice(0, 10)}T${slotTimeEarly}:00`);
+    const hoursUntil = (dropinStart.getTime() - Date.now()) / 36e5;
+    if (policy.cutoff_hours > 0 && hoursUntil < policy.cutoff_hours) {
+      await conn.rollback();
+      return res.status(400).json({
+        error: `Το drop-in κλείνει ${policy.cutoff_hours} ώρες πριν την έναρξη`,
+      });
+    }
 
     const offer = await loadActiveOffer(conn, bizId, service_id, location_id || null);
     const usesOffers = await businessHasDropinOffers(conn, bizId);

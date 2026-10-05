@@ -45,6 +45,7 @@ class GymProfileScreen extends StatefulWidget {
     super.key,
     this.gymName = '',
     this.slug,
+    this.locationId,
     this.gymData,
     this.globalAuth,
     this.onLoggedIn,
@@ -57,6 +58,7 @@ class GymProfileScreen extends StatefulWidget {
 
   final String gymName;
   final String? slug;
+  final String? locationId;
   final Map<String, dynamic>? gymData;
   final GlobalAuthService? globalAuth;
   final VoidCallback? onLoggedIn;
@@ -427,10 +429,17 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     }
   }
 
+  Uri _gymUri(String path) {
+    final params = <String, String>{};
+    final id = widget.locationId;
+    if (id != null && id.isNotEmpty) params['location_id'] = id;
+    return Uri.parse('$_apiBase$path').replace(queryParameters: params.isEmpty ? null : params);
+  }
+
   Future<void> _loadGym(String slug) async {
     if (widget.gymData != null) { setState(() => _loadingGym = false); return; }
     try {
-      final res = await http.get(Uri.parse('$_apiBase/global/discovery/gyms/$slug'));
+      final res = await http.get(_gymUri('/global/discovery/gyms/$slug'));
       if (res.statusCode == 200 && mounted) {
         setState(() { _gym = jsonDecode(res.body) as Map<String, dynamic>; _loadingGym = false; });
       }
@@ -439,7 +448,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
   Future<void> _loadPackages(String slug) async {
     try {
-      final res = await http.get(Uri.parse('$_apiBase/global/discovery/gyms/$slug/packages'));
+      final res = await http.get(_gymUri('/global/discovery/gyms/$slug/packages'));
       if (mounted) {
         setState(() {
           if (res.statusCode == 200) {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Globe, MapPin, Eye, EyeOff, Save, Zap, Image, UserCircle,
   CalendarDays, Package, Upload, Trash2, Star, Plus, Pencil, X, Check,
@@ -32,6 +33,26 @@ const AMENITIES = [
   ['Towel service', 'Πετσέτες'],
 ];
 
+function Switch({ on, onClick, color = '#76C043' }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={!!on}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }}
+      style={{
+        width: 44, height: 24, borderRadius: 12, border: 'none', padding: 0,
+        background: on ? color : '#e2e8f0', position: 'relative', cursor: 'pointer', flexShrink: 0,
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 2, left: on ? 22 : 2,
+        width: 20, height: 20, borderRadius: '50%', background: '#fff', display: 'block',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s',
+      }} />
+    </button>
+  );
+}
+
 const CLASS_COLORS = [
   '#C52473', '#B48CFF', '#3EE6FF', '#FF6FD8', '#FFB23E',
   '#FF5252', '#69FF47', '#40C4FF', '#FF6E40', '#EEFF41',
@@ -39,7 +60,7 @@ const CLASS_COLORS = [
 
 // ── Info Tab ─────────────────────────────────────────────────────────────────
 
-function InfoSection() {
+function InfoSection({ locationId = '' }) {
   const [form, setForm] = useState({
     city: '', country: 'GR', address: '', area: '', latitude: '', longitude: '',
     description: '', is_discoverable: false, accepts_drop_in: false,
@@ -52,7 +73,10 @@ function InfoSection() {
   const [error, setError]     = useState(null);
 
   useEffect(() => {
-    api.get('/client-admin/discovery-profile').then(r => {
+    let cancelled = false;
+    setLoading(true);
+    api.get('/client-admin/discovery-profile', { params: locationId ? { location_id: locationId } : {} }).then(r => {
+      if (cancelled) return;
       const d = r.data;
       setForm({
         city:                d.city || '',
@@ -69,8 +93,9 @@ function InfoSection() {
         amenity_tags:        Array.isArray(d.amenity_tags) ? d.amenity_tags : [],
       });
       setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
+    }).catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [locationId]);
 
   async function handleSave(e) {
     e.preventDefault();
@@ -90,6 +115,7 @@ function InfoSection() {
         program_tags:        form.program_tags,
         amenity_tags:        form.amenity_tags,
         lock_coordinates:    lockCoordinates,
+        location_id:         locationId || undefined,
       });
       if (savedProfile.data?.latitude != null && savedProfile.data?.longitude != null) {
         setForm(f => ({
@@ -110,75 +136,60 @@ function InfoSection() {
     }
   }
 
-  if (loading) return <div className="text-center py-16 text-gray-400">Φόρτωση…</div>;
+  async function flipFlag(key) {
+    const next = !form[key];
+    setForm((f) => ({ ...f, [key]: next }));
+    setError(null);
+    try {
+      await api.patch('/client-admin/discovery-profile', { [key]: next ? 1 : 0, location_id: locationId || undefined });
+    } catch (err) {
+      setForm((f) => ({ ...f, [key]: !next }));
+      setError(err.response?.data?.error || err.message);
+    }
+  }
 
-  const Toggle = ({ label, desc, value, onChange, icon: Icon, activeColor = 'indigo' }) => (
-    <div
-      className={`rounded-2xl border-2 p-5 flex items-center justify-between cursor-pointer transition-colors ${
-        value ? `border-${activeColor}-400 bg-${activeColor}-50 dark:bg-${activeColor}-900/20`
-              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-      }`}
-      onClick={() => onChange(!value)}
-    >
-      <div className="flex items-center gap-3">
-        <Icon className={value ? `text-${activeColor}-600` : 'text-gray-400'} size={22} />
-        <div>
-          <p className="font-semibold text-gray-900 dark:text-white">{label}</p>
-          <p className="text-sm text-gray-500">{desc}</p>
-        </div>
-      </div>
-      <button
-        type="button"
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? `bg-${activeColor}-500` : 'bg-gray-300 dark:bg-gray-600'}`}
-        onClick={e => { e.stopPropagation(); onChange(!value); }}
-      >
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
-      </button>
-    </div>
-  );
+  if (loading) return <div className="text-center py-16 text-gray-400">Φόρτωση…</div>;
 
   return (
     <form onSubmit={handleSave} className="space-y-5 max-w-2xl">
-      <Toggle
-        label={form.is_discoverable ? 'Εμφανίζεστε στην αναζήτηση' : 'Δεν εμφανίζεστε στην αναζήτηση'}
-        desc="Ενεργοποιήστε για να εμφανίζεστε στα αποτελέσματα"
-        value={form.is_discoverable}
-        onChange={v => setForm(f => ({ ...f, is_discoverable: v }))}
-        icon={form.is_discoverable ? Eye : EyeOff}
-      />
+      <div style={{
+        borderRadius: 16, border: '2px solid #e2e8f0', padding: 20,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        background: '#fff',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {form.is_discoverable
+            ? <Eye size={22} color="#4452D8" />
+            : <EyeOff size={22} color="#94a3b8" />}
+          <div>
+            <p style={{ fontWeight: 700, color: '#111827', margin: 0 }}>
+              {form.is_discoverable ? 'Εμφανίζεστε στην αναζήτηση' : 'Δεν εμφανίζεστε στην αναζήτηση'}
+            </p>
+            <p style={{ fontSize: 14, color: '#64748b', margin: '2px 0 0' }}>Ενεργοποιήστε για να εμφανίζεστε στα αποτελέσματα</p>
+          </div>
+        </div>
+        <Switch on={form.is_discoverable} color="#4452D8" onClick={() => flipFlag('is_discoverable')} />
+      </div>
 
-      <div className={`rounded-2xl border-2 p-5 space-y-3 transition-colors ${
-        form.accepts_drop_in ? 'border-green-400 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-      }`}>
-        <div className="flex items-center justify-between cursor-pointer" onClick={() => setForm(f => ({ ...f, accepts_drop_in: !f.accepts_drop_in }))}>
-          <div className="flex items-center gap-3">
-            <Zap className={form.accepts_drop_in ? 'text-green-600' : 'text-gray-400'} size={22} />
+      <div style={{
+        borderRadius: 16, border: `2px solid ${form.accepts_drop_in ? '#86efac' : '#e2e8f0'}`,
+        padding: 20, background: form.accepts_drop_in ? '#f0fdf4' : '#fff',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Zap size={22} color={form.accepts_drop_in ? '#16a34a' : '#94a3b8'} />
             <div>
-              <p className="font-semibold text-gray-900 dark:text-white">Drop-in Είσοδος</p>
-              <p className="text-sm text-gray-500">Αποδοχή μεμονωμένων επισκέψεων</p>
+              <p style={{ fontWeight: 700, color: '#111827', margin: 0 }}>Drop-in είσοδος</p>
+              <p style={{ fontSize: 14, color: '#64748b', margin: '2px 0 0' }}>Αποδοχή μεμονωμένων επισκέψεων</p>
             </div>
           </div>
-          <button
-            type="button"
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.accepts_drop_in ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-            onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, accepts_drop_in: !f.accepts_drop_in })); }}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.accepts_drop_in ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
+          <Switch on={form.accepts_drop_in} onClick={() => flipFlag('accepts_drop_in')} />
         </div>
         {form.accepts_drop_in && (
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Τιμή Drop-in (€)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.drop_in_price_cents}
-              onChange={e => setForm(f => ({ ...f, drop_in_price_cents: e.target.value }))}
-              placeholder="π.χ. 10.00"
-              className="w-40 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-            />
-          </div>
+          <p style={{ fontSize: 14, color: '#3f6212', margin: '12px 0 0' }}>
+            Οι υπηρεσίες, οι τιμές, το κλείσιμο και η ακύρωση ορίζονται στις{' '}
+            <Link to="/dropin" style={{ fontWeight: 700, color: '#15803d' }}>ρυθμίσεις Drop-in</Link>.
+          </p>
         )}
       </div>
 
@@ -286,7 +297,7 @@ function InfoSection() {
 
 // ── Photos Tab ────────────────────────────────────────────────────────────────
 
-function PhotosSection() {
+function PhotosSection({ locationId = '' }) {
   const [photos, setPhotos]     = useState([]);
   const [loading, setLoading]   = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -295,10 +306,13 @@ function PhotosSection() {
 
   async function load() {
     setLoading(true);
-    try { const r = await api.get('/client-admin/gym-photos'); setPhotos(r.data); }
+    try {
+      const r = await api.get('/client-admin/gym-photos', { params: locationId ? { location_id: locationId } : {} });
+      setPhotos(r.data);
+    }
     finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [locationId]);
 
   async function handleUpload(e) {
     const files = Array.from(e.target.files || []);
@@ -307,6 +321,7 @@ function PhotosSection() {
     try {
       for (const file of files) {
         const fd = new FormData(); fd.append('photo', file);
+        if (locationId) fd.append('location_id', locationId);
         await api.post('/client-admin/gym-photos/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       }
       await load();
@@ -460,7 +475,7 @@ function StaffTrainerCard({ staff, onUpdated }) {
 
 const EMPTY_TRAINER = { name: '', specialty: '', photo_url: '' };
 
-function TrainersSection() {
+function TrainersSection({ locationId = '' }) {
   const [staffTrainers, setStaffTrainers] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -476,13 +491,16 @@ function TrainersSection() {
     try {
       const [staffRes, trainersRes] = await Promise.all([
         api.get('/client-admin/staff'),
-        api.get('/client-admin/gym-trainers'),
+        api.get('/client-admin/gym-trainers', { params: locationId ? { location_id: locationId } : {} }),
       ]);
-      setStaffTrainers(staffRes.data);
+      const people = staffRes.data || [];
+      setStaffTrainers(locationId
+        ? people.filter((s) => !s.location_ids?.length || s.location_ids.includes(locationId))
+        : people);
       setTrainers(trainersRes.data);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [locationId]);
 
   function openAdd() { setForm(EMPTY_TRAINER); setModal('add'); setError(null); }
   function openEdit(t) { setForm({ name: t.name, specialty: t.specialty || '', photo_url: t.photo_url || '' }); setModal(t); setError(null); }
@@ -503,7 +521,7 @@ function TrainersSection() {
     if (!form.name.trim()) { setError('Συμπλήρωσε το όνομα'); return; }
     setSaving(true); setError(null);
     try {
-      const payload = { name: form.name.trim(), specialty: form.specialty || null, photo_url: form.photo_url || null };
+      const payload = { name: form.name.trim(), specialty: form.specialty || null, photo_url: form.photo_url || null, location_id: locationId || null };
       if (modal === 'add') await api.post('/client-admin/gym-trainers', payload);
       else await api.put(`/client-admin/gym-trainers/${modal.id}`, payload);
       await load(); setModal(null);
@@ -720,6 +738,7 @@ function ScheduleSection() {
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-gray-500">Το ωράριο μαθημάτων που βλέπει ο πελάτης είναι το πρόγραμμα υπηρεσιών του καταστήματος που άνοιξε. Εδώ μένει μια γενική προβολή.</p>
       {/* AI import banner */}
       <div className="flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl">
         <Sparkles size={18} className="text-indigo-500 shrink-0" />
@@ -970,7 +989,7 @@ function PackagesSection() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-400">Εμφανίζεται/κρύβεται κάθε πακέτο · Πρόσθεσε τιμή sale · Ανέβασε εικόνα. Για να αλλάξεις την κανονική τιμή πήγαινε στα <strong>Πακέτα</strong>.</p>
+      <p className="text-xs text-gray-400">Ο πελάτης βλέπει τα πακέτα που συνδέονται με υπηρεσίες αυτού του καταστήματος. Πακέτο χωρίς υπηρεσία φαίνεται σε όλα τα καταστήματα. Εμφάνιση, τιμή sale και εικόνα ρυθμίζονται εδώ.</p>
       {plans.length === 0 ? (
         <div className="text-center py-12 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
           <Package size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
@@ -1089,6 +1108,21 @@ function PackagesSection() {
 
 export default function DiscoveryProfile({ embedded = false }) {
   const [tab, setTab] = useState('info');
+  const [locations, setLocations] = useState([]);
+  const [locationId, setLocationId] = useState('');
+  const [storesReady, setStoresReady] = useState(false);
+  const selectedStore = locations.find((l) => l.id === locationId);
+
+  useEffect(() => {
+    api.get('/client-admin/locations')
+      .then((r) => {
+        const rows = (r.data || []).filter((l) => l.is_active !== 0 && l.is_active !== false);
+        setLocations(rows);
+        setLocationId(rows[0]?.id || '');
+      })
+      .catch(() => {})
+      .finally(() => setStoresReady(true));
+  }, []);
 
   const body = (
       <div className={embedded ? 'space-y-6' : 'max-w-4xl mx-auto p-6 space-y-6'}>
@@ -1096,9 +1130,34 @@ export default function DiscoveryProfile({ embedded = false }) {
           <Globe className="text-indigo-500" size={24} />
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Προφίλ γυμναστηρίου</h1>
-            <p className="text-sm text-gray-500">Όσα βλέπουν οι χρήστες στην αναζήτηση: διεύθυνση, περιοχή, είδη και παροχές</p>
+            <p className="text-sm text-gray-500">Κάθε κατάστημα εμφανίζεται ξεχωριστά στην αναζήτηση, με τη δική του διεύθυνση, περιγραφή, φωτογραφίες και πρόγραμμα.</p>
           </div>
         </div>
+
+        {storesReady && locations.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <label style={{ fontWeight: 700, fontSize: 14 }}>Κατάστημα</label>
+            <select
+              value={locationId}
+              onChange={(e) => setLocationId(e.target.value)}
+              style={{ minWidth: 240, padding: '8px 12px', borderRadius: 10, border: '1px solid #e2e8f0' }}
+            >
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}{l.city ? ` · ${l.city}` : ''}</option>
+              ))}
+            </select>
+            {selectedStore && (
+              <span style={{ fontSize: 13, color: '#64748b' }}>
+                Στην αναζήτηση: {selectedStore.name}
+              </span>
+            )}
+          </div>
+        )}
+        {storesReady && locations.length === 0 && (
+          <p style={{ fontSize: 14, color: '#64748b' }}>
+            Δεν υπάρχει κατάστημα. <Link to="/locations" style={{ fontWeight: 700 }}>Πρόσθεσε κατάστημα</Link> για να φαίνεται στην αναζήτηση με δική του διεύθυνση.
+          </p>
+        )}
 
         {/* Tab bar */}
         <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 overflow-x-auto">
@@ -1115,11 +1174,11 @@ export default function DiscoveryProfile({ embedded = false }) {
 
         {/* Tab content */}
         <div>
-          {tab === 'info'     && <InfoSection />}
-          {tab === 'photos'   && <PhotosSection />}
-          {tab === 'trainers' && <TrainersSection />}
-          {tab === 'schedule' && <ScheduleSection />}
-          {tab === 'packages' && <PackagesSection />}
+          {storesReady && tab === 'info'     && <InfoSection locationId={locationId} />}
+          {storesReady && tab === 'photos'   && <PhotosSection locationId={locationId} />}
+          {storesReady && tab === 'trainers' && <TrainersSection locationId={locationId} />}
+          {storesReady && tab === 'schedule' && <ScheduleSection />}
+          {storesReady && tab === 'packages' && <PackagesSection />}
         </div>
       </div>
   );

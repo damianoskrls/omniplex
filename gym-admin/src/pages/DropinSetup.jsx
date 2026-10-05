@@ -8,6 +8,29 @@ import { Zap } from 'lucide-react';
 
 const DAYS = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
 const EMPTY = { id: null, service_id: '', location_id: '', price: '', staff_ids: [], slots: [] };
+const DEFAULT_POLICY = { accepts_drop_in: false, cutoff_hours: 2, allow_cancel: true, refund_hours: 24 };
+
+function Switch({ on, onClick, disabled }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={!!on}
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        width: 44, height: 24, borderRadius: 12, border: 'none', padding: 0,
+        background: on ? '#76C043' : '#e2e8f0', position: 'relative',
+        cursor: disabled ? 'default' : 'pointer', flexShrink: 0, opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 2, left: on ? 22 : 2,
+        width: 20, height: 20, borderRadius: '50%', background: '#fff', display: 'block',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s',
+      }} />
+    </button>
+  );
+}
 
 function addMinutes(time, mins) {
   const [h, m] = String(time).slice(0, 5).split(':').map(Number);
@@ -40,9 +63,11 @@ function hourSummary(slots) {
 
 export default function DropinSetup() {
   const [data, setData] = useState({ services: [], locations: [], staff: [], offers: [] });
+  const [policy, setPolicy] = useState(DEFAULT_POLICY);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [policySaving, setPolicySaving] = useState(false);
   const [programSlots, setProgramSlots] = useState([]);
 
   const load = async () => {
@@ -50,10 +75,33 @@ export default function DropinSetup() {
     try {
       const res = await api.get('/client-admin/dropin-setup');
       setData(res.data || { services: [], locations: [], staff: [], offers: [] });
+      if (res.data?.policy) setPolicy({ ...DEFAULT_POLICY, ...res.data.policy });
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα φόρτωσης');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const savePolicy = async (next) => {
+    const previous = policy;
+    setPolicy(next);
+    setPolicySaving(true);
+    try {
+      const res = await api.patch('/client-admin/dropin-setup/policy', {
+        accepts_drop_in: !!next.accepts_drop_in,
+        cutoff_hours: Math.max(0, Number(next.cutoff_hours) || 0),
+        allow_cancel: !!next.allow_cancel,
+        refund_hours: Math.max(0, Number(next.refund_hours) || 0),
+      });
+      setPolicy({ ...DEFAULT_POLICY, ...res.data });
+      if (!res.data?.accepts_drop_in) setForm(null);
+      toast.success('Οι ρυθμίσεις drop-in αποθηκεύτηκαν');
+    } catch (err) {
+      setPolicy(previous);
+      toast.error(err.response?.data?.error || 'Σφάλμα');
+    } finally {
+      setPolicySaving(false);
     }
   };
 
@@ -163,17 +211,92 @@ export default function DropinSetup() {
           <div>
             <h1 style={{ margin: 0, fontSize: '1.35rem' }}>Ρύθμιση drop-in</h1>
             <div className="text-muted" style={{ marginTop: 4 }}>
-              Διάλεξε υπηρεσία, κατάστημα, τιμή, ώρες και ποιος το αναλαμβάνει.
+              Ενεργοποίησε το drop-in, διάλεξε υπηρεσίες και τιμές, και όρισε πότε κλείνει και πότε επιστρέφονται τα χρήματα.
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Link to="/dropin-bookings" className="btn btn-secondary">Κρατήσεις</Link>
-          <button type="button" className="btn btn-primary" onClick={startNew}>Νέο drop-in</button>
+          {policy.accepts_drop_in && (
+            <button type="button" className="btn btn-primary" onClick={startNew}>Δημιουργία Drop-in</button>
+          )}
         </div>
       </div>
 
-      {form && (
+      <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 800 }}>Δέχομαι drop-in</div>
+            <div className="text-muted" style={{ marginTop: 4 }}>
+              Όταν είναι ανοιχτό, οι πελάτες μπορούν να κλείσουν μεμονωμένη επίσκεψη.
+            </div>
+          </div>
+          <Switch
+            on={policy.accepts_drop_in}
+            disabled={policySaving}
+            onClick={() => savePolicy({ ...policy, accepts_drop_in: !policy.accepts_drop_in })}
+          />
+        </div>
+
+        {policy.accepts_drop_in && (
+          <div style={{ marginTop: 18, display: 'grid', gap: 14, maxWidth: 520 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Κλείσιμο κράτησης (ώρες πριν)</label>
+              <input
+                className="form-input"
+                type="number"
+                min="0"
+                step="1"
+                value={policy.cutoff_hours}
+                onChange={(e) => setPolicy((p) => ({ ...p, cutoff_hours: e.target.value }))}
+              />
+              <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: 4 }}>
+                Μετά από αυτό το όριο ο πελάτης δεν μπορεί να κλείσει drop-in. 0 σημαίνει μέχρι την έναρξη.
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 700 }}>Ακύρωση από τον πελάτη</div>
+                <div className="text-muted" style={{ fontSize: '0.8rem' }}>Μπορεί να ακυρώσει ένα drop-in που έχει κλείσει.</div>
+              </div>
+              <Switch
+                on={policy.allow_cancel}
+                disabled={policySaving}
+                onClick={() => setPolicy((p) => ({ ...p, allow_cancel: !p.allow_cancel }))}
+              />
+            </div>
+            {policy.allow_cancel && (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Επιστροφή χρημάτων (ώρες πριν)</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={policy.refund_hours}
+                  onChange={(e) => setPolicy((p) => ({ ...p, refund_hours: e.target.value }))}
+                />
+                <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: 4 }}>
+                  Αν το έχει πληρώσει με κάρτα, το ποσό επιστρέφεται μόνο όταν ακυρώνει τουλάχιστον τόσες ώρες πριν. 0 σημαίνει χωρίς επιστροφή.
+                </div>
+              </div>
+            )}
+            <div>
+              <button type="button" className="btn btn-primary" disabled={policySaving} onClick={() => savePolicy(policy)}>
+                {policySaving ? 'Αποθήκευση...' : 'Αποθήκευση ρυθμίσεων'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!policy.accepts_drop_in && !loading && (
+        <div className="card" style={{ padding: 28, color: '#64748b' }}>
+          Το drop-in είναι κλειστό. Ενεργοποίησε «Δέχομαι drop-in» για να ορίσεις υπηρεσίες, τιμές και κανόνες.
+        </div>
+      )}
+
+      {policy.accepts_drop_in && form && (
         <form onSubmit={save} className="card" style={{ padding: 20, marginBottom: 20 }}>
           <div className="form-grid-2">
             <div className="form-group">
@@ -240,9 +363,9 @@ export default function DropinSetup() {
         </form>
       )}
 
-      {loading ? <div className="text-muted">Φόρτωση...</div> : data.offers.length === 0 ? (
+      {policy.accepts_drop_in && (loading ? <div className="text-muted">Φόρτωση...</div> : data.offers.length === 0 ? (
         <div className="card" style={{ padding: 28, color: '#64748b' }}>
-          Δεν έχεις ρυθμίσει drop-in. Πάτα «Νέο drop-in» για να διαλέξεις υπηρεσία, κατάστημα, ώρες και trainer.
+          Δεν έχεις υπηρεσία drop-in. Πάτα «Δημιουργία Drop-in» για να διαλέξεις υπηρεσία, τιμή, ώρες και trainer.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -263,7 +386,7 @@ export default function DropinSetup() {
             </div>
           ))}
         </div>
-      )}
+      ))}
     </Layout>
   );
 }

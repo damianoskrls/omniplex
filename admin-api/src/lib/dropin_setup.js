@@ -47,7 +47,8 @@ async function listDropinSetup(db, bizId) {
      ORDER BY l.name, s.name`,
     [bizId],
   );
-  if (!offers.length) return { services, locations, staff, offers: [] };
+  const policy = await getDropinPolicy(db, bizId);
+  if (!offers.length) return { services, locations, staff, offers: [], policy };
 
   const ids = offers.map((o) => o.id);
   const [hours] = await db.query(
@@ -67,6 +68,7 @@ async function listDropinSetup(db, bizId) {
     services,
     locations,
     staff,
+    policy,
     offers: offers.map((o) => ({
       ...o,
       slots: hours.filter((h) => h.offer_id === o.id).map((h) => ({
@@ -128,7 +130,37 @@ function bad(message, status = 400) {
   return err;
 }
 
+async function getDropinPolicy(db, bizId) {
+  const [[biz]] = await db.query(
+    `SELECT accepts_drop_in, drop_in_cutoff_hours, drop_in_allow_cancel, drop_in_refund_hours
+     FROM businesses WHERE id = ?`,
+    [bizId],
+  );
+  return {
+    accepts_drop_in: !!biz?.accepts_drop_in,
+    cutoff_hours: Number(biz?.drop_in_cutoff_hours ?? 2),
+    allow_cancel: Number(biz?.drop_in_allow_cancel ?? 1) !== 0,
+    refund_hours: Number(biz?.drop_in_refund_hours ?? 24),
+  };
+}
+
+async function saveDropinPolicy(db, bizId, body) {
+  const accepts = body.accepts_drop_in ? 1 : 0;
+  const cutoff = Math.max(0, Number(body.cutoff_hours ?? 2) || 0);
+  const allowCancel = body.allow_cancel ? 1 : 0;
+  const refundHours = Math.max(0, Number(body.refund_hours ?? 0) || 0);
+  await db.query(
+    `UPDATE businesses
+     SET accepts_drop_in = ?, drop_in_cutoff_hours = ?, drop_in_allow_cancel = ?, drop_in_refund_hours = ?
+     WHERE id = ?`,
+    [accepts, cutoff, allowCancel, refundHours, bizId],
+  );
+  return getDropinPolicy(db, bizId);
+}
+
 async function saveDropinOffer(db, bizId, body, offerId = null) {
+  const policy = await getDropinPolicy(db, bizId);
+  if (!policy.accepts_drop_in) throw bad('Ενεργοποίησε πρώτα ότι δέχεσαι drop-in');
   const { service_id, location_id, price_cents, staff_ids = [], slots = [] } = body;
   if (!service_id || !location_id) throw bad('Διάλεξε υπηρεσία και κατάστημα');
   const price = Number(price_cents);
@@ -355,6 +387,8 @@ function filterSlotsByOffer(slotMap, offer, weekday, durationMins) {
 
 module.exports = {
   listDropinSetup,
+  getDropinPolicy,
+  saveDropinPolicy,
   saveDropinOffer,
   deleteDropinOffer,
   loadActiveOffer,

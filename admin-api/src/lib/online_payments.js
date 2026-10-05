@@ -178,6 +178,19 @@ async function markPaymentPaid(conn, bizId, paymentId, {
 /**
  * Issue a refund.
  */
+async function refundIntent(conn, bizId, intentId, amountCents) {
+  const provCfg = await getProviderConfig(conn, bizId);
+  const mod = getProviderModule(provCfg.provider);
+  if (provCfg.provider === 'stripe') assertStripeKeys(provCfg);
+  const intent = await mod.retrieveIntent({ secretKey: provCfg.secret_key, intentId });
+  if (!intent.charge_id) throw new Error('Δεν βρέθηκε χρέωση για επιστροφή');
+  return mod.refundCharge({
+    secretKey: provCfg.secret_key,
+    chargeId: intent.charge_id,
+    amountCents: amountCents || intent.amount,
+  });
+}
+
 async function refundPayment(conn, bizId, paymentId) {
   const [[payment]] = await conn.query(
     'SELECT provider, provider_txn_id, amount_cents FROM payments WHERE id = ? AND business_id = ?',
@@ -208,6 +221,7 @@ module.exports = {
   parseWebhook,
   markPaymentPaid,
   refundPayment,
+  refundIntent,
   assertStripeKeys,
   hideStripeKeyError,
   paymentsNotConfigured,

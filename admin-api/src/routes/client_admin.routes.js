@@ -45,7 +45,7 @@ const {
   saveStaffPlaces,
 } = require('../lib/staff_places');
 const { getSetupWizard, saveSetupWizard } = require('../lib/setup_wizard');
-const { listDropinSetup, saveDropinOffer, deleteDropinOffer } = require('../lib/dropin_setup');
+const { listDropinSetup, saveDropinPolicy, saveDropinOffer, deleteDropinOffer } = require('../lib/dropin_setup');
 const { createOneBooking, chargeBookingMembershipOnConfirm, refundBookingMembershipOnRemove } = require('../lib/create_booking');
 const { sqlGymServiceCategories } = require('../lib/gym_services');
 const { deleteBookingForBusiness } = require('../lib/booking_delete');
@@ -5349,6 +5349,15 @@ router.get('/dropin-setup', requireClientAdmin, async (req, res) => {
   }
 });
 
+router.patch('/dropin-setup/policy', requireClientAdmin, async (req, res) => {
+  try {
+    const policy = await saveDropinPolicy(db, req.admin.businessId, req.body || {});
+    return res.json(policy);
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
 router.post('/dropin-setup', requireClientAdmin, async (req, res) => {
   try {
     const saved = await saveDropinOffer(db, req.admin.businessId, req.body);
@@ -8064,6 +8073,7 @@ function geocodeGym({ address, area, city, country }) {
 
 router.get('/discovery-profile', requireClientAdmin, async (req, res) => {
   try {
+    const bizId = req.admin.businessId;
     const [[biz]] = await db.query(
       `SELECT b.city, b.country, b.latitude, b.longitude, b.description, b.is_discoverable,
               b.accepts_drop_in, b.drop_in_price_cents, b.address, b.area, b.program_tags, b.amenity_tags,
@@ -8071,14 +8081,44 @@ router.get('/discovery-profile', requireClientAdmin, async (req, res) => {
        FROM businesses b
        LEFT JOIN business_configs c ON c.business_id = b.id
        WHERE b.id = ?`,
-      [req.admin.businessId],
+      [bizId],
     );
     if (!biz) return res.json({});
+    const [locations] = await db.query(
+      `SELECT id, name, city, address, area, latitude, longitude, description,
+              program_tags, amenity_tags, is_discoverable, accepts_drop_in
+       FROM locations WHERE business_id = ? AND is_active = 1
+       ORDER BY sort_order, name`,
+      [bizId],
+    );
+    const storeList = locations.map((l) => ({ id: l.id, name: l.name, city: l.city || '' }));
+    const wanted = String(req.query.location_id || '');
+    const loc = locations.find((l) => l.id === wanted) || (wanted ? null : locations[0]) || null;
+    if (!loc) {
+      return res.json({
+        ...biz,
+        locations: storeList,
+        location_id: null,
+        address: biz.address || biz.gym_address || '',
+        program_tags: parseStoredTags(biz.program_tags),
+        amenity_tags: parseStoredTags(biz.amenity_tags),
+      });
+    }
     return res.json({
-      ...biz,
-      address: biz.address || biz.gym_address || '',
-      program_tags: parseStoredTags(biz.program_tags),
-      amenity_tags: parseStoredTags(biz.amenity_tags),
+      locations: storeList,
+      location_id: loc.id,
+      city: loc.city || '',
+      country: biz.country || 'GR',
+      address: loc.address || '',
+      area: loc.area || '',
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      description: loc.description || '',
+      is_discoverable: !!loc.is_discoverable,
+      accepts_drop_in: !!loc.accepts_drop_in,
+      drop_in_price_cents: biz.drop_in_price_cents,
+      program_tags: parseStoredTags(loc.program_tags),
+      amenity_tags: parseStoredTags(loc.amenity_tags),
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -8088,9 +8128,65 @@ router.get('/discovery-profile', requireClientAdmin, async (req, res) => {
 router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
   const {
     city, country, latitude, longitude, description, is_discoverable, accepts_drop_in, drop_in_price_cents,
-    address, area, program_tags, amenity_tags, lock_coordinates,
+    address, area, program_tags, amenity_tags, lock_coordinates, location_id,
   } = req.body;
   try {
+    if (location_id) {
+      const bizId = req.admin.businessId;
+      const [[owns]] = await db.query(
+        'SELECT id FROM locations WHERE id = ? AND business_id = ? AND is_active = 1',
+        [location_id, bizId],
+      );
+      if (!owns) return res.status(404).json({ error: 'Το κατάστημα δεν βρέθηκε' });
+      let lat = latitude ?? null;
+      let lng = longitude ?? null;
+      let geocoded = false;
+      const hasPlace = [address, area, city].some((part) => String(part || '').trim());
+      if (!lock_coordinates && hasPlace) {
+        const found = await geocodeGym({ address, area, city, country });
+        if (found) {
+          lat = found.latitude;
+          lng = found.longitude;
+          geocoded = true;
+        }
+      }
+      const programs = Array.isArray(program_tags) ? JSON.stringify(program_tags) : null;
+      const amenities = Array.isArray(amenity_tags) ? JSON.stringify(amenity_tags) : null;
+      await db.query(
+        `UPDATE locations SET
+           city = COALESCE(?, city),
+           address = COALESCE(?, address),
+           area = COALESCE(?, area),
+           latitude = COALESCE(?, latitude),
+           longitude = COALESCE(?, longitude),
+           description = COALESCE(?, description),
+           is_discoverable = COALESCE(?, is_discoverable),
+           accepts_drop_in = COALESCE(?, accepts_drop_in),
+           program_tags = COALESCE(?, program_tags),
+           amenity_tags = COALESCE(?, amenity_tags)
+         WHERE id = ? AND business_id = ?`,
+        [city ?? null, address ?? null, area ?? null, lat, lng, description ?? null,
+         is_discoverable ?? null, accepts_drop_in ?? null, programs, amenities, location_id, bizId],
+      );
+      if (is_discoverable != null) {
+        const [[anyOn]] = await db.query(
+          'SELECT 1 AS ok FROM locations WHERE business_id = ? AND is_active = 1 AND is_discoverable = 1 LIMIT 1',
+          [bizId],
+        );
+        await db.query('UPDATE businesses SET is_discoverable = ? WHERE id = ?', [anyOn ? 1 : 0, bizId]);
+      }
+      if (accepts_drop_in != null) {
+        const [[anyDrop]] = await db.query(
+          'SELECT 1 AS ok FROM locations WHERE business_id = ? AND is_active = 1 AND accepts_drop_in = 1 LIMIT 1',
+          [bizId],
+        );
+        await db.query('UPDATE businesses SET accepts_drop_in = ? WHERE id = ?', [anyDrop ? 1 : 0, bizId]);
+      }
+      if (country) {
+        await db.query('UPDATE businesses SET country = ? WHERE id = ?', [country, bizId]);
+      }
+      return res.json({ ok: true, geocoded, latitude: lat, longitude: lng, location_id });
+    }
     let lat = latitude ?? null;
     let lng = longitude ?? null;
     let geocoded = false;
@@ -8297,11 +8393,25 @@ router.delete('/class-schedules/:id', requireClientAdmin, async (req, res) => {
 // ============================================================
 router.get('/gym-photos', requireClientAdmin, async (req, res) => {
   try {
-    const [rows] = await db.query(
-      'SELECT id, url, display_order, is_cover FROM gym_photos WHERE business_id = ? ORDER BY is_cover DESC, display_order, created_at',
-      [req.admin.businessId],
+    const locationId = String(req.query.location_id || '').trim();
+    const [own] = await db.query(
+      `SELECT id, url, display_order, is_cover, location_id
+       FROM gym_photos
+       WHERE business_id = ? AND location_id <=> ?
+       ORDER BY is_cover DESC, display_order, created_at`,
+      [req.admin.businessId, locationId || null],
     );
-    return res.json(rows);
+    if (locationId && !own.length) {
+      const [shared] = await db.query(
+        `SELECT id, url, display_order, is_cover, location_id
+         FROM gym_photos
+         WHERE business_id = ? AND location_id IS NULL
+         ORDER BY is_cover DESC, display_order, created_at`,
+        [req.admin.businessId],
+      );
+      return res.json(shared);
+    }
+    return res.json(own);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -8309,7 +8419,15 @@ router.get('/gym-photos', requireClientAdmin, async (req, res) => {
 
 router.patch('/gym-photos/:id/set-cover', requireClientAdmin, async (req, res) => {
   try {
-    await db.query('UPDATE gym_photos SET is_cover = 0 WHERE business_id = ?', [req.admin.businessId]);
+    const [[photo]] = await db.query(
+      'SELECT location_id FROM gym_photos WHERE id = ? AND business_id = ?',
+      [req.params.id, req.admin.businessId],
+    );
+    if (!photo) return res.status(404).json({ error: 'Η φωτογραφία δεν βρέθηκε' });
+    await db.query(
+      'UPDATE gym_photos SET is_cover = 0 WHERE business_id = ? AND location_id <=> ?',
+      [req.admin.businessId, photo.location_id],
+    );
     await db.query('UPDATE gym_photos SET is_cover = 1 WHERE id = ? AND business_id = ?', [req.params.id, req.admin.businessId]);
     return res.json({ ok: true });
   } catch (err) {
@@ -8329,13 +8447,14 @@ router.post('/gym-photos/upload', requireClientAdmin, (req, res, next) => {
   if (!req.file?.publicUrl) return res.status(400).json({ error: 'Upload failed' });
   try {
     const id = uuidv4();
+    const locationId = String(req.body.location_id || '').trim() || null;
     const [[{ maxOrder }]] = await db.query(
       'SELECT COALESCE(MAX(display_order),0) AS maxOrder FROM gym_photos WHERE business_id = ?',
       [req.admin.businessId],
     );
     await db.query(
-      'INSERT INTO gym_photos (id, business_id, url, display_order) VALUES (?, ?, ?, ?)',
-      [id, req.admin.businessId, req.file.publicUrl, maxOrder + 1],
+      'INSERT INTO gym_photos (id, business_id, url, display_order, location_id) VALUES (?, ?, ?, ?, ?)',
+      [id, req.admin.businessId, req.file.publicUrl, maxOrder + 1, locationId],
     );
     return res.json({ id, url: req.file.publicUrl });
   } catch (err) {
@@ -8362,9 +8481,14 @@ router.delete('/gym-photos/:id', requireClientAdmin, async (req, res) => {
 // ============================================================
 router.get('/gym-trainers', requireClientAdmin, async (req, res) => {
   try {
+    const locationId = String(req.query.location_id || '').trim();
     const [rows] = await db.query(
-      'SELECT id, name, specialty, photo_url, display_order FROM gym_trainers WHERE business_id = ? ORDER BY display_order, created_at',
-      [req.admin.businessId],
+      `SELECT id, name, specialty, photo_url, display_order, location_id
+       FROM gym_trainers
+       WHERE business_id = ?
+         AND (? = '' OR location_id = ? OR location_id IS NULL)
+       ORDER BY display_order, created_at`,
+      [req.admin.businessId, locationId, locationId || null],
     );
     return res.json(rows);
   } catch (err) {
@@ -8373,7 +8497,7 @@ router.get('/gym-trainers', requireClientAdmin, async (req, res) => {
 });
 
 router.post('/gym-trainers', requireClientAdmin, async (req, res) => {
-  const { name, specialty, photo_url } = req.body;
+  const { name, specialty, photo_url, location_id } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Απαιτείται όνομα' });
   try {
     const id = uuidv4();
@@ -8382,8 +8506,8 @@ router.post('/gym-trainers', requireClientAdmin, async (req, res) => {
       [req.admin.businessId],
     );
     await db.query(
-      'INSERT INTO gym_trainers (id, business_id, name, specialty, photo_url, display_order) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, req.admin.businessId, name.trim(), specialty || null, photo_url || null, maxOrder + 1],
+      'INSERT INTO gym_trainers (id, business_id, name, specialty, photo_url, display_order, location_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, req.admin.businessId, name.trim(), specialty || null, photo_url || null, maxOrder + 1, location_id || null],
     );
     return res.status(201).json({ id });
   } catch (err) {

@@ -731,6 +731,48 @@ async function bootstrapSchema() {
     if (err.code !== 'ER_DUP_FIELDNAME') console.warn('locations.accepts_drop_in skipped:', err.message);
   }
 
+  const locationProfileCols = [
+    ['area', 'VARCHAR(120) NULL'],
+    ['latitude', 'DOUBLE NULL'],
+    ['longitude', 'DOUBLE NULL'],
+    ['description', 'TEXT NULL'],
+    ['program_tags', 'TEXT NULL'],
+    ['amenity_tags', 'TEXT NULL'],
+    ['is_discoverable', 'TINYINT(1) NOT NULL DEFAULT 1'],
+  ];
+  for (const [col, def] of locationProfileCols) {
+    try {
+      await db.query(`ALTER TABLE locations ADD COLUMN ${col} ${def}`);
+      console.log(`✓ Schema: locations.${col} added`);
+    } catch (err) {
+      if (err.code !== 'ER_DUP_FIELDNAME') console.warn(`locations.${col} skipped:`, err.message);
+    }
+  }
+  try {
+    await db.query(`
+      UPDATE locations l
+      JOIN businesses b ON b.id = l.business_id
+      SET l.is_discoverable = 0
+      WHERE b.is_discoverable = 0 AND l.is_discoverable = 1
+    `);
+    await db.query(`
+      UPDATE locations l
+      JOIN businesses b ON b.id = l.business_id
+      JOIN (
+        SELECT business_id FROM locations WHERE is_active = 1 GROUP BY business_id HAVING COUNT(*) = 1
+      ) only_one ON only_one.business_id = l.business_id
+      SET l.latitude = IFNULL(l.latitude, b.latitude),
+          l.longitude = IFNULL(l.longitude, b.longitude),
+          l.area = COALESCE(l.area, b.area),
+          l.description = COALESCE(l.description, b.description),
+          l.program_tags = COALESCE(l.program_tags, b.program_tags),
+          l.amenity_tags = COALESCE(l.amenity_tags, b.amenity_tags)
+      WHERE l.is_active = 1
+    `);
+  } catch (err) {
+    console.warn('location profile copy skipped:', err.message);
+  }
+
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS staff_location_services (
@@ -783,6 +825,25 @@ async function bootstrapSchema() {
     console.log('✓ Schema: drop-in offers ready');
   } catch (err) {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('drop-in offers skipped:', err.message);
+  }
+
+  const dropinPolicyCols = [
+    ['drop_in_cutoff_hours', 'INT NOT NULL DEFAULT 2'],
+    ['drop_in_allow_cancel', 'TINYINT(1) NOT NULL DEFAULT 1'],
+    ['drop_in_refund_hours', 'INT NOT NULL DEFAULT 24'],
+  ];
+  for (const [col, def] of dropinPolicyCols) {
+    try {
+      await db.query(`ALTER TABLE businesses ADD COLUMN ${col} ${def}`);
+      console.log(`✓ Schema: businesses.${col} added`);
+    } catch (err) {
+      if (err.code !== 'ER_DUP_FIELDNAME') console.warn(`businesses.${col} skipped:`, err.message);
+    }
+  }
+  try {
+    await db.query(`ALTER TABLE dropin_bookings MODIFY payment_status ENUM('pending','paid','failed','refunded') NOT NULL DEFAULT 'pending'`);
+  } catch (err) {
+    if (err.code !== 'ER_NO_SUCH_TABLE') console.warn('dropin payment_status skipped:', err.message);
   }
 
   // ── gym_join_requests.date_of_birth + specialty ─────────────
@@ -959,6 +1020,9 @@ async function bootstrapSchema() {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     await db.query(`ALTER TABLE gym_photos ADD COLUMN is_cover TINYINT(1) NOT NULL DEFAULT 0`).catch(() => {});
+    await db.query(`ALTER TABLE gym_photos ADD COLUMN location_id VARCHAR(36) NULL`).catch((err) => {
+      if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gym_photos.location_id skipped:', err.message);
+    });
     console.log('✓ Schema: gym_photos table ready');
   } catch (err) {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('gym_photos skipped:', err.message);
@@ -978,6 +1042,9 @@ async function bootstrapSchema() {
         INDEX idx_gtr_biz (business_id)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    await db.query(`ALTER TABLE gym_trainers ADD COLUMN location_id VARCHAR(36) NULL`).catch((err) => {
+      if (err.code !== 'ER_DUP_FIELDNAME') console.warn('gym_trainers.location_id skipped:', err.message);
+    });
     console.log('✓ Schema: gym_trainers table ready');
   } catch (err) {
     if (err.code !== 'ER_TABLE_EXISTS_ERROR') console.warn('gym_trainers skipped:', err.message);

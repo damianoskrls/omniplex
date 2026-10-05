@@ -674,27 +674,31 @@ router.get('/discovery/gyms', async (req, res) => {
 
   // A typed name can still find a gym. Filters and nearby only list gyms that opted in.
   const requireDiscoverable = q.trim().length < 2;
-  const conditions = requireDiscoverable
-    ? ['b.is_active = 1', 'b.is_discoverable = 1']
-    : ['b.is_active = 1'];
+  const conditions = ['b.is_active = 1'];
   const params = [];
+  if (requireDiscoverable) {
+    conditions.push('((l.id IS NULL AND b.is_discoverable = 1) OR (l.id IS NOT NULL AND l.is_discoverable = 1))');
+  }
 
   if (q.trim().length >= 2) {
     const like = `%${q.trim()}%`;
-    conditions.push('(b.name LIKE ? OR b.slug LIKE ? OR c.app_name LIKE ? OR b.city LIKE ? OR b.area LIKE ? OR b.address LIKE ? OR b.program_tags LIKE ?)');
-    params.push(like, like, like, like, like, like, like);
+    conditions.push(`(b.name LIKE ? OR b.slug LIKE ? OR c.app_name LIKE ?
+      OR l.name LIKE ? OR l.city LIKE ? OR l.area LIKE ? OR l.address LIKE ? OR l.program_tags LIKE ?
+      OR b.city LIKE ? OR b.area LIKE ? OR b.address LIKE ? OR b.program_tags LIKE ?)`);
+    params.push(like, like, like, like, like, like, like, like, like, like, like, like);
   }
   if (city.trim()) {
-    conditions.push('b.city LIKE ?');
-    params.push(`%${city.trim()}%`);
+    conditions.push('(l.city LIKE ? OR (l.id IS NULL AND b.city LIKE ?))');
+    params.push(`%${city.trim()}%`, `%${city.trim()}%`);
   }
 
-  // Haversine distance in km (NULL when gym has no coordinates)
+  const placeLat = 'IF(l.id IS NULL, b.latitude, l.latitude)';
+  const placeLng = 'IF(l.id IS NULL, b.longitude, l.longitude)';
   const distanceExpr = hasLocation
     ? `(6371 * 2 * ASIN(SQRT(
-         POWER(SIN((RADIANS(b.latitude) - RADIANS(?)) / 2), 2) +
-         COS(RADIANS(?)) * COS(RADIANS(b.latitude)) *
-         POWER(SIN((RADIANS(b.longitude) - RADIANS(?)) / 2), 2)
+         POWER(SIN((RADIANS(${placeLat}) - RADIANS(?)) / 2), 2) +
+         COS(RADIANS(?)) * COS(RADIANS(${placeLat})) *
+         POWER(SIN((RADIANS(${placeLng}) - RADIANS(?)) / 2), 2)
        )))`
     : 'NULL';
 
@@ -710,90 +714,75 @@ router.get('/discovery/gyms', async (req, res) => {
     for (const program of programs) {
       const names = tagAliases[program.toLowerCase()] || [program];
       for (const name of names) {
-        ors.push(`(b.program_tags LIKE ? OR EXISTS (
+        ors.push(`(l.program_tags LIKE ? OR (l.id IS NULL AND b.program_tags LIKE ?) OR EXISTS (
           SELECT 1 FROM services sv
+          LEFT JOIN service_locations sl ON sl.service_id = sv.id
           WHERE sv.business_id = b.id AND sv.is_active = 1 AND sv.name LIKE ?
+            AND (l.id IS NULL OR sl.location_id = l.id OR sl.location_id IS NULL)
         ))`);
-        params.push(`%${name}%`, `%${name}%`);
+        params.push(`%${name}%`, `%${name}%`, `%${name}%`);
       }
     }
     conditions.push(`(${ors.join(' OR ')})`);
   }
   const amenities = String(req.query.amenities || '').split(',').map((s) => s.trim()).filter(Boolean);
   for (const amenity of amenities) {
-    conditions.push('b.amenity_tags LIKE ?');
-    params.push(`%${amenity}%`);
+    conditions.push('(l.amenity_tags LIKE ? OR (l.id IS NULL AND b.amenity_tags LIKE ?))');
+    params.push(`%${amenity}%`, `%${amenity}%`);
   }
 
   try {
     const distParams = hasLocation ? [lat, lat, lng] : [];
     const sql = `
-        SELECT b.id, b.slug, b.name, b.business_type, b.city, b.area, b.address, b.description,
-               b.latitude, b.longitude,
+        SELECT b.id, b.slug, b.name, b.business_type,
+               IF(l.id IS NULL, b.city, l.city) AS city,
+               IF(l.id IS NULL, b.area, l.area) AS area,
+               IF(l.id IS NULL, b.address, l.address) AS address,
+               IF(l.id IS NULL, b.description, l.description) AS description,
+               ${placeLat} AS latitude,
+               ${placeLng} AS longitude,
+               l.id AS location_id, l.name AS location_name, l.opening_hours,
                c.app_name, c.primary_color, c.logo_url,
-               (SELECT url FROM gym_photos WHERE business_id = b.id ORDER BY is_cover DESC, display_order ASC, created_at ASC LIMIT 1) AS cover_url,
-               (b.accepts_drop_in = 1
-                 OR EXISTS (SELECT 1 FROM locations dl WHERE dl.business_id = b.id AND dl.is_active = 1 AND dl.accepts_drop_in = 1)
-                 OR EXISTS (SELECT 1 FROM dropin_offers dof WHERE dof.business_id = b.id AND dof.is_active = 1)
+               COALESCE(
+                 (SELECT url FROM gym_photos gp WHERE gp.business_id = b.id AND gp.location_id <=> l.id ORDER BY gp.is_cover DESC, gp.display_order ASC, gp.created_at ASC LIMIT 1),
+                 (SELECT url FROM gym_photos gp WHERE gp.business_id = b.id AND gp.location_id IS NULL ORDER BY gp.is_cover DESC, gp.display_order ASC, gp.created_at ASC LIMIT 1)
+               ) AS cover_url,
+               (IF(l.id IS NULL, b.accepts_drop_in, l.accepts_drop_in) = 1
+                 OR EXISTS (
+                   SELECT 1 FROM dropin_offers dof
+                   WHERE dof.business_id = b.id AND dof.is_active = 1
+                     AND (l.id IS NULL OR dof.location_id = l.id)
+                 )
                ) AS has_drop_in,
                ${distanceExpr} AS distance_km
         FROM businesses b
+        LEFT JOIN locations l ON l.business_id = b.id AND l.is_active = 1
         LEFT JOIN business_configs c ON c.business_id = b.id
         WHERE ${conditions.join(' AND ')}
-        ORDER BY ${hasLocation ? 'distance_km IS NULL ASC, distance_km ASC' : 'b.name ASC'}
-        LIMIT 60
+        ORDER BY ${hasLocation ? 'distance_km IS NULL ASC, distance_km ASC' : 'b.name ASC, l.name ASC'}
+        LIMIT 80
       `;
 
     const [rows] = await db.query(sql, [...distParams, ...params]);
 
-    const bizIds = rows.map(r => r.id);
-    let serviceMap = {};
-    const hoursByBiz = {};
+    const bizIds = [...new Set(rows.map((r) => r.id))];
+    const servicesByLoc = {};
+    const servicesByBiz = {};
     if (bizIds.length) {
       const [svcRows] = await db.query(
-        `SELECT business_id, name FROM services WHERE business_id IN (?) AND is_active = 1 ORDER BY name ASC`,
+        `SELECT sv.business_id, sv.name, sl.location_id
+         FROM services sv
+         LEFT JOIN service_locations sl ON sl.service_id = sv.id
+         WHERE sv.business_id IN (?) AND sv.is_active = 1
+         ORDER BY sv.name ASC`,
         [bizIds],
       );
       for (const s of svcRows) {
-        if (!serviceMap[s.business_id]) serviceMap[s.business_id] = [];
-        serviceMap[s.business_id].push(s.name);
-      }
-      let locRows = [];
-      let cfgRows = [];
-      try {
-        [locRows] = await db.query(
-          `SELECT business_id, name, opening_hours
-           FROM locations WHERE business_id IN (?) AND is_active = 1
-           ORDER BY sort_order, name`,
-          [bizIds],
-        );
-      } catch (_) {}
-      try {
-        [cfgRows] = await db.query(
-          'SELECT business_id, opening_hours FROM business_configs WHERE business_id IN (?)',
-          [bizIds],
-        );
-      } catch (_) {}
-      const fallback = {};
-      for (const cfg of cfgRows) fallback[cfg.business_id] = describeHours(cfg.opening_hours);
-      const locs = {};
-      for (const loc of locRows) {
-        if (!locs[loc.business_id]) locs[loc.business_id] = [];
-        locs[loc.business_id].push(loc);
-      }
-      for (const id of bizIds) {
-        const places = locs[id] || [];
-        const gymHours = fallback[id];
-        if (places.length > 1) {
-          hoursByBiz[id] = places.map((loc) => ({
-            name: loc.name,
-            summary: (describeHours(loc.opening_hours) || gymHours)?.summary || null,
-          })).filter((loc) => loc.summary);
-        } else {
-          const summary = (places[0] ? describeHours(places[0].opening_hours) : null)?.summary
-            || gymHours?.summary
-            || null;
-          hoursByBiz[id] = summary ? [{ name: null, summary }] : [];
+        if (!servicesByBiz[s.business_id]) servicesByBiz[s.business_id] = [];
+        if (!servicesByBiz[s.business_id].includes(s.name)) servicesByBiz[s.business_id].push(s.name);
+        if (s.location_id) {
+          if (!servicesByLoc[s.location_id]) servicesByLoc[s.location_id] = [];
+          if (!servicesByLoc[s.location_id].includes(s.name)) servicesByLoc[s.location_id].push(s.name);
         }
       }
     }
@@ -805,26 +794,34 @@ router.get('/discovery/gyms', async (req, res) => {
       return km != null && km <= maxDistance;
     }).slice(0, 30);
 
-    return res.json(limited.map(r => ({
-      business_id:   r.id,
-      slug:          r.slug,
-      name:          r.name,
-      app_name:      r.app_name || r.name,
-      business_type: r.business_type,
-      city:          r.city || null,
-      area:          r.area || null,
-      address:       r.address || null,
-      description:   r.description || null,
-      primary_color: r.primary_color || '#B8F55E',
-      logo_url:      r.logo_url || null,
-      cover_url:     r.cover_url || null,
-      services:      serviceMap[r.id] || [],
-      hours:         hoursByBiz[r.id] || [],
-      latitude:      r.latitude  != null ? parseFloat(r.latitude)  : null,
-      longitude:     r.longitude != null ? parseFloat(r.longitude) : null,
-      distance_km:   r.distance_km != null ? parseFloat(Number(r.distance_km).toFixed(1)) : null,
-      has_drop_in:   !!r.has_drop_in,
-    })));
+    return res.json(limited.map((r) => {
+      const brand = r.app_name || r.name;
+      const described = describeHours(r.opening_hours);
+      return {
+        business_id:   r.id,
+        slug:          r.slug,
+        location_id:   r.location_id || null,
+        location_name: r.location_name || null,
+        name:          r.name,
+        app_name:      r.location_name ? `${brand} · ${r.location_name}` : brand,
+        business_type: r.business_type,
+        city:          r.city || null,
+        area:          r.area || null,
+        address:       r.address || null,
+        description:   r.description || null,
+        primary_color: r.primary_color || '#B8F55E',
+        logo_url:      r.logo_url || null,
+        cover_url:     r.cover_url || null,
+        services:      (r.location_id && servicesByLoc[r.location_id]?.length)
+          ? servicesByLoc[r.location_id]
+          : (servicesByBiz[r.id] || []),
+        hours:         described?.summary ? [{ name: null, summary: described.summary }] : [],
+        latitude:      r.latitude  != null ? parseFloat(r.latitude)  : null,
+        longitude:     r.longitude != null ? parseFloat(r.longitude) : null,
+        distance_km:   r.distance_km != null ? parseFloat(Number(r.distance_km).toFixed(1)) : null,
+        has_drop_in:   !!r.has_drop_in,
+      };
+    }));
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
@@ -847,23 +844,52 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Gym not found' });
 
     const biz = rows[0];
+    const locationId = String(req.query.location_id || '').trim() || null;
+    let place = null;
+    if (locationId) {
+      const [[loc]] = await db.query(
+        `SELECT id, name, city, address, area, latitude, longitude, description, phone, accepts_drop_in, opening_hours
+         FROM locations WHERE id = ? AND business_id = ? AND is_active = 1`,
+        [locationId, biz.id],
+      );
+      if (!loc) return res.status(404).json({ error: 'Το κατάστημα δεν βρέθηκε' });
+      place = loc;
+    }
     const [services] = await db.query(
-      `SELECT id, name, duration_mins, category, description, image_url, drop_in_price_cents
-       FROM services WHERE business_id = ? AND is_active = 1 ORDER BY name ASC`,
-      [biz.id],
+      `SELECT s.id, s.name, s.duration_mins, s.category, s.description, s.image_url, s.drop_in_price_cents
+       FROM services s
+       WHERE s.business_id = ? AND s.is_active = 1
+         AND (? IS NULL
+           OR EXISTS (SELECT 1 FROM service_locations sl WHERE sl.service_id = s.id AND sl.location_id = ?)
+           OR NOT EXISTS (SELECT 1 FROM service_locations sl WHERE sl.service_id = s.id))
+       ORDER BY s.name ASC`,
+      [biz.id, locationId, locationId],
     );
-    const [photos] = await db.query(
-      'SELECT id, url, is_cover FROM gym_photos WHERE business_id = ? ORDER BY is_cover DESC, display_order, created_at',
-      [biz.id],
+    const [photoRows] = await db.query(
+      `SELECT id, url, is_cover, location_id FROM gym_photos
+       WHERE business_id = ?
+         AND (? IS NULL OR location_id = ? OR location_id IS NULL)
+       ORDER BY is_cover DESC, display_order, created_at`,
+      [biz.id, locationId, locationId],
     );
+    const ownPhotos = locationId ? photoRows.filter((p) => p.location_id === locationId) : photoRows;
+    const photos = (ownPhotos.length ? ownPhotos : photoRows).map(({ location_id, ...p }) => p);
     const [gymTrainers] = await db.query(
-      'SELECT id, name, specialty, photo_url FROM gym_trainers WHERE business_id = ? ORDER BY display_order, created_at',
-      [biz.id],
+      `SELECT id, name, specialty, photo_url FROM gym_trainers
+       WHERE business_id = ?
+         AND (? IS NULL OR location_id = ? OR location_id IS NULL)
+       ORDER BY display_order, created_at`,
+      [biz.id, locationId, locationId],
     );
     const [staffTrainers] = await db.query(
-      `SELECT id, full_name AS name, COALESCE(discovery_specialty, role) AS specialty, avatar_url AS photo_url
-       FROM staff WHERE business_id = ? AND show_in_discovery = 1 ORDER BY full_name`,
-      [biz.id],
+      `SELECT st.id, st.full_name AS name, COALESCE(st.discovery_specialty, st.role) AS specialty, st.avatar_url AS photo_url
+       FROM staff st
+       WHERE st.business_id = ? AND st.show_in_discovery = 1
+         AND (? IS NULL
+           OR EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = st.id AND sl.location_id = ?)
+           OR NOT EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = st.id))
+       ORDER BY st.full_name`,
+      [biz.id, locationId, locationId],
     );
     const trainers = [...staffTrainers, ...gymTrainers];
     let locations = [];
@@ -882,7 +908,8 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
         );
         businessHours = describeHours(cfg?.opening_hours);
       } catch (_) {}
-      locations = locRows.map((l) => {
+      const visibleRows = locationId ? locRows.filter((l) => l.id === locationId) : locRows;
+      locations = visibleRows.map((l) => {
         const described = describeHours(l.opening_hours) || businessHours;
         return {
           id: l.id,
@@ -907,11 +934,18 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       }
     } catch (_) {}
     const [plans] = await db.query(
-      `SELECT id, COALESCE(discovery_name, name) AS name, price_cents, sale_price_cents, image_url, sessions, duration_mins, billing_period
-       FROM business_plans
-       WHERE business_id = ? AND is_active = 1 AND show_in_discovery = 1 AND plan_type = 'service'
-       ORDER BY sort_order, price_cents`,
-      [biz.id],
+      `SELECT bp.id, COALESCE(bp.discovery_name, bp.name) AS name, bp.price_cents, bp.sale_price_cents, bp.image_url, bp.sessions, bp.duration_mins, bp.billing_period
+       FROM business_plans bp
+       WHERE bp.business_id = ? AND bp.is_active = 1 AND bp.show_in_discovery = 1 AND bp.plan_type = 'service'
+         AND (? IS NULL
+           OR NOT EXISTS (SELECT 1 FROM plan_service_items psi WHERE psi.plan_id = bp.id)
+           OR EXISTS (
+             SELECT 1 FROM plan_service_items psi
+             JOIN service_locations sl ON sl.service_id = psi.service_id
+             WHERE psi.plan_id = bp.id AND sl.location_id = ?
+           ))
+       ORDER BY bp.sort_order, bp.price_cents`,
+      [biz.id, locationId, locationId],
     );
     const [schedule] = await db.query(
       `SELECT sss.id, sss.weekday AS day_of_week, sss.start_time,
@@ -924,8 +958,14 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
        JOIN services s ON s.id = sss.service_id
        LEFT JOIN staff st ON st.id = sss.staff_id
        WHERE sss.business_id = ? AND sss.is_active = 1
+         AND (? IS NULL
+           OR sss.location_id = ?
+           OR (sss.location_id IS NULL AND NOT EXISTS (
+             SELECT 1 FROM service_slot_schedules owned
+             WHERE owned.business_id = sss.business_id AND owned.location_id = ? AND owned.is_active = 1
+           )))
        ORDER BY sss.weekday, sss.start_time`,
-      [biz.id],
+      [biz.id, locationId, locationId, locationId],
     );
 
     let dropinServices = [];
@@ -937,8 +977,9 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
          JOIN services s ON s.id = o.service_id
          LEFT JOIN locations l ON l.id = o.location_id
          WHERE o.business_id = ? AND o.is_active = 1 AND s.is_active = 1
+           AND (? IS NULL OR o.location_id = ?)
          ORDER BY s.name`,
-        [biz.id],
+        [biz.id, locationId, locationId],
       );
       dropinServices = offerRows;
       if (!dropinServices.length) {
@@ -953,19 +994,25 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       }
     } catch (_) {}
     const coverPhoto = photos.find(p => p.is_cover) || photos[0] || null;
-    const dropInOn = !!biz.accepts_drop_in || locations.some((l) => l.accepts_drop_in) || dropinServices.length > 0;
+    const dropInOn = place
+      ? (!!place.accepts_drop_in || dropinServices.length > 0)
+      : (!!biz.accepts_drop_in || locations.some((l) => l.accepts_drop_in) || dropinServices.length > 0);
+    const brand = biz.app_name || biz.name;
     return res.json({
       business_id:       biz.id,
       slug:              biz.slug,
+      location_id:       place?.id || null,
+      location_name:     place?.name || null,
       name:              biz.name,
-      app_name:          biz.app_name || biz.name,
+      app_name:          place ? `${brand} · ${place.name}` : brand,
       business_type:     biz.business_type,
-      city:              biz.city || null,
-      area:              biz.area || null,
-      address:           biz.address || null,
-      description:       biz.description || null,
-      latitude:          biz.latitude,
-      longitude:         biz.longitude,
+      city:              place ? (place.city || null) : (biz.city || null),
+      area:              place ? (place.area || null) : (biz.area || null),
+      address:           place ? (place.address || null) : (biz.address || null),
+      description:       place ? (place.description || null) : (biz.description || null),
+      phone:             place?.phone || null,
+      latitude:          place ? place.latitude : biz.latitude,
+      longitude:         place ? place.longitude : biz.longitude,
       primary_color:     biz.primary_color || '#B8F55E',
       secondary_color:   biz.secondary_color || null,
       logo_url:          biz.logo_url || null,
@@ -1467,6 +1514,7 @@ router.get('/discovery/gyms/:slug/packages', async (req, res) => {
     const [[biz]] = await db.query('SELECT id FROM businesses WHERE slug = ? AND is_active = 1', [req.params.slug]);
     if (!biz) return res.status(404).json({ error: 'Gym not found' });
 
+    const locationId = String(req.query.location_id || '').trim() || null;
     const [plans] = await db.query(`
       SELECT bp.id, bp.name, bp.sessions, bp.price_cents, bp.billing_period, bp.plan_type, bp.sort_order,
              GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ', ') AS service_name
@@ -1474,9 +1522,16 @@ router.get('/discovery/gyms/:slug/packages', async (req, res) => {
       LEFT JOIN plan_service_items psi ON psi.plan_id = bp.id
       LEFT JOIN services s ON s.id = psi.service_id
       WHERE bp.business_id = ? AND bp.is_active = 1 AND bp.plan_type != 'nutrition'
+        AND (? IS NULL
+          OR NOT EXISTS (SELECT 1 FROM plan_service_items x WHERE x.plan_id = bp.id)
+          OR EXISTS (
+            SELECT 1 FROM plan_service_items x
+            JOIN service_locations sl ON sl.service_id = x.service_id
+            WHERE x.plan_id = bp.id AND sl.location_id = ?
+          ))
       GROUP BY bp.id
       ORDER BY bp.sort_order ASC, bp.price_cents ASC
-    `, [biz.id]);
+    `, [biz.id, locationId, locationId]);
     return res.json(plans);
   } catch (err) {
     return res.status(500).json({ error: err.message });
