@@ -446,7 +446,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
         ),
         child: Row(children: [
           const SizedBox(width: 16),
-          SvgPicture.asset('assets/icons/discovery_search.svg', width: 16, height: 16),
+          Image.asset('assets/icons/nav_search_off.png', width: 20, height: 16, fit: BoxFit.contain),
           const SizedBox(width: 12),
           Expanded(
             child: Text(tr('Αναζήτηση γυμναστηρίου, μαθήματος...'),
@@ -566,9 +566,7 @@ class _DiscoveryLandingScreenState extends State<DiscoveryLandingScreen> {
           ),
           child: Row(children: [
             const SizedBox(width: 14),
-            SvgPicture.asset('assets/icons/discovery_search.svg',
-              width: 16, height: 16,
-              colorFilter: const ColorFilter.mode(_kLime, BlendMode.srcIn)),
+            Image.asset('assets/icons/nav_search_on.png', width: 20, height: 16, fit: BoxFit.contain),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(

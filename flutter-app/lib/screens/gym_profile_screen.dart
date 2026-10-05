@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -485,7 +486,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
   Future<void> _loadHours(String slug) async {
     try {
-      final res = await http.get(Uri.parse('$_apiBase/global/discovery/gyms/$slug/opening-hours'));
+      final res = await http.get(_gymUri('/global/discovery/gyms/$slug/opening-hours'));
       if (res.statusCode == 200 && mounted) {
         setState(() => _hours = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>());
       }
@@ -816,7 +817,9 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
     return Scaffold(
       backgroundColor: _kBg,
-      body: Stack(
+      body: Column(
+        children: [
+          Expanded(child: Stack(
         children: [
           NestedScrollView(
             headerSliverBuilder: (_, __) => [
@@ -835,17 +838,14 @@ class _GymProfileScreenState extends State<GymProfileScreen>
             ),
           ),
 
-          // Bottom CTA bar
-          Positioned(
-            left: 0, right: 0, bottom: 0,
-            child: _buildBottomBar(),
-          ),
-
           if (_enteringGym)
             const ColoredBox(
               color: Color(0xAA000000),
               child: Center(child: CircularProgressIndicator(color: Colors.white)),
             ),
+        ],
+      )),
+          _buildBottomBar(),
         ],
       ),
     );
@@ -991,7 +991,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     final photos   = (_gym?['photos'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
         // Photo carousel
@@ -1144,24 +1144,60 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     );
   }
 
+  double? _coord(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    if (raw is String) return double.tryParse(raw);
+    return null;
+  }
+
+  Future<void> _callGym(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Future<void> _openDirections() async {
+    final lat = _coord(_gym?['latitude']);
+    final lng = _coord(_gym?['longitude']);
+    final address = [
+      _gym?['address'],
+      _gym?['area'],
+      _gym?['city'],
+    ].whereType<String>().where((part) => part.trim().isNotEmpty).join(', ');
+    final Uri uri;
+    if (lat != null && lng != null) {
+      uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+    } else if (address.isNotEmpty) {
+      uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(address)}');
+    } else {
+      return;
+    }
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   Widget _buildContactSection() {
     final phone   = _gym?['phone'] as String?;
     final email   = _gym?['email'] as String?;
     final website = _gym?['website'] as String?;
-    final address = _gym?['address'] as String?;
+    final address = [
+      _gym?['address'],
+      _gym?['area'],
+      _gym?['city'],
+    ].whereType<String>().where((part) => part.trim().isNotEmpty).join(', ');
+    final hasPhone = phone != null && phone.trim().isNotEmpty;
+    final canDirect = _coord(_gym?['latitude']) != null || address.isNotEmpty;
 
     final items = <Map<String, dynamic>>[
-      if (phone != null && phone.isNotEmpty)
-        {'icon': Icons.phone_outlined, 'label': phone},
       if (email != null && email.isNotEmpty)
         {'icon': Icons.email_outlined, 'label': email},
       if (website != null && website.isNotEmpty)
         {'icon': Icons.language_outlined, 'label': website},
-      if (address != null && address.isNotEmpty)
+      if (address.isNotEmpty)
         {'icon': Icons.location_on_outlined, 'label': address},
     ];
 
-    if (items.isEmpty) return const SizedBox();
+    if (!hasPhone && items.isEmpty && !canDirect) return const SizedBox();
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _sectionTitle(tr('Επικοινωνία')),
@@ -1174,27 +1210,65 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         ),
         clipBehavior: Clip.hardEdge,
         child: Column(
-          children: List.generate(items.length, (i) {
-            final item = items[i];
-            return Container(
-              decoration: BoxDecoration(
-                border: i < items.length - 1
-                  ? const Border(bottom: BorderSide(color: Color(0xFF26272C)))
-                  : null,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(children: [
-                Icon(item['icon'] as IconData, color: _kGray, size: 18),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(tr(item['label'] as String),
-                    style: GoogleFonts.inter(fontSize: 13, color: Colors.white)),
+          children: [
+            if (hasPhone)
+              InkWell(
+                onTap: () => _callGym(phone.trim()),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(children: [
+                    const Icon(Icons.phone_outlined, color: _kGray, size: 18),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(phone.trim(),
+                        style: GoogleFonts.inter(fontSize: 13, color: Colors.white)),
+                    ),
+                  ]),
                 ),
-              ]),
-            );
-          }),
+              ),
+            ...List.generate(items.length, (i) {
+              final item = items[i];
+              return Container(
+                decoration: BoxDecoration(
+                  border: (hasPhone || i > 0)
+                    ? const Border(top: BorderSide(color: Color(0xFF26272C)))
+                    : null,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(children: [
+                  Icon(item['icon'] as IconData, color: _kGray, size: 18),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(item['label'] as String,
+                      style: GoogleFonts.inter(fontSize: 13, color: Colors.white)),
+                  ),
+                ]),
+              );
+            }),
+          ],
         ),
       ),
+      if (canDirect) ...[
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: _openDirections,
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: _kCard,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _kBorder),
+            ),
+            alignment: Alignment.center,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.directions_outlined, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text(tr('Οδηγίες'),
+                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+            ]),
+          ),
+        ),
+      ],
       const SizedBox(height: 28),
     ]);
   }
@@ -1375,7 +1449,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
             ? Center(child: Text(tr('Δεν υπάρχουν μαθήματα'),
                 style: GoogleFonts.inter(fontSize: 13, color: _kGray)))
             : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                 itemCount: filtered.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (_, i) => _buildClassCard(filtered[i]),
@@ -1463,7 +1537,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
       children: [
         if (_dropins.isNotEmpty) ...[
           Text(tr('Drop-in'), style: GoogleFonts.inter(
@@ -1668,7 +1742,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         MediaQuery.of(context).padding.bottom + 16),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         if (_canEnter)
-          _limeButton(tr('Άνοιξε το Γυμναστήριο'), _enteringGym ? null : _enterGym,
+          _limeButton(tr('Είσοδος στο γυμναστήριο'), _enteringGym ? null : _enterGym,
               icon: Icons.fitness_center_rounded),
         if (!_canEnter && (_memberPending || _staffPending))
           _pendingJoinBanner(),

@@ -13,16 +13,46 @@ const { parseOpeningHours } = require('../lib/slots');
 
 const HOUR_DAYS = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σαβ', 'Κυρ'];
 
+function clockText(value) {
+  if (value == null || value === '') return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const h = String(value.getHours()).padStart(2, '0');
+    const m = String(value.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  }
+  const match = String(value).match(/(\d{1,2}):(\d{2})/);
+  if (!match) return '';
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+}
+
+function hoursObject(raw) {
+  let hours = parseOpeningHours(raw);
+  if (typeof hours === 'string') {
+    try { hours = JSON.parse(hours); } catch { return null; }
+  }
+  if (!hours || typeof hours !== 'object') return null;
+  if (Array.isArray(hours)) {
+    const obj = {};
+    hours.forEach((day, i) => {
+      if (!day || typeof day !== 'object') return;
+      const idx = Number(day.day_index ?? day.day_of_week ?? i);
+      if (idx >= 0 && idx <= 6) obj[idx] = day;
+    });
+    return obj;
+  }
+  return hours;
+}
+
 function describeHours(raw) {
-  const hours = parseOpeningHours(raw);
-  if (!hours || typeof hours !== 'object' || Array.isArray(hours)) return null;
+  const hours = hoursObject(raw);
+  if (!hours) return null;
   const days = [];
   for (let d = 0; d < 7; d++) {
     const day = hours[d] ?? hours[String(d)];
     if (!day || typeof day !== 'object') continue;
-    const closed = !!day.closed;
-    const open = String(day.open || '').slice(0, 5);
-    const close = String(day.close || '').slice(0, 5);
+    const closed = !!(day.closed || day.is_closed);
+    const open = clockText(day.open || day.open_time);
+    const close = clockText(day.close || day.close_time);
     if (!closed && (!open || !close)) continue;
     days.push({
       day_index: d,
@@ -936,6 +966,37 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
     );
     const trainers = [...staffTrainers, ...gymTrainers];
     let locations = [];
+    let businessHours = null;
+    let fallbackPhone = null;
+    try {
+      const [[cfg]] = await db.query(
+        'SELECT opening_hours FROM business_configs WHERE business_id = ?',
+        [biz.id],
+      );
+      businessHours = describeHours(cfg?.opening_hours);
+    } catch (_) {}
+    try {
+      const [[cfg]] = await db.query(
+        'SELECT owner_phone, gym_phone FROM business_configs WHERE business_id = ?',
+        [biz.id],
+      );
+      fallbackPhone = cfg?.gym_phone || cfg?.owner_phone || null;
+    } catch (_) {}
+    if (!businessHours) {
+      try {
+        const [tableHours] = await db.query(
+          'SELECT day_of_week, open_time, close_time, is_closed FROM opening_hours WHERE business_id = ? ORDER BY day_of_week',
+          [biz.id],
+        );
+        if (tableHours.length) {
+          const obj = {};
+          for (const row of tableHours) {
+            obj[row.day_of_week] = { open: row.open_time, close: row.close_time, closed: !!row.is_closed };
+          }
+          businessHours = describeHours(obj);
+        }
+      } catch (_) {}
+    }
     try {
       const [locRows] = await db.query(
         `SELECT id, name, city, address, accepts_drop_in, opening_hours
@@ -943,14 +1004,6 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
          ORDER BY sort_order, name`,
         [biz.id],
       );
-      let businessHours = null;
-      try {
-        const [[cfg]] = await db.query(
-          'SELECT opening_hours FROM business_configs WHERE business_id = ?',
-          [biz.id],
-        );
-        businessHours = describeHours(cfg?.opening_hours);
-      } catch (_) {}
       const visibleRows = locationId ? locRows.filter((l) => l.id === locationId) : locRows;
       locations = visibleRows.map((l) => {
         const described = describeHours(l.opening_hours) || businessHours;
@@ -976,6 +1029,20 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
         }];
       }
     } catch (_) {}
+    if (!locations.some((l) => Array.isArray(l.hours) && l.hours.length)) {
+      const described = describeHours(place?.opening_hours) || businessHours;
+      if (described) {
+        locations = [{
+          id: place?.id || null,
+          name: place?.name || biz.app_name || biz.name,
+          city: place?.city || biz.city || null,
+          address: place?.address || biz.address || null,
+          accepts_drop_in: !!(place?.accepts_drop_in || biz.accepts_drop_in),
+          hours: described.days,
+          hours_summary: described.summary,
+        }];
+      }
+    }
     const [plans] = await db.query(
       `SELECT bp.id, COALESCE(bp.discovery_name, bp.name) AS name, bp.price_cents, bp.sale_price_cents, bp.image_url, bp.sessions, bp.duration_mins, bp.billing_period
        FROM business_plans bp
@@ -1056,9 +1123,11 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       area:              place ? (place.area || null) : (biz.area || null),
       address:           place ? (place.address || null) : (biz.address || null),
       description:       place ? (place.description || null) : (biz.description || null),
-      phone:             place?.phone || null,
-      latitude:          place ? place.latitude : biz.latitude,
-      longitude:         place ? place.longitude : biz.longitude,
+      phone:             place?.phone || fallbackPhone || null,
+      latitude:          (place ? place.latitude : biz.latitude) != null
+        ? Number(place ? place.latitude : biz.latitude) : null,
+      longitude:         (place ? place.longitude : biz.longitude) != null
+        ? Number(place ? place.longitude : biz.longitude) : null,
       primary_color:     biz.primary_color || '#B8F55E',
       secondary_color:   biz.secondary_color || null,
       logo_url:          biz.logo_url || null,
@@ -1617,6 +1686,24 @@ router.get('/discovery/gyms/:slug/opening-hours', async (req, res) => {
   try {
     const [[biz]] = await db.query('SELECT id FROM businesses WHERE slug = ? AND is_active = 1', [req.params.slug]);
     if (!biz) return res.status(404).json({ error: 'Gym not found' });
+
+    const locationId = String(req.query.location_id || '').trim();
+    if (locationId) {
+      const [[loc]] = await db.query(
+        'SELECT opening_hours FROM locations WHERE id = ? AND business_id = ?',
+        [locationId, biz.id],
+      );
+      const described = describeHours(loc?.opening_hours);
+      if (described) return res.json(described.days);
+    }
+    try {
+      const [[cfg]] = await db.query(
+        'SELECT opening_hours FROM business_configs WHERE business_id = ?',
+        [biz.id],
+      );
+      const described = describeHours(cfg?.opening_hours);
+      if (described) return res.json(described.days);
+    } catch (_) {}
 
     const [rows] = await db.query(
       'SELECT day_of_week, open_time, close_time, is_closed FROM opening_hours WHERE business_id = ? ORDER BY day_of_week ASC',

@@ -457,11 +457,11 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _navItem(0, 'Home', 'assets/icons/nav_omni_home.png'),
-                      _navItem(1, tr('Αναζήτηση'), 'assets/icons/nav_omni_search.png'),
+                      _navItem(0, 'Home', 'assets/icons/nav_home_off.png', activeAsset: 'assets/icons/nav_home_on.png'),
+                      _navItem(1, tr('Αναζήτηση'), 'assets/icons/nav_search_off.png', activeAsset: 'assets/icons/nav_search_on.png'),
                       const SizedBox(width: 70),
-                      _navItem(3, 'Gyms', 'assets/icons/nav_omni_gyms.png'),
-                      _navItem(4, tr('Προφίλ'), 'assets/icons/nav_omni_profile.png'),
+                      _navItem(3, 'Gyms', 'assets/icons/nav_gyms_off.png', activeAsset: 'assets/icons/nav_gyms_on.png'),
+                      _navItem(4, tr('Προφίλ'), 'assets/icons/nav_profile_off.png', activeAsset: 'assets/icons/nav_profile_on.png'),
                     ],
                   ),
                 ),
@@ -503,9 +503,17 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
     );
   }
 
-  Widget _navItem(int index, String label, String asset) {
+  Widget _navItem(int index, String label, String asset, {String? activeAsset}) {
     final active = _tab == index;
     final iconColor = active ? const Color(0xFFC52473) : const Color(0xFF717479);
+    final icon = Image.asset(
+      active && activeAsset != null ? activeAsset : asset,
+      width: 22,
+      height: 22,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+      gaplessPlayback: true,
+    );
     return Expanded(
       child: GestureDetector(
         onTap: () => _openTab(index),
@@ -522,16 +530,12 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ColorFiltered(
-                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
-                  child: Image.asset(
-                    asset,
-                    width: 22,
-                    height: 22,
-                    filterQuality: FilterQuality.medium,
-                    gaplessPlayback: true,
-                  ),
-                ),
+                activeAsset == null
+                    ? ColorFiltered(
+                        colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                        child: icon,
+                      )
+                    : icon,
                 const SizedBox(height: 3),
                 Text(
                   tr(label),
@@ -2533,6 +2537,21 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   }
 }
 
+int? _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value.trim());
+  return null;
+}
+
+String _asText(dynamic value) => value == null ? '' : value.toString();
+
+String _clockCompact(dynamic raw) {
+  final digits = _asText(raw).replaceAll(':', '');
+  if (digits.length >= 6) return digits.substring(0, 6);
+  return digits.padRight(6, '0');
+}
+
 void showGlobalBookingSheet(
   BuildContext context,
   Map<String, dynamic> booking, {
@@ -2545,7 +2564,11 @@ void showGlobalBookingSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    builder: (_) => _BookingDetailSheet(booking: booking, onOpenGym: onOpenGym),
+    builder: (_) => SafeArea(
+      child: SingleChildScrollView(
+        child: _BookingDetailSheet(booking: booking, onOpenGym: onOpenGym),
+      ),
+    ),
   );
 }
 
@@ -2748,21 +2771,22 @@ class _BookingDetailSheet extends StatelessWidget {
   final VoidCallback? onOpenGym;
 
   String _fmt(String? date, String? time) {
-    if (date == null) return '';
-    final parts = date.split('-');
+    if (date == null || date.isEmpty) return '';
+    final dayPart = date.split('T').first;
+    final parts = dayPart.split('-');
     if (parts.length < 3) return date;
     final months = [tr('Ιαν'),tr('Φεβ'),tr('Μαρ'),tr('Απρ'),tr('Μαΐ'),tr('Ιουν'),tr('Ιουλ'),tr('Αυγ'),tr('Σεπ'),tr('Οκτ'),tr('Νοε'),tr('Δεκ')];
-    final m = int.tryParse(parts[1]) ?? 1;
+    final m = (int.tryParse(parts[1]) ?? 1).clamp(1, 12);
     final t = (time ?? '').length >= 5 ? time!.substring(0, 5) : (time ?? '');
     return '${parts[2]} ${months[m - 1]} ${parts[0]}${t.isNotEmpty ? ', $t' : ''}';
   }
 
   Future<void> _syncGoogle(Map<String, dynamic> b) async {
-    final date = (b['booking_date'] as String? ?? '').replaceAll('-', '');
-    final time = ((b['booking_time'] as String? ?? '00:00:00')).replaceAll(':', '').substring(0, 6);
-    final mins = (b['duration_mins'] as int?) ?? 60;
+    final date = _asText(b['booking_date']).split('T').first.replaceAll('-', '');
+    final time = _clockCompact(b['booking_time']);
+    final mins = _asInt(b['duration_mins']) ?? 60;
     final endDt = DateTime.tryParse(
-      '${b['booking_date']}T${b['booking_time'] ?? '00:00:00'}');
+      '${_asText(b['booking_date']).split('T').first}T${_asText(b['booking_time']).isEmpty ? '00:00:00' : _asText(b['booking_time'])}');
     String endTime = time;
     if (endDt != null) {
       final e = endDt.add(Duration(minutes: mins));
@@ -2780,11 +2804,11 @@ class _BookingDetailSheet extends StatelessWidget {
   }
 
   Future<void> _syncIcs(Map<String, dynamic> b) async {
-    final date = (b['booking_date'] as String? ?? '').replaceAll('-', '');
-    final time = ((b['booking_time'] as String? ?? '00:00:00')).replaceAll(':', '').substring(0, 6);
-    final mins = (b['duration_mins'] as int?) ?? 60;
+    final date = _asText(b['booking_date']).split('T').first.replaceAll('-', '');
+    final time = _clockCompact(b['booking_time']);
+    final mins = _asInt(b['duration_mins']) ?? 60;
     final endDt = DateTime.tryParse(
-      '${b['booking_date']}T${b['booking_time'] ?? '00:00:00'}');
+      '${_asText(b['booking_date']).split('T').first}T${_asText(b['booking_time']).isEmpty ? '00:00:00' : _asText(b['booking_time'])}');
     String endDate = date;
     String endTime = time;
     if (endDt != null) {
@@ -2808,15 +2832,17 @@ class _BookingDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final service = booking['service_name'] as String? ?? '';
-    final gym = booking['app_name'] as String? ?? booking['business_name'] as String? ?? '';
-    final staff = booking['staff_name'] as String?;
-    final date = booking['booking_date'] as String?;
-    final time = (booking['booking_time'] as String? ?? '').length >= 5
-        ? (booking['booking_time'] as String).substring(0, 5)
-        : '';
-    final duration = booking['duration_mins'] as int?;
-    final status = booking['status'] as String? ?? 'confirmed';
+    final service = _asText(booking['service_name']);
+    final gym = _asText(booking['app_name']).isNotEmpty
+        ? _asText(booking['app_name'])
+        : _asText(booking['business_name']);
+    final staff = _asText(booking['staff_name']);
+    final place = _asText(booking['location_name']);
+    final date = _asText(booking['booking_date']);
+    final rawTime = _asText(booking['booking_time']);
+    final time = rawTime.length >= 5 ? rawTime.substring(0, 5) : rawTime;
+    final duration = _asInt(booking['duration_mins']);
+    final status = _asText(booking['status']).isEmpty ? 'confirmed' : _asText(booking['status']);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 20, 20,
@@ -2834,12 +2860,12 @@ class _BookingDetailSheet extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 6),
-          Text(tr(gym),
+          Text(tr(place.isEmpty ? gym : '$gym · $place'),
             style: GoogleFonts.inter(fontSize: 14, color: _kAccent, fontWeight: FontWeight.w600)),
           const SizedBox(height: 20),
           _DetailRow(Icons.calendar_today_outlined, _fmt(date, time)),
           if (duration != null) _DetailRow(Icons.timer_outlined, tr('$duration λεπτά')),
-          if (staff != null) _DetailRow(Icons.person_outline_rounded, staff),
+          if (staff.isNotEmpty) _DetailRow(Icons.person_outline_rounded, staff),
           _DetailRow(
             status == 'confirmed' ? Icons.check_circle_outline : Icons.schedule_outlined,
             status == 'confirmed' ? 'Επιβεβαιωμένη' : tr('Σε αναμονή'),
