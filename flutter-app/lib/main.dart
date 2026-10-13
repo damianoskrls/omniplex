@@ -62,6 +62,7 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
     AppNav.enterAsRole = _enterAsRole;
     LanguageService.instance.addListener(_onLanguageChanged);
     TranslationService.instance.addListener(_onLanguageChanged);
+    _globalAuth.addListener(_onGlobalAuthChanged);
     WidgetsBinding.instance.addObserver(this);
     SchedulerBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
@@ -77,10 +78,21 @@ class _AppBootstrapState extends State<AppBootstrap> with WidgetsBindingObserver
     if (mounted) setState(() {});
   }
 
+  // Re-arm push token and start inbox polling when the user logs in mid-session.
+  // Without this, a new user who registers via OTP in the same session never
+  // gets their FCM token stored, so push notifications are never delivered.
+  void _onGlobalAuthChanged() {
+    if (_globalAuth.isLoggedIn) {
+      unawaited(_armNotifications());
+    }
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     LanguageService.instance.removeListener(_onLanguageChanged);
     TranslationService.instance.removeListener(_onLanguageChanged);
+    _globalAuth.removeListener(_onGlobalAuthChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
