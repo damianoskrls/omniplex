@@ -1,0 +1,125 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "OmniPlex Architecture",
+  "description": "Full-stack walkthrough of the OmniPlex multi-gym platform: boot flow, global auth, gym entry, role-based shells, and backend route organisation.",
+  "ref": "main",
+  "steps": [
+    {
+      "directory": ".",
+      "title": "Monorepo Map",
+      "description": "Four sub-projects share one git repo. `flutter-app/` is the mobile client (iOS + Android). `admin-api/` is the Node/Express backend with a single PostgreSQL database. `admin-panel/` is the React super-admin UI (OmniPlex operator only). `gym-admin/` is the per-gym React dashboard used by gym owners. Everything deployable lives in `admin-api/` (Railway auto-deploys on push to `main`); the Flutter app is built locally and submitted to stores."
+    },
+    {
+      "file": "admin-api/src/index.js",
+      "line": 55,
+      "title": "Backend Route Mounts",
+      "description": "All Express routers mount here. The key split is `/api/global` (cross-gym operations: registration, login, gym-token issuance) vs `/api/mobile` (tenant-scoped operations: bookings, schedule, staff). Every authenticated mobile call carries a per-gym JWT so the backend always knows both the `global_user_id` and the `business_id` without a second lookup."
+    },
+    {
+      "file": "flutter-app/lib/main.dart",
+      "line": 25,
+      "title": "App Entry Point",
+      "description": "`main()` initialises the language service then hands off to `AppBootstrap`. The `el_GR` date locale is loaded here asynchronously so Greek-formatted dates (schedule headers, booking timestamps) are available anywhere in the tree — if this `unawaited` call fails silently, formatted dates fall back to raw ISO strings."
+    },
+    {
+      "file": "flutter-app/lib/main.dart",
+      "line": 70,
+      "title": "Boot State Machine",
+      "description": "These five booleans (`_needsTenantSelection`, `_showOnboarding`, `_showAuthGate`, `_showGlobalDashboard`, `_showExplore`) drive the entire pre-app routing in `_AppBootstrapState.build()`. Only one is ever `true` at a time. The absence of a state machine class is intentional — `setState` on a single `StatefulWidget` is simpler and easier to trace than a BLoC or Riverpod state graph for boot logic."
+    },
+    {
+      "file": "flutter-app/lib/main.dart",
+      "line": 228,
+      "title": "Tenant Config Loaded",
+      "description": "`_onTenantConfigLoaded` is the pivot after the user picks a gym from the selector. It clears `_needsTenantSelection`, stores the `TenantConfig`, then fires `_bootstrapWithConfig`. This is the seam between the \"global\" world (multi-gym hub) and the \"tenant\" world (one gym's branded app). After this call returns, `BookUpApp` is built with a real `AuthService` scoped to that gym."
+    },
+    {
+      "file": "flutter-app/lib/main.dart",
+      "line": 239,
+      "title": "_bootstrapWithConfig — Tenant Boot",
+      "description": "Creates a fresh `AuthService` for the chosen gym config, calls `auth.init()` (restores a saved JWT if present), waits for the minimum splash duration, then decides whether to show onboarding. The parallel `Future.wait` ensures the splash never flashes shorter than 2.4 s while keeping the real boot work concurrent. Any reachability error here shows an error screen with a retry button rather than silently hanging."
+    },
+    {
+      "file": "flutter-app/lib/services/global_auth_service.dart",
+      "line": 11,
+      "title": "GlobalGym — Lightweight Gym Handle",
+      "description": "`GlobalGym` is the minimal value object stored in the global user's gym list (`SharedPreferences`). It carries `businessId`, `slug`, `isStaff`, `userType`, and `userStatus` — just enough to drive the hub UI and decide which token request to make. It does **not** hold the full `TenantConfig`; that is fetched lazily on gym entry via `TenantConfig.loadFromApi`."
+    },
+    {
+      "file": "flutter-app/lib/services/global_auth_service.dart",
+      "line": 86,
+      "title": "GlobalAuthService — Cross-Gym Identity",
+      "description": "The global-level JWT (`_token`) identifies the user across all gyms. It is separate from the per-gym JWT held by `AuthService`. `GlobalAuthService` extends `ChangeNotifier` and is provided at the root of `_AppBootstrapState` so both `GlobalMemberHomeScreen` and `BookUpApp` can listen to it. Its `gyms` list is rebuilt by merging the API-returned gym list with any locally stored extras."
+    },
+    {
+      "file": "flutter-app/lib/services/global_auth_service.dart",
+      "line": 204,
+      "title": "getGymToken — Customer Gym Entry",
+      "description": "Exchanges the global JWT plus a `businessId` for a per-gym JWT at `POST /api/global/gym-token`. The returned token is stored by the caller (`_enterGym` in `GlobalMemberHomeScreen`) before loading `TenantConfig`. The per-gym JWT carries the `business_id` claim so `requireMobileAuth` middleware never needs a query parameter for tenant isolation."
+    },
+    {
+      "file": "flutter-app/lib/services/global_auth_service.dart",
+      "line": 230,
+      "title": "getTrainerToken — Staff Gym Entry",
+      "description": "Same exchange as `getGymToken` but hits `POST /api/global/trainer-token`. Trainers have a separate endpoint because the returned JWT embeds the `staff` role and the `staffId`, which the `requireMobileStaff` middleware reads to scope schedule and booking queries. The Flutter call site is identical — `_enterGym` checks `gym.isStaff` to pick the right method."
+    },
+    {
+      "file": "flutter-app/lib/screens/global_member_home_screen.dart",
+      "line": 81,
+      "title": "_enterGym — The Gym Entry Seam",
+      "description": "`_enterGym` orchestrates the transition from the multi-gym hub into a single gym's tenant app. It calls `getGymToken` or `getTrainerToken`, saves the token, loads `TenantConfig.loadFromApi`, and fires `widget.onEnterGym(config)` back up to `_AppBootstrapState._onTenantConfigLoaded`. The whole sequence is async with a loading overlay — if any step throws, the error is shown and the user stays in the hub."
+    },
+    {
+      "file": "flutter-app/lib/app.dart",
+      "line": 26,
+      "title": "BookUpApp — Tenant App Shell",
+      "description": "`BookUpApp` is the per-gym `MaterialApp`. It receives the `TenantConfig` and `AuthService` already initialised, then wraps them in a `MultiProvider` so every descendant can call `context.read<AuthService>()` or `context.read<TenantConfig>()`. It also holds the `onSwitchGym` callback that lets screens inside the gym navigate back to the hub without knowing anything about `_AppBootstrapState`."
+    },
+    {
+      "file": "flutter-app/lib/app.dart",
+      "line": 203,
+      "title": "Role-Based Routing",
+      "description": "After login the `Consumer<AuthService>` builder dispatches on role: `isAdmin` → `AdminShellScreen`, `isStaff` → `StaffHomeScreen`, everyone else → `HomeScreen`. `onSwitchGym` is threaded through to all shells so the back-to-hub button works regardless of role. The splash guard (`_gymSplashActive`) shows the gym logo briefly on first login, giving the transition a branded feel."
+    },
+    {
+      "file": "flutter-app/lib/screens/staff_home_screen.dart",
+      "line": 13,
+      "title": "StaffHomeScreen — Trainer Shell",
+      "description": "The trainer's home is a `StatefulWidget` with a six-tab `IndexedStack` (Home, Schedule, Messages, Leave, Programs, Profile). Four of the six tabs reuse existing functional screens (`StaffScheduleScreen`, `MessagesInboxScreen`, `StaffLeaveScreen`, `TrainingProgramsScreen`) that were already wired to the Provider tree — they just slot in as children. Only the Home tab and Profile tab are built here."
+    },
+    {
+      "file": "flutter-app/lib/screens/staff_home_screen.dart",
+      "line": 38,
+      "title": "_loadTodaySchedule — Real API Fetch",
+      "description": "Called from `initState`, this fetches today's bookings via `api.fetchStaffSchedule(date: date)` where `api` comes from `context.read<AuthService>().api`. The backend filters by both `business_id` and `staff_id` from the JWT claims — so this only ever returns the logged-in trainer's own bookings, not all bookings for the gym. The result drives the timeline visible on the Home tab."
+    },
+    {
+      "file": "flutter-app/lib/screens/staff_home_screen.dart",
+      "line": 63,
+      "title": "IndexedStack — No-Rebuild Tab Nav",
+      "description": "`IndexedStack` keeps all six tab widgets alive across tab switches, avoiding the cost of rebuilding a schedule fetch or message list every time the user tabs away and back. The trade-off is memory: all six trees are mounted simultaneously. For trainer use cases (light data, few bookings) this is the right call; `PageView` or `Navigator` would be overkill."
+    },
+    {
+      "file": "admin-api/src/routes/global.routes.js",
+      "line": 99,
+      "title": "Global Registration",
+      "description": "`POST /api/global/auth/register` creates the `global_users` record and returns a global JWT. This is the single identity that a user carries across all gyms. Once registered, the user uses `POST /auth/login` for subsequent sessions. No per-gym account is created here — gym membership is established when `gym-token` is first issued for that gym."
+    },
+    {
+      "file": "admin-api/src/routes/global.routes.js",
+      "line": 210,
+      "title": "Gym-Token Issuance",
+      "description": "`POST /api/global/gym-token` verifies the global JWT, looks up the user's membership in the target gym, and returns a short-lived per-gym JWT. The per-gym token embeds `businessId`, `userId`, `role` (`customer`), and `staffId` if applicable. All subsequent mobile API calls use this token with `requireMobileAuth` middleware — the global token is never sent to the per-gym API."
+    },
+    {
+      "file": "admin-api/src/routes/global.routes.js",
+      "line": 668,
+      "title": "Trainer-Token Issuance",
+      "description": "`POST /api/global/trainer-token` is identical in shape to `gym-token` but looks up the user in the `staff` table instead. The returned JWT carries `role: 'trainer'` (or `'staff'`) and a `staffId`, which is what `requireMobileStaff` middleware reads to gate trainer-only endpoints and inject `req.staffId` for schedule/booking queries. A `trainer` role cannot hit customer-only endpoints and vice-versa."
+    },
+    {
+      "title": "What to Explore Next",
+      "description": "**Auth middleware**: `admin-api/src/middleware/requireMobileAuth.js` and `requireMobileStaff.js` — the JWT decode + role gate that protects every mobile endpoint.\n\n**Schema migrations**: `admin-api/src/utils/schema_bootstrap.js` — `global_users` table (line 390), `last_login` column (432), `global_user_id` FK on gym tables (440).\n\n**Per-gym home**: `flutter-app/lib/screens/home_screen.dart` — the customer equivalent of `StaffHomeScreen`, with `IndexedStack` tabs for bookings, schedule, progress, and profile.\n\n**API service layer**: `flutter-app/lib/services/api_service.dart` — all HTTP calls to `/api/mobile`, including `fetchStaffSchedule` used by the trainer home."
+    }
+  ]
+}
