@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Calendar, Plus, Pencil, Trash2, X, Check } from 'lucide-react';
+import Layout from '../components/Layout';
 import api from '../api/client';
 
 const DAYS = ['', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
@@ -88,22 +89,19 @@ export default function ClassSchedule() {
   const dayEntries = entries.filter(e => e.day_of_week === activeDay);
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Calendar className="text-indigo-500" size={24} />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Εβδομαδιαίο Πρόγραμμα</h1>
-            <p className="text-sm text-gray-500">Διαχείριση ωρών και μαθημάτων γυμναστηρίου</p>
-          </div>
-        </div>
-        <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors">
+    <Layout title="Εβδομαδιαίο Πρόγραμμα">
+      <div className="page-header">
+        <h1 className="page-title">
+          <Calendar size={20} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+          Εβδομαδιαίο Πρόγραμμα
+        </h1>
+        <button className="btn btn-primary" onClick={openAdd}>
           <Plus size={16} /> Νέο Μάθημα
         </button>
       </div>
 
       {/* Day tabs */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+      <div className="card" style={{ padding: '4px', display: 'flex', gap: 2, flexWrap: 'wrap', marginBottom: 20 }}>
         {DAYS.slice(1).map((d, i) => {
           const day = i + 1;
           const count = entries.filter(e => e.day_of_week === day).length;
@@ -111,15 +109,29 @@ export default function ClassSchedule() {
             <button
               key={day}
               onClick={() => setActiveDay(day)}
-              className={`flex-1 py-2 px-1 rounded-lg text-sm font-medium transition-colors relative ${
-                activeDay === day
-                  ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow'
-                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
+              style={{
+                flex: '1 1 auto',
+                padding: '8px 4px',
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                background: activeDay === day ? 'var(--tenant-primary, #16a34a)' : 'transparent',
+                color: activeDay === day ? '#fff' : 'var(--text-secondary, #888)',
+                transition: 'background 0.15s',
+              }}
             >
               {d.slice(0, 3)}
               {count > 0 && (
-                <span className="ml-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 rounded-full px-1.5">
+                <span style={{
+                  marginLeft: 4,
+                  fontSize: '0.7rem',
+                  background: activeDay === day ? 'rgba(255,255,255,0.25)' : 'rgba(22,163,74,0.12)',
+                  color: activeDay === day ? '#fff' : 'var(--tenant-primary, #16a34a)',
+                  borderRadius: 99,
+                  padding: '1px 6px',
+                }}>
                   {count}
                 </span>
               )}
@@ -130,31 +142,31 @@ export default function ClassSchedule() {
 
       {/* Entries for selected day */}
       {loading ? (
-        <div className="text-center text-gray-400 py-12">Φόρτωση…</div>
+        <div className="text-muted" style={{ textAlign: 'center', padding: '40px 0' }}>Φόρτωση…</div>
       ) : dayEntries.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
-          <p className="text-gray-400 mb-3">Δεν υπάρχουν μαθήματα για {DAYS[activeDay]}</p>
-          <button onClick={openAdd} className="text-indigo-600 font-semibold text-sm hover:underline">+ Προσθήκη μαθήματος</button>
+        <div style={{ textAlign: 'center', padding: '40px 0', border: '2px dashed var(--border, #e5e7eb)', borderRadius: 12 }}>
+          <p className="text-muted" style={{ marginBottom: 12 }}>Δεν υπάρχουν μαθήματα για {DAYS[activeDay]}</p>
+          <button className="btn btn-secondary btn-sm" onClick={openAdd}>+ Προσθήκη μαθήματος</button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {dayEntries.map(e => (
-            <div key={e.id} className="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-5 py-4">
-              <div className="w-1 self-stretch rounded-full" style={{ backgroundColor: e.color || '#C6FF3D' }} />
-              <div className="w-16 text-center">
-                <span className="text-lg font-bold text-gray-900 dark:text-white">{e.start_time}</span>
+            <div key={e.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+              <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: e.color || '#C6FF3D', flexShrink: 0 }} />
+              <div style={{ minWidth: 56, textAlign: 'center' }}>
+                <span style={{ fontSize: '1rem', fontWeight: 700 }}>{e.start_time}</span>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900 dark:text-white">{e.class_name}</p>
-                <p className="text-sm text-gray-500">
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, marginBottom: 2 }}>{e.class_name}</div>
+                <div className="text-muted" style={{ fontSize: '0.8rem' }}>
                   {[e.trainer_name, e.equipment, e.max_capacity ? `${e.max_capacity} άτομα` : null].filter(Boolean).join(' · ')}
-                </p>
+                </div>
               </div>
-              <button onClick={() => openEdit(e)} className="p-2 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
-                <Pencil size={16} />
+              <button className="btn btn-secondary btn-sm" onClick={() => openEdit(e)} title="Επεξεργασία">
+                <Pencil size={14} />
               </button>
-              <button onClick={() => handleDelete(e.id)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                <Trash2 size={16} />
+              <button className="btn btn-danger btn-sm" onClick={() => handleDelete(e.id)} title="Διαγραφή">
+                <Trash2 size={14} />
               </button>
             </div>
           ))}
@@ -163,105 +175,109 @@ export default function ClassSchedule() {
 
       {/* Modal */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                {modal === 'add' ? 'Νέο Μάθημα' : 'Επεξεργασία Μαθήματος'}
-              </h2>
-              <button onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal" style={{ maxWidth: 440 }}>
+            <div className="modal-title" style={{ display: 'flex', alignItems: 'center' }}>
+              {modal === 'add' ? 'Νέο Μάθημα' : 'Επεξεργασία Μαθήματος'}
+              <button style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary, #888)' }} onClick={() => setModal(null)}>
+                <X size={18} />
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Ημέρα</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-group">
+                <label className="form-label">Ημέρα</label>
                 <select
+                  className="form-input"
                   value={form.day_of_week}
                   onChange={e => setForm(f => ({ ...f, day_of_week: Number(e.target.value) }))}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   {DAYS.slice(1).map((d, i) => <option key={i+1} value={i+1}>{d}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Ώρα</label>
+              <div className="form-group">
+                <label className="form-label">Ώρα</label>
                 <input
                   type="time"
+                  className="form-input"
                   value={form.start_time}
                   onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Όνομα Μαθήματος *</label>
+            <div className="form-group">
+              <label className="form-label">Όνομα Μαθήματος *</label>
               <input
+                className="form-input"
                 value={form.class_name}
                 onChange={e => setForm(f => ({ ...f, class_name: e.target.value }))}
                 placeholder="π.χ. Circuit Workout, Pilates, TRX…"
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Εκπαιδευτής</label>
+            <div className="form-group">
+              <label className="form-label">Εκπαιδευτής</label>
               <input
+                className="form-input"
                 value={form.trainer_name}
                 onChange={e => setForm(f => ({ ...f, trainer_name: e.target.value }))}
                 placeholder="π.χ. Νίκος Παπαδόπουλος"
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Εξοπλισμός</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-group">
+                <label className="form-label">Εξοπλισμός</label>
                 <input
+                  className="form-input"
                   value={form.equipment}
                   onChange={e => setForm(f => ({ ...f, equipment: e.target.value }))}
                   placeholder="π.χ. TRX, FitBall"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Μέγ. Χωρητικότητα</label>
+              <div className="form-group">
+                <label className="form-label">Μέγ. Χωρητικότητα</label>
                 <input
                   type="number"
+                  className="form-input"
                   value={form.max_capacity}
                   onChange={e => setForm(f => ({ ...f, max_capacity: e.target.value }))}
                   placeholder="π.χ. 20"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-2">Χρώμα</label>
-              <div className="flex gap-2 flex-wrap">
+            <div className="form-group">
+              <label className="form-label">Χρώμα</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {CLASS_COLORS.map(c => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setForm(f => ({ ...f, color: c }))}
-                    className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
                     style={{
-                      backgroundColor: c,
-                      borderColor: form.color === c ? '#6366f1' : 'transparent',
-                      transform: form.color === c ? 'scale(1.2)' : undefined,
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      background: c,
+                      border: form.color === c ? '2px solid var(--tenant-primary, #16a34a)' : '2px solid transparent',
+                      outline: form.color === c ? '2px solid var(--tenant-primary, #16a34a)' : 'none',
+                      outlineOffset: 2,
+                      cursor: 'pointer',
+                      transform: form.color === c ? 'scale(1.2)' : 'scale(1)',
+                      transition: 'transform 0.1s',
                     }}
                   />
                 ))}
               </div>
             </div>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p style={{ color: 'var(--danger, #ef4444)', fontSize: '0.85rem', margin: '4px 0' }}>{error}</p>}
 
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setModal(null)} className="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                Άκυρο
-              </button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-colors disabled:opacity-50">
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setModal(null)}>Άκυρο</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                 <Check size={15} />
                 {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
               </button>
@@ -269,6 +285,6 @@ export default function ClassSchedule() {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 }
