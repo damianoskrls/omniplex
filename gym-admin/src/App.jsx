@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { BranchProvider } from './context/BranchContext';
 import { PrivateRoute, NutritionRoute, TrainerRoute } from './components/PrivateRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -71,6 +72,7 @@ function HomeRedirect() {
 export default function App() {
   return (
     <AuthProvider>
+      <BranchProvider>
       <BrowserRouter>
         <Toaster position="top-right" />
         <Routes>
@@ -142,6 +144,7 @@ export default function App() {
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
       </BrowserRouter>
+      </BranchProvider>
     </AuthProvider>
   );
 }

@@ -1,9 +1,10 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck, Zap, Image, CalendarDays, Gift,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck, Zap, Image, CalendarDays, Gift, Building2,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
@@ -13,6 +14,67 @@ import { useEffect, useRef, useState } from 'react';
 import api from '../api/client';
 import useMessagesUnreadCount from '../hooks/useMessagesUnreadCount';
 import useMarketplacePending from '../hooks/useMarketplacePending';
+
+function BranchSwitcher() {
+  const { branches, activeBranch, setActiveBranch } = useBranch();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handle(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  if (!branches || branches.length <= 1) return null;
+
+  return (
+    <div className="branch-switcher" ref={ref}>
+      <button
+        type="button"
+        className="branch-switcher__btn"
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <Building2 size={14} style={{ flexShrink: 0 }} />
+        <span className="branch-switcher__label">
+          {activeBranch ? activeBranch.name : 'Όλα τα καταστήματα'}
+        </span>
+        <ChevronDown size={12} style={{ flexShrink: 0, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
+      </button>
+      {open && (
+        <div className="branch-switcher__dropdown" role="listbox">
+          <button
+            type="button"
+            role="option"
+            aria-selected={!activeBranch}
+            className={`branch-switcher__option${!activeBranch ? ' branch-switcher__option--active' : ''}`}
+            onClick={() => { setActiveBranch(null); setOpen(false); }}
+          >
+            <Building2 size={13} style={{ flexShrink: 0 }} />
+            Όλα τα καταστήματα
+          </button>
+          {branches.map(b => (
+            <button
+              key={b.id}
+              type="button"
+              role="option"
+              aria-selected={activeBranch?.id === b.id}
+              className={`branch-switcher__option${activeBranch?.id === b.id ? ' branch-switcher__option--active' : ''}`}
+              onClick={() => { setActiveBranch(String(b.id)); setOpen(false); }}
+            >
+              <MapPin size={13} style={{ flexShrink: 0 }} />
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STORE_ADMIN_HIDDEN = new Set([
   '/locations',
@@ -299,6 +361,7 @@ export default function Layout({ children, title, variant, headerActions }) {
       />
       <aside className={`sidebar ${navOpen ? 'sidebar--open' : ''}`}>
         <BrandLogo variant="sidebar" logoUrl={business?.logo_url} gymName={business?.name} />
+        {isOwner && <BranchSwitcher />}
         {isTrainer ? (
           <div className="sidebar-trainer-identity">
             <Avatar

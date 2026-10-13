@@ -5,6 +5,13 @@ const api = axios.create({ baseURL: (import.meta.env.VITE_API_URL || 'https://pa
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('gym_admin_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // Append active branch filter to all GET requests when a branch is selected
+  const branchId = localStorage.getItem('gym_admin_active_branch_id');
+  if (branchId && (config.method === 'get' || !config.method)) {
+    config.params = { location_id: branchId, ...config.params };
+  }
+
   return config;
 });
 

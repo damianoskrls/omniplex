@@ -305,6 +305,79 @@ input, select, textarea, button {
 }
 .sidebar-promo__btn:hover { background: rgba(255,255,255,0.28); }
 
+/* Branch Switcher */
+.branch-switcher {
+  margin: 0 10px 4px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.branch-switcher__btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: left;
+}
+
+.branch-switcher__btn:hover {
+  border-color: var(--border-2);
+  background: var(--surface-3);
+}
+
+.branch-switcher__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.branch-switcher__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+  z-index: 200;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.branch-switcher__option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text-2);
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+
+.branch-switcher__option:hover { background: var(--surface-2); color: var(--text); }
+.branch-switcher__option--active { background: var(--accent-dim); color: var(--accent-active-text); font-weight: 600; }
+
 /* Sidebar groups (trainer/nutrition) */
 .sidebar-group { margin: 4px 8px 8px; }
 
