@@ -213,6 +213,18 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('$msg$healthMsg'))));
 
+        // Write the booking to Health if the user had no watch-tracked match,
+        // so Apple Activity rings / Google Fit goals stay up to date.
+        if (_selectedHealth == null && !_healthUnsupported) {
+          final writtenCalories = health is Map && health['calories_kcal'] != null
+              ? health['calories_kcal'] as int?
+              : null;
+          HealthWorkoutService.instance.writeWorkoutForBooking(
+            widget.booking,
+            caloriesKcal: writtenCalories,
+          );
+        }
+
         if (_photoFile != null) {
           await _sharePhoto();
         }

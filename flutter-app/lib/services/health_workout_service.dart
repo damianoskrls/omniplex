@@ -8,6 +8,19 @@ import '../l10n/tr.dart';
 
 
 class HealthWorkoutService {
+  // Maps a gym service name to the best-fit HealthKit/Health Connect activity type.
+  static HealthWorkoutActivityType activityTypeForService(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('yoga') || n.contains('pilates')) return HealthWorkoutActivityType.YOGA;
+    if (n.contains('hiit') || n.contains('crossfit')) return HealthWorkoutActivityType.HIGH_INTENSITY_INTERVAL_TRAINING;
+    if (n.contains('swim') || n.contains('κολυμβ')) return HealthWorkoutActivityType.SWIMMING;
+    if (n.contains('spin') || n.contains('cycl') || n.contains('ποδηλ')) return HealthWorkoutActivityType.CYCLING;
+    if (n.contains('run') || n.contains('τρεξ')) return HealthWorkoutActivityType.RUNNING;
+    if (n.contains('box')) return HealthWorkoutActivityType.BOXING;
+    if (n.contains('danc') || n.contains('zumba')) return HealthWorkoutActivityType.DANCE;
+    if (n.contains('stretch') || n.contains('mind') || n.contains('meditation')) return HealthWorkoutActivityType.MIND_AND_BODY;
+    return HealthWorkoutActivityType.TRADITIONAL_STRENGTH_TRAINING;
+  }
   HealthWorkoutService._();
   static final HealthWorkoutService instance = HealthWorkoutService._();
 
@@ -34,6 +47,31 @@ class HealthWorkoutService {
       _types,
       permissions: _types.map((_) => HealthDataAccess.READ).toList(),
     );
+  }
+
+  // Writes the completed gym booking as a workout to Apple Health / Health Connect.
+  // Call this when no watch-tracked workout was matched, so the user's rings/goals update.
+  Future<bool> writeWorkoutForBooking(Booking booking, {int? caloriesKcal}) async {
+    if (!isSupported) return false;
+    final health = await _client();
+    try {
+      final writeTypes = [HealthDataType.WORKOUT, HealthDataType.ACTIVE_ENERGY_BURNED];
+      final granted = await health.requestAuthorization(
+        writeTypes,
+        permissions: writeTypes.map((_) => HealthDataAccess.WRITE).toList(),
+      );
+      if (!granted) return false;
+      final end = booking.endsAt.isBefore(DateTime.now()) ? booking.endsAt : DateTime.now();
+      return await health.writeWorkoutData(
+        activityType: activityTypeForService(booking.serviceName),
+        start: booking.startsAt,
+        end: end,
+        totalEnergyBurned: caloriesKcal,
+        totalEnergyBurnedUnit: HealthDataUnit.KILOCALORIE,
+      );
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<List<WorkoutHealthSummary>> loadRecentWorkouts({int days = 30}) async {

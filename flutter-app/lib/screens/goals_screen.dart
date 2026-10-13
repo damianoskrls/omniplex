@@ -5,9 +5,12 @@ import '../config/tenant_config.dart';
 import '../l10n/app_strings.dart';
 import '../models/fitness_profile.dart';
 import '../models/user_stats.dart';
+import '../models/workout_health.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/health_workout_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/health_charts_section.dart';
 import '../widgets/ui_kit.dart';
 import '../l10n/tr.dart';
 
@@ -22,6 +25,7 @@ class GoalsScreen extends StatefulWidget {
 class _GoalsScreenState extends State<GoalsScreen> {
   UserStats? _stats;
   List<FitnessGoalOption> _goalOptions = [];
+  List<WorkoutHealthSummary> _healthWorkouts = [];
   bool _loading = true;
   bool _savingFitness = false;
   bool _savingSessions = false;
@@ -65,6 +69,13 @@ class _GoalsScreenState extends State<GoalsScreen> {
         _selectedFitnessGoal = profile.fitnessGoal;
         _weightCtrl.text = _formatWeight(profile.weightKg);
         _targetWeightCtrl.text = _formatWeight(profile.targetWeightKg);
+      });
+
+      // Load health data in background — doesn't block the UI
+      HealthWorkoutService.instance.loadRecentWorkouts(days: 60).then((workouts) {
+        if (mounted && workouts.isNotEmpty) {
+          setState(() => _healthWorkouts = workouts);
+        }
       });
     } on ApiException catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -328,6 +339,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
                           : Text(tr(AppStrings.of(context).goalsSaveWorkoutGoal)),
                     ),
                   ),
+                ],
+                if (_healthWorkouts.isNotEmpty) ...[
+                  const SizedBox(height: 32),
+                  Text(tr('Στατιστικά από ρολόι / Health'), style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 16),
+                  HealthChartsSection(workouts: _healthWorkouts),
                 ],
               ],
             ),

@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import StaffDeleteModal from '../components/StaffDeleteModal';
+import ApproveClientModal from '../components/ApproveClientModal';
 import { Plus, Settings, Trash2, UserCheck, UserX, Clock } from 'lucide-react';
 
 const EMPTY = { full_name: '', role: 'Trainer', phone: '', bio: '', color_hex: '#607D8B' };
@@ -13,6 +14,8 @@ export default function Staff() {
   const [joinRequests, setJoinRequests] = useState([]);
   const [modal, setModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [approveTarget, setApproveTarget] = useState(null);
+  const [approveLoading, setApproveLoading] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const navigate = useNavigate();
 
@@ -27,13 +30,15 @@ export default function Staff() {
     } catch { /* ignore */ }
   };
 
-  const decideJoinRequest = async (id, status, name, locationName) => {
+  const handleApproveDecide = async (status) => {
+    if (!approveTarget) return;
+    const { id, full_name: name, location_name: locationName } = approveTarget;
     const place = locationName ? ` για το κατάστημα «${locationName}»` : '';
-    if (status === 'approved' && !window.confirm(`Έγκριση του ${name}${place};`)) return;
-    if (status === 'rejected' && !window.confirm(`Απόρριψη αίτησης του ${name}${place};`)) return;
+    setApproveLoading(true);
     try {
       const { data } = await api.patch(`/client-admin/join-requests/${id}`, { status });
       toast.success(status === 'approved' ? `✓ ${name} προστέθηκε${place}` : 'Απορρίφθηκε');
+      setApproveTarget(null);
       if (status === 'approved' && data.record_id) {
         navigate(`/staff/${data.record_id}`);
       } else {
@@ -41,6 +46,8 @@ export default function Staff() {
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
+    } finally {
+      setApproveLoading(false);
     }
   };
   useEffect(() => { load(); }, []);
@@ -84,11 +91,8 @@ export default function Staff() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <button className="btn btn-primary btn-sm" onClick={() => decideJoinRequest(r.id, 'approved', r.full_name, r.location_name)}>
+                  <button className="btn btn-primary btn-sm" onClick={() => setApproveTarget(r)}>
                     <UserCheck size={13} /> Έγκριση
-                  </button>
-                  <button className="btn btn-secondary btn-sm" style={{ color: '#ef4444' }} onClick={() => decideJoinRequest(r.id, 'rejected', r.full_name, r.location_name)}>
-                    <UserX size={13} /> Απόρριψη
                   </button>
                 </div>
               </div>
@@ -178,6 +182,22 @@ export default function Staff() {
         staffName={deleteTarget?.full_name}
         onClose={() => setDeleteTarget(null)}
         onDeleted={load}
+      />
+
+      <ApproveClientModal
+        open={!!approveTarget}
+        client={approveTarget ? {
+          name: approveTarget.full_name,
+          phone: approveTarget.phone,
+          email: approveTarget.email,
+          locationName: approveTarget.location_name,
+        } : null}
+        title="Έγκριση trainer"
+        description="Ο trainer θα ενημερωθεί αυτόματα και θα αποκτήσει πρόσβαση στο γυμναστήριο."
+        loading={approveLoading}
+        onApprove={() => handleApproveDecide('approved')}
+        onReject={() => handleApproveDecide('rejected')}
+        onClose={() => setApproveTarget(null)}
       />
     </Layout>
   );

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Sparkles, UserCheck, UserX, MapPin } from 'lucide-react';
 
-export default function ApproveClientModal({ open, client, onApprove, onReject, onClose, loading }) {
+export default function ApproveClientModal({ open, client, onApprove, onReject, onClose, loading, title = 'Έγκριση πελάτη', description = 'Ο πελάτης θα ενημερωθεί αυτόματα και θα αποκτήσει πρόσβαση στο γυμναστήριο.' }) {
   useEffect(() => {
     if (!open) return;
     function onKey(e) { if (e.key === 'Escape') onClose(); }
@@ -21,10 +21,8 @@ export default function ApproveClientModal({ open, client, onApprove, onReject, 
             <Sparkles size={22} />
           </div>
           <div>
-            <div className="approve-modal-title">Έγκριση πελάτη</div>
-            <div className="approve-modal-desc">
-              Ο πελάτης θα ενημερωθεί αυτόματα και θα αποκτήσει πρόσβαση στο γυμναστήριο.
-            </div>
+            <div className="approve-modal-title">{title}</div>
+            <div className="approve-modal-desc">{description}</div>
           </div>
         </div>
 

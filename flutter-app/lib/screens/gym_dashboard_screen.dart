@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/ui_kit.dart';
+import '../widgets/workout_live_banner.dart';
 import 'workout_programs_screen.dart';
 import '../l10n/tr.dart';
 
@@ -127,6 +128,8 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
         children: [
           _GymHeroCard(config: config),
+          for (final b in _bookings.where((b) => b.isInProgress))
+            WorkoutLiveBanner(booking: b),
           const SizedBox(height: 16),
           _NextWorkoutCard(booking: _nextBooking),
           const SizedBox(height: 16),
