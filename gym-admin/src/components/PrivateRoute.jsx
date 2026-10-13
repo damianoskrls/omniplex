@@ -19,9 +19,9 @@ export function PrivateRoute({ children, ownerOnly = false }) {
     return <Navigate to="/nutrition/clients" replace />;
   }
 
-  // Redirect new gyms to the setup wizard until they dismiss or finish it.
-  // wizardDone === null means still loading — don't redirect yet.
-  if (!isTrainer && !isNutritionist && wizardDone === false && location.pathname !== '/setup') {
+  // On the dashboard ("/") only: redirect new gyms to the setup wizard until dismissed/finished.
+  // Restricting to "/" prevents blocking navigation from within the wizard to linked sub-pages.
+  if (!isTrainer && !isNutritionist && wizardDone === false && location.pathname === '/') {
     return <Navigate to="/setup" replace />;
   }
 
