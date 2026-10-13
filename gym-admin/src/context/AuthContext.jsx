@@ -31,6 +31,19 @@ export function AuthProvider({ children }) {
     return raw ? JSON.parse(raw) : null;
   });
   const [role, setRole] = useState(() => localStorage.getItem('gym_admin_role') || 'client_admin');
+  // null = loading, true = wizard done/dismissed, false = wizard not yet dismissed
+  const [wizardDone, setWizardDone] = useState(null);
+
+  // Fetch wizard state on mount for owner accounts
+  useEffect(() => {
+    if (!token || role !== 'client_admin') { setWizardDone(true); return; }
+    api.get('/client-admin/setup-wizard')
+      .then(({ data }) => {
+        const p = data?.progress;
+        setWizardDone(!!(p?.dismissed || p?.finished));
+      })
+      .catch(() => setWizardDone(true)); // fail open — never block existing gyms on error
+  }, [token, role]);
 
   useEffect(() => {
     document.title = business?.name ? `${business.name} — OmniPlex` : 'OmniPlex';
@@ -71,6 +84,8 @@ export function AuthProvider({ children }) {
     setToken(res.data.token);
     setBusiness(res.data.business);
     setRole(userRole);
+    // wizardDone will be re-fetched by the useEffect that watches [token, role]
+    setWizardDone(null);
     return userRole;
   };
 
@@ -81,7 +96,10 @@ export function AuthProvider({ children }) {
     setToken(null);
     setBusiness(null);
     setRole('client_admin');
+    setWizardDone(null);
   };
+
+  const markWizardDone = () => setWizardDone(true);
 
   const isGym = !business?.type || business?.type === 'gym';
 
@@ -98,6 +116,8 @@ export function AuthProvider({ children }) {
       isOwner: role === 'client_admin',
       isLocationAdmin: role === 'client_admin' && !!business?.location_admin,
       isGym,
+      wizardDone,
+      markWizardDone,
       features: {
         programs: isGym && (business?.feature_programs ?? 1),
         trainers: isGym && (business?.feature_trainers ?? 1),

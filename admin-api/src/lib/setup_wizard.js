@@ -36,7 +36,7 @@ async function getSetupWizard(db, bizId) {
 
   const [
     photos, locations, locationsWithHours, dropInLocations,
-    services, plans, rooms, staff, staffWithHours, nutritionists, leaves, programs,
+    services, plans, rooms, staff, staffWithHours, nutritionists, leaves, programs, classSchedules,
   ] = await Promise.all([
     count(db, 'SELECT COUNT(*) AS cnt FROM gym_photos WHERE business_id = ?', [bizId]),
     count(db, 'SELECT COUNT(*) AS cnt FROM locations WHERE business_id = ? AND is_active = 1', [bizId]),
@@ -53,6 +53,7 @@ async function getSetupWizard(db, bizId) {
     count(db, 'SELECT COUNT(*) AS cnt FROM nutritionists WHERE business_id = ? AND is_active = 1', [bizId]),
     count(db, 'SELECT COUNT(*) AS cnt FROM staff_leaves WHERE business_id = ?', [bizId]),
     count(db, 'SELECT COUNT(*) AS cnt FROM workout_programs WHERE business_id = ?', [bizId]),
+    count(db, 'SELECT COUNT(*) AS cnt FROM class_schedules WHERE business_id = ?', [bizId]),
   ]);
 
   return {
@@ -76,6 +77,7 @@ async function getSetupWizard(db, bizId) {
       nutritionists,
       leaves,
       programs,
+      class_schedules: classSchedules,
       annual_leave_days: cfg?.annual_leave_days ?? 20,
     },
   };

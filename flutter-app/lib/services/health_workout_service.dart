@@ -14,10 +14,10 @@ class HealthWorkoutService {
     if (n.contains('yoga') || n.contains('pilates')) return HealthWorkoutActivityType.YOGA;
     if (n.contains('hiit') || n.contains('crossfit')) return HealthWorkoutActivityType.HIGH_INTENSITY_INTERVAL_TRAINING;
     if (n.contains('swim') || n.contains('κολυμβ')) return HealthWorkoutActivityType.SWIMMING;
-    if (n.contains('spin') || n.contains('cycl') || n.contains('ποδηλ')) return HealthWorkoutActivityType.CYCLING;
+    if (n.contains('spin') || n.contains('cycl') || n.contains('ποδηλ')) return HealthWorkoutActivityType.HAND_CYCLING;
     if (n.contains('run') || n.contains('τρεξ')) return HealthWorkoutActivityType.RUNNING;
     if (n.contains('box')) return HealthWorkoutActivityType.BOXING;
-    if (n.contains('danc') || n.contains('zumba')) return HealthWorkoutActivityType.DANCE;
+    if (n.contains('danc') || n.contains('zumba')) return HealthWorkoutActivityType.CARDIO_DANCE;
     if (n.contains('stretch') || n.contains('mind') || n.contains('meditation')) return HealthWorkoutActivityType.MIND_AND_BODY;
     return HealthWorkoutActivityType.TRADITIONAL_STRENGTH_TRAINING;
   }

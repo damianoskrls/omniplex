@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { mediaUrl } from '../utils/media';
+import { useAuth } from '../context/AuthContext';
 
 const STEPS = [
   { id: 'details', title: 'Στοιχεία', required: true, hint: 'Όνομα, τηλέφωνο, υπεύθυνος' },
@@ -21,6 +22,7 @@ const STEPS = [
   { id: 'leave', title: 'Άδειες', required: false, hint: 'Ημέρες άδειας' },
   { id: 'payroll', title: 'Αμοιβές', required: false, hint: 'Μισθοδοσία συνεργατών' },
   { id: 'programs', title: 'Προγράμματα', required: false, hint: 'Προγράμματα άσκησης' },
+  { id: 'class_schedule', title: 'Εβδομαδιαίο Πρόγραμμα', required: false, hint: 'Μαθήματα και ωράριο λειτουργίας' },
 ];
 
 const DAY_SHORT = ['Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα', 'Κυ'];
@@ -57,6 +59,7 @@ function stepState(step, checks, progress) {
     leave: checks?.leaves > 0,
     payroll: false,
     programs: checks?.programs > 0,
+    class_schedule: checks?.class_schedules > 0,
   }[step.id];
   return done ? 'done' : '';
 }
@@ -738,8 +741,30 @@ function ProgramsStep() {
   );
 }
 
+function ClassScheduleStep({ checks }) {
+  return (
+    <div>
+      <StepNote>
+        Το εβδομαδιαίο πρόγραμμα μαθημάτων του γυμναστηρίου — ποιες τάξεις γίνονται, ποιες μέρες και ποιος τις κάνει.
+        Εμφανίζεται στην εφαρμογή για να ξέρουν οι πελάτες τι τρέχει κάθε μέρα.
+      </StepNote>
+      {checks?.class_schedules > 0 ? (
+        <div style={{ marginBottom: 16, color: 'var(--tenant-primary, #16a34a)', fontWeight: 600, fontSize: '0.88rem' }}>
+          ✓ {checks.class_schedules} {checks.class_schedules === 1 ? 'μάθημα καταχωρημένο' : 'μαθήματα καταχωρημένα'}
+        </div>
+      ) : (
+        <div className="text-muted" style={{ fontSize: '0.84rem', marginBottom: 16 }}>
+          Δεν έχεις βάλει μαθήματα ακόμα.
+        </div>
+      )}
+      <Link to="/class-schedule" className="btn btn-primary">Εβδομαδιαίο Πρόγραμμα</Link>
+    </div>
+  );
+}
+
 export default function SetupWizard() {
   const navigate = useNavigate();
+  const { markWizardDone } = useAuth();
   const [status, setStatus] = useState(null);
   const [stepId, setStepId] = useState('details');
 
@@ -789,6 +814,7 @@ export default function SetupWizard() {
         return;
       }
       await persist({ skipped: [...skipped], finished: true, dismissed: true, last_step: step.id });
+      markWizardDone();
       toast.success('Η αρχική ρύθμιση ολοκληρώθηκε');
       navigate('/');
       return;
@@ -814,6 +840,7 @@ export default function SetupWizard() {
     leave: <LeaveStep checks={checks} onSaved={refresh} />,
     payroll: <PayrollStep />,
     programs: <ProgramsStep checks={checks} />,
+    class_schedule: <ClassScheduleStep checks={checks} />,
   }[step.id];
 
   return (
@@ -823,7 +850,7 @@ export default function SetupWizard() {
           <h1 className="page-title">Οδηγός έναρξης</h1>
           <p className="text-muted">Βήμα {index + 1} από {STEPS.length}. Τα υποχρεωτικά είναι το όνομα, ένα κατάστημα και μία υπηρεσία.</p>
         </div>
-        <button type="button" className="btn btn-secondary" onClick={() => { persist({ dismissed: true }).then(() => navigate('/')); }}>
+        <button type="button" className="btn btn-secondary" onClick={() => { persist({ dismissed: true }).then(() => { markWizardDone(); navigate('/'); }); }}>
           Έξοδος
         </button>
       </div>

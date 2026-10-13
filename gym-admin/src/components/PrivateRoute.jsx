@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export function PrivateRoute({ children, ownerOnly = false }) {
-  const { isLoggedIn, isNutritionist, isTrainer } = useAuth();
+  const { isLoggedIn, isNutritionist, isTrainer, wizardDone } = useAuth();
   const location = useLocation();
 
   if (!isLoggedIn) return <Navigate to="/login" replace />;
@@ -17,6 +17,12 @@ export function PrivateRoute({ children, ownerOnly = false }) {
 
   if (isNutritionist && !location.pathname.startsWith('/nutrition') && !location.pathname.startsWith('/messages')) {
     return <Navigate to="/nutrition/clients" replace />;
+  }
+
+  // Redirect new gyms to the setup wizard until they dismiss or finish it.
+  // wizardDone === null means still loading — don't redirect yet.
+  if (!isTrainer && !isNutritionist && wizardDone === false && location.pathname !== '/setup') {
+    return <Navigate to="/setup" replace />;
   }
 
   return children;

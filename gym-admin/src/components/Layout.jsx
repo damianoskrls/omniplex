@@ -66,6 +66,15 @@ function buildNavGroups({ features, featureNutrition, locationAdmin }) {
       ],
     },
     {
+      key: 'schedule',
+      label: 'Πρόγραμμα',
+      links: [
+        { to: '/class-schedule', icon: CalendarDays, label: 'Εβδομαδιαίο Πρόγραμμα' },
+        { to: '/services', icon: Scissors, label: 'Ωράριο Υπηρεσιών' },
+        { to: '/staff', icon: UserCog, label: 'Διαθεσιμότητα Προσωπικού' },
+      ],
+    },
+    {
       key: 'communication',
       label: 'Επικοινωνία',
       links: [
