@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Edit2, PlusCircle, X } from 'lucide-react';
 import { buildPlanNamePreview } from '../lib/planNames';
@@ -90,6 +91,7 @@ function ServiceItemRow({ item, idx, services, onChange, onRemove, canRemove }) 
 }
 
 function PlanForm({ form, setForm, services, locations, onSubmit, onCancel, submitLabel }) {
+  const { activeBranch } = useBranch() || {};
   const selectedService = services.find(s => s.id === form.service_id);
   const previewName = useMemo(() => {
     if (form.mode !== 'single' || !selectedService) return '';
@@ -219,7 +221,7 @@ function PlanForm({ form, setForm, services, locations, onSubmit, onCancel, subm
           ))}
         </div>
       </div>
-      {locations.length > 1 && (
+      {!activeBranch && locations.length > 1 && (
         <div className="form-group">
           <label className="form-label">Καταστήματα *</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -258,7 +260,7 @@ function PlanForm({ form, setForm, services, locations, onSubmit, onCancel, subm
         <button type="button" className="btn btn-secondary" onClick={onCancel}>Ακύρωση</button>
         <button type="submit" className="btn btn-primary"
           disabled={(form.mode === 'single' ? !form.service_id : (!form.name || form.service_items.some(i => !i.service_id)))
-            || (locations.length > 1 && !(form.location_ids || []).length)}>
+            || (!activeBranch && locations.length > 1 && !(form.location_ids || []).length)}>
           {submitLabel}
         </button>
       </div>

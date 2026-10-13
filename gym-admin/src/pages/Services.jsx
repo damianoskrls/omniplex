@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { useBranch } from '../context/BranchContext';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import LocationCheckboxes from '../components/LocationCheckboxes';
@@ -98,6 +99,7 @@ function ImageUploadBox({ label, accept, currentUrl, onUpload, onRemove, hint })
 }
 
 export default function Services() {
+  const { activeBranch } = useBranch() || {};
   const [services, setServices] = useState([]);
   const [plans, setPlans] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -532,11 +534,13 @@ export default function Services() {
                 </div>
               )}
 
-              <LocationCheckboxes
-                value={locationIds}
-                onChange={setLocationIds}
-                label="Διαθέσιμη σε γυμναστήρια"
-              />
+              {!activeBranch && (
+                <LocationCheckboxes
+                  value={locationIds}
+                  onChange={setLocationIds}
+                  label="Διαθέσιμη σε γυμναστήρια"
+                />
+              )}
 
               {/* Images + SVG icon — only when editing */}
               {modal === 'edit' && editingService && (

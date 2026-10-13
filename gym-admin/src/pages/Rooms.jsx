@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { useBranch } from '../context/BranchContext';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Edit2, Check, X, GripVertical, ImagePlus, MapPin } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
 
 export default function Rooms() {
+  const { activeBranch } = useBranch() || {};
   const [rooms, setRooms] = useState([]);
   const [locations, setLocations] = useState([]);
   const [activeLocationId, setActiveLocationId] = useState('');
@@ -111,7 +113,7 @@ export default function Rooms() {
       </div>
 
       {/* Location tabs */}
-      {locations.length > 0 && (
+      {!activeBranch && locations.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0', paddingBottom: 0, flexWrap: 'nowrap', overflowX: 'visible' }}>
           {(showAllTabs ? locations : locations.slice(0, TAB_LIMIT)).map(loc => {
             const isActive = String(loc.id) === String(activeLocationId);

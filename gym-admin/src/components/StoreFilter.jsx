@@ -1,14 +1,19 @@
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 
 export default function StoreFilter({ locations = [], value = '', onChange }) {
   const { business } = useAuth();
+  const { activeBranch } = useBranch() || {};
   const locked = business?.location_id ? String(business.location_id) : '';
   const stores = locations.filter((l) => l && l.is_active !== 0 && l.is_active !== false);
 
   useEffect(() => {
     if (locked && String(value || '') !== locked) onChange(locked);
   }, [locked, value, onChange]);
+
+  // Branch already selected globally — hide in-page filter
+  if (activeBranch) return null;
 
   if (locked) {
     const store = stores.find((l) => String(l.id) === locked);

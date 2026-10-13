@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { useBranch } from '../context/BranchContext';
 import toast from 'react-hot-toast';
 import { Plus, Eye, Check, Ban, RotateCcw, Trash2, Search, UserCheck, AlertTriangle, Clock, UserPlus } from 'lucide-react';
 import ApproveClientModal from '../components/ApproveClientModal';
@@ -42,6 +43,7 @@ const EMPTY = {
 };
 
 export default function Clients() {
+  const { activeBranch } = useBranch() || {};
   const [clients, setClients] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
   const [pendingTotal, setPendingTotal] = useState(0);
@@ -355,7 +357,7 @@ export default function Clients() {
         ))}
       </div>
 
-      {locations.length > 0 && (
+      {!activeBranch && locations.length > 0 && (
         <div className="bk-group-tabs" style={{ marginBottom: 16 }}>
           <button
             type="button"
