@@ -1,17 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, X, Clock, TrendingUp } from 'lucide-react';
+import { Search, User, X, Clock, Users, AlertTriangle, Calendar, TrendingUp, ArrowUpRight } from 'lucide-react';
 import api from '../api/client';
 
 const isMac = navigator.platform?.toLowerCase().includes('mac');
 const STORAGE_KEY = 'gs_recent_v1';
 const MAX_RECENT = 5;
 
-const TRENDING = [
-  'Νέοι πελάτες',
-  'Ληγμένα πακέτα',
-  'Σημερινές κρατήσεις',
-  'Ανενεργοί πελάτες',
+// Direct navigation shortcuts — these always work, no API call needed
+const QUICK_LINKS = [
+  { label: 'Ανενεργοί πελάτες', icon: Users,          path: '/clients?status=inactive', desc: 'Χωρίς ενεργό πακέτο' },
+  { label: 'Πελάτες σε κίνδυνο', icon: AlertTriangle, path: '/at-risk',                 desc: 'Κινδυνεύουν να αποχωρήσουν' },
+  { label: 'Κρατήσεις',           icon: Calendar,      path: '/bookings',                desc: 'Πρόγραμμα μαθημάτων' },
+  { label: 'Αναφορές',            icon: TrendingUp,    path: '/reports',                 desc: 'Στατιστικά & αναλύσεις' },
 ];
 
 function getRecent() {
@@ -62,12 +63,19 @@ export default function GlobalSearch() {
     doFetch(q);
   }
 
-  function go(client) {
+  function goClient(client) {
     addRecent(client);
     setVal('');
     setResults([]);
     setOpen(false);
     navigate(`/clients/${client.id}`);
+  }
+
+  function goLink(path) {
+    setVal('');
+    setResults([]);
+    setOpen(false);
+    navigate(path);
   }
 
   function clear() {
@@ -89,7 +97,7 @@ export default function GlobalSearch() {
 
   const maxNav = val.trim()
     ? results.length - 1
-    : recent.length + TRENDING.length - 1;
+    : recent.length + QUICK_LINKS.length - 1;
 
   function onKeyDown(e) {
     if (!open) return;
@@ -99,7 +107,12 @@ export default function GlobalSearch() {
       e.preventDefault(); setActive(v => Math.max(v - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (val.trim() && active >= 0 && results[active]) go(results[active]);
+      if (val.trim()) {
+        if (active >= 0 && results[active]) goClient(results[active]);
+      } else {
+        if (active >= 0 && active < recent.length) goClient(recent[active]);
+        else if (active >= recent.length) goLink(QUICK_LINKS[active - recent.length].path);
+      }
     } else if (e.key === 'Escape') {
       setOpen(false); setVal('');
     }
@@ -139,30 +152,35 @@ export default function GlobalSearch() {
           onFocus={onFocus}
           autoComplete="off"
         />
-        {loading
-          ? <span className="topbar-search__spinner" />
-          : val
-            ? <button type="button" className="topbar-search__clear" onClick={clear} aria-label="Καθαρισμός"><X size={14} /></button>
-            : <kbd className="topbar-search__kbd">{isMac ? '⌘' : 'Ctrl'}K</kbd>
-        }
+        {/* Fixed-width slot — prevents layout shift when switching between kbd/spinner/clear */}
+        <div className="topbar-search__slot">
+          {loading
+            ? <span className="topbar-search__spinner" />
+            : val
+              ? <button type="button" className="topbar-search__clear" onClick={clear} aria-label="Καθαρισμός"><X size={13} /></button>
+              : <kbd className="topbar-search__kbd">{isMac ? '⌘' : 'Ctrl'}K</kbd>
+          }
+        </div>
       </div>
 
       {dropdownVisible && (
         <div className="global-search-dropdown">
 
-          {/* ── Empty state: Recent + Trending ─────────────────── */}
+          {/* ── Empty state: Recent + Quick links ─────────────── */}
           {showEmpty && (
             <>
               {recent.length > 0 && (
                 <div className="gs-section">
-                  <div className="gs-section__label"><Clock size={11} />Πρόσφατα</div>
+                  <div className="gs-section__label">
+                    <Clock size={11} /> Πρόσφατα
+                  </div>
                   {recent.map((c, i) => (
                     <button
                       key={c.id}
                       type="button"
                       className={`global-search-item ${i === active ? 'global-search-item--active' : ''}`}
                       onMouseEnter={() => setActive(i)}
-                      onClick={() => go(c)}
+                      onClick={() => goClient(c)}
                     >
                       <div className="global-search-item__avatar"><User size={14} /></div>
                       <div className="global-search-item__body">
@@ -181,19 +199,28 @@ export default function GlobalSearch() {
               )}
 
               <div className="gs-section">
-                <div className="gs-section__label"><TrendingUp size={11} />Δημοφιλή</div>
-                {TRENDING.map((t, i) => {
+                <div className="gs-section__label">
+                  <ArrowUpRight size={11} /> Γρήγορη πρόσβαση
+                </div>
+                {QUICK_LINKS.map((ql, i) => {
                   const idx = recent.length + i;
+                  const Icon = ql.icon;
                   return (
                     <button
-                      key={t}
+                      key={ql.path}
                       type="button"
-                      className={`global-search-item gs-trending-item ${idx === active ? 'global-search-item--active' : ''}`}
+                      className={`global-search-item gs-quick-item ${idx === active ? 'global-search-item--active' : ''}`}
                       onMouseEnter={() => setActive(idx)}
-                      onClick={() => { setVal(t); doFetch(t); inputRef.current?.focus(); }}
+                      onClick={() => goLink(ql.path)}
                     >
-                      <div className="gs-trending-icon"><TrendingUp size={13} /></div>
-                      <span className="global-search-item__name">{t}</span>
+                      <div className="gs-quick-icon">
+                        <Icon size={14} />
+                      </div>
+                      <div className="global-search-item__body">
+                        <div className="global-search-item__name">{ql.label}</div>
+                        <div className="global-search-item__sub">{ql.desc}</div>
+                      </div>
+                      <ArrowUpRight size={13} className="gs-quick-arrow" />
                     </button>
                   );
                 })}
@@ -201,14 +228,14 @@ export default function GlobalSearch() {
             </>
           )}
 
-          {/* ── Results while typing ────────────────────────────── */}
+          {/* ── Results while typing ────────────────────────── */}
           {showResults && !showNoResults && results.map((c, i) => (
             <button
               key={c.id}
               type="button"
               className={`global-search-item ${i === active ? 'global-search-item--active' : ''}`}
               onMouseEnter={() => setActive(i)}
-              onClick={() => go(c)}
+              onClick={() => goClient(c)}
             >
               <div className="global-search-item__avatar"><User size={14} /></div>
               <div className="global-search-item__body">
@@ -221,7 +248,7 @@ export default function GlobalSearch() {
             </button>
           ))}
 
-          {/* ── No results ──────────────────────────────────────── */}
+          {/* ── No results ──────────────────────────────────── */}
           {showNoResults && (
             <div className="gs-no-results">
               Δεν βρέθηκαν αποτελέσματα για <strong>«{val}»</strong>
