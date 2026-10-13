@@ -10,7 +10,7 @@ import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
 import Avatar from './ui/Avatar';
 import GlobalSearch from './GlobalSearch';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import api from '../api/client';
 import useMessagesUnreadCount from '../hooks/useMessagesUnreadCount';
 import useMarketplacePending from '../hooks/useMarketplacePending';
@@ -312,6 +312,7 @@ function NutritionNav({ isOwner, unreadCount }) {
 
 export default function Layout({ children, title, variant, headerActions }) {
   const { logout, business, isNutritionist, isTrainer, isOwner, isLocationAdmin, features } = useAuth();
+  const { activeBranchId } = useBranch();
   const navigate = useNavigate();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
@@ -511,7 +512,9 @@ export default function Layout({ children, title, variant, headerActions }) {
             </div>
           </div>
         </div>
-        <div className="content content--modern">{children}</div>
+        <div className="content content--modern">
+          <Fragment key={activeBranchId || 'all'}>{children}</Fragment>
+        </div>
       </main>
     </div>
   );
