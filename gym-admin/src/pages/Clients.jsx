@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { Plus, Eye, Check, Ban, RotateCcw, Trash2, Search, UserCheck, AlertTriangle, Clock, UserPlus } from 'lucide-react';
+import ApproveClientModal from '../components/ApproveClientModal';
 
 const FITNESS_GOALS = [
   { id: '', label: '— Δεν έχει οριστεί —' },
@@ -50,6 +51,8 @@ export default function Clients() {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [approvalTarget, setApprovalTarget] = useState(null);
+  const [approvalLoading, setApprovalLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -170,11 +173,11 @@ export default function Clients() {
 
   const decideJoinRequest = async (id, status, name, locationName) => {
     const place = locationName ? ` για το κατάστημα «${locationName}»` : ' (χωρίς συγκεκριμένο κατάστημα)';
-    if (status === 'approved' && !window.confirm(`Έγκριση του ${name}${place};`)) return;
-    if (status === 'rejected' && !window.confirm(`Απόρριψη αίτησης του ${name}${place};`)) return;
+    setApprovalLoading(true);
     try {
       const { data } = await api.patch(`/client-admin/join-requests/${id}`, { status });
       toast.success(status === 'approved' ? `✓ ${name} εγκρίθηκε${place}` : `Απορρίφθηκε`);
+      setApprovalTarget(null);
       if (status === 'approved' && data.record_id) {
         navigate(`/clients/${data.record_id}`);
       } else {
@@ -182,6 +185,8 @@ export default function Clients() {
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Σφάλμα');
+    } finally {
+      setApprovalLoading(false);
     }
   };
 
@@ -436,7 +441,7 @@ export default function Clients() {
                   <td>—</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-primary btn-sm" onClick={() => decideJoinRequest(r.id, 'approved', r.full_name, r.location_name)}>
+                      <button className="btn btn-primary btn-sm" onClick={() => setApprovalTarget({ id: r.id, name: r.full_name, locationName: r.location_name, phone: r.phone, email: r.email })}>
                         <Check size={13} /> Έγκριση
                       </button>
                       <button className="btn btn-danger btn-sm" onClick={() => decideJoinRequest(r.id, 'rejected', r.full_name, r.location_name)}>
@@ -790,6 +795,14 @@ export default function Clients() {
           </div>
         </div>
       )}
+      <ApproveClientModal
+        open={!!approvalTarget}
+        client={approvalTarget}
+        loading={approvalLoading}
+        onApprove={() => approvalTarget && decideJoinRequest(approvalTarget.id, 'approved', approvalTarget.name, approvalTarget.locationName)}
+        onReject={() => approvalTarget && decideJoinRequest(approvalTarget.id, 'rejected', approvalTarget.name, approvalTarget.locationName)}
+        onClose={() => setApprovalTarget(null)}
+      />
     </Layout>
   );
 }
