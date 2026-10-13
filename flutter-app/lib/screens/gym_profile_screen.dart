@@ -91,15 +91,31 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   bool _staffPending = false;
 
   String? get _slug => widget.slug ?? _gym?['slug'] as String?;
+
+  // When a specific location is opened, membership must cover that location.
+  // If the GlobalGym has no locations list (single-loc or legacy data), slug
+  // match alone is sufficient — this preserves the old behaviour for gyms that
+  // don't need per-branch discrimination.
+  bool _gymMatchesOpenedLocation(GlobalGym g) {
+    final loc = widget.locationId;
+    if (loc == null || loc.isEmpty) return true;
+    if (g.locations.isEmpty) return true;
+    return g.locations.any((l) => l.id == loc);
+  }
+
   bool get _memberLinked => widget.globalAuth != null &&
       _slug != null &&
-      widget.globalAuth!.gyms.any((g) => g.slug == _slug && !g.isStaff);
+      widget.globalAuth!.gyms.any(
+        (g) => g.slug == _slug && !g.isStaff && _gymMatchesOpenedLocation(g));
   bool get _staffLinked => widget.globalAuth != null &&
       _slug != null &&
-      widget.globalAuth!.gyms.any((g) => g.slug == _slug && g.isStaff);
+      widget.globalAuth!.gyms.any(
+        (g) => g.slug == _slug && g.isStaff && _gymMatchesOpenedLocation(g));
   bool get _canEnter => _memberLinked || _staffLinked;
   bool _hasStaffKind(String kind) => widget.globalAuth?.gyms.any(
-        (g) => g.slug == _slug && g.isStaff && (g.staffKind ?? 'trainer') == kind,
+        (g) => g.slug == _slug && g.isStaff &&
+               (g.staffKind ?? 'trainer') == kind &&
+               _gymMatchesOpenedLocation(g),
       ) ?? false;
   bool get _canAskMember => !_memberLinked && !_memberPending;
   bool get _canAskTrainer => !_hasStaffKind('trainer') && !_staffPending;
