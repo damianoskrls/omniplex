@@ -331,6 +331,8 @@ router.get('/:bizId/extra-services', softAuth, async (req, res) => {
     if (prov?.config) {
       const cfg = typeof prov.config === 'string' ? JSON.parse(prov.config) : prov.config;
       stripeReady = !!(cfg.secret_key && cfg.publishable_key);
+    } else {
+      stripeReady = !!(process.env.STRIPE_TEST_SECRET_KEY && process.env.STRIPE_TEST_PUBLISHABLE_KEY);
     }
     return res.json({ services, stripe_ready: stripeReady });
   } catch (err) {
@@ -484,14 +486,14 @@ router.post('/:bizId/buy-plan', softAuth, async (req, res) => {
       return res.status(400).json({ error: 'Έχεις ήδη αυτή την υπηρεσία' });
     }
 
-    const [[provRow]] = await db.query(
-      'SELECT * FROM payment_providers WHERE business_id = ? AND is_active = 1 LIMIT 1',
-      [bizId],
-    );
-    if (provRow && Number(plan.price_cents) > 0) {
-      const cfg = typeof provRow.config === 'string' ? JSON.parse(provRow.config) : (provRow.config || {});
-      if (cfg.secret_key && cfg.publishable_key) {
-        const stripe = require('stripe')(cfg.secret_key);
+    if (Number(plan.price_cents) > 0) {
+      let provCfg;
+      try {
+        const { getProviderConfig } = require('../lib/online_payments');
+        provCfg = await getProviderConfig(db, bizId);
+      } catch (_) {}
+      if (provCfg?.secret_key && provCfg?.publishable_key) {
+        const stripe = require('stripe')(provCfg.secret_key);
         const intent = await stripe.paymentIntents.create({
           amount: Number(plan.price_cents),
           currency: 'eur',
@@ -502,7 +504,7 @@ router.post('/:bizId/buy-plan', softAuth, async (req, res) => {
           mode: 'stripe',
           client_secret: intent.client_secret,
           intent_id: intent.id,
-          publishable_key: cfg.publishable_key,
+          publishable_key: provCfg.publishable_key,
           plan_name: plan.name,
         });
       }
@@ -537,13 +539,10 @@ router.post('/:bizId/buy-plan/confirm', softAuth, async (req, res) => {
   const userId = req.user.userId;
   const conn = await db.getConnection();
   try {
-    const [[provRow]] = await conn.query(
-      'SELECT * FROM payment_providers WHERE business_id = ? AND is_active = 1 LIMIT 1',
-      [bizId],
-    );
-    const cfg = typeof provRow?.config === 'string' ? JSON.parse(provRow.config) : (provRow?.config || {});
-    if (!cfg.secret_key) return res.status(400).json({ error: 'Οι online πληρωμές δεν είναι διαθέσιμες' });
-    const stripe = require('stripe')(cfg.secret_key);
+    const { getProviderConfig } = require('../lib/online_payments');
+    const provCfg = await getProviderConfig(conn, bizId);
+    if (!provCfg.secret_key) return res.status(400).json({ error: 'Οι online πληρωμές δεν είναι διαθέσιμες' });
+    const stripe = require('stripe')(provCfg.secret_key);
     const intent = await stripe.paymentIntents.retrieve(intent_id);
     if (intent.status !== 'succeeded') return res.status(402).json({ error: 'Η πληρωμή δεν ολοκληρώθηκε' });
     if (intent.metadata?.plan_id !== plan_id || intent.metadata?.user_id !== userId) {

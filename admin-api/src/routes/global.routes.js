@@ -1831,15 +1831,9 @@ router.post('/purchase/:slug/intent', async (req, res) => {
     }
     if (!plan) return res.status(404).json({ error: 'Πακέτο δεν βρέθηκε' });
 
-    // Get Stripe config for this gym
-    const [[provRow]] = await conn.query(
-      `SELECT * FROM payment_providers WHERE business_id = ? AND is_active = 1 LIMIT 1`,
-      [biz.id],
-    );
-    if (!provRow) return res.status(400).json({ error: 'Οι online πληρωμές δεν είναι διαθέσιμες για αυτό το γυμναστήριο' });
-
-    const cfg = typeof provRow.config === 'string' ? JSON.parse(provRow.config) : (provRow.config || {});
-    const { assertStripeKeys, hideStripeKeyError } = require('../lib/online_payments');
+    // Get Stripe config for this gym (falls back to platform test keys if not configured)
+    const { getProviderConfig, assertStripeKeys, hideStripeKeyError } = require('../lib/online_payments');
+    const cfg = await getProviderConfig(conn, biz.id);
     assertStripeKeys(cfg);
     const stripe = require('stripe')(cfg.secret_key);
 
@@ -1899,13 +1893,9 @@ router.post('/purchase/:slug/confirm', async (req, res) => {
     );
     if (!biz) return res.status(404).json({ error: 'Γυμναστήριο δεν βρέθηκε' });
 
-    // Verify payment with Stripe
-    const [[provRow]] = await conn.query(
-      `SELECT * FROM payment_providers WHERE business_id = ? AND is_active = 1 LIMIT 1`,
-      [biz.id],
-    );
-    const cfg = typeof provRow?.config === 'string' ? JSON.parse(provRow.config) : (provRow?.config || {});
-    const { assertStripeKeys, hideStripeKeyError } = require('../lib/online_payments');
+    // Verify payment with Stripe (falls back to platform test keys if not configured)
+    const { getProviderConfig, assertStripeKeys, hideStripeKeyError } = require('../lib/online_payments');
+    const cfg = await getProviderConfig(conn, biz.id);
     assertStripeKeys(cfg);
     const stripe = require('stripe')(cfg.secret_key);
     let intent;

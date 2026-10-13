@@ -22,7 +22,12 @@ async function getProviderConfig(conn, bizId) {
     WHERE business_id = ? AND is_active = 1
     LIMIT 1
   `, [bizId]);
-  if (!row) throw Object.assign(new Error('Online πληρωμές δεν έχουν ρυθμιστεί'), { status: 400 });
+  if (!row) {
+    const secret = process.env.STRIPE_TEST_SECRET_KEY;
+    const pub    = process.env.STRIPE_TEST_PUBLISHABLE_KEY;
+    if (!secret || !pub) throw Object.assign(new Error('Online πληρωμές δεν έχουν ρυθμιστεί'), { status: 400 });
+    return { provider: 'stripe', secret_key: secret, publishable_key: pub };
+  }
   const cfg = typeof row.config === 'string' ? JSON.parse(row.config) : (row.config || {});
   return { provider: row.provider, ...cfg };
 }
@@ -216,6 +221,7 @@ async function refundPayment(conn, bizId, paymentId) {
 }
 
 module.exports = {
+  getProviderConfig,
   createPaymentIntent,
   confirmPayment,
   parseWebhook,
