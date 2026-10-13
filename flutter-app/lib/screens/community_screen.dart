@@ -273,32 +273,51 @@ class _CommunityScreenState extends State<CommunityScreen> {
       body: Column(
         children: [
           if (_services.isNotEmpty)
-            SizedBox(
-              height: 52,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                itemCount: _services.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final service = _services[i];
-                  final id = service['id'] as String?;
-                  final selected = id == _serviceId;
-                  return ChoiceChip(
-                    label: Text(service['name'] as String? ?? tr('Υπηρεσία')),
-                    selected: selected,
-                    onSelected: id == null ? null : (_) {
-                      setState(() => _serviceId = id);
-                      _load();
+            Stack(
+              children: [
+                SizedBox(
+                  height: 52,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                    itemCount: _services.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) {
+                      final service = _services[i];
+                      final id = service['id'] as String?;
+                      final selected = id == _serviceId;
+                      return ChoiceChip(
+                        label: Text(service['name'] as String? ?? tr('Υπηρεσία')),
+                        selected: selected,
+                        onSelected: id == null ? null : (_) {
+                          setState(() => _serviceId = id);
+                          _load();
+                        },
+                        selectedColor: AppColors.lime,
+                        labelStyle: TextStyle(
+                          color: selected ? Colors.black : AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      );
                     },
-                    selectedColor: AppColors.lime,
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.black : AppColors.textPrimary,
-                      fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Positioned(
+                  right: 0, top: 0, bottom: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 40,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [Colors.transparent, AppColors.bg],
+                        ),
+                      ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
           Expanded(child: _loading
           ? Center(child: const CircularProgressIndicator(color: AppColors.lime))

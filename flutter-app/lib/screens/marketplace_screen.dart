@@ -188,31 +188,50 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _categories.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final name = _categories[i];
-                final on = name == _category;
-                return GestureDetector(
-                  onTap: () => setState(() => _category = name),
+          Stack(
+            children: [
+              SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _categories.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final name = _categories[i];
+                    final on = name == _category;
+                    return GestureDetector(
+                      onTap: () => setState(() => _category = name),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: on ? accent : AppColors.surface,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(tr(name), style: GoogleFonts.inter(
+                          fontSize: 12, fontWeight: FontWeight.w700,
+                          color: on ? AppColors.onFill(accent) : AppColors.textSecondary)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Positioned(
+                right: 0, top: 0, bottom: 0,
+                child: IgnorePointer(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: on ? accent : AppColors.surface,
-                      borderRadius: BorderRadius.circular(99),
+                    width: 40,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [Colors.transparent, AppColors.bg],
+                      ),
                     ),
-                    child: Text(tr(name), style: GoogleFonts.inter(
-                      fontSize: 12, fontWeight: FontWeight.w700,
-                      color: on ? AppColors.onFill(accent) : AppColors.textSecondary)),
                   ),
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           if (items.isEmpty)

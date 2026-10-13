@@ -224,64 +224,83 @@ class _DropinScreenState extends State<DropinScreen> {
               )
             else ...[
               // Service chips
-              SizedBox(
-                height: 38,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _services.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) {
-                    final s = _services[i];
-                    final selected = s['id'] == _selectedServiceId;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedService = s;
-                          _selectedServiceId = s['id'] as String;
-                        });
-                        _loadSlots(seekNext: true);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: selected ? context.tenantPrimary.withValues(alpha: 0.18) : AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: selected ? context.tenantPrimary : AppColors.border),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              tr(s['name'] as String? ?? ''),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
+              Stack(
+                children: [
+                  SizedBox(
+                    height: 38,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _services.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) {
+                        final s = _services[i];
+                        final selected = s['id'] == _selectedServiceId;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedService = s;
+                              _selectedServiceId = s['id'] as String;
+                            });
+                            _loadSlots(seekNext: true);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: selected ? context.tenantPrimary.withValues(alpha: 0.18) : AppColors.surfaceLight,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: selected ? context.tenantPrimary : AppColors.border),
                             ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: selected ? context.tenantPrimary.withValues(alpha: 0.35) : AppColors.border,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                tr(_priceStr(_dropin(s))),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
+                            child: Row(
+                              children: [
+                                Text(
+                                  tr(s['name'] as String? ?? ''),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: selected ? context.tenantPrimary.withValues(alpha: 0.35) : AppColors.border,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    tr(_priceStr(_dropin(s))),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Positioned(
+                    right: 0, top: 0, bottom: 0,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 40,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [Colors.transparent, AppColors.bg],
+                          ),
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 

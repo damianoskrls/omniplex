@@ -300,42 +300,61 @@ class _BusinessSelectorScreenState extends State<BusinessSelectorScreen>
                           const SizedBox(height: 12),
 
                           // Service type filter chips
-                          SizedBox(
-                            height: 34,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _serviceFilters.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 8),
-                              itemBuilder: (_, i) {
-                                final (val, label) = _serviceFilters[i];
-                                final selected = _selectedService == val;
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() => _selectedService = val);
-                                    _onFilterChanged();
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: selected ? AppColors.lime : Colors.white.withValues(alpha: 0.08),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: selected ? AppColors.lime : Colors.white.withValues(alpha: 0.15),
+                          Stack(
+                            children: [
+                              SizedBox(
+                                height: 34,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: _serviceFilters.length,
+                                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                  itemBuilder: (_, i) {
+                                    final (val, label) = _serviceFilters[i];
+                                    final selected = _selectedService == val;
+                                    return GestureDetector(
+                                      onTap: () {
+                                        setState(() => _selectedService = val);
+                                        _onFilterChanged();
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 180),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: selected ? AppColors.lime : Colors.white.withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: selected ? AppColors.lime : Colors.white.withValues(alpha: 0.15),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          tr(label),
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: selected ? Colors.black : Colors.white.withValues(alpha: 0.75),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                    child: Text(
-                                      tr(label),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: selected ? Colors.black : Colors.white.withValues(alpha: 0.75),
+                                    );
+                                  },
+                                ),
+                              ),
+                              Positioned(
+                                right: 0, top: 0, bottom: 0,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    width: 40,
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                        colors: [Colors.transparent, Color(0xFF09090E)],
                                       ),
                                     ),
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
