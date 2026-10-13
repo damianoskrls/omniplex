@@ -93,13 +93,16 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   String? get _slug => widget.slug ?? _gym?['slug'] as String?;
 
   // When a specific location is opened, membership must cover that location.
-  // If the GlobalGym has no locations list (single-loc or legacy data), slug
-  // match alone is sufficient — this preserves the old behaviour for gyms that
-  // don't need per-branch discrimination.
+  // If the GlobalGym has no locations list (single-loc or legacy data), fall
+  // back to slug match only when the gym itself has at most one location —
+  // for multi-location gyms we cannot confirm which branch the member belongs to.
   bool _gymMatchesOpenedLocation(GlobalGym g) {
     final loc = widget.locationId;
     if (loc == null || loc.isEmpty) return true;
-    if (g.locations.isEmpty) return true;
+    if (g.locations.isEmpty) {
+      final gymLocs = (_gym?['locations'] as List?) ?? const [];
+      return gymLocs.length <= 1;
+    }
     return g.locations.any((l) => l.id == loc);
   }
 
