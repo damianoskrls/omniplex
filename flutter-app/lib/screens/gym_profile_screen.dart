@@ -1399,7 +1399,8 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     // initialise to today on first build
     if (_scheduleDay == 0) _scheduleDay = today;
 
-    final filtered = schedule.where((e) => (e['day_of_week'] as int?) == _scheduleDay).toList();
+    final filtered = schedule.where((e) => _scheduleDow(e['day_of_week']) == _scheduleDay).toList()
+      ..sort((a, b) => _hhmm(a['start_time']).compareTo(_hhmm(b['start_time'])));
 
     if (schedule.isEmpty) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1411,7 +1412,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     }
 
     // Which days actually have entries
-    final activeDays = schedule.map((e) => e['day_of_week'] as int).toSet();
+    final activeDays = schedule.map((e) => _scheduleDow(e['day_of_week'])).whereType<int>().toSet();
 
     return Column(
       children: [
@@ -1478,8 +1479,35 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     );
   }
 
+  int? _scheduleDow(dynamic value) {
+    final n = value is int
+        ? value
+        : (value is num ? value.toInt() : int.tryParse('${value ?? ''}'));
+    if (n == null) return null;
+    if (n == 0) return 1;
+    return n;
+  }
+
+  String _hhmm(dynamic value) {
+    final s = (value ?? '').toString().trim();
+    if (s.length >= 5 && s[2] == ':') return s.substring(0, 5);
+    return s;
+  }
+
   Widget _buildClassCard(Map<String, dynamic> entry) {
     final color = _parseClassColor(entry['color'] as String?);
+    final start = _hhmm(entry['start_time']);
+    final end = _hhmm(entry['end_time']);
+    final name = (entry['service_name'] ?? entry['class_name'] ?? '').toString().trim();
+    final trainer = (entry['trainer_name'] ?? '').toString().trim();
+    final room = (entry['room_name'] ?? '').toString().trim();
+    final minsRaw = entry['duration_mins'];
+    final mins = minsRaw is num ? minsRaw.toInt() : int.tryParse('${minsRaw ?? ''}');
+    final details = <String>[
+      if (trainer.isNotEmpty) trainer,
+      if (mins != null && mins > 0) '$mins ${tr('λεπτά')}',
+      if (room.isNotEmpty) room,
+    ];
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1487,35 +1515,32 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _kBorder),
       ),
-      child: Row(children: [
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
         Container(
-          width: 4, height: 48,
+          width: 4, height: 52,
           decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
         ),
         const SizedBox(width: 12),
         SizedBox(
           width: 52,
-          child: Text(tr(entry['start_time'] as String? ?? ''),
-            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(start,
+              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+            if (end.isNotEmpty && end != start)
+              Text(end,
+                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: _kGray)),
+          ]),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(tr(entry['class_name'] as String? ?? ''),
+            Text(name.isEmpty ? '' : tr(name),
               style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-            if ((entry['trainer_name'] as String?) != null)
-              Text(tr(entry['trainer_name'] as String),
-                style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
-            if ((entry['equipment'] as String?) != null)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-                child: Text(tr(entry['equipment'] as String),
-                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+            if (details.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(details.join(' · '),
+                  style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
               ),
           ]),
         ),
