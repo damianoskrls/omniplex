@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { useBranch } from '../context/BranchContext';
 import {
   Target, UserCheck, Check, TrendingUp, Pencil, Trash2, RefreshCw,
   ChevronDown, X, Save, Plus, ChevronLeft, ChevronRight, BarChart2,
@@ -629,6 +630,7 @@ function ReportsTab({ locationId = '' }) {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function Trials() {
+  const { activeBranchId } = useBranch() || {};
   const [tab, setTab] = useState('calendar'); // 'calendar' | 'reports'
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [rows, setRows] = useState([]);
@@ -667,8 +669,8 @@ export default function Trials() {
       .finally(() => setAllLoading(false));
   };
 
-  useEffect(() => { reload(); }, [dateKey, locationId]);
-  useEffect(() => { if (showAll) loadAll(); }, [showAll, locationId]);
+  useEffect(() => { reload(); }, [dateKey, locationId, activeBranchId]);
+  useEffect(() => { if (showAll) loadAll(); }, [showAll, locationId, activeBranchId]);
   useEffect(() => {
     api.get('/client-admin/staff').then(r => setStaffList(r.data || [])).catch(() => {});
     api.get('/client-admin/services').then(r => setServices(r.data || [])).catch(() => {});

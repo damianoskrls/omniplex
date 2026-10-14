@@ -17,7 +17,15 @@ export function BranchProvider({ children }) {
       return;
     }
     api.get('/client-admin/locations')
-      .then(r => setBranches(r.data || []))
+      .then(r => {
+        const data = r.data || [];
+        const seen = new Set();
+        setBranches(data.filter(b => {
+          if (seen.has(b.id)) return false;
+          seen.add(b.id);
+          return true;
+        }));
+      })
       .catch(() => setBranches([]));
   }, [isOwner, token]);
 

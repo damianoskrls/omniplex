@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
+import { useBranch } from '../context/BranchContext';
 import StoreFilter from '../components/StoreFilter';
 import TrialSlotPicker from '../components/TrialSlotPicker';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 
 export default function PlanRequests() {
+  const { activeBranchId } = useBranch() || {};
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -33,7 +35,7 @@ export default function PlanRequests() {
     }
   }
 
-  useEffect(() => { load(); }, [locationId]);
+  useEffect(() => { load(); }, [locationId, activeBranchId]);
   useEffect(() => {
     if (!trialFor || trialFor.service_id) {
       setPlanServiceId('');

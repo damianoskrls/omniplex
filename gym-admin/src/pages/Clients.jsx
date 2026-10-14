@@ -43,7 +43,7 @@ const EMPTY = {
 };
 
 export default function Clients() {
-  const { activeBranch } = useBranch() || {};
+  const { activeBranch, activeBranchId } = useBranch() || {};
   const [clients, setClients] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
   const [pendingTotal, setPendingTotal] = useState(0);
@@ -90,7 +90,7 @@ export default function Clients() {
     }
   };
 
-  useEffect(() => { load(); }, [statusFilter, locationFilter]);
+  useEffect(() => { load(); }, [statusFilter, locationFilter, activeBranchId]);
 
   useEffect(() => {
     api.get('/client-admin/locations')
