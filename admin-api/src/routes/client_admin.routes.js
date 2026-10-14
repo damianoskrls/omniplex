@@ -7382,6 +7382,20 @@ router.put('/nutritionists/:id', requireClientAdmin, async (req, res) => {
   return res.json(updated);
 });
 
+router.delete('/nutritionists/:id', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  const nutritionistId = req.params.id;
+  try {
+    const [[row]] = await db.query('SELECT id FROM nutritionists WHERE id = ? AND business_id = ?', [nutritionistId, bizId]);
+    if (!row) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    await db.query('DELETE FROM nutritionist_passwords WHERE nutritionist_id = ?', [nutritionistId]);
+    await db.query('DELETE FROM nutritionists WHERE id = ? AND business_id = ?', [nutritionistId, bizId]);
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/nutritionist', requireNutritionStaff, async (req, res) => {
   const bizId = req.admin.businessId;
   if (req.admin.role === 'nutritionist') {

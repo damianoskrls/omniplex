@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { Plus, Save, X } from 'lucide-react';
+import { Plus, Save, Trash2, X } from 'lucide-react';
 import { useBranch } from '../context/BranchContext';
 
 const EMPTY = {
@@ -22,6 +22,8 @@ export default function Nutritionists() {
   const locations = branches || [];
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
 
@@ -53,6 +55,21 @@ export default function Nutritionists() {
       is_active: !!row.is_active,
       location_id: row.location_id || '',
     });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/client-admin/nutritionists/${deleteTarget.id}`);
+      toast.success('Διαγράφηκε');
+      setDeleteTarget(null);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Σφάλμα διαγραφής');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const closeForm = () => {
@@ -128,9 +145,12 @@ export default function Nutritionists() {
                     {row.is_active ? 'Ενεργός' : 'Ανενεργός'}
                   </span>
                 </td>
-                <td>
+                <td style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <button type="button" className="btn btn-sm btn-secondary" onClick={() => openEdit(row)}>
                     Επεξεργασία
+                  </button>
+                  <button type="button" className="btn btn-sm btn-danger" onClick={() => setDeleteTarget(row)} title="Διαγραφή">
+                    <Trash2 size={13} />
                   </button>
                 </td>
               </tr>
@@ -185,6 +205,28 @@ export default function Nutritionists() {
           <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
             <Save size={16} /> {saving ? 'Αποθήκευση...' : 'Αποθήκευση'}
           </button>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setDeleteTarget(null)}>
+          <div className="modal">
+            <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Trash2 size={18} color="#dc2626" />
+              Διαγραφή διατροφολόγου
+            </div>
+            <p style={{ margin: '12px 0 20px', color: 'var(--text-2)', fontSize: '0.9rem' }}>
+              Είσαι σίγουρος ότι θέλεις να διαγράψεις τον/την <strong>{deleteTarget.full_name}</strong>; Η ενέργεια αυτή δεν μπορεί να αναιρεθεί.
+            </p>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setDeleteTarget(null)}>
+                <X size={14} /> Ακύρωση
+              </button>
+              <button type="button" className="btn btn-danger" disabled={deleting} onClick={handleDelete}>
+                {deleting ? 'Διαγραφή...' : 'Διαγραφή'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </Layout>

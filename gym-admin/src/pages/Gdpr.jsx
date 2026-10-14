@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
-import { Link2, CheckCircle, Clock, Send, FileText, ChevronDown, ChevronUp, Copy } from 'lucide-react';
+import { Link2, CheckCircle, Clock, Send, FileText, ChevronDown, ChevronUp, Copy, Trash2 } from 'lucide-react';
 
 export default function Gdpr() {
   const [consents, setConsents] = useState([]);
@@ -51,6 +51,15 @@ export default function Gdpr() {
   function pickClient(c) {
     setForm(f => ({ ...f, user_id: c.id, full_name: c.full_name, phone: c.phone || '', email: c.email || '' }));
     setClientSearch('');
+  }
+
+  async function deleteConsent(id) {
+    if (!window.confirm('Διαγραφή αυτής της εγγραφής;')) return;
+    try {
+      await api.delete(`/gdpr/consents/${id}`);
+      toast.success('Διαγράφηκε');
+      setConsents(prev => prev.filter(c => c.id !== id));
+    } catch { toast.error('Σφάλμα διαγραφής'); }
   }
 
   async function sendConsent() {
@@ -179,7 +188,7 @@ export default function Gdpr() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Έγγραφο', 'Πελάτης', 'Τηλέφωνο', 'Αποστολή', 'Υπογραφή', 'Κατάσταση'].map(h => (
+                  {['Έγγραφο', 'Πελάτης', 'Τηλέφωνο', 'Αποστολή', 'Υπογραφή', 'Κατάσταση', ''].map(h => (
                     <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-3)', fontWeight: 600, fontSize: '0.75rem' }}>{h}</th>
                   ))}
                 </tr>
@@ -204,6 +213,17 @@ export default function Gdpr() {
                           <Clock size={13} /> Εκκρεμεί
                         </span>
                       )}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        style={{ padding: '4px 8px' }}
+                        onClick={() => deleteConsent(c.id)}
+                        title="Διαγραφή"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </td>
                   </tr>
                 ))}

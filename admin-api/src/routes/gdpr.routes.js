@@ -89,6 +89,21 @@ router.post('/consents', requireClientAdmin, async (req, res) => {
   }
 });
 
+// ── Admin: delete consent record ───────────────────────────────────────────
+router.delete('/consents/:id', requireClientAdmin, async (req, res) => {
+  const bizId = req.admin.businessId;
+  try {
+    const [result] = await db.query(
+      'DELETE FROM gdpr_consents WHERE id = ? AND (business_id COLLATE utf8mb4_unicode_ci) = ?',
+      [req.params.id, bizId],
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Δεν βρέθηκε' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Admin: get GDPR text template ──────────────────────────────────────────
 router.get('/template', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
