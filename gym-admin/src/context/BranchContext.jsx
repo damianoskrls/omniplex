@@ -34,6 +34,14 @@ export function BranchProvider({ children }) {
           return true;
         }).map(b => ({ ...b, siblingIds: idsByName[b.name.toLowerCase().trim()] }));
         setBranches(deduped);
+        // Re-sync sibling IDs after branches load (fixes stale localStorage on page refresh)
+        const storedId = localStorage.getItem('gym_admin_active_branch_id');
+        if (storedId) {
+          const branch = deduped.find(b => String(b.id) === storedId);
+          if (branch?.siblingIds?.length) {
+            localStorage.setItem('gym_admin_active_branch_ids', branch.siblingIds.join(','));
+          }
+        }
       })
       .catch(() => setBranches([]));
   }, [isOwner, token]);
