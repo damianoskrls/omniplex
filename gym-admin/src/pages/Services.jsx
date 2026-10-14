@@ -99,6 +99,7 @@ function ImageUploadBox({ label, accept, currentUrl, onUpload, onRemove, hint })
 
 export default function Services() {
   const { activeBranch, activeBranchId } = useBranch() || {};
+  const loadGen = useRef(0);
   const [services, setServices] = useState([]);
   const [plans, setPlans] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -175,12 +176,14 @@ export default function Services() {
   };
 
   const load = async () => {
+    const gen = ++loadGen.current;
     const [svc, pl, rm, ic] = await Promise.all([
       api.get('/client-admin/services'),
       api.get('/client-admin/plans'),
       api.get('/client-admin/rooms'),
       api.get('/client-admin/icons'),
     ]);
+    if (loadGen.current !== gen) return;
     setServices(svc.data);
     setPlans(pl.data);
     setRooms(rm.data);

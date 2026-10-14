@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useBranch } from '../context/BranchContext';
@@ -13,6 +13,7 @@ const EMPTY = { full_name: '', role: 'Trainer', phone: '', bio: '', color_hex: '
 
 export default function Staff() {
   const { activeBranchId } = useBranch() || {};
+  const loadGen = useRef(0);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [joinRequests, setJoinRequests] = useState([]);
@@ -24,16 +25,18 @@ export default function Staff() {
   const navigate = useNavigate();
 
   const load = async () => {
+    const gen = ++loadGen.current;
     setLoading(true);
     try {
       const [staffRes, jrRes] = await Promise.all([
         api.get('/client-admin/staff'),
         api.get('/client-admin/join-requests', { params: { status: 'pending' } }),
       ]);
+      if (loadGen.current !== gen) return;
       setStaff(staffRes.data || []);
       setJoinRequests((jrRes.data || []).filter(r => r.role === 'staff'));
     } catch { /* ignore */ } finally {
-      setLoading(false);
+      if (loadGen.current === gen) setLoading(false);
     }
   };
 

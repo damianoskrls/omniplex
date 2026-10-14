@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useBranch } from '../context/BranchContext';
 import Layout from '../components/Layout';
@@ -53,6 +53,7 @@ function bookingHour(startsAt) {
 
 export default function Bookings() {
   const { activeBranchId } = useBranch() || {};
+  const loadGen = useRef(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState('grouped');
   const [statusFilter, setStatusFilter] = useState('');
@@ -100,37 +101,41 @@ export default function Bookings() {
   const locationOptions = (calendar?.locations?.length ? calendar.locations : locations)
     .filter((l) => l.is_active !== 0 && l.is_active !== false);
 
-  const loadList = async () => {
+  const loadList = async (gen) => {
     const params = { ...(mode === 'day' ? { date } : mode === 'calendar' || mode === 'waitlist' || mode === 'grouped' ? { date } : {}) };
     if (locationId) params.location_id = locationId;
     const r = await api.get('/client-admin/bookings', { params });
+    if (loadGen.current !== gen) return;
     setBookings(r.data);
   };
 
-  const loadCalendar = async () => {
+  const loadCalendar = async (gen) => {
     const params = { date };
     if (locationId) params.location_id = locationId;
     const r = await api.get('/client-admin/calendar', { params });
+    if (loadGen.current !== gen) return;
     setCalendar(r.data);
   };
 
-  const loadWaitlist = async () => {
+  const loadWaitlist = async (gen) => {
     const r = await api.get('/client-admin/waitlist', { params: { date } });
+    if (loadGen.current !== gen) return;
     setWaitlist(r.data);
   };
 
   const load = async () => {
+    const gen = ++loadGen.current;
     setLoading(true);
     try {
       if (mode === 'calendar' || mode === 'grouped') {
-        await Promise.all([loadCalendar(), loadList()]);
+        await Promise.all([loadCalendar(gen), loadList(gen)]);
       } else if (mode === 'waitlist') {
-        await Promise.all([loadWaitlist(), loadList()]);
+        await Promise.all([loadWaitlist(gen), loadList(gen)]);
       } else {
-        await loadList();
+        await loadList(gen);
       }
     } finally {
-      setLoading(false);
+      if (loadGen.current === gen) setLoading(false);
     }
   };
 

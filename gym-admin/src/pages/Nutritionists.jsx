@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
@@ -17,6 +17,7 @@ const EMPTY = {
 
 export default function Nutritionists() {
   const { activeBranchId, branches } = useBranch() || {};
+  const loadGen = useRef(0);
   const [rows, setRows] = useState([]);
   const locations = branches || [];
   const [loading, setLoading] = useState(true);
@@ -25,7 +26,9 @@ export default function Nutritionists() {
   const [form, setForm] = useState(EMPTY);
 
   const load = async () => {
+    const gen = ++loadGen.current;
     const listRes = await api.get('/client-admin/nutritionists');
+    if (loadGen.current !== gen) return;
     setRows(listRes.data || []);
   };
 

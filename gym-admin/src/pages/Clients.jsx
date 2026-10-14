@@ -45,6 +45,7 @@ const EMPTY = {
 
 export default function Clients() {
   const { activeBranch, activeBranchId } = useBranch() || {};
+  const loadGen = useRef(0);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [joinRequests, setJoinRequests] = useState([]);
@@ -76,6 +77,7 @@ export default function Clients() {
   const visibleJoinRequests = joinRequests.filter((r) => !locationFilter || r.location_id === locationFilter);
 
   const load = async () => {
+    const gen = ++loadGen.current;
     setLoading(true);
     const params = inTrash ? { view: 'trash' } : (statusFilter ? { status: statusFilter } : {});
     if (locationFilter) {
@@ -88,6 +90,7 @@ export default function Clients() {
         inTrash ? Promise.resolve({ data: {} }) : api.get('/client-admin/dashboard'),
         inTrash ? Promise.resolve({ data: [] }) : api.get('/client-admin/join-requests', { params: { status: 'pending' } }),
       ]);
+      if (loadGen.current !== gen) return;
       setClients(clientsRes.data);
       if (!inTrash) {
         setPendingTotal(dashRes.data.pending_clients || 0);
@@ -96,7 +99,7 @@ export default function Clients() {
     } catch {
       /* ignore */
     } finally {
-      setLoading(false);
+      if (loadGen.current === gen) setLoading(false);
     }
   };
 
