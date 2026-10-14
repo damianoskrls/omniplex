@@ -19,7 +19,7 @@ function colorForService(serviceId) {
 }
 
 const EMPTY_FORM = {
-  day_of_week: 1, start_time: '09:00', service_id: '', staff_id: '', max_capacity: '', room_id: '', location_id: '',
+  day_of_week: 1, start_time: '09:00', service_id: '', staff_id: '', max_capacity: '', room_id: '', location_id: '', location_ids: [],
 };
 
 function calcEndTime(startTime, durationMins) {
@@ -144,16 +144,24 @@ export default function ClassSchedule() {
   useEffect(() => { load(); }, [activeBranchId]);
 
   // Compute filtered staff/rooms for the currently open modal based on its location
-  const modalLocationId = form.location_id || activeBranchId || null;
+  const isMultiAdd = !activeBranchId && modal === 'add';
+  const selectedLocIds = isMultiAdd ? (form.location_ids || []) : [form.location_id || activeBranchId || ''].filter(Boolean);
+  const modalLocationId = selectedLocIds.length === 1 ? selectedLocIds[0] : null;
   const modalStaff = modalLocationId
     ? staff.filter(s => s.location_ids?.includes(String(modalLocationId)))
     : staff;
   const modalRooms = modalLocationId
     ? rooms.filter(r => String(r.location_id) === String(modalLocationId))
     : rooms;
+  const multiLocSelected = isMultiAdd && (form.location_ids || []).length > 1;
 
   function openAdd() {
-    setForm({ ...EMPTY_FORM, day_of_week: activeDay, location_id: activeBranchId || '' });
+    setForm({
+      ...EMPTY_FORM,
+      day_of_week: activeDay,
+      location_id: activeBranchId || '',
+      location_ids: activeBranchId ? [String(activeBranchId)] : [],
+    });
     setModal('add');
     setError(null);
   }
@@ -183,23 +191,33 @@ export default function ClassSchedule() {
 
   async function handleSave() {
     if (!form.service_id) { setError('Επίλεξε υπηρεσία'); return; }
-    const locId = form.location_id || activeBranchId || null;
-    if (!activeBranchId && !form.location_id) { setError('Επίλεξε κατάστημα'); return; }
     setSaving(true); setError(null);
     try {
-      const payload = {
-        day_of_week:  form.day_of_week,
-        start_time:   form.start_time,
-        service_id:   form.service_id,
-        staff_id:     form.staff_id || null,
-        max_capacity: form.max_capacity ? parseInt(form.max_capacity) : null,
-        room_id:      form.room_id || null,
-        location_id:  locId,
-      };
       if (modal === 'add') {
-        await api.post('/client-admin/class-schedules', payload);
+        const locIds = isMultiAdd
+          ? (form.location_ids || [])
+          : [form.location_id || activeBranchId || null].filter(Boolean);
+        if (!activeBranchId && locIds.length === 0) { setError('Επίλεξε τουλάχιστον ένα κατάστημα'); setSaving(false); return; }
+        await Promise.all(locIds.map(locId => api.post('/client-admin/class-schedules', {
+          day_of_week:  form.day_of_week,
+          start_time:   form.start_time,
+          service_id:   form.service_id,
+          staff_id:     multiLocSelected ? null : (form.staff_id || null),
+          max_capacity: form.max_capacity ? parseInt(form.max_capacity) : null,
+          room_id:      multiLocSelected ? null : (form.room_id || null),
+          location_id:  locId,
+        })));
       } else {
-        await api.put(`/client-admin/class-schedules/${modal.id}`, payload);
+        const locId = form.location_id || activeBranchId || null;
+        await api.put(`/client-admin/class-schedules/${modal.id}`, {
+          day_of_week:  form.day_of_week,
+          start_time:   form.start_time,
+          service_id:   form.service_id,
+          staff_id:     form.staff_id || null,
+          max_capacity: form.max_capacity ? parseInt(form.max_capacity) : null,
+          room_id:      form.room_id || null,
+          location_id:  locId,
+        });
       }
       await load();
       setModal(null);
@@ -336,14 +354,36 @@ export default function ClassSchedule() {
             {!activeBranchId && branches.length > 1 && (
               <div className="form-group">
                 <label className="form-label">Κατάστημα *</label>
-                <select
-                  className="form-input"
-                  value={form.location_id}
-                  onChange={e => setForm(f => ({ ...f, location_id: e.target.value, staff_id: '', room_id: '' }))}
-                >
-                  <option value="">— Επίλεξε κατάστημα —</option>
-                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
+                {modal === 'add' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 10px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 8 }}>
+                    {branches.map(b => {
+                      const checked = (form.location_ids || []).includes(String(b.id));
+                      return (
+                        <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.875rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const ids = form.location_ids || [];
+                              const next = checked ? ids.filter(id => id !== String(b.id)) : [...ids, String(b.id)];
+                              setForm(f => ({ ...f, location_ids: next, staff_id: next.length > 1 ? '' : f.staff_id, room_id: next.length > 1 ? '' : f.room_id }));
+                            }}
+                          />
+                          {b.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <select
+                    className="form-input"
+                    value={form.location_id}
+                    onChange={e => setForm(f => ({ ...f, location_id: e.target.value, staff_id: '', room_id: '' }))}
+                  >
+                    <option value="">— Επίλεξε κατάστημα —</option>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                )}
               </div>
             )}
 
@@ -394,29 +434,35 @@ export default function ClassSchedule() {
               })()}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="form-group">
-                <label className="form-label">Εκπαιδευτής</label>
-                <StaffDropdown
-                  staff={modalStaff}
-                  value={form.staff_id}
-                  onChange={v => setForm(f => ({ ...f, staff_id: v }))}
-                />
+            {multiLocSelected ? (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #888)', margin: '4px 0 8px', fontStyle: 'italic' }}>
+                Εκπαιδευτής και αίθουσα θα οριστούν ξεχωριστά ανά κατάστημα.
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Εκπαιδευτής</label>
+                  <StaffDropdown
+                    staff={modalStaff}
+                    value={form.staff_id}
+                    onChange={v => setForm(f => ({ ...f, staff_id: v }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Αίθουσα</label>
+                  <select
+                    className="form-input"
+                    value={form.room_id}
+                    onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}
+                  >
+                    <option value="">— Χωρίς αίθουσα —</option>
+                    {modalRooms.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Αίθουσα</label>
-                <select
-                  className="form-input"
-                  value={form.room_id}
-                  onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}
-                >
-                  <option value="">— Χωρίς αίθουσα —</option>
-                  {modalRooms.map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Μέγ. Χωρητικότητα</label>

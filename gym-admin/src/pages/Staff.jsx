@@ -112,6 +112,27 @@ export default function Staff() {
       )}
 
       {loading && <SkeletonCards count={6} />}
+      {!loading && staff.length === 0 && joinRequests.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '64px 24px', borderRadius: 16, border: '2px dashed var(--border, #e5e7eb)' }}>
+          <div style={{ marginBottom: 16 }}>
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.35 }}>
+              <circle cx="32" cy="22" r="12" stroke="currentColor" strokeWidth="2.5" fill="none"/>
+              <path d="M10 54c0-12.15 9.85-22 22-22s22 9.85 22 22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+              <circle cx="50" cy="20" r="7" stroke="currentColor" strokeWidth="2" fill="none"/>
+              <path d="M57 36c0-7.18 3-8 3-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              <circle cx="14" cy="20" r="7" stroke="currentColor" strokeWidth="2" fill="none"/>
+              <path d="M7 36c0-7.18-3-8-3-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+            </svg>
+          </div>
+          <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: 6 }}>Δεν υπάρχει ακόμα προσωπικό</div>
+          <p style={{ color: 'var(--text-secondary, #888)', fontSize: '0.875rem', maxWidth: 320, margin: '0 auto 20px' }}>
+            Πρόσθεσε το πρώτο μέλος της ομάδας σου — trainer, υπάλληλος ή διαχειριστής.
+          </p>
+          <button className="btn btn-primary" onClick={() => setModal(true)}>
+            <Plus size={15} /> Προσθήκη πρώτου μέλους
+          </button>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
         {!loading && staff.map(s => (
           <div className="card" key={s.id}>
