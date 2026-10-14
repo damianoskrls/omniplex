@@ -178,10 +178,33 @@ const {
 
 const router = express.Router();
 
-// Parse location_ids (comma-sep) from req.query — handles both old location_id and new location_ids param
+// Parse location_ids (comma-sep) from req.query — handles both old location_id and new location_ids param.
+// A location-scoped admin is always locked to their own store, even if the client sends other ids.
 function parseLocIds(req) {
+  if (req.admin?.locationId) return [String(req.admin.locationId)];
   const raw = req.query.location_ids || req.query.location_id || '';
   return raw.toString().split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function userAtLocationsSql(userExpr, ids) {
+  if (!ids.length) return { sql: '', params: [] };
+  const ph = ids.map(() => '?').join(',');
+  return {
+    sql: ` AND EXISTS (SELECT 1 FROM user_locations ul WHERE ul.user_id = ${userExpr} AND ul.location_id IN (${ph}))`,
+    params: ids,
+  };
+}
+
+function serviceAtLocationsSql(serviceExpr, ids) {
+  if (!ids.length) return { sql: '', params: [] };
+  const ph = ids.map(() => '?').join(',');
+  return {
+    sql: ` AND (
+      EXISTS (SELECT 1 FROM service_locations sl WHERE sl.service_id = ${serviceExpr} AND sl.location_id IN (${ph}))
+      OR NOT EXISTS (SELECT 1 FROM service_locations sl0 WHERE sl0.service_id = ${serviceExpr})
+    )`,
+    params: ids,
+  };
 }
 
 function locInClause(ids) {
@@ -530,16 +553,13 @@ router.post('/login', async (req, res) => {
 // ============================================================
 router.get('/dashboard', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const loc = String(req.query.location_ids || req.query.location_id || '').split(',')[0].trim() || null;
-  const book = loc ? ' AND location_id = ?' : '';
-  const bookB = loc ? ' AND b.location_id = ?' : '';
-  const userHere = loc
-    ? ' AND EXISTS (SELECT 1 FROM user_locations ul WHERE ul.user_id = users.id AND ul.location_id = ?)'
-    : '';
-  const memberHere = loc
-    ? ' AND EXISTS (SELECT 1 FROM user_locations ul WHERE ul.user_id = u.id AND ul.location_id = ?)'
-    : '';
-  const p = (...extra) => (loc ? [bizId, loc, ...extra] : [bizId, ...extra]);
+  const locIds = parseLocIds(req);
+  const ph = locIds.map(() => '?').join(',');
+  const book = locIds.length ? ` AND location_id IN (${ph})` : '';
+  const bookB = locIds.length ? ` AND b.location_id IN (${ph})` : '';
+  const userHere = userAtLocationsSql('users.id', locIds).sql;
+  const memberHere = userAtLocationsSql('u.id', locIds).sql;
+  const p = (...extra) => (locIds.length ? [bizId, ...locIds, ...extra] : [bizId, ...extra]);
   try {
     const [[todayBookings]] = await db.query(
       `SELECT COUNT(*) AS total FROM bookings WHERE business_id=?${book} AND DATE(starts_at)=CURDATE() AND status NOT IN ('cancelled','no_show')`,
@@ -642,13 +662,15 @@ router.get('/dashboard', requireClientAdmin, async (req, res) => {
       p(),
     );
 
+    const waitSvc = serviceAtLocationsSql('waitlist_entries.service_id', locIds);
     const [[waitlistPending]] = await db.query(
       `SELECT COUNT(*) AS total FROM waitlist_entries
        WHERE business_id = ? AND status IN ('waiting', 'offered')
-         AND DATE(starts_at) >= CURDATE()`,
-      [bizId],
+         AND DATE(starts_at) >= CURDATE()${waitSvc.sql}`,
+      [bizId, ...waitSvc.params],
     );
 
+    const waitTodaySvc = serviceAtLocationsSql('w.service_id', locIds);
     const [waitlistToday] = await db.query(
       `SELECT w.id, w.starts_at, w.status, w.position, u.full_name AS user_name,
               sv.name AS service_name
@@ -656,10 +678,10 @@ router.get('/dashboard', requireClientAdmin, async (req, res) => {
        JOIN users u ON u.id = w.user_id
        JOIN services sv ON sv.id = w.service_id
        WHERE w.business_id = ? AND status IN ('waiting', 'offered')
-         AND DATE(w.starts_at) = CURDATE()
+         AND DATE(w.starts_at) = CURDATE()${waitTodaySvc.sql}
        ORDER BY w.starts_at ASC, w.position ASC
        LIMIT 8`,
-      [bizId],
+      [bizId, ...waitTodaySvc.params],
     );
 
     return res.json({
@@ -690,47 +712,68 @@ router.get('/dashboard', requireClientAdmin, async (req, res) => {
 // App installs, messages unread, marketplace pending orders + revenue
 router.get('/dashboard-extras', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
+  const locIds = parseLocIds(req);
+  const appHere = userAtLocationsSql('device_tokens.user_id', locIds);
+  const threadHere = userAtLocationsSql('mt.client_user_id', locIds);
+  const orderPh = locIds.map(() => '?').join(',');
+  const orderHere = locIds.length
+    ? ` AND (
+        location_id IN (${orderPh})
+        OR (location_id IS NULL AND EXISTS (
+          SELECT 1 FROM user_locations ul WHERE ul.user_id = orders.user_id AND ul.location_id IN (${orderPh})
+        ))
+      )`
+    : '';
+  const orderHereAliased = locIds.length
+    ? ` AND (
+        o.location_id IN (${orderPh})
+        OR (o.location_id IS NULL AND EXISTS (
+          SELECT 1 FROM user_locations ul WHERE ul.user_id = o.user_id AND ul.location_id IN (${orderPh})
+        ))
+      )`
+    : '';
+  const orderParams = locIds.length ? [...locIds, ...locIds] : [];
   try {
     const [[appTotal]] = await db.query(
-      'SELECT COUNT(DISTINCT user_id) AS total FROM device_tokens WHERE business_id=?',
-      [bizId]
+      `SELECT COUNT(DISTINCT user_id) AS total FROM device_tokens WHERE business_id=?${appHere.sql}`,
+      [bizId, ...appHere.params]
     );
     const [appByPlatform] = await db.query(
-      'SELECT platform, COUNT(DISTINCT user_id) AS cnt FROM device_tokens WHERE business_id=? GROUP BY platform',
-      [bizId]
+      `SELECT platform, COUNT(DISTINCT user_id) AS cnt FROM device_tokens WHERE business_id=?${appHere.sql} GROUP BY platform`,
+      [bizId, ...appHere.params]
     );
     const [[messagesUnread]] = await db.query(
-      `SELECT COUNT(*) AS total FROM messages m
-       JOIN message_threads mt ON mt.id = m.thread_id
-       WHERE mt.business_id=? AND m.sender_type='customer' AND m.is_read=0`,
-      [bizId]
+      `SELECT COALESCE(SUM(mt.staff_unread_count), 0) AS total
+       FROM message_threads mt
+       WHERE mt.business_id=? AND mt.peer_role='admin'${threadHere.sql}`,
+      [bizId, ...threadHere.params]
     ).catch(() => [[{ total: 0 }]]);
     const [recentMessages] = await db.query(
       `SELECT mt.id AS thread_id, u.full_name, u.phone,
-              m.body, m.created_at, m.is_read
+              mt.last_message_preview AS body, mt.last_message_at AS created_at,
+              IF(mt.staff_unread_count > 0, 0, 1) AS is_read
        FROM message_threads mt
-       JOIN users u ON u.id = mt.user_id
-       JOIN messages m ON m.id = (
-         SELECT id FROM messages WHERE thread_id=mt.id ORDER BY created_at DESC LIMIT 1
-       )
-       WHERE mt.business_id=?
-       ORDER BY m.created_at DESC LIMIT 5`,
-      [bizId]
+       JOIN users u ON u.id = mt.client_user_id
+       WHERE mt.business_id=? AND mt.peer_role='admin'${threadHere.sql}
+       ORDER BY mt.last_message_at DESC LIMIT 5`,
+      [bizId, ...threadHere.params]
     ).catch(() => [[]]).then(r => r[0]);
     const [[ordersPending]] = await db.query(
-      "SELECT COUNT(*) AS total FROM orders WHERE business_id=? AND status IN ('pending','paid')",
-      [bizId]
+      `SELECT COUNT(*) AS total FROM orders
+       WHERE business_id=? AND status IN ('pending','paid')${orderHere}`,
+      [bizId, ...orderParams]
     ).catch(() => [[{ total: 0 }]]);
     const [recentOrders] = await db.query(
       `SELECT o.id, o.status, o.total_cents, o.created_at,
               o.customer_name, o.customer_phone
-       FROM orders WHERE business_id=?
-       ORDER BY created_at DESC LIMIT 5`,
-      [bizId]
+       FROM orders o WHERE o.business_id=?${orderHereAliased}
+       ORDER BY o.created_at DESC LIMIT 5`,
+      [bizId, ...orderParams]
     ).catch(() => [[]]).then(r => r[0]);
     const [[ordersRevenue]] = await db.query(
-      "SELECT COALESCE(SUM(total_cents),0) AS total FROM orders WHERE business_id=? AND status NOT IN ('cancelled','refunded') AND MONTH(created_at)=MONTH(NOW())",
-      [bizId]
+      `SELECT COALESCE(SUM(total_cents),0) AS total FROM orders
+       WHERE business_id=? AND status NOT IN ('cancelled','refunded') AND MONTH(created_at)=MONTH(NOW())${orderHere}`,
+      [bizId, ...orderParams]
     ).catch(() => [[{ total: 0 }]]);
 
     const platforms = {};
@@ -770,6 +813,7 @@ router.get('/search', requireClientAdmin, async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json([]);
   const like = `%${q}%`;
+  const here = userAtLocationsSql('u.id', parseLocIds(req));
   try {
     const [rows] = await db.query(`
       SELECT u.id, u.full_name, u.phone, u.email, u.account_status,
@@ -779,10 +823,11 @@ router.get('/search', requireClientAdmin, async (req, res) => {
                                    AND m.membership_status IN ('active','trial')
       WHERE u.business_id = ? AND u.deleted_at IS NULL
         AND (u.full_name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)
+        ${here.sql}
       GROUP BY u.id
       ORDER BY u.full_name
       LIMIT 8
-    `, [bizId, like, like, like]);
+    `, [bizId, like, like, like, ...here.params]);
     return res.json(rows);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -3239,6 +3284,7 @@ router.post('/trials', requireClientAdmin, async (req, res) => {
 router.get('/expiring-memberships', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
   const days = parseInt(req.query.days || '3', 10);
+  const memberHere = userAtLocationsSql('u.id', parseLocIds(req));
   try {
     const [rows] = await db.query(`
       SELECT
@@ -3262,9 +3308,9 @@ router.get('/expiring-memberships', requireClientAdmin, async (req, res) => {
       WHERE m.business_id = ?
         AND m.membership_status NOT IN ('trial', 'cancelled')
         AND m.valid_until BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
-        AND u.deleted_at IS NULL
+        AND u.deleted_at IS NULL${memberHere.sql}
       ORDER BY m.valid_until ASC, u.full_name ASC
-    `, [bizId, days]);
+    `, [bizId, days, ...memberHere.params]);
     return res.json(rows);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -4994,8 +5040,10 @@ router.put('/staff/:id/services', requireClientAdmin, async (req, res) => {
 // ============================================================
 router.get('/calendar', requireClientAdmin, async (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0, 10);
-  const { location_id } = req.query;
+  const locIds = parseLocIds(req);
+  const location_id = locIds[0] || null;
   const bizId = req.admin.businessId;
+  const inPh = locIds.map(() => '?').join(',');
   try {
     const [[{ wd }]] = await db.query('SELECT WEEKDAY(?) AS wd', [date]);
 
@@ -5006,9 +5054,9 @@ router.get('/calendar', requireClientAdmin, async (req, res) => {
         AND b.status NOT IN ('cancelled', 'no_show')
         AND ${sqlGymServiceCategories('sv')}`;
     const bookingParams = [bizId, date];
-    if (location_id) {
-      bookingQ += ' AND b.location_id = ?';
-      bookingParams.push(location_id);
+    if (locIds.length) {
+      bookingQ += ` AND b.location_id IN (${inPh})`;
+      bookingParams.push(...locIds);
     }
     bookingQ += ' ORDER BY b.starts_at ASC';
     const [bookings] = await db.query(bookingQ, bookingParams);
@@ -5020,26 +5068,36 @@ router.get('/calendar', requireClientAdmin, async (req, res) => {
       WHERE sss.business_id = ? AND sss.weekday = ? AND sss.is_active = 1
         AND ${sqlGymServiceCategories('sv')}`;
     const scheduleParams = [bizId, wd];
-    if (location_id) {
-      scheduleQ += ' AND sss.location_id = ?';
-      scheduleParams.push(location_id);
+    if (locIds.length) {
+      scheduleQ += ` AND (sss.location_id IN (${inPh}) OR sss.location_id IS NULL)`;
+      scheduleParams.push(...locIds);
     }
     scheduleQ += ' ORDER BY sss.start_time';
     const [schedules] = await db.query(scheduleQ, scheduleParams);
 
-    const [staff] = await db.query(
-      `SELECT id, full_name, color_hex, avatar_url, role FROM staff WHERE ${GYM_STAFF_WHERE} ORDER BY full_name`,
-      [bizId]
-    );
+    let staffQ = `SELECT id, full_name, color_hex, avatar_url, role FROM staff WHERE ${GYM_STAFF_WHERE}`;
+    const staffParams = [bizId];
+    if (locIds.length) {
+      staffQ += ` AND (
+        NOT EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = staff.id)
+        OR EXISTS (SELECT 1 FROM staff_locations sl WHERE sl.staff_id = staff.id AND sl.location_id IN (${inPh}))
+      )`;
+      staffParams.push(...locIds);
+    }
+    staffQ += ' ORDER BY full_name';
+    const [staff] = await db.query(staffQ, staffParams);
 
+    const calSvc = serviceAtLocationsSql('s.id', locIds);
     const [services] = await db.query(
       `SELECT id, name, image_url, duration_mins, category
        FROM services s
        WHERE s.business_id = ? AND s.is_active = 1 AND ${sqlGymServiceCategories('s')}
+       ${calSvc.sql}
        ORDER BY s.name`,
-      [bizId]
+      [bizId, ...calSvc.params]
     );
 
+    const calWait = serviceAtLocationsSql('w.service_id', locIds);
     const [waitlist] = await db.query(`
       SELECT w.id, w.service_id, w.starts_at, w.status, w.position,
              u.full_name AS user_name, sv.name AS service_name, sv.image_url AS service_image_url
@@ -5049,8 +5107,9 @@ router.get('/calendar', requireClientAdmin, async (req, res) => {
       WHERE w.business_id = ? AND DATE(w.starts_at) = ?
         AND w.status IN ('waiting', 'offered')
         AND ${sqlGymServiceCategories('sv')}
+        ${calWait.sql}
       ORDER BY w.starts_at, w.position
-    `, [bizId, date]);
+    `, [bizId, date, ...calWait.params]);
 
     const locations = await listLocations(db, bizId, { activeOnly: true });
 
@@ -5063,26 +5122,34 @@ router.get('/calendar', requireClientAdmin, async (req, res) => {
 // ============================================================
 // NOTIFICATIONS
 // ============================================================
-function notificationLocationSql(admin, alias = '') {
-  if (!admin.locationId) return { sql: '', params: [] };
+function notificationLocationSql(admin, alias = '', queryIds = []) {
+  const ids = admin.locationId
+    ? [String(admin.locationId)]
+    : queryIds.map(String).filter(Boolean);
+  if (!ids.length) return { sql: '', params: [] };
   const col = alias ? `${alias}.location_id` : 'location_id';
   const payload = alias ? `${alias}.payload` : 'payload';
+  const ph = ids.map(() => '?').join(',');
   return {
     sql: ` AND (
-      ${col} = ?
+      ${col} IN (${ph})
       OR (
-        ${col} IS NULL
-        AND JSON_VALID(${payload})
-        AND JSON_UNQUOTE(JSON_EXTRACT(${payload}, '$.location_id')) = ?
+        ${col} IS NULL AND (
+          ${payload} IS NULL
+          OR NOT JSON_VALID(${payload})
+          OR JSON_EXTRACT(${payload}, '$.location_id') IS NULL
+          OR JSON_UNQUOTE(JSON_EXTRACT(${payload}, '$.location_id')) = ''
+          OR JSON_UNQUOTE(JSON_EXTRACT(${payload}, '$.location_id')) IN (${ph})
+        )
       )
     )`,
-    params: [admin.locationId, admin.locationId],
+    params: [...ids, ...ids],
   };
 }
 
 router.get('/notifications', requireClientAdmin, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 30, 100);
-  const scope = notificationLocationSql(req.admin, 'n');
+  const scope = notificationLocationSql(req.admin, 'n', parseLocIds(req));
   const [rows] = await db.query(`
     SELECT n.id, n.type, n.title, n.body, n.payload, n.is_read, n.created_at, n.location_id,
            l.name AS location_name
@@ -5092,7 +5159,7 @@ router.get('/notifications', requireClientAdmin, async (req, res) => {
     ORDER BY n.created_at DESC
     LIMIT ?
   `, [req.admin.businessId, ...scope.params, limit]);
-  const countScope = notificationLocationSql(req.admin);
+  const countScope = notificationLocationSql(req.admin, '', parseLocIds(req));
   const [[{ unread }]] = await db.query(
     `SELECT COUNT(*) AS unread FROM admin_notifications WHERE business_id = ? AND is_read = 0${countScope.sql}`,
     [req.admin.businessId, ...countScope.params]
@@ -5107,7 +5174,7 @@ router.get('/notifications', requireClientAdmin, async (req, res) => {
 });
 
 router.patch('/notifications/read-all', requireClientAdmin, async (req, res) => {
-  const scope = notificationLocationSql(req.admin);
+  const scope = notificationLocationSql(req.admin, '', parseLocIds(req));
   await db.query(
     `UPDATE admin_notifications SET is_read = 1 WHERE business_id = ? AND is_read = 0${scope.sql}`,
     [req.admin.businessId, ...scope.params]
@@ -5116,7 +5183,7 @@ router.patch('/notifications/read-all', requireClientAdmin, async (req, res) => 
 });
 
 router.patch('/notifications/:id/read', requireClientAdmin, async (req, res) => {
-  const scope = notificationLocationSql(req.admin);
+  const scope = notificationLocationSql(req.admin, '', parseLocIds(req));
   await db.query(
     `UPDATE admin_notifications SET is_read = 1 WHERE id = ? AND business_id = ?${scope.sql}`,
     [req.params.id, req.admin.businessId, ...scope.params]
@@ -5128,6 +5195,7 @@ router.patch('/notifications/:id/read', requireClientAdmin, async (req, res) => 
 // WAITLIST (admin)
 // ============================================================
 router.get('/waitlist', requireClientAdmin, async (req, res) => {
+  const waitSvc = serviceAtLocationsSql('w.service_id', parseLocIds(req));
   let q = `
     SELECT w.id, w.user_id, w.service_id, w.staff_id, w.starts_at, w.ends_at,
            w.status, w.position, w.created_at,
@@ -5140,8 +5208,9 @@ router.get('/waitlist', requireClientAdmin, async (req, res) => {
     WHERE w.business_id = ?
       AND w.status IN ('waiting', 'offered')
       AND ${sqlGymServiceCategories('sv')}
+      ${waitSvc.sql}
   `;
-  const params = [req.admin.businessId];
+  const params = [req.admin.businessId, ...waitSvc.params];
   if (req.query.date) {
     q += ' AND DATE(w.starts_at) = ?';
     params.push(req.query.date);
@@ -8959,7 +9028,7 @@ async function ensureJoinedNutritionist(dbConn, { bizId, staffId, fullName, emai
 // ============================================================
 router.get('/join-requests', requireClientAdmin, async (req, res) => {
   const { status = 'pending' } = req.query;
-  const loc = String(req.query.location_id || '').trim();
+  const locIds = parseLocIds(req);
   try {
     const params = [req.admin.businessId];
     let where = 'WHERE jr.business_id = ?';
@@ -8967,9 +9036,9 @@ router.get('/join-requests', requireClientAdmin, async (req, res) => {
       where += ' AND jr.status = ?';
       params.push(status);
     }
-    if (loc) {
-      where += ' AND jr.location_id = ?';
-      params.push(loc);
+    if (locIds.length) {
+      where += ` AND jr.location_id IN (${locIds.map(() => '?').join(',')})`;
+      params.push(...locIds);
     }
     const [rows] = await db.query(`
       SELECT jr.id, jr.global_user_id, jr.full_name, jr.email, jr.phone,

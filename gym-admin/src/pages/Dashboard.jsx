@@ -191,7 +191,7 @@ export default function Dashboard() {
   function loadTrials() {
     const today = new Date().toISOString().slice(0, 10);
     const params = { from: today };
-    if (locationId) params.location_id = locationId;
+    if (locationId && !activeBranchId) params.location_id = locationId;
     api.get('/client-admin/trials', { params })
       .then(r => setTrials((r.data || []).filter(t => new Date(t.starts_at) >= new Date())))
       .catch(() => {});
@@ -214,13 +214,23 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
+    setLocationId('');
+    setEditingTrial(null);
+    setTrialModalOpen(false);
+    setBookingModalOpen(false);
+    setNoteTrialId(null);
+    setNoteText('');
+  }, [activeBranchId]);
+
+  useEffect(() => {
     let cancelled = false;
+    setTrials([]);
     const today = new Date().toISOString().slice(0, 10);
     const params = { from: today };
-    if (locationId) params.location_id = locationId;
+    if (locationId && !activeBranchId) params.location_id = locationId;
     api.get('/client-admin/trials', { params })
       .then(r => { if (!cancelled) setTrials((r.data || []).filter(t => new Date(t.starts_at) >= new Date())); })
-      .catch(() => {});
+      .catch(() => { if (!cancelled) setTrials([]); });
     return () => { cancelled = true; };
   }, [locationId, activeBranchId]);
 
@@ -233,6 +243,10 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setStats(null);
+    setExtras(null);
+    setExpiringMemberships([]);
+    setExpiringModalOpen(false);
     api.get('/client-admin/dashboard')
       .then(async (r) => enrichDashboardData(r.data))
       .then((data) => { if (!cancelled) setStats(data); })
@@ -242,11 +256,12 @@ export default function Dashboard() {
         toast.error(err.response?.data?.error || 'Δεν φορτώθηκε το dashboard');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
-    api.get('/client-admin/dashboard-extras').then(r => { if (!cancelled) setExtras(r.data); }).catch(() => {});
+    api.get('/client-admin/dashboard-extras').then(r => { if (!cancelled) setExtras(r.data); }).catch(() => { if (!cancelled) setExtras(null); });
 
-    // Check for expiring memberships — show modal once per calendar day
+    // Check for expiring memberships — show modal once per calendar day, per store
     const todayKey = new Date().toISOString().slice(0, 10);
-    const dismissed = localStorage.getItem('expiring_dismissed_date');
+    const dismissKey = `expiring_dismissed_date:${activeBranchId || 'all'}`;
+    const dismissed = localStorage.getItem(dismissKey);
     if (dismissed !== todayKey) {
       api.get('/client-admin/expiring-memberships').then(r => {
         if (!cancelled && r.data && r.data.length > 0) {
@@ -279,8 +294,9 @@ export default function Dashboard() {
   ] : [];
 
   const now = new Date();
+  const sessionFilterId = activeBranchId ? '' : locationId;
   const todaySessions = (stats?.today_sessions || []).filter(
-    (s) => !locationId || String(s.location_id) === String(locationId),
+    (s) => !sessionFilterId || String(s.location_id) === String(sessionFilterId),
   );
 
   return (
@@ -415,7 +431,7 @@ export default function Dashboard() {
             memberships={expiringModalOpen ? expiringMemberships : []}
             onClose={() => {
               setExpiringModalOpen(false);
-              localStorage.setItem('expiring_dismissed_date', new Date().toISOString().slice(0, 10));
+              localStorage.setItem(`expiring_dismissed_date:${activeBranchId || 'all'}`, new Date().toISOString().slice(0, 10));
             }}
           />
 
@@ -442,7 +458,7 @@ export default function Dashboard() {
                   <h2 className="dash-widget__title"><Calendar size={18} /> Κρατήσεις σήμερα</h2>
                   <p className="dash-widget__sub">{todaySessions.length} ραντεβού στο πρόγραμμα</p>
                 </div>
-                <Link to={locationId ? `/bookings?location_id=${locationId}` : '/bookings'} className="btn btn-secondary btn-sm">Όλες οι κρατήσεις</Link>
+                <Link to={!activeBranchId && locationId ? `/bookings?location_id=${locationId}` : '/bookings'} className="btn btn-secondary btn-sm">Όλες οι κρατήσεις</Link>
               </div>
               <StoreFilter locations={locations} value={locationId} onChange={setLocationId} />
               {!todaySessions.length ? (

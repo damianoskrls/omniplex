@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, User, X, Clock, Users, AlertTriangle, Calendar, TrendingUp, ArrowUpRight } from 'lucide-react';
 import api from '../api/client';
+import { useBranch } from '../context/BranchContext';
 
 const isMac = navigator.platform?.toLowerCase().includes('mac');
-const STORAGE_KEY = 'gs_recent_v1';
 const MAX_RECENT = 5;
 
 // Direct navigation shortcuts — these always work, no API call needed
@@ -15,15 +15,18 @@ const QUICK_LINKS = [
   { label: 'Αναφορές',            icon: TrendingUp,    path: '/reports',                 desc: 'Στατιστικά & αναλύσεις' },
 ];
 
-function getRecent() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+function storageKey(branchScopeKey) {
+  return `gs_recent_v1:${branchScopeKey || 'all'}`;
 }
-function addRecent(client) {
-  const prev = getRecent().filter(r => r.id !== client.id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([client, ...prev].slice(0, MAX_RECENT)));
+function getRecent(branchScopeKey) {
+  try { return JSON.parse(localStorage.getItem(storageKey(branchScopeKey)) || '[]'); } catch { return []; }
 }
-function removeRecent(id) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(getRecent().filter(r => r.id !== id)));
+function addRecent(branchScopeKey, client) {
+  const prev = getRecent(branchScopeKey).filter(r => r.id !== client.id);
+  localStorage.setItem(storageKey(branchScopeKey), JSON.stringify([client, ...prev].slice(0, MAX_RECENT)));
+}
+function removeRecent(branchScopeKey, id) {
+  localStorage.setItem(storageKey(branchScopeKey), JSON.stringify(getRecent(branchScopeKey).filter(r => r.id !== id)));
 }
 
 function debounce(fn, ms) {
@@ -32,6 +35,7 @@ function debounce(fn, ms) {
 }
 
 export default function GlobalSearch() {
+  const { branchScopeKey } = useBranch() || {};
   const [val, setVal]         = useState('');
   const [results, setResults] = useState([]);
   const [open, setOpen]       = useState(false);
@@ -64,7 +68,7 @@ export default function GlobalSearch() {
   }
 
   function goClient(client) {
-    addRecent(client);
+    addRecent(branchScopeKey, client);
     setVal('');
     setResults([]);
     setOpen(false);
@@ -86,7 +90,7 @@ export default function GlobalSearch() {
   }
 
   function onFocus() {
-    setRecent(getRecent());
+    setRecent(getRecent(branchScopeKey));
     setOpen(true);
   }
 
@@ -190,7 +194,7 @@ export default function GlobalSearch() {
                       <button
                         type="button"
                         className="gs-recent-remove"
-                        onClick={e => { e.stopPropagation(); removeRecent(c.id); setRecent(getRecent()); }}
+                        onClick={e => { e.stopPropagation(); removeRecent(branchScopeKey, c.id); setRecent(getRecent(branchScopeKey)); }}
                         aria-label="Αφαίρεση"
                       ><X size={11} /></button>
                     </button>

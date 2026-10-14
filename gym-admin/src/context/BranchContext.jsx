@@ -69,9 +69,12 @@ export function BranchProvider({ children }) {
   };
 
   const activeBranch = branches.find(b => String(b.id) === String(activeBranchId)) || null;
+  const branchScopeKey = activeBranch
+    ? (activeBranch.siblingIds || [String(activeBranch.id)]).join(',')
+    : (activeBranchId || 'all');
 
   return (
-    <BranchContext.Provider value={{ branches, activeBranch, activeBranchId, setActiveBranch }}>
+    <BranchContext.Provider value={{ branches, activeBranch, activeBranchId, branchScopeKey, setActiveBranch }}>
       {children}
     </BranchContext.Provider>
   );

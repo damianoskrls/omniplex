@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { BranchProvider } from './context/BranchContext';
+import { BranchProvider, useBranch } from './context/BranchContext';
 import { PrivateRoute, NutritionRoute, TrainerRoute } from './components/PrivateRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -70,13 +70,10 @@ function HomeRedirect() {
   return <Navigate to="/" replace />;
 }
 
-export default function App() {
+function AppRoutes() {
+  const { branchScopeKey } = useBranch() || {};
   return (
-    <AuthProvider>
-      <BranchProvider>
-      <BrowserRouter>
-        <Toaster position="top-right" />
-        <Routes>
+        <Routes key={branchScopeKey || 'all'}>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<PrivateRoute ownerOnly><Dashboard /></PrivateRoute>} />
           <Route path="/bookings" element={<PrivateRoute ownerOnly><Bookings /></PrivateRoute>} />
@@ -145,6 +142,16 @@ export default function App() {
           <Route path="/q/:token" element={<QuestionnaireSign />} />
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BranchProvider>
+      <BrowserRouter>
+        <Toaster position="top-right" />
+        <AppRoutes />
       </BrowserRouter>
       </BranchProvider>
     </AuthProvider>

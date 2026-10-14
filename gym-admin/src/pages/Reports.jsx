@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { AnimatedCounter, WeekBarChart, DonutChart } from '../components/dashboard/DashboardCharts';
@@ -81,12 +82,13 @@ function Panel({ title, icon: Icon, children, className = '' }) {
 
 export default function Reports() {
   const { business, isLocationAdmin } = useAuth();
+  const { activeBranchId, activeBranch } = useBranch() || {};
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('overview');
   const [from, setFrom] = useState(`${YEAR}-01-01`);
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
-  const [locationId, setLocationId] = useState(business?.location_id || '');
+  const [locationId, setLocationId] = useState(activeBranchId || business?.location_id || '');
   const [serviceId, setServiceId] = useState('');
   const [staffId, setStaffId] = useState('');
   const [planId, setPlanId] = useState('');
@@ -96,7 +98,9 @@ export default function Reports() {
     setLoading(true);
     try {
       const params = { from, to, inactive_days: inactiveDays };
-      const storeId = isLocationAdmin ? (business?.location_id || locationId) : locationId;
+      const storeId = isLocationAdmin
+        ? (business?.location_id || locationId)
+        : (activeBranchId || locationId);
       if (storeId) params.location_id = storeId;
       if (serviceId) params.service_id = serviceId;
       if (staffId) params.staff_id = staffId;
@@ -108,7 +112,7 @@ export default function Reports() {
     } finally {
       setLoading(false);
     }
-  }, [from, to, locationId, serviceId, staffId, planId, inactiveDays, isLocationAdmin, business?.location_id]);
+  }, [from, to, locationId, serviceId, staffId, planId, inactiveDays, isLocationAdmin, business?.location_id, activeBranchId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -144,9 +148,10 @@ export default function Reports() {
             </label>
             <label>
               <span>Τοποθεσία</span>
-              <select value={isLocationAdmin ? (business?.location_id || '') : locationId} disabled={isLocationAdmin} onChange={(e) => setLocationId(e.target.value)}>
-                {!isLocationAdmin && <option value="">Όλες</option>}
-                {(opts.locations || []).filter((l) => !isLocationAdmin || l.id === business?.location_id).map((l) => (
+              <select value={isLocationAdmin ? (business?.location_id || '') : (activeBranchId || locationId)} disabled={isLocationAdmin || !!activeBranchId} onChange={(e) => setLocationId(e.target.value)}>
+                {!isLocationAdmin && !activeBranchId && <option value="">Όλες</option>}
+                {activeBranch && <option value={activeBranch.id}>{activeBranch.name}</option>}
+                {(opts.locations || []).filter((l) => !isLocationAdmin || l.id === business?.location_id).filter((l) => !activeBranch || String(l.id) !== String(activeBranch.id)).map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
               </select>
