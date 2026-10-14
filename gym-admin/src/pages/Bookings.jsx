@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useBranch } from '../context/BranchContext';
 import Layout from '../components/Layout';
 import BookingsGroupedView from '../components/BookingsGroupedView';
 import CreateBookingModal from '../components/CreateBookingModal';
@@ -51,6 +52,7 @@ function bookingHour(startsAt) {
 }
 
 export default function Bookings() {
+  const { activeBranchId } = useBranch() || {};
   const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState('grouped');
   const [statusFilter, setStatusFilter] = useState('');
@@ -132,7 +134,7 @@ export default function Bookings() {
     }
   };
 
-  useEffect(() => { if (!clientSearchActive) load(); }, [date, mode, locationId, clientSearchActive]);
+  useEffect(() => { if (!clientSearchActive) load(); }, [date, mode, locationId, clientSearchActive, activeBranchId]);
 
   const loadClientBookings = async ({ userId, q } = {}) => {
     setClientSearchLoading(true);
