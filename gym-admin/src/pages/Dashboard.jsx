@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { useBranch } from '../context/BranchContext';
 import toast from 'react-hot-toast';
 import { AnimatedCounter, WeekBarChart, DonutChart } from '../components/dashboard/DashboardCharts';
 import {
@@ -171,6 +172,7 @@ function SetupBanner() {
 }
 
 export default function Dashboard() {
+  const { activeBranchId } = useBranch() || {};
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [trials, setTrials] = useState([]);
@@ -211,7 +213,7 @@ export default function Dashboard() {
     } catch { /* ignore */ } finally { setSavingNote(false); }
   }
 
-  useEffect(() => { loadTrials(); }, [locationId]);
+  useEffect(() => { loadTrials(); }, [locationId, activeBranchId]);
 
   useEffect(() => {
     api.get('/client-admin/locations')
@@ -220,6 +222,7 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    setLoading(true);
     api.get('/client-admin/dashboard')
       .then(async (r) => enrichDashboardData(r.data))
       .then(setStats)
@@ -241,7 +244,7 @@ export default function Dashboard() {
         }
       }).catch(() => {});
     }
-  }, []);
+  }, [activeBranchId]);
 
   const cards = stats ? [
     { label: 'Κρατήσεις σήμερα', value: stats.today_bookings, link: `/bookings?date=${stats.dates?.today || ''}` },
