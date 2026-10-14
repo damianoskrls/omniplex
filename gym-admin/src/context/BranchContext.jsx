@@ -21,8 +21,9 @@ export function BranchProvider({ children }) {
         const data = r.data || [];
         const seen = new Set();
         setBranches(data.filter(b => {
-          if (seen.has(b.id)) return false;
-          seen.add(b.id);
+          const key = b.name.toLowerCase().trim();
+          if (seen.has(key)) return false;
+          seen.add(key);
           return true;
         }));
       })

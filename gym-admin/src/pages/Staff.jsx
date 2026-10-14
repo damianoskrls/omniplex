@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useBranch } from '../context/BranchContext';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import StaffDeleteModal from '../components/StaffDeleteModal';
@@ -10,6 +11,7 @@ import { Plus, Settings, Trash2, UserCheck, UserX, Clock } from 'lucide-react';
 const EMPTY = { full_name: '', role: 'Trainer', phone: '', bio: '', color_hex: '#607D8B' };
 
 export default function Staff() {
+  const { activeBranchId } = useBranch() || {};
   const [staff, setStaff] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
   const [modal, setModal] = useState(false);
@@ -50,7 +52,7 @@ export default function Staff() {
       setApproveLoading(false);
     }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [activeBranchId]);
 
   const handleCreate = async (e) => {
     e.preventDefault();

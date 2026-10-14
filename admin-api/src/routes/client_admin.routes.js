@@ -4705,7 +4705,7 @@ router.get('/staff', requireClientAdmin, async (req, res) => {
   }
   const loc = req.query.location_id || null;
   const visible = loc
-    ? staff.filter((s) => !s.location_ids?.length || s.location_ids.includes(loc))
+    ? staff.filter((s) => s.location_ids?.includes(loc))
     : staff;
   return res.json(visible);
 });
@@ -8506,6 +8506,9 @@ router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
 // ============================================================
 router.get('/class-schedules', requireClientAdmin, async (req, res) => {
   try {
+    const { location_id } = req.query;
+    const whereExtra = location_id ? ' AND sss.location_id = ?' : '';
+    const params = location_id ? [req.admin.businessId, location_id] : [req.admin.businessId];
     const [rows] = await db.query(
       `SELECT sss.id, (sss.weekday + 1) AS day_of_week, sss.start_time,
               sss.service_id, s.name AS class_name, s.name AS service_name,
@@ -8513,14 +8516,16 @@ router.get('/class-schedules', requireClientAdmin, async (req, res) => {
               sss.staff_id, st.full_name AS trainer_name, st.full_name AS staff_name,
               st.avatar_url AS staff_avatar,
               sss.room_id, sss.room_name, r.name AS room_display_name,
-              sss.max_capacity, sss.is_active
+              sss.max_capacity, sss.is_active,
+              sss.location_id, l.name AS location_name
        FROM service_slot_schedules sss
        JOIN services s ON s.id = sss.service_id
        LEFT JOIN staff st ON st.id = sss.staff_id
        LEFT JOIN rooms r ON r.id = sss.room_id
-       WHERE sss.business_id = ?
+       LEFT JOIN locations l ON l.id = sss.location_id
+       WHERE sss.business_id = ?${whereExtra}
        ORDER BY sss.weekday, sss.start_time`,
-      [req.admin.businessId],
+      params,
     );
     return res.json(rows);
   } catch (err) {
@@ -8607,12 +8612,12 @@ Return ONLY the JSON array, e.g.: [{"day_of_week":1,"start_time":"09:00","class_
 });
 
 router.post('/class-schedules', requireClientAdmin, async (req, res) => {
-  const { day_of_week, start_time, service_id, staff_id, max_capacity, room_id } = req.body;
+  const { day_of_week, start_time, service_id, staff_id, max_capacity, room_id, location_id } = req.body;
   if (!service_id || !day_of_week || !start_time) return res.status(400).json({ error: 'service_id, day_of_week, start_time required' });
   try {
     const id = uuidv4();
     const weekday = Number(day_of_week) - 1;
-    const locId = await ensureDefaultLocation(db, req.admin.businessId);
+    const locId = location_id || await ensureDefaultLocation(db, req.admin.businessId);
     let resolvedRoomId = room_id || null;
     let resolvedRoomName = null;
     if (resolvedRoomId) {

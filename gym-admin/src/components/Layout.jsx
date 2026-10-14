@@ -178,7 +178,7 @@ function buildNavGroups({ features, featureNutrition, locationAdmin }) {
       label: 'Πρόγραμμα',
       links: [
         { to: '/class-schedule', icon: CalendarDays, label: 'Εβδομαδιαίο Πρόγραμμα' },
-        { to: '/staff', icon: UserCog, label: 'Διαθεσιμότητα Προσωπικού' },
+        { to: '/staff-availability', icon: UserCog, label: 'Διαθεσιμότητα Προσωπικού' },
       ],
     },
     {

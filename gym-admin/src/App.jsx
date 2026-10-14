@@ -10,6 +10,7 @@ import ClientDetail from './pages/ClientDetail';
 import Services from './pages/Services';
 import ServiceSchedule from './pages/ServiceSchedule';
 import Staff from './pages/Staff';
+import StaffAvailabilityManager from './pages/StaffAvailabilityManager';
 import StaffDetail from './pages/StaffDetail';
 import Bookings from './pages/Bookings';
 import Plans from './pages/Plans';
@@ -86,6 +87,7 @@ export default function App() {
           <Route path="/services" element={<PrivateRoute ownerOnly><Services /></PrivateRoute>} />
           <Route path="/services/:id/schedule" element={<PrivateRoute ownerOnly><ServiceSchedule /></PrivateRoute>} />
           <Route path="/staff" element={<PrivateRoute ownerOnly><Staff /></PrivateRoute>} />
+          <Route path="/staff-availability" element={<PrivateRoute ownerOnly><StaffAvailabilityManager /></PrivateRoute>} />
           <Route path="/staff/:id" element={<PrivateRoute ownerOnly><StaffDetail /></PrivateRoute>} />
           <Route path="/plans" element={<PrivateRoute ownerOnly><Plans /></PrivateRoute>} />
           <Route path="/programs" element={<PrivateRoute><Programs /></PrivateRoute>} />

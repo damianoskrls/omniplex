@@ -146,10 +146,10 @@ export default function ClassSchedule() {
   // Compute filtered staff/rooms for the currently open modal based on its location
   const modalLocationId = form.location_id || activeBranchId || null;
   const modalStaff = modalLocationId
-    ? staff.filter(s => !s.location_ids?.length || s.location_ids.includes(String(modalLocationId)))
+    ? staff.filter(s => s.location_ids?.includes(String(modalLocationId)))
     : staff;
   const modalRooms = modalLocationId
-    ? rooms.filter(r => !r.location_id || String(r.location_id) === String(modalLocationId))
+    ? rooms.filter(r => String(r.location_id) === String(modalLocationId))
     : rooms;
 
   function openAdd() {
