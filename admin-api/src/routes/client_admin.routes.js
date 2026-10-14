@@ -4359,7 +4359,7 @@ Example: [{"name":"CrossFit","category":"Classes","duration_mins":60,"slots":[{"
 router.post('/services', requireClientAdmin, async (req, res) => {
   const {
     name, description, duration_mins, price_cents, category,
-    hide_staff_selection, slot_label_mode, location_ids, is_open_access,
+    hide_staff_selection, slot_label_mode, location_ids, is_open_access, default_capacity,
   } = req.body;
   if (!name) return res.status(400).json({ error: 'Απαιτείται όνομα υπηρεσίας' });
   // open-access services have no fixed duration
@@ -4367,10 +4367,11 @@ router.post('/services', requireClientAdmin, async (req, res) => {
   const id = uuidv4();
   await db.query(
     `INSERT INTO services
-      (id, business_id, name, description, duration_mins, price_cents, category, hide_staff_selection, slot_label_mode, is_open_access)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      (id, business_id, name, description, duration_mins, price_cents, category, hide_staff_selection, slot_label_mode, is_open_access, default_capacity)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
     [id, req.admin.businessId, name, description || null, is_open_access ? null : (duration_mins || null), price_cents || 0,
-     category || null, hide_staff_selection ? 1 : 0, slot_label_mode || 'time_only', is_open_access ? 1 : 0]
+     category || null, hide_staff_selection ? 1 : 0, slot_label_mode || 'time_only', is_open_access ? 1 : 0,
+     default_capacity != null && default_capacity !== '' ? Number(default_capacity) : null]
   );
   const linkedLocations = req.admin.locationId ? [req.admin.locationId] : location_ids;
   if (Array.isArray(linkedLocations) && linkedLocations.length) {
@@ -4382,12 +4383,13 @@ router.post('/services', requireClientAdmin, async (req, res) => {
 router.patch('/services/:id', requireClientAdmin, async (req, res) => {
   const { name, description, duration_mins, price_cents, drop_in_price_cents, category, is_active,
           hide_staff_selection, slot_label_mode, icon_svg_url, image_url,
-          requires_attendance_confirmation, requires_qr_scan, is_open_access } = req.body;
+          requires_attendance_confirmation, requires_qr_scan, is_open_access, default_capacity } = req.body;
   const hideVal    = hide_staff_selection === undefined ? undefined : (hide_staff_selection ? 1 : 0);
   const dropIn     = drop_in_price_cents === null ? null : (drop_in_price_cents !== undefined ? Number(drop_in_price_cents) : undefined);
   const attConf    = requires_attendance_confirmation === undefined ? undefined : (requires_attendance_confirmation ? 1 : 0);
   const qrScan     = requires_qr_scan === undefined ? undefined : (requires_qr_scan ? 1 : 0);
   const openAccess = is_open_access === undefined ? undefined : (is_open_access ? 1 : 0);
+  const defCap     = default_capacity === undefined ? undefined : (default_capacity != null && default_capacity !== '' ? Number(default_capacity) : null);
   await db.query(
     `UPDATE services SET
       name          = COALESCE(?,name),
@@ -4402,11 +4404,13 @@ router.patch('/services/:id', requireClientAdmin, async (req, res) => {
       requires_attendance_confirmation = COALESCE(?, requires_attendance_confirmation),
       requires_qr_scan = COALESCE(?, requires_qr_scan),
       is_open_access = COALESCE(?, is_open_access),
+      default_capacity = CASE WHEN ? IS NOT NULL THEN ? ELSE default_capacity END,
       icon_svg_url  = CASE WHEN ? IS NOT NULL THEN ? ELSE icon_svg_url END,
       image_url     = CASE WHEN ? IS NOT NULL THEN ? ELSE image_url END
     WHERE id=? AND business_id=?`,
     [name, description, duration_mins, price_cents, dropIn, dropIn, category, is_active, hideVal, slot_label_mode,
      attConf, qrScan, openAccess,
+     defCap, defCap,
      icon_svg_url, icon_svg_url, image_url, image_url,
      req.params.id, req.admin.businessId]
   );
@@ -8503,8 +8507,19 @@ router.patch('/discovery-profile', requireClientAdmin, async (req, res) => {
 router.get('/class-schedules', requireClientAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, accepts_drop_in, drop_in_cutoff_hours, is_active
-       FROM class_schedules WHERE business_id = ? ORDER BY day_of_week, start_time`,
+      `SELECT sss.id, (sss.weekday + 1) AS day_of_week, sss.start_time,
+              sss.service_id, s.name AS class_name, s.name AS service_name,
+              s.duration_mins, s.default_capacity,
+              sss.staff_id, st.full_name AS trainer_name, st.full_name AS staff_name,
+              st.avatar_url AS staff_avatar,
+              sss.room_id, sss.room_name, r.name AS room_display_name,
+              sss.max_capacity, sss.is_active
+       FROM service_slot_schedules sss
+       JOIN services s ON s.id = sss.service_id
+       LEFT JOIN staff st ON st.id = sss.staff_id
+       LEFT JOIN rooms r ON r.id = sss.room_id
+       WHERE sss.business_id = ?
+       ORDER BY sss.weekday, sss.start_time`,
       [req.admin.businessId],
     );
     return res.json(rows);
@@ -8592,44 +8607,58 @@ Return ONLY the JSON array, e.g.: [{"day_of_week":1,"start_time":"09:00","class_
 });
 
 router.post('/class-schedules', requireClientAdmin, async (req, res) => {
-  const { day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, accepts_drop_in, drop_in_cutoff_hours } = req.body;
-  if (!day_of_week || !start_time || !class_name) return res.status(400).json({ error: 'day_of_week, start_time, class_name required' });
+  const { day_of_week, start_time, service_id, staff_id, max_capacity, room_id } = req.body;
+  if (!service_id || !day_of_week || !start_time) return res.status(400).json({ error: 'service_id, day_of_week, start_time required' });
   try {
     const id = uuidv4();
+    const weekday = Number(day_of_week) - 1;
+    const locId = await ensureDefaultLocation(db, req.admin.businessId);
+    let resolvedRoomId = room_id || null;
+    let resolvedRoomName = null;
+    if (resolvedRoomId) {
+      const synced = await syncRoomFromId(db, resolvedRoomId, req.admin.businessId);
+      resolvedRoomId = synced.room_id;
+      resolvedRoomName = synced.room_name;
+    }
     await db.query(
-      `INSERT INTO class_schedules (id, business_id, day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, accepts_drop_in, drop_in_cutoff_hours)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, req.admin.businessId, day_of_week, start_time, class_name,
-       trainer_name || null, color || '#C6FF3D', equipment || null, max_capacity || null,
-       accepts_drop_in ? 1 : 0, drop_in_cutoff_hours != null ? Number(drop_in_cutoff_hours) : 2],
+      `INSERT INTO service_slot_schedules (id, service_id, business_id, location_id, weekday, start_time, max_capacity, staff_id, room_id, room_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, service_id, req.admin.businessId, locId, weekday, start_time,
+       max_capacity != null && max_capacity !== '' ? Number(max_capacity) : null,
+       staff_id || null, resolvedRoomId, resolvedRoomName],
     );
     return res.status(201).json({ id });
   } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Υπάρχει ήδη αυτή η ώρα για αυτή την υπηρεσία' });
     return res.status(500).json({ error: err.message });
   }
 });
 
 router.put('/class-schedules/:id', requireClientAdmin, async (req, res) => {
-  const { day_of_week, start_time, class_name, trainer_name, color, equipment, max_capacity, accepts_drop_in, drop_in_cutoff_hours, is_active } = req.body;
+  const { day_of_week, start_time, service_id, staff_id, max_capacity, is_active, room_id } = req.body;
   try {
+    const fields = [];
+    const vals = [];
+    if (day_of_week != null)    { fields.push('weekday = ?');      vals.push(Number(day_of_week) - 1); }
+    if (start_time != null)     { fields.push('start_time = ?');   vals.push(start_time); }
+    if (service_id != null)     { fields.push('service_id = ?');   vals.push(service_id); }
+    if (staff_id !== undefined) { fields.push('staff_id = ?');     vals.push(staff_id || null); }
+    if (max_capacity !== undefined) { fields.push('max_capacity = ?'); vals.push(max_capacity != null && max_capacity !== '' ? Number(max_capacity) : null); }
+    if (is_active != null)      { fields.push('is_active = ?');    vals.push(is_active ? 1 : 0); }
+    if (room_id !== undefined) {
+      if (room_id) {
+        const synced = await syncRoomFromId(db, room_id, req.admin.businessId);
+        fields.push('room_id = ?', 'room_name = ?');
+        vals.push(synced.room_id, synced.room_name);
+      } else {
+        fields.push('room_id = NULL', 'room_name = NULL');
+      }
+    }
+    if (!fields.length) return res.json({ ok: true });
+    vals.push(req.params.id, req.admin.businessId);
     await db.query(
-      `UPDATE class_schedules SET
-         day_of_week          = COALESCE(?, day_of_week),
-         start_time           = COALESCE(?, start_time),
-         class_name           = COALESCE(?, class_name),
-         trainer_name         = ?,
-         color                = COALESCE(?, color),
-         equipment            = ?,
-         max_capacity         = ?,
-         accepts_drop_in      = ?,
-         drop_in_cutoff_hours = COALESCE(?, drop_in_cutoff_hours),
-         is_active            = COALESCE(?, is_active)
-       WHERE id = ? AND business_id = ?`,
-      [day_of_week ?? null, start_time ?? null, class_name ?? null,
-       trainer_name ?? null, color ?? null, equipment ?? null, max_capacity ?? null,
-       accepts_drop_in ? 1 : 0,
-       drop_in_cutoff_hours != null ? Number(drop_in_cutoff_hours) : null,
-       is_active ?? null, req.params.id, req.admin.businessId],
+      `UPDATE service_slot_schedules SET ${fields.join(', ')} WHERE id = ? AND business_id = ?`,
+      vals,
     );
     return res.json({ ok: true });
   } catch (err) {
@@ -8639,7 +8668,7 @@ router.put('/class-schedules/:id', requireClientAdmin, async (req, res) => {
 
 router.delete('/class-schedules/:id', requireClientAdmin, async (req, res) => {
   try {
-    await db.query('DELETE FROM class_schedules WHERE id = ? AND business_id = ?', [req.params.id, req.admin.businessId]);
+    await db.query('DELETE FROM service_slot_schedules WHERE id = ? AND business_id = ?', [req.params.id, req.admin.businessId]);
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: err.message });

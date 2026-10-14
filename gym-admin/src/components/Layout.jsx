@@ -4,7 +4,7 @@ import { useBranch } from '../context/BranchContext';
 import {
   LayoutDashboard, Users, Calendar, Scissors, UserCog,
   Package, LogOut, CreditCard, QrCode, DoorOpen, Settings, Bell, Apple, UserCircle, Dumbbell, Menu, X, MapPin, MessageSquare, BarChart2, UsersRound, ChevronDown,
-  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck, Zap, Image, CalendarDays, Gift, Building2,
+  AlertTriangle, TrendingUp, ListOrdered, ShoppingBag, Receipt, Tag, Truck, ClipboardList, Star, Activity, CalendarOff, Target, FileDown, ShieldCheck, Send, ClipboardCheck, Zap, Image, CalendarDays, Gift, Building2, Check, Plus,
 } from 'lucide-react';
 import BrandLogo from './BrandLogo';
 import NotificationBell from './NotificationBell';
@@ -18,61 +18,107 @@ import useMarketplacePending from '../hooks/useMarketplacePending';
 function BranchSwitcher() {
   const { branches, activeBranch, setActiveBranch } = useBranch();
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    function handle(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, []);
+  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
 
   if (!branches || branches.length <= 1) return null;
 
+  const filtered = branches.filter(b =>
+    b.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleSelect = (id) => {
+    setActiveBranch(id);
+    setOpen(false);
+    setSearch('');
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setSearch('');
+  };
+
   return (
-    <div className="branch-switcher" ref={ref}>
-      <button
-        type="button"
-        className="branch-switcher__btn"
-        onClick={() => setOpen(v => !v)}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-      >
-        <Building2 size={14} style={{ flexShrink: 0 }} />
-        <span className="branch-switcher__label">
-          {activeBranch ? activeBranch.name : 'Όλα τα καταστήματα'}
-        </span>
-        <ChevronDown size={12} style={{ flexShrink: 0, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
-      </button>
+    <>
+      <div className="branch-switcher">
+        <button
+          type="button"
+          className="branch-switcher__btn"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+        >
+          <Building2 size={14} style={{ flexShrink: 0 }} />
+          <span className="branch-switcher__label">
+            {activeBranch ? activeBranch.name : 'Όλα τα καταστήματα'}
+          </span>
+          <ChevronDown size={12} style={{ flexShrink: 0 }} />
+        </button>
+      </div>
+
       {open && (
-        <div className="branch-switcher__dropdown" role="listbox">
-          <button
-            type="button"
-            role="option"
-            aria-selected={!activeBranch}
-            className={`branch-switcher__option${!activeBranch ? ' branch-switcher__option--active' : ''}`}
-            onClick={() => { setActiveBranch(null); setOpen(false); }}
-          >
-            <Building2 size={13} style={{ flexShrink: 0 }} />
-            Όλα τα καταστήματα
-          </button>
-          {branches.map(b => (
-            <button
-              key={b.id}
-              type="button"
-              role="option"
-              aria-selected={activeBranch?.id === b.id}
-              className={`branch-switcher__option${activeBranch?.id === b.id ? ' branch-switcher__option--active' : ''}`}
-              onClick={() => { setActiveBranch(String(b.id)); setOpen(false); }}
-            >
-              <MapPin size={13} style={{ flexShrink: 0 }} />
-              {b.name}
-            </button>
-          ))}
+        <div className="branch-modal-overlay" onClick={handleClose}>
+          <div className="branch-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <div className="branch-modal__header">
+              <span className="branch-modal__title">Επιλογή καταστήματος</span>
+              <button
+                type="button"
+                className="branch-modal__new-btn"
+                onClick={() => { handleClose(); navigate('/locations'); }}
+              >
+                <Plus size={13} /> Νέο κατάστημα
+              </button>
+            </div>
+            <div className="branch-modal__search-wrap">
+              <input
+                className="branch-modal__search"
+                placeholder="Αναζήτηση καταστήματος..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="branch-modal__list" role="listbox">
+              <button
+                type="button"
+                role="option"
+                aria-selected={!activeBranch}
+                className={`branch-modal__option${!activeBranch ? ' branch-modal__option--active' : ''}`}
+                onClick={() => handleSelect(null)}
+              >
+                <Building2 size={14} style={{ flexShrink: 0, color: '#64748b' }} />
+                <span className="branch-modal__option-name">Όλα τα καταστήματα</span>
+                {!activeBranch && <Check size={15} className="branch-modal__check" />}
+              </button>
+              {filtered.map(b => {
+                const isActive = String(activeBranch?.id) === String(b.id);
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isActive}
+                    className={`branch-modal__option${isActive ? ' branch-modal__option--active' : ''}`}
+                    onClick={() => handleSelect(String(b.id))}
+                  >
+                    <MapPin size={14} style={{ flexShrink: 0, color: '#64748b' }} />
+                    <span className="branch-modal__option-name">{b.name}</span>
+                    {isActive && <Check size={15} className="branch-modal__check" />}
+                  </button>
+                );
+              })}
+              {filtered.length === 0 && (
+                <div className="branch-modal__empty">Δεν βρέθηκαν αποτελέσματα</div>
+              )}
+            </div>
+            <div className="branch-modal__footer">
+              <button type="button" className="branch-modal__cancel" onClick={handleClose}>
+                Ακύρωση
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

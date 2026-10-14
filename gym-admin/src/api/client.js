@@ -9,7 +9,7 @@ api.interceptors.request.use((config) => {
   // Append active branch filter to all GET requests when a branch is selected
   const branchId = localStorage.getItem('gym_admin_active_branch_id');
   if (branchId && (config.method === 'get' || !config.method)) {
-    config.params = { location_id: branchId, ...config.params };
+    config.params = { ...config.params, location_id: branchId };
   }
 
   return config;

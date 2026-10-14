@@ -1387,6 +1387,13 @@ async function bootstrapSchema() {
   } catch (err) {
     console.warn('ai_translations skipped:', err.message);
   }
+
+  try {
+    await db.query(`ALTER TABLE services ADD COLUMN default_capacity INT NULL`);
+    console.log('✓ Schema: services.default_capacity added');
+  } catch (err) {
+    if (!err.message.includes('Duplicate column')) console.warn('services.default_capacity skipped:', err.message);
+  }
 }
 
 module.exports = { bootstrapSchema };

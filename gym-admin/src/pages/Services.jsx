@@ -8,7 +8,7 @@ import LocationCheckboxes from '../components/LocationCheckboxes';
 import { Plus, Trash2, Pencil, CalendarClock, Upload, X, Check, Sparkles } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
 
-const EMPTY = { name: '', description: '', category: '', duration_mins: 60, hide_staff_selection: false, slot_label_mode: 'time_only', requires_attendance_confirmation: true, requires_qr_scan: true, is_open_access: false };
+const EMPTY = { name: '', description: '', category: '', duration_mins: 60, default_capacity: '', hide_staff_selection: false, slot_label_mode: 'time_only', requires_attendance_confirmation: true, requires_qr_scan: true, is_open_access: false };
 
 function ImageUploadBox({ label, accept, currentUrl, onUpload, onRemove, hint }) {
   const inputRef = useRef();
@@ -202,6 +202,7 @@ export default function Services() {
     setForm({
       name: s.name, description: s.description || '', category: s.category || '',
       duration_mins: s.duration_mins || 60,
+      default_capacity: s.default_capacity != null ? String(s.default_capacity) : '',
       hide_staff_selection: !!s.hide_staff_selection,
       slot_label_mode: s.slot_label_mode || 'time_only',
       requires_attendance_confirmation: s.requires_attendance_confirmation !== false,
@@ -229,6 +230,7 @@ export default function Services() {
       description: form.description || null,
       category: form.category || null,
       duration_mins: form.is_open_access ? null : (Number(form.duration_mins) || 60),
+      default_capacity: form.default_capacity ? Number(form.default_capacity) : null,
       hide_staff_selection: form.hide_staff_selection,
       slot_label_mode: form.slot_label_mode,
       location_ids: locationIds,
@@ -520,17 +522,30 @@ export default function Services() {
               </div>
 
               {!form.is_open_access && (
-                <div className="form-group">
-                  <label className="form-label">Διάρκεια (λεπτά) *</label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    min={5}
-                    step={5}
-                    value={form.duration_mins}
-                    onChange={e => setForm({ ...form, duration_mins: e.target.value })}
-                    required
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">Διάρκεια (λεπτά) *</label>
+                    <input
+                      className="form-input"
+                      type="number"
+                      min={5}
+                      step={5}
+                      value={form.duration_mins}
+                      onChange={e => setForm({ ...form, duration_mins: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Χωρητικότητα (default)</label>
+                    <input
+                      className="form-input"
+                      type="number"
+                      min={1}
+                      value={form.default_capacity}
+                      onChange={e => setForm({ ...form, default_capacity: e.target.value })}
+                      placeholder="π.χ. 15"
+                    />
+                  </div>
                 </div>
               )}
 

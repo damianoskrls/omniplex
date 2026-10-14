@@ -5,30 +5,56 @@ import api from '../api/client';
 
 const DAYS = ['', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
 
-const CLASS_COLORS = [
+const SERVICE_COLORS = [
   '#C6FF3D', '#3EE6FF', '#B48CFF', '#FF6FD8', '#FFB23E',
   '#FF5252', '#69FF47', '#40C4FF', '#FF6E40', '#EEFF41',
 ];
 
+function colorForService(serviceId) {
+  if (!serviceId) return SERVICE_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < serviceId.length; i++) hash = serviceId.charCodeAt(i) + ((hash << 5) - hash);
+  return SERVICE_COLORS[Math.abs(hash) % SERVICE_COLORS.length];
+}
+
 const EMPTY_FORM = {
-  day_of_week: 1, start_time: '09:00', class_name: '',
-  trainer_name: '', color: '#C6FF3D', equipment: '', max_capacity: '',
+  day_of_week: 1, start_time: '09:00', service_id: '', staff_id: '', max_capacity: '', room_id: '',
 };
 
+function calcEndTime(startTime, durationMins) {
+  if (!startTime || !durationMins) return null;
+  const [h, m] = startTime.split(':').map(Number);
+  const total = h * 60 + m + Number(durationMins);
+  const eh = Math.floor(total / 60) % 24;
+  const em = total % 60;
+  return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+}
+
 export default function ClassSchedule() {
-  const [entries, setEntries]   = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [modal, setModal]       = useState(null); // null | 'add' | entry obj
-  const [form, setForm]         = useState(EMPTY_FORM);
-  const [saving, setSaving]     = useState(false);
-  const [error, setError]       = useState(null);
+  const [entries, setEntries]     = useState([]);
+  const [services, setServices]   = useState([]);
+  const [staff, setStaff]         = useState([]);
+  const [rooms, setRooms]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [modal, setModal]         = useState(null);
+  const [form, setForm]           = useState(EMPTY_FORM);
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState(null);
   const [activeDay, setActiveDay] = useState(1);
 
   async function load() {
     setLoading(true);
     try {
-      const r = await api.get('/client-admin/class-schedules');
-      setEntries(r.data);
+      const [schedRes, svcRes, staffRes, roomsRes] = await Promise.all([
+        api.get('/client-admin/class-schedules'),
+        api.get('/client-admin/services'),
+        api.get('/client-admin/staff'),
+        api.get('/client-admin/rooms'),
+      ]);
+      setEntries(schedRes.data);
+      setServices(svcRes.data.filter(s => s.is_active !== 0));
+      setStaff(staffRes.data.filter(s => s.is_active !== 0));
+      setRooms(roomsRes.data);
     } finally {
       setLoading(false);
     }
@@ -42,29 +68,39 @@ export default function ClassSchedule() {
     setError(null);
   }
 
+  function onServiceChange(serviceId) {
+    const svc = services.find(s => s.id === serviceId);
+    setForm(f => ({
+      ...f,
+      service_id: serviceId,
+      max_capacity: f.max_capacity || (svc?.default_capacity != null ? String(svc.default_capacity) : ''),
+    }));
+  }
+
   function openEdit(entry) {
     setForm({
       day_of_week:  entry.day_of_week,
-      start_time:   entry.start_time,
-      class_name:   entry.class_name,
-      trainer_name: entry.trainer_name || '',
-      color:        entry.color || '#C6FF3D',
-      equipment:    entry.equipment || '',
+      start_time:   entry.start_time?.slice(0, 5) || entry.start_time,
+      service_id:   entry.service_id || '',
+      staff_id:     entry.staff_id || '',
       max_capacity: entry.max_capacity != null ? String(entry.max_capacity) : '',
+      room_id:      entry.room_id || '',
     });
     setModal(entry);
     setError(null);
   }
 
   async function handleSave() {
-    if (!form.class_name.trim()) { setError('Συμπλήρωσε το όνομα'); return; }
+    if (!form.service_id) { setError('Επίλεξε υπηρεσία'); return; }
     setSaving(true); setError(null);
     try {
       const payload = {
-        ...form,
+        day_of_week:  form.day_of_week,
+        start_time:   form.start_time,
+        service_id:   form.service_id,
+        staff_id:     form.staff_id || null,
         max_capacity: form.max_capacity ? parseInt(form.max_capacity) : null,
-        trainer_name: form.trainer_name || null,
-        equipment:    form.equipment || null,
+        room_id:      form.room_id || null,
       };
       if (modal === 'add') {
         await api.post('/client-admin/class-schedules', payload);
@@ -152,14 +188,19 @@ export default function ClassSchedule() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {dayEntries.map(e => (
             <div key={e.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
-              <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: e.color || '#C6FF3D', flexShrink: 0 }} />
-              <div style={{ minWidth: 56, textAlign: 'center' }}>
-                <span style={{ fontSize: '1rem', fontWeight: 700 }}>{e.start_time}</span>
+              <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: colorForService(e.service_id), flexShrink: 0 }} />
+              <div style={{ minWidth: 80, textAlign: 'center' }}>
+                <span style={{ fontSize: '1rem', fontWeight: 700 }}>{e.start_time?.slice(0, 5)}</span>
+                {e.duration_mins && (
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #888)' }}>
+                    {calcEndTime(e.start_time?.slice(0, 5), e.duration_mins)}
+                  </div>
+                )}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, marginBottom: 2 }}>{e.class_name}</div>
                 <div className="text-muted" style={{ fontSize: '0.8rem' }}>
-                  {[e.trainer_name, e.equipment, e.max_capacity ? `${e.max_capacity} άτομα` : null].filter(Boolean).join(' · ')}
+                  {[e.trainer_name, e.room_display_name || e.room_name, e.max_capacity ? `${e.max_capacity} άτομα` : null].filter(Boolean).join(' · ')}
                 </div>
               </div>
               <button className="btn btn-secondary btn-sm" onClick={() => openEdit(e)} title="Επεξεργασία">
@@ -207,70 +248,68 @@ export default function ClassSchedule() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Όνομα Μαθήματος *</label>
-              <input
+              <label className="form-label">Υπηρεσία *</label>
+              <select
                 className="form-input"
-                value={form.class_name}
-                onChange={e => setForm(f => ({ ...f, class_name: e.target.value }))}
-                placeholder="π.χ. Circuit Workout, Pilates, TRX…"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Εκπαιδευτής</label>
-              <input
-                className="form-input"
-                value={form.trainer_name}
-                onChange={e => setForm(f => ({ ...f, trainer_name: e.target.value }))}
-                placeholder="π.χ. Νίκος Παπαδόπουλος"
-              />
+                value={form.service_id}
+                onChange={e => onServiceChange(e.target.value)}
+              >
+                <option value="">— Επίλεξε υπηρεσία —</option>
+                {services.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}{s.duration_mins ? ` (${s.duration_mins} λεπτά)` : ''}
+                  </option>
+                ))}
+              </select>
+              {form.service_id && (() => {
+                const svc = services.find(s => s.id === form.service_id);
+                const end = svc?.duration_mins ? calcEndTime(form.start_time, svc.duration_mins) : null;
+                return end ? (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary, #888)', marginTop: 4 }}>
+                    Διάρκεια: {svc.duration_mins} λεπτά → λήξη στις {end}
+                  </div>
+                ) : null;
+              })()}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-group">
-                <label className="form-label">Εξοπλισμός</label>
-                <input
+                <label className="form-label">Εκπαιδευτής</label>
+                <select
                   className="form-input"
-                  value={form.equipment}
-                  onChange={e => setForm(f => ({ ...f, equipment: e.target.value }))}
-                  placeholder="π.χ. TRX, FitBall"
-                />
+                  value={form.staff_id}
+                  onChange={e => setForm(f => ({ ...f, staff_id: e.target.value }))}
+                >
+                  <option value="">— Χωρίς εκπαιδευτή —</option>
+                  {staff.map(s => (
+                    <option key={s.id} value={s.id}>{s.full_name}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Μέγ. Χωρητικότητα</label>
-                <input
-                  type="number"
+                <label className="form-label">Αίθουσα</label>
+                <select
                   className="form-input"
-                  value={form.max_capacity}
-                  onChange={e => setForm(f => ({ ...f, max_capacity: e.target.value }))}
-                  placeholder="π.χ. 20"
-                />
+                  value={form.room_id}
+                  onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}
+                >
+                  <option value="">— Χωρίς αίθουσα —</option>
+                  {rooms.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Χρώμα</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {CLASS_COLORS.map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, color: c }))}
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: '50%',
-                      background: c,
-                      border: form.color === c ? '2px solid var(--tenant-primary, #16a34a)' : '2px solid transparent',
-                      outline: form.color === c ? '2px solid var(--tenant-primary, #16a34a)' : 'none',
-                      outlineOffset: 2,
-                      cursor: 'pointer',
-                      transform: form.color === c ? 'scale(1.2)' : 'scale(1)',
-                      transition: 'transform 0.1s',
-                    }}
-                  />
-                ))}
-              </div>
+              <label className="form-label">Μέγ. Χωρητικότητα</label>
+              <input
+                type="number"
+                className="form-input"
+                value={form.max_capacity}
+                onChange={e => setForm(f => ({ ...f, max_capacity: e.target.value }))}
+                placeholder="π.χ. 20"
+              />
             </div>
 
             {error && <p style={{ color: 'var(--danger, #ef4444)', fontSize: '0.85rem', margin: '4px 0' }}>{error}</p>}
