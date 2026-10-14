@@ -681,10 +681,23 @@ router.get('/staff/schedule/week', requireMobileStaff, async (req, res) => {
   }
 });
 
+const STAFF_ATTENDANCE_LEAD_MINS = 30;
+
 // PATCH /api/mobile/staff/bookings/:id/attendance
 router.patch('/staff/bookings/:id/attendance', requireMobileStaff, async (req, res) => {
   const { confirmed } = req.body;
   try {
+    const [[booking]] = await db.query(
+      'SELECT id, starts_at FROM bookings WHERE id = ? AND business_id = ?',
+      [req.params.id, req.businessId],
+    );
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (confirmed) {
+      const opensAt = new Date(new Date(booking.starts_at).getTime() - STAFF_ATTENDANCE_LEAD_MINS * 60 * 1000);
+      if (Date.now() < opensAt.getTime()) {
+        return res.status(400).json({ error: 'Η επιβεβαίωση παρουσίας ανοίγει 30 λεπτά πριν την προπόνηση.' });
+      }
+    }
     await db.query(
       'UPDATE bookings SET attendance_confirmed = ?, attendance_confirmed_at = NOW() WHERE id = ? AND business_id = ?',
       [confirmed ? 1 : 0, req.params.id, req.businessId],
