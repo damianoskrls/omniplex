@@ -98,6 +98,13 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
 
   bool get _hasUnlimited => _gymCredits.any((c) => c.isUnlimited);
 
+  String? get _locationName {
+    for (final b in _bookings) {
+      if (b.locationName != null && b.locationName!.isNotEmpty) return b.locationName;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = context.read<TenantConfig>();
@@ -127,77 +134,122 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
         children: [
-          _GymHeroCard(config: config),
+          _GymHeroCard(config: config, locationName: _locationName),
           for (final b in _bookings.where((b) => b.isInProgress))
             WorkoutLiveBanner(booking: b),
-          const SizedBox(height: 16),
-          _NextWorkoutCard(booking: _nextBooking),
-          const SizedBox(height: 16),
-          SurfaceCard(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => WorkoutProgramsScreen(serviceTitle: tr('Προπόνηση'))),
+          if (_gymCredits.isEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C22),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF2E2E38)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: context.tenantPrimary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.card_membership_rounded, color: context.tenantPrimary, size: 22),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(tr('Δεν έχετε ακόμα πακέτο'),
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white)),
+                  const SizedBox(height: 6),
+                  Text(tr('Επικοινωνήστε με το γυμναστήριο για να προσθέσουν ένα πακέτο στον λογαριασμό σας.'),
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
+                  if (_totalBalanceCents > 0) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.orange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.account_balance_wallet_outlined, color: AppColors.orange, size: 16),
+                        const SizedBox(width: 8),
+                        Text(tr('Οφειλή: €${(_totalBalanceCents / 100).toStringAsFixed(0)}'),
+                            style: const TextStyle(color: AppColors.orange, fontWeight: FontWeight.w700, fontSize: 13)),
+                      ]),
+                    ),
+                  ],
+                ],
+              ),
             ),
-            child: Row(
+          ] else ...[
+            const SizedBox(height: 16),
+            _NextWorkoutCard(booking: _nextBooking),
+            const SizedBox(height: 16),
+            SurfaceCard(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => WorkoutProgramsScreen(serviceTitle: tr('Προπόνηση'))),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: context.tenantPrimary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.playlist_play_rounded, color: context.tenantPrimary, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(tr('Προγράμματα γυμναστικής'),
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                        SizedBox(height: 3),
+                        Text(tr('Διάλεξε πρόγραμμα και σημείωσε κάθε άσκηση'),
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: context.tenantPrimary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(Icons.playlist_play_rounded, color: context.tenantPrimary, size: 24),
-                ),
-                const SizedBox(width: 14),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(tr('Προγράμματα γυμναστικής'),
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                      SizedBox(height: 3),
-                      Text(tr('Διάλεξε πρόγραμμα και σημείωσε κάθε άσκηση'),
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                    ],
+                  child: _StatCard(
+                    icon: Icons.fitness_center_outlined,
+                    label: tr('Υπόλοιπο'),
+                    value: _hasUnlimited ? '∞' : '$_totalRemaining',
+                    subtitle: tr('συνεδρίες'),
+                    gradient: _kBrandGradient,
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _totalBalanceCents > 0
+                      ? _StatCard(
+                          icon: Icons.account_balance_wallet_outlined,
+                          label: tr('Οφειλή'),
+                          value: '€${(_totalBalanceCents / 100).toStringAsFixed(0)}',
+                          subtitle: tr('οφειλόμενο'),
+                          color: AppColors.orange,
+                        )
+                      : _StatCard(
+                          icon: Icons.check_circle_outline,
+                          label: tr('Λογαριασμός'),
+                          value: 'OK',
+                          subtitle: tr('χωρίς οφειλές'),
+                          color: AppColors.teal,
+                        ),
+                ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.fitness_center_outlined,
-                  label: tr('Υπόλοιπο'),
-                  value: _hasUnlimited ? '∞' : _gymCredits.isEmpty ? '—' : '$_totalRemaining',
-                  subtitle: tr('συνεδρίες'),
-                  gradient: _kBrandGradient,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _totalBalanceCents > 0
-                    ? _StatCard(
-                        icon: Icons.account_balance_wallet_outlined,
-                        label: tr('Οφειλή'),
-                        value: '€${(_totalBalanceCents / 100).toStringAsFixed(0)}',
-                        subtitle: tr('οφειλόμενο'),
-                        color: AppColors.orange,
-                      )
-                    : _StatCard(
-                        icon: Icons.check_circle_outline,
-                        label: tr('Λογαριασμός'),
-                        value: 'OK',
-                        subtitle: tr('χωρίς οφειλές'),
-                        color: AppColors.teal,
-                      ),
-              ),
-            ],
-          ),
-          if (_gymCredits.isNotEmpty) ...[
             const SizedBox(height: 20),
             Text(tr('Ενεργά Πακέτα'),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
@@ -213,8 +265,9 @@ class _GymDashboardScreenState extends State<GymDashboardScreen> {
 // ── Gym Hero Card ─────────────────────────────────────────────────────────────
 
 class _GymHeroCard extends StatelessWidget {
-  const _GymHeroCard({required this.config});
+  const _GymHeroCard({required this.config, this.locationName});
   final TenantConfig config;
+  final String? locationName;
 
   @override
   Widget build(BuildContext context) {
@@ -249,8 +302,10 @@ class _GymHeroCard extends StatelessWidget {
                 Text(tr(config.appName),
                     style: const TextStyle(
                         color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
-                Text(tr('Μέλος'),
-                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(
+                  tr(locationName != null && locationName!.isNotEmpty ? locationName! : 'Μέλος'),
+                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                ),
               ],
             ),
           ),
