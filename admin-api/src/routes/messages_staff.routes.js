@@ -48,11 +48,20 @@ function actorFromAdmin(admin) {
   };
 }
 
+function queryLocationIds(req) {
+  if (req.admin?.role !== 'client_admin' || req.admin?.locationId) {
+    return req.admin?.locationId ? [String(req.admin.locationId)] : [];
+  }
+  const raw = req.query.location_ids || req.query.location_id || '';
+  return String(raw).split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 router.get('/threads', requireStaffMessaging, async (req, res) => {
   try {
     const threads = await listStaffThreads(db, actorFromAdmin(req.admin), {
       q: req.query.q || '',
       limit: Number(req.query.limit) || 50,
+      locationIds: queryLocationIds(req),
     });
     return res.json(threads);
   } catch (err) {
@@ -65,6 +74,7 @@ router.get('/contacts', requireStaffMessaging, async (req, res) => {
     const contacts = await listStaffContacts(db, actorFromAdmin(req.admin), {
       q: req.query.q || '',
       limit: Number(req.query.limit) || 30,
+      locationIds: queryLocationIds(req),
     });
     return res.json(contacts);
   } catch (err) {
@@ -74,7 +84,7 @@ router.get('/contacts', requireStaffMessaging, async (req, res) => {
 
 router.get('/unread-count', requireStaffMessaging, async (req, res) => {
   try {
-    const count = await getStaffUnreadCount(db, actorFromAdmin(req.admin));
+    const count = await getStaffUnreadCount(db, actorFromAdmin(req.admin), queryLocationIds(req));
     return res.json({ unread_count: count });
   } catch (err) {
     return res.status(500).json({ error: err.message });

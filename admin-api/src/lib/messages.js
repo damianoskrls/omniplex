@@ -451,7 +451,16 @@ async function canStaffAccessClient(conn, actor, clientUserId) {
   return null;
 }
 
-async function listStaffThreads(dbOrConn, actor, { q = '', limit = 50 } = {}) {
+function clientLocationSql(ids, userColumn) {
+  if (!ids?.length) return { sql: '', params: [] };
+  const ph = ids.map(() => '?').join(',');
+  return {
+    sql: `AND EXISTS (SELECT 1 FROM user_locations ul WHERE ul.user_id = ${userColumn} AND ul.location_id IN (${ph}))`,
+    params: ids.map(String),
+  };
+}
+
+async function listStaffThreads(dbOrConn, actor, { q = '', limit = 50, locationIds = [] } = {}) {
   const conn = dbOrConn;
   const peerFilter = peerSqlForActor(actor);
   let extraFilter = '';
@@ -473,6 +482,9 @@ async function listStaffThreads(dbOrConn, actor, { q = '', limit = 50 } = {}) {
     params.push(like, like, like);
   }
 
+  const locFilter = actor.role === 'client_admin' ? clientLocationSql(locationIds, 't.client_user_id') : { sql: '', params: [] };
+  params.push(...locFilter.params);
+
   const safeLimit = Math.min(Math.max(limit, 1), 100);
 
   const [rows] = await conn.execute(
@@ -483,6 +495,7 @@ async function listStaffThreads(dbOrConn, actor, { q = '', limit = 50 } = {}) {
        AND ${peerFilter.sql}
        ${extraFilter}
        ${searchSql}
+       ${locFilter.sql}
      ORDER BY t.last_message_at DESC
      LIMIT ${safeLimit}`,
     params
@@ -495,7 +508,7 @@ async function listStaffThreads(dbOrConn, actor, { q = '', limit = 50 } = {}) {
   return out;
 }
 
-async function listStaffContacts(dbOrConn, actor, { q = '', limit = 30 } = {}) {
+async function listStaffContacts(dbOrConn, actor, { q = '', limit = 30, locationIds = [] } = {}) {
   const conn = dbOrConn;
   const like = q?.trim() ? `%${q.trim()}%` : null;
   const lim = safeLimit(limit, 100);
@@ -574,6 +587,8 @@ async function listStaffContacts(dbOrConn, actor, { q = '', limit = 30 } = {}) {
     search = 'AND (u.full_name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)';
     params.push(like, like, like);
   }
+  const locFilter = clientLocationSql(locationIds, 'u.id');
+  params.push(...locFilter.params);
   params.push(actor.businessId, actor.businessId, actor.businessId);
   const [rows] = await conn.execute(
     `SELECT u.id AS client_user_id, u.full_name, u.email, u.phone
@@ -581,6 +596,7 @@ async function listStaffContacts(dbOrConn, actor, { q = '', limit = 30 } = {}) {
      WHERE u.business_id = ?
        AND COALESCE(u.account_status, 'active') = 'active' AND (u.deleted_at IS NULL)
        ${search}
+       ${locFilter.sql}
        AND NOT (
          EXISTS (
            SELECT 1 FROM user_memberships m
@@ -636,7 +652,7 @@ async function getThreadForStaff(dbOrConn, actor, threadId) {
   return formatThreadRow(conn, row, { unreadField: 'staff_unread_count' });
 }
 
-async function getStaffUnreadCount(dbOrConn, actor) {
+async function getStaffUnreadCount(dbOrConn, actor, locationIds = []) {
   const conn = dbOrConn;
   const peerFilter = peerSqlForActor(actor);
   let extraFilter = '';
@@ -649,6 +665,9 @@ async function getStaffUnreadCount(dbOrConn, actor) {
     extraFilter = `AND ${NUTRITION_CLIENT_EXISTS_SQL}`;
   } else if (actor.role === 'client_admin') {
     extraFilter = ADMIN_EXCLUDE_NUTRITION_ONLY_SQL;
+    const locFilter = clientLocationSql(locationIds, 't.client_user_id');
+    extraFilter += ` ${locFilter.sql}`;
+    params.push(...locFilter.params);
   }
 
   const [rows] = await conn.execute(

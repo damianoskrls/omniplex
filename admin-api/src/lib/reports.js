@@ -8,10 +8,13 @@ function parseReportFilters(query = {}) {
   const from = query.from ? String(query.from).slice(0, 10) : `${year}-01-01`;
   const to = query.to ? String(query.to).slice(0, 10) : new Date().toISOString().slice(0, 10);
   const inactiveDays = Math.max(7, Math.min(365, Number(query.inactive_days) || 30));
+  const locRaw = query.location_ids || query.location_id || '';
+  const locationIds = String(locRaw).split(',').map((s) => s.trim()).filter(Boolean);
   return {
     from,
     to,
-    locationId: query.location_id || null,
+    locationId: locationIds[0] || null,
+    locationIds,
     serviceId: query.service_id || null,
     staffId: query.staff_id || null,
     planId: query.plan_id || null,
@@ -27,9 +30,12 @@ function bookingFilterSql(filters, alias = 'b') {
     sqlGymServiceCategories('sv'),
   ];
   const params = [filters.from, filters.to];
-  if (filters.locationId) {
-    clauses.push(`${alias}.location_id = ?`);
-    params.push(filters.locationId);
+  const locationIds = filters.locationIds?.length
+    ? filters.locationIds
+    : (filters.locationId ? [filters.locationId] : []);
+  if (locationIds.length) {
+    clauses.push(`${alias}.location_id IN (${locationIds.map(() => '?').join(',')})`);
+    params.push(...locationIds);
   }
   if (filters.serviceId) {
     clauses.push(`${alias}.service_id = ?`);
