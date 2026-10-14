@@ -955,7 +955,8 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       [biz.id, locationId, locationId],
     );
     const [staffTrainers] = await db.query(
-      `SELECT st.id, st.full_name AS name, COALESCE(st.discovery_specialty, st.role) AS specialty, st.avatar_url AS photo_url
+      `SELECT st.id, st.full_name AS name, COALESCE(NULLIF(st.discovery_specialty, ''), st.role) AS specialty,
+              st.avatar_url AS photo_url, st.bio
        FROM staff st
        WHERE st.business_id = ? AND st.show_in_discovery = 1
          AND (? IS NULL
@@ -1067,10 +1068,19 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
               CASE WHEN s.duration_mins > 0
                 THEN DATE_FORMAT(ADDTIME(sss.start_time, SEC_TO_TIME(s.duration_mins * 60)), '%H:%i')
                 ELSE NULL END AS end_time,
+              s.id AS service_id,
               s.name AS class_name,
               s.name AS service_name,
+              s.description AS service_description,
+              s.category AS service_category,
               s.duration_mins,
+              COALESCE(NULLIF(sss.image_url, ''), s.image_url) AS service_image_url,
+              NULLIF(sss.subtitle, '') AS slot_subtitle,
+              st.id AS trainer_id,
               st.full_name AS trainer_name,
+              COALESCE(NULLIF(st.discovery_specialty, ''), st.role) AS trainer_specialty,
+              st.bio AS trainer_bio,
+              st.avatar_url AS trainer_photo_url,
               st.color_hex AS color,
               COALESCE(r.name, NULLIF(sss.room_name, '')) AS room_name,
               COALESCE(sss.max_capacity, s.default_capacity) AS max_capacity
