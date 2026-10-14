@@ -98,7 +98,7 @@ function ImageUploadBox({ label, accept, currentUrl, onUpload, onRemove, hint })
 }
 
 export default function Services() {
-  const { activeBranch } = useBranch() || {};
+  const { activeBranch, activeBranchId } = useBranch() || {};
   const [services, setServices] = useState([]);
   const [plans, setPlans] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -186,7 +186,7 @@ export default function Services() {
     setRooms(rm.data);
     setIcons(ic.data);
   };
-  useEffect(() => { load().catch(() => {}); }, []);
+  useEffect(() => { load().catch(() => {}); }, [activeBranchId]);
 
   const openCreate = () => {
     setForm(EMPTY);

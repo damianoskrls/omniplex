@@ -4311,6 +4311,16 @@ router.post('/clients', requireClientAdmin, async (req, res) => {
 // ============================================================
 router.get('/services', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
+  const locIds = parseLocIds(req);
+  let whereClause = 'WHERE s.business_id = ?';
+  const params = [bizId];
+  if (locIds.length) {
+    whereClause += ` AND (
+      EXISTS (SELECT 1 FROM service_locations sl WHERE sl.service_id = s.id AND sl.location_id IN (${locIds.map(() => '?').join(',')}))
+      OR NOT EXISTS (SELECT 1 FROM service_locations sl2 WHERE sl2.service_id = s.id)
+    )`;
+    params.push(...locIds);
+  }
   const [rows] = await db.query(
     `SELECT s.*,
       (SELECT GROUP_CONCAT(l.name ORDER BY l.sort_order, l.name SEPARATOR ', ')
@@ -4319,12 +4329,9 @@ router.get('/services', requireClientAdmin, async (req, res) => {
        WHERE sl.service_id = s.id) AS location_names,
       (SELECT COUNT(*) FROM service_locations sl WHERE sl.service_id = s.id) AS location_count
      FROM services s
-     WHERE s.business_id = ?
-       AND (? IS NULL
-         OR EXISTS (SELECT 1 FROM service_locations sl WHERE sl.service_id = s.id AND sl.location_id = ?)
-         OR NOT EXISTS (SELECT 1 FROM service_locations sl2 WHERE sl2.service_id = s.id))
+     ${whereClause}
      ORDER BY s.category, s.name`,
-    [bizId, req.query.location_id || null, req.query.location_id || null],
+    params,
   );
   return res.json(rows);
 });
