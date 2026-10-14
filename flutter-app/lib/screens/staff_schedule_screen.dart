@@ -408,6 +408,18 @@ class _BookingCard extends StatelessWidget {
     } catch (_) { return startsAt; }
   }
 
+  /// Opens 30 minutes before the session and stays available after it ends.
+  bool _attendanceOpen(String? startsAt) {
+    if (startsAt == null) return false;
+    try {
+      final start = DateTime.parse(startsAt).toLocal();
+      final opensAt = start.subtract(const Duration(minutes: 30));
+      return !DateTime.now().isBefore(opensAt);
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final serviceName  = booking['service_name'] as String? ?? '';
@@ -509,25 +521,27 @@ class _BookingCard extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              if (!isMine) ...[
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onClaim,
-                    icon: const Icon(Icons.add_task, size: 16),
-                    label: Text(tr('Ανάθεση σε μένα')),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                    ),
+          if (!isMine || _attendanceOpen(booking['starts_at'] as String?) || confirmed) ...[
+            const SizedBox(height: 12),
+            if (!isMine)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onClaim,
+                  icon: const Icon(Icons.add_task, size: 16),
+                  label: Text(tr('Ανάθεση σε μένα')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side: const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
+              ),
+            if (!isMine && _attendanceOpen(booking['starts_at'] as String?))
+              const SizedBox(height: 8),
+            if (_attendanceOpen(booking['starts_at'] as String?))
+              SizedBox(
+                width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: onToggleAttendance,
                   icon: Icon(confirmed ? Icons.check_circle : Icons.radio_button_unchecked, size: 18),
@@ -537,27 +551,26 @@ class _BookingCard extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: confirmed ? AppColors.lime : AppColors.textSecondary,
                     side: BorderSide(color: confirmed ? AppColors.lime : AppColors.border),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            if (confirmed) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onEditNote,
+                  icon: const Icon(Icons.edit_note_outlined, size: 16),
+                  label: Text(tr((notes != null && notes.isNotEmpty) ? 'Επεξεργασία σχολίου' : 'Πώς πήγε;')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side: const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
               ),
             ],
-          ),
-          if (confirmed) ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onEditNote,
-                icon: const Icon(Icons.edit_note_outlined, size: 16),
-                label: Text(tr((notes != null && notes.isNotEmpty) ? 'Επεξεργασία σχολίου' : 'Πώς πήγε;')),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                ),
-              ),
-            ),
           ],
         ],
       ),
