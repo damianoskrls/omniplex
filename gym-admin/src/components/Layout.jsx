@@ -11,6 +11,7 @@ import NotificationBell from './NotificationBell';
 import Avatar from './ui/Avatar';
 import GlobalSearch from './GlobalSearch';
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../api/client';
 import useMessagesUnreadCount from '../hooks/useMessagesUnreadCount';
 import useMarketplacePending from '../hooks/useMarketplacePending';
@@ -55,7 +56,7 @@ function BranchSwitcher() {
         </button>
       </div>
 
-      {open && (
+      {open && createPortal(
         <div className="branch-modal-overlay" onClick={handleClose}>
           <div className="branch-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
             <div className="branch-modal__header">
@@ -116,7 +117,8 @@ function BranchSwitcher() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
