@@ -213,7 +213,16 @@ export default function Dashboard() {
     } catch { /* ignore */ } finally { setSavingNote(false); }
   }
 
-  useEffect(() => { loadTrials(); }, [locationId, activeBranchId]);
+  useEffect(() => {
+    let cancelled = false;
+    const today = new Date().toISOString().slice(0, 10);
+    const params = { from: today };
+    if (locationId) params.location_id = locationId;
+    api.get('/client-admin/trials', { params })
+      .then(r => { if (!cancelled) setTrials((r.data || []).filter(t => new Date(t.starts_at) >= new Date())); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [locationId, activeBranchId]);
 
   useEffect(() => {
     api.get('/client-admin/locations')
@@ -222,28 +231,31 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     api.get('/client-admin/dashboard')
       .then(async (r) => enrichDashboardData(r.data))
-      .then(setStats)
+      .then((data) => { if (!cancelled) setStats(data); })
       .catch((err) => {
+        if (cancelled) return;
         console.error(err);
         toast.error(err.response?.data?.error || 'Δεν φορτώθηκε το dashboard');
       })
-      .finally(() => setLoading(false));
-    api.get('/client-admin/dashboard-extras').then(r => setExtras(r.data)).catch(() => {});
+      .finally(() => { if (!cancelled) setLoading(false); });
+    api.get('/client-admin/dashboard-extras').then(r => { if (!cancelled) setExtras(r.data); }).catch(() => {});
 
     // Check for expiring memberships — show modal once per calendar day
     const todayKey = new Date().toISOString().slice(0, 10);
     const dismissed = localStorage.getItem('expiring_dismissed_date');
     if (dismissed !== todayKey) {
       api.get('/client-admin/expiring-memberships').then(r => {
-        if (r.data && r.data.length > 0) {
+        if (!cancelled && r.data && r.data.length > 0) {
           setExpiringMemberships(r.data);
           setExpiringModalOpen(true);
         }
       }).catch(() => {});
     }
+    return () => { cancelled = true; };
   }, [activeBranchId]);
 
   const cards = stats ? [
