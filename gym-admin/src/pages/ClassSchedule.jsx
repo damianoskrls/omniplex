@@ -122,6 +122,7 @@ export default function ClassSchedule() {
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState(null);
   const [activeDay, setActiveDay] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -229,9 +230,19 @@ export default function ClassSchedule() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('Διαγραφή μαθήματος;')) return;
-    await api.delete(`/client-admin/class-schedules/${id}`);
-    await load();
+    const entry = entries.find(e => e.id === id);
+    setDeleteTarget(entry || { id });
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    try {
+      await api.delete(`/client-admin/class-schedules/${deleteTarget.id}`);
+      setDeleteTarget(null);
+      await load();
+    } catch (e) {
+      setDeleteTarget(null);
+    }
   }
 
   const dayEntries = entries.filter(e => e.day_of_week === activeDay);
@@ -483,6 +494,37 @@ export default function ClassSchedule() {
                 <Check size={15} />
                 {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setDeleteTarget(null)}>
+          <div className="modal" style={{ maxWidth: 420 }}>
+            <div className="modal-title" style={{ color: 'var(--danger, #ef4444)' }}>Διαγραφή μαθήματος</div>
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ marginBottom: 12, color: 'var(--text-secondary, #888)', fontSize: '0.9rem' }}>
+                Είσαι σίγουρος ότι θέλεις να διαγράψεις αυτό το μάθημα από το πρόγραμμα;
+              </p>
+              <div style={{ background: 'var(--bg-hover, #f9fafb)', borderRadius: 10, padding: '12px 16px', border: '1px solid var(--border, #e5e7eb)' }}>
+                <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 4 }}>
+                  {deleteTarget.class_name || '—'}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary, #888)', display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+                  {deleteTarget.start_time && (
+                    <span>{DAYS[deleteTarget.day_of_week] || ''} · {deleteTarget.start_time?.slice(0, 5)}{deleteTarget.duration_mins ? ` – ${calcEndTime(deleteTarget.start_time?.slice(0, 5), deleteTarget.duration_mins)}` : ''}</span>
+                  )}
+                  {deleteTarget.trainer_name && <span>{deleteTarget.trainer_name}</span>}
+                  {deleteTarget.location_name && <span>{deleteTarget.location_name}</span>}
+                  {deleteTarget.max_capacity && <span>{deleteTarget.max_capacity} άτομα</span>}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setDeleteTarget(null)}>Ακύρωση</button>
+              <button className="btn btn-danger" onClick={confirmDelete}>Διαγραφή</button>
             </div>
           </div>
         </div>

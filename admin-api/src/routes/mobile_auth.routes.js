@@ -737,10 +737,10 @@ router.patch('/staff/trials/:id/claim', requireMobileStaff, async (req, res) => 
 
 // PATCH /api/mobile/staff/trials/:id/feedback — outcome after the trainer's own trial
 router.patch('/staff/trials/:id/feedback', requireMobileStaff, async (req, res) => {
-  const { notes, satisfied, became_member, considering } = req.body;
+  const { notes, satisfied, became_member, considering, user_name } = req.body;
   try {
     const [[trial]] = await db.query(
-      'SELECT id, staff_id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
+      'SELECT id, staff_id, user_id FROM bookings WHERE id = ? AND business_id = ? AND is_trial = 1',
       [req.params.id, req.businessId],
     );
     if (!trial) return res.status(404).json({ error: 'Δεν βρέθηκε το δοκιμαστικό' });
@@ -752,11 +752,15 @@ router.patch('/staff/trials/:id/feedback', requireMobileStaff, async (req, res) 
     else if (satisfied === false || satisfied === 0 || satisfied === '0') sat = 0;
     const became = became_member ? 1 : 0;
     const thinks = became ? 0 : (considering ? 1 : 0);
+    const trimmedName = user_name?.trim() || null;
     await db.query(
       `UPDATE bookings
        SET notes = ?, trial_satisfied = ?, trial_became_member = ?, trial_considering = ?
+       ${trimmedName ? ', guest_name = ?' : ''}
        WHERE id = ? AND business_id = ?`,
-      [notes?.trim() || null, sat, became, thinks, req.params.id, req.businessId],
+      trimmedName
+        ? [notes?.trim() || null, sat, became, thinks, trimmedName, req.params.id, req.businessId]
+        : [notes?.trim() || null, sat, became, thinks, req.params.id, req.businessId],
     );
     return res.json({ ok: true });
   } catch (err) {
@@ -927,7 +931,7 @@ router.get('/staff/trials', requireMobileStaff, async (req, res) => {
       SELECT b.id, b.starts_at, b.ends_at, b.status, b.notes,
              b.user_id, b.service_id, b.staff_id, b.location_id,
              b.trial_became_member, b.trial_considering, b.trial_satisfied,
-             u.full_name AS user_name, u.phone AS user_phone,
+             COALESCE(u.full_name, b.guest_name) AS user_name, u.phone AS user_phone,
              s.name AS service_name,
              loc.name AS location_name,
              st.full_name AS staff_name

@@ -421,6 +421,7 @@ class _BookingCard extends StatelessWidget {
     final time         = _timeRange(booking['starts_at'] as String?, booking['ends_at'] as String?);
     final assignedStaffId = booking['staff_id'] as String?;
     final isMine = assignedStaffId != null && myStaffId != null && assignedStaffId == myStaffId;
+    final isTrial = booking['is_trial'] == 1 || booking['is_trial'] == true || booking['is_trial'] == '1';
 
     Color accent = AppColors.lime;
     if (serviceColor != null && serviceColor.isNotEmpty) {
@@ -446,7 +447,19 @@ class _BookingCard extends StatelessWidget {
                       children: [
                         Expanded(child: Text(tr(serviceName),
                             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
-                        if (isMine)
+                        if (isTrial)
+                          Container(
+                            margin: const EdgeInsets.only(left: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(tr('ΔΟΚΙΜΑΣΤΙΚΟ'),
+                                style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.amber)),
+                          ),
+                        if (isMine) ...[
+                          const SizedBox(width: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
@@ -456,6 +469,7 @@ class _BookingCard extends StatelessWidget {
                             child: Text(tr('Δικό μου'),
                                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.lime)),
                           ),
+                        ],
                       ],
                     ),
                     Text(tr(time), style: TextStyle(fontSize: 13, color: accent, fontWeight: FontWeight.w600)),

@@ -1899,113 +1899,98 @@ class _ThisWeekSection extends StatelessWidget {
   final void Function(Map<String, dynamic>) onOpenBooking;
   final VoidCallback onSeeAll;
 
+  String _formatDate(String? dateStr, String? timeStr) {
+    final date = DateTime.tryParse('${dateStr ?? ''}');
+    if (date == null) return timeStr?.substring(0, 5) ?? '';
+    final weekdays = ['Δευ', 'Τρί', 'Τετ', 'Πέμ', 'Παρ', 'Σάβ', 'Κυρ'];
+    final months = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
+    final wd = weekdays[date.weekday - 1];
+    final mo = months[date.month - 1];
+    final t = (timeStr ?? '').length >= 5 ? timeStr!.substring(0, 5) : '';
+    return '$wd ${date.day} $mo${t.isNotEmpty ? ', $t' : ''}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(tr('Αυτή την Εβδομάδα'),
-          style: GoogleFonts.inter(
-            fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-        const SizedBox(height: 12),
-        // Mini week strip
-        _WeekStrip(),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: _kCard,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kBorder),
-          ),
-          clipBehavior: Clip.hardEdge,
-          child: Column(
-            children: [
-              ...bookings.take(3).toList().asMap().entries.map((e) {
-                final i = e.key;
-                final b = e.value;
-                final time    = (b['booking_time'] as String? ?? '').substring(0, 5);
-                final service = b['service_name'] as String? ?? '';
-                final gym     = b['app_name'] as String? ?? '';
-                return GestureDetector(
-                  onTap: () => onOpenBooking(b),
-                  child: Container(
-                  decoration: BoxDecoration(
-                    border: i < 2
-                      ? const Border(bottom: BorderSide(color: Color(0xFF26272C)))
-                      : null,
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(children: [
-                    Container(
-                      width: 6, height: 6,
-                      decoration: const BoxDecoration(color: _kAccent, shape: BoxShape.circle)),
-                    const SizedBox(width: 10),
-                    Text(tr(time), style: GoogleFonts.inter(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: _kAccent)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(tr(service), style: GoogleFonts.inter(
-                          fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                        Text(tr(gym), style: GoogleFonts.inter(fontSize: 11, color: _kGray)),
-                      ]),
-                    ),
-                    const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
-                  ]),
+    return Container(
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorder),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        children: [
+          ...bookings.asMap().entries.map((e) {
+            final i = e.key;
+            final b = e.value;
+            final dateLabel = _formatDate(b['booking_date'] as String?, b['booking_time'] as String?);
+            final service   = b['service_name'] as String? ?? '';
+            final gym       = b['app_name'] as String? ?? '';
+            final location  = b['location_name'] as String?;
+            final isTrial   = b['is_trial'] == 1 || b['is_trial'] == true || b['is_trial'] == '1';
+            final subtitle  = [gym, if (location != null && location.isNotEmpty && location != gym) location]
+                .where((s) => s.isNotEmpty).join(' · ');
+            return GestureDetector(
+              onTap: () => onOpenBooking(b),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: i < bookings.length - 1
+                    ? const Border(bottom: BorderSide(color: Color(0xFF26272C)))
+                    : null,
                 ),
-                );
-              }),
-              GestureDetector(
-                onTap: onSeeAll,
-                child: Container(
-                decoration: const BoxDecoration(
-                  border: Border(top: BorderSide(color: Color(0xFF26272C)))),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text(tr('Δες ολόκληρο το πρόγραμμα'), style: GoogleFonts.inter(
-                    fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(children: [
+                  Container(
+                    width: 6, height: 6,
+                    decoration: const BoxDecoration(color: _kAccent, shape: BoxShape.circle)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Text(tr(dateLabel), style: GoogleFonts.inter(
+                          fontSize: 12, fontWeight: FontWeight.w600, color: _kAccent)),
+                        if (isTrial) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(tr('ΔΟΚΙΜΑΣΤΙΚΟ'), style: GoogleFonts.inter(
+                              fontSize: 9, fontWeight: FontWeight.w800, color: Colors.amber)),
+                          ),
+                        ],
+                      ]),
+                      const SizedBox(height: 2),
+                      Text(tr(service), style: GoogleFonts.inter(
+                        fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                      if (subtitle.isNotEmpty)
+                        Text(tr(subtitle), style: GoogleFonts.inter(fontSize: 11, color: _kGray)),
+                    ]),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
                 ]),
               ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _WeekStrip extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final dayLabels = [tr('Δ'),tr('Τ'),tr('Τ'),tr('Π'),tr('Π'),tr('Σ'),tr('Κ')];
-    return Row(
-      children: List.generate(7, (i) {
-        final day   = now.subtract(Duration(days: now.weekday - 1 - i));
-        final label = dayLabels[(day.weekday - 1) % 7];
-        final num   = day.day.toString();
-        final today = day.day == now.day && day.month == now.month;
-        return Expanded(
-          child: Column(children: [
-            Text(tr(label), style: GoogleFonts.inter(fontSize: 10, color: _kGray)),
-            const SizedBox(height: 4),
-            Container(
-              width: 32, height: 32,
-              decoration: BoxDecoration(
-                color: today ? _kAccent : Colors.transparent,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Text(tr(num), style: GoogleFonts.inter(
-                fontSize: 13, fontWeight: FontWeight.w700,
-                color: today ? _kBg : Colors.white)),
+            );
+          }),
+          GestureDetector(
+            onTap: onSeeAll,
+            child: Container(
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: Color(0xFF26272C)))),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text(tr('Δες ολόκληρο το πρόγραμμα'), style: GoogleFonts.inter(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
+              ]),
             ),
-          ]),
-        );
-      }),
+          ),
+        ],
+      ),
     );
   }
 }

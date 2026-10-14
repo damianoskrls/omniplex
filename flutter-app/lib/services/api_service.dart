@@ -218,12 +218,14 @@ class ApiService {
     bool? satisfied,
     bool becameMember = false,
     bool considering = false,
+    String? userName,
   }) async {
     await _patch('/api/mobile/staff/trials/$bookingId/feedback', {
       'notes': notes,
       'satisfied': satisfied,
       'became_member': becameMember,
       'considering': considering,
+      if (userName != null) 'user_name': userName,
     });
   }
 

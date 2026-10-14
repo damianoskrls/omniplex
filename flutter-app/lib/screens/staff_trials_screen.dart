@@ -329,13 +329,19 @@ class _TrialTile extends StatelessWidget {
                       child: Text(tr('Θα το κάνω εγώ'), style: TextStyle(color: AppColors.onFill(color))),
                     ),
                   ),
-                if (mine)
+                if (mine) ...[
+                  if (unassigned) const SizedBox(width: 8),
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: onFeedback,
-                      child: Text(tr('Αποτέλεσμα')),
-                    ),
+                    child: Builder(builder: (ctx) {
+                      final startsAt = DateTime.tryParse('${trial['starts_at']}')?.toLocal();
+                      final isDone = startsAt != null && DateTime.now().isAfter(startsAt);
+                      return OutlinedButton(
+                        onPressed: isDone ? onFeedback : null,
+                        child: Text(tr('Αποτέλεσμα')),
+                      );
+                    }),
                   ),
+                ],
               ],
             ),
           ],
@@ -373,6 +379,7 @@ class _FeedbackSheet extends StatefulWidget {
 
 class _FeedbackSheetState extends State<_FeedbackSheet> {
   late final TextEditingController _notes;
+  late final TextEditingController _clientName;
   bool? _satisfied;
   String _outcome = 'no';
   bool _saving = false;
@@ -382,6 +389,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     super.initState();
     final trial = widget.trial;
     _notes = TextEditingController(text: trial['notes'] as String? ?? '');
+    _clientName = TextEditingController();
     final sat = trial['trial_satisfied'];
     if (sat == 1 || sat == true) _satisfied = true;
     if (sat == 0 || sat == false) _satisfied = false;
@@ -395,18 +403,21 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   @override
   void dispose() {
     _notes.dispose();
+    _clientName.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
+      final nameEntry = _clientName.text.trim();
       await context.read<AuthService>().api.saveTrialFeedback(
             widget.trial['id'] as String,
             notes: _notes.text.trim(),
             satisfied: _satisfied,
             becameMember: _outcome == 'member',
             considering: _outcome == 'considering',
+            userName: nameEntry.isNotEmpty ? nameEntry : null,
           );
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -419,7 +430,8 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.trial['user_name'] as String? ?? '';
+    final name = (widget.trial['user_name'] as String?)?.trim() ?? '';
+    final isAnonymous = name.isEmpty;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 20),
@@ -430,9 +442,19 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
           children: [
             Text(tr('Αποτέλεσμα δοκιμαστικού'),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            if (name.isNotEmpty)
+            if (!isAnonymous)
               Text(tr(name), style: const TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 16),
+            if (isAnonymous) ...[
+              TextField(
+                controller: _clientName,
+                decoration: InputDecoration(
+                  labelText: tr('Όνομα πελάτη (προαιρετικό)'),
+                  hintText: tr('π.χ. Γιώργης'),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             Text(tr('Έμεινε ικανοποιημένος;'), style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Wrap(
