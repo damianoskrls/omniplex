@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import api from '../api/client';
 import toast from 'react-hot-toast';
 import { Plus, Save, X } from 'lucide-react';
+import { useBranch } from '../context/BranchContext';
 
 const EMPTY = {
   full_name: '',
@@ -15,26 +16,23 @@ const EMPTY = {
 };
 
 export default function Nutritionists() {
+  const { activeBranchId, branches } = useBranch() || {};
   const [rows, setRows] = useState([]);
-  const [locations, setLocations] = useState([]);
+  const locations = branches || [];
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
 
   const load = async () => {
-    const [listRes, locRes] = await Promise.all([
-      api.get('/client-admin/nutritionists'),
-      api.get('/client-admin/locations').catch(() => ({ data: [] })),
-    ]);
+    const listRes = await api.get('/client-admin/nutritionists');
     setRows(listRes.data || []);
-    setLocations(locRes.data || []);
   };
 
   useEffect(() => {
     setLoading(true);
     load().catch(() => toast.error('Σφάλμα')).finally(() => setLoading(false));
-  }, []);
+  }, [activeBranchId]);
 
   const openNew = () => {
     setEditing('new');
@@ -94,12 +92,9 @@ export default function Nutritionists() {
   return (
     <Layout title="Διατροφολόγοι" variant="nutrition">
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Διατροφολόγοι</h1>
-          <p className="text-muted" style={{ margin: '6px 0 0' }}>
-            Ανεξάρτητη υπηρεσία — η τοποθεσία δείχνει σε ποιο κατάστημα εργάζεται ο κάθε διατροφολόγος.
-          </p>
-        </div>
+        <p className="text-muted" style={{ margin: 0 }}>
+          Ανεξάρτητη υπηρεσία — η τοποθεσία δείχνει σε ποιο κατάστημα εργάζεται ο κάθε διατροφολόγος.
+        </p>
         <button type="button" className="btn btn-primary" onClick={openNew}>
           <Plus size={16} /> Νέος διατροφολόγος
         </button>

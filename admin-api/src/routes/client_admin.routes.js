@@ -7277,15 +7277,19 @@ router.delete('/nutrition/bookings/:id', requireNutritionStaff, async (req, res)
 // Nutritionist accounts (owner manages list; nutritionist reads own profile)
 router.get('/nutritionists', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const [rows] = await db.query(
-    `SELECT n.id, n.full_name, n.email, n.phone, n.bio, n.is_active, n.created_at, n.staff_id, n.location_id,
+  const locIds = parseLocIds(req);
+  let q = `SELECT n.id, n.full_name, n.email, n.phone, n.bio, n.is_active, n.created_at, n.staff_id, n.location_id,
             l.name AS location_name
      FROM nutritionists n
      LEFT JOIN locations l ON l.id = n.location_id
-     WHERE n.business_id = ?
-     ORDER BY l.sort_order, l.name, n.full_name`,
-    [bizId],
-  );
+     WHERE n.business_id = ?`;
+  const params = [bizId];
+  if (locIds.length) {
+    q += ` AND n.location_id IN (${locIds.map(() => '?').join(',')})`;
+    params.push(...locIds);
+  }
+  q += ' ORDER BY l.sort_order, l.name, n.full_name';
+  const [rows] = await db.query(q, params);
   return res.json(rows);
 });
 
