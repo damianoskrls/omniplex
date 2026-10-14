@@ -3,9 +3,8 @@ import Layout from '../components/Layout';
 import api from '../api/client';
 import { useBranch } from '../context/BranchContext';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
 import LocationCheckboxes from '../components/LocationCheckboxes';
-import { Plus, Trash2, Pencil, CalendarClock, Upload, X, Check, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Pencil, Upload, X, Check, Sparkles } from 'lucide-react';
 import { mediaUrl } from '../utils/media';
 
 const EMPTY = { name: '', description: '', category: '', duration_mins: 60, default_capacity: '', hide_staff_selection: false, slot_label_mode: 'time_only', requires_attendance_confirmation: true, requires_qr_scan: true, is_open_access: false };
@@ -424,12 +423,6 @@ export default function Services() {
                 </td>
                 <td style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                    <Link to={`/services/${s.id}/schedule`} className="btn btn-secondary btn-sm" title="Πρόγραμμα ωρών & χωρητικότητα">
-                      <CalendarClock size={14} /> Πρόγραμμα
-                    </Link>
-                    <Link to={`/services/${s.id}/schedule`} className="btn btn-secondary btn-sm" title="AI Εισαγωγή προγράμματος από εικόνα" style={{ color: '#a855f7', borderColor: '#e9d5ff', background: '#faf5ff' }}>
-                      <Sparkles size={14} /> AI
-                    </Link>
                     {!s.image_url && (
                       <button
                         type="button"

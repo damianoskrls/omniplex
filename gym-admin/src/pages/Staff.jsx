@@ -7,12 +7,14 @@ import toast from 'react-hot-toast';
 import StaffDeleteModal from '../components/StaffDeleteModal';
 import ApproveClientModal from '../components/ApproveClientModal';
 import { Plus, Settings, Trash2, UserCheck, UserX, Clock } from 'lucide-react';
+import { SkeletonCards } from '../components/SkeletonLoader';
 
 const EMPTY = { full_name: '', role: 'Trainer', phone: '', bio: '', color_hex: '#607D8B' };
 
 export default function Staff() {
   const { activeBranchId } = useBranch() || {};
   const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [joinRequests, setJoinRequests] = useState([]);
   const [modal, setModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -22,6 +24,7 @@ export default function Staff() {
   const navigate = useNavigate();
 
   const load = async () => {
+    setLoading(true);
     try {
       const [staffRes, jrRes] = await Promise.all([
         api.get('/client-admin/staff'),
@@ -29,7 +32,9 @@ export default function Staff() {
       ]);
       setStaff(staffRes.data || []);
       setJoinRequests((jrRes.data || []).filter(r => r.role === 'staff'));
-    } catch { /* ignore */ }
+    } catch { /* ignore */ } finally {
+      setLoading(false);
+    }
   };
 
   const handleApproveDecide = async (status) => {
@@ -103,8 +108,9 @@ export default function Staff() {
         </div>
       )}
 
+      {loading && <SkeletonCards count={6} />}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-        {staff.map(s => (
+        {!loading && staff.map(s => (
           <div className="card" key={s.id}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: s.color_hex, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>

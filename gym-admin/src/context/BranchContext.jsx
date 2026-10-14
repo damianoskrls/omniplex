@@ -19,13 +19,21 @@ export function BranchProvider({ children }) {
     api.get('/client-admin/locations')
       .then(r => {
         const data = r.data || [];
+        // Group all IDs per name to handle DB duplicates
+        const idsByName = {};
+        data.forEach(b => {
+          const key = b.name.toLowerCase().trim();
+          if (!idsByName[key]) idsByName[key] = [];
+          idsByName[key].push(String(b.id));
+        });
         const seen = new Set();
-        setBranches(data.filter(b => {
+        const deduped = data.filter(b => {
           const key = b.name.toLowerCase().trim();
           if (seen.has(key)) return false;
           seen.add(key);
           return true;
-        }));
+        }).map(b => ({ ...b, siblingIds: idsByName[b.name.toLowerCase().trim()] }));
+        setBranches(deduped);
       })
       .catch(() => setBranches([]));
   }, [isOwner, token]);
@@ -34,6 +42,7 @@ export function BranchProvider({ children }) {
   useEffect(() => {
     if (!token) {
       localStorage.removeItem('gym_admin_active_branch_id');
+      localStorage.removeItem('gym_admin_active_branch_ids');
       setActiveBranchIdState(null);
     }
   }, [token]);
@@ -41,8 +50,12 @@ export function BranchProvider({ children }) {
   const setActiveBranch = (id) => {
     if (id) {
       localStorage.setItem('gym_admin_active_branch_id', String(id));
+      const branch = branches.find(b => String(b.id) === String(id));
+      const allIds = branch?.siblingIds || [String(id)];
+      localStorage.setItem('gym_admin_active_branch_ids', allIds.join(','));
     } else {
       localStorage.removeItem('gym_admin_active_branch_id');
+      localStorage.removeItem('gym_admin_active_branch_ids');
     }
     setActiveBranchIdState(id ? String(id) : null);
   };

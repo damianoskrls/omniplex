@@ -7,9 +7,10 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
   // Append active branch filter to all GET requests when a branch is selected
+  const branchIds = localStorage.getItem('gym_admin_active_branch_ids');
   const branchId = localStorage.getItem('gym_admin_active_branch_id');
-  if (branchId && (config.method === 'get' || !config.method)) {
-    config.params = { ...config.params, location_id: branchId };
+  if ((branchIds || branchId) && (config.method === 'get' || !config.method)) {
+    config.params = { ...config.params, location_ids: branchIds || branchId };
   }
 
   return config;

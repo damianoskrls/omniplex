@@ -178,6 +178,17 @@ const {
 
 const router = express.Router();
 
+// Parse location_ids (comma-sep) from req.query — handles both old location_id and new location_ids param
+function parseLocIds(req) {
+  const raw = req.query.location_ids || req.query.location_id || '';
+  return raw.toString().split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function locInClause(ids) {
+  if (!ids.length) return null;
+  return { clause: `IN (${ids.map(() => '?').join(',')})`, params: ids };
+}
+
 const BOOKING_ENRICHED_SELECT = `
   SELECT b.id, b.user_id, b.service_id, b.staff_id, b.location_id, b.staff_assignment_status,
          b.starts_at, b.ends_at, b.status, b.source, b.is_trial,
@@ -519,7 +530,7 @@ router.post('/login', async (req, res) => {
 // ============================================================
 router.get('/dashboard', requireClientAdmin, async (req, res) => {
   const bizId = req.admin.businessId;
-  const loc = String(req.query.location_id || '').trim() || null;
+  const loc = String(req.query.location_ids || req.query.location_id || '').split(',')[0].trim() || null;
   const book = loc ? ' AND location_id = ?' : '';
   const bookB = loc ? ' AND b.location_id = ?' : '';
   const userHere = loc
@@ -1117,9 +1128,11 @@ router.get('/clients', requireClientAdmin, async (req, res) => {
       q += ' AND u.account_status = ?';
       params.push(status);
     }
-    if (req.query.location_id) {
-      q += ' AND EXISTS (SELECT 1 FROM user_locations ulf WHERE ulf.user_id = u.id AND ulf.location_id = ?)';
-      params.push(req.query.location_id);
+    const locIds = parseLocIds(req);
+    if (locIds.length) {
+      const ph = locIds.map(() => '?').join(',');
+      q += ` AND EXISTS (SELECT 1 FROM user_locations ulf WHERE ulf.user_id = u.id AND ulf.location_id IN (${ph}))`;
+      params.push(...locIds);
     }
     q += `
       GROUP BY u.id, u.account_status, u.deleted_at, u.notes, u.referred_by_user_id, u.date_of_birth, u.weight_kg,
@@ -3266,7 +3279,8 @@ router.get('/trials', requireClientAdmin, async (req, res) => {
     const params = [bizId];
     if (req.query.from) { whereClauses.push('DATE(b.starts_at) >= ?'); params.push(req.query.from); }
     if (req.query.to)   { whereClauses.push('DATE(b.starts_at) <= ?'); params.push(req.query.to); }
-    if (req.query.location_id) { whereClauses.push('b.location_id = ?'); params.push(req.query.location_id); }
+    const _locIds = parseLocIds(req);
+    if (_locIds.length) { whereClauses.push(`b.location_id IN (${_locIds.map(() => '?').join(',')})`); params.push(..._locIds); }
     const [rows] = await db.query(`
       SELECT b.id, b.starts_at, b.ends_at, b.status, b.notes,
              b.user_id, b.service_id, b.staff_id, b.location_id,
@@ -3440,7 +3454,8 @@ router.get('/bookings', requireClientAdmin, async (req, res) => {
     const params = [bizId];
 
     if (req.query.date) { q += ' AND DATE(b.starts_at) = ?'; params.push(req.query.date); }
-    if (req.query.location_id) { q += ' AND b.location_id = ?'; params.push(req.query.location_id); }
+    const _triLocIds = parseLocIds(req);
+    if (_triLocIds.length) { q += ` AND b.location_id IN (${_triLocIds.map(() => '?').join(',')})`; params.push(..._triLocIds); }
     if (req.query.id) { q += ' AND b.id = ?'; params.push(req.query.id); }
     if (req.query.user_id) { q += ' AND b.user_id = ?'; params.push(req.query.user_id); }
     if (req.query.from) { q += ' AND DATE(b.starts_at) >= ?'; params.push(req.query.from); }
@@ -4703,9 +4718,9 @@ router.get('/staff', requireClientAdmin, async (req, res) => {
     s.location_ids = await getStaffLocationIds(db, s.id);
     s.portal_enabled = !!s.portal_email && s.is_active && Number(s.has_portal_password) > 0;
   }
-  const loc = req.query.location_id || null;
-  const visible = loc
-    ? staff.filter((s) => s.location_ids?.includes(loc))
+  const locIds = parseLocIds(req);
+  const visible = locIds.length
+    ? staff.filter((s) => locIds.some(id => s.location_ids?.includes(id)))
     : staff;
   return res.json(visible);
 });

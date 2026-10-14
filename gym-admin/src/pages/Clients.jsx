@@ -6,6 +6,7 @@ import { useBranch } from '../context/BranchContext';
 import toast from 'react-hot-toast';
 import { Plus, Eye, Check, Ban, RotateCcw, Trash2, Search, UserCheck, AlertTriangle, Clock, UserPlus } from 'lucide-react';
 import ApproveClientModal from '../components/ApproveClientModal';
+import { SkeletonTable } from '../components/SkeletonLoader';
 
 const FITNESS_GOALS = [
   { id: '', label: '— Δεν έχει οριστεί —' },
@@ -45,10 +46,13 @@ const EMPTY = {
 export default function Clients() {
   const { activeBranch, activeBranchId } = useBranch() || {};
   const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [joinRequests, setJoinRequests] = useState([]);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
-  const [locations, setLocations] = useState([]);
+  // Use BranchContext branches (already deduped by name) for location filter tabs
+  const { branches: branchLocations } = useBranch() || {};
+  const locations = branchLocations || [];
   const [locationFilter, setLocationFilter] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -72,8 +76,12 @@ export default function Clients() {
   const visibleJoinRequests = joinRequests.filter((r) => !locationFilter || r.location_id === locationFilter);
 
   const load = async () => {
+    setLoading(true);
     const params = inTrash ? { view: 'trash' } : (statusFilter ? { status: statusFilter } : {});
-    if (locationFilter) params.location_id = locationFilter;
+    if (locationFilter) {
+      const branch = locations.find(b => String(b.id) === String(locationFilter));
+      params.location_ids = branch?.siblingIds?.join(',') || locationFilter;
+    }
     try {
       const [clientsRes, dashRes, jrRes] = await Promise.all([
         api.get('/client-admin/clients', { params }),
@@ -87,16 +95,13 @@ export default function Clients() {
       }
     } catch {
       /* ignore */
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => { load(); }, [statusFilter, locationFilter, activeBranchId]);
 
-  useEffect(() => {
-    api.get('/client-admin/locations')
-      .then((r) => setLocations(Array.isArray(r.data) ? r.data : []))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const f = searchParams.get('status');
@@ -418,7 +423,12 @@ export default function Clients() {
               </tr>
             </thead>
             <tbody>
-              {!inTrash && (statusFilter === '' || statusFilter === 'pending') && visibleJoinRequests.map(r => (
+              {loading && (
+                <tr><td colSpan={9} style={{ padding: 0, border: 'none' }}>
+                  <SkeletonTable rows={6} cols={[200, 180, 110, 90, 80, 70, 60]} />
+                </td></tr>
+              )}
+              {!loading && !inTrash && (statusFilter === '' || statusFilter === 'pending') && visibleJoinRequests.map(r => (
                 <tr key={`jr-${r.id}`} style={{ borderLeft: '3px solid #f59e0b', background: 'rgba(255,178,36,0.04)' }}>
                   <td>
                     <div style={{ fontWeight: 600 }}>{r.full_name}</div>
@@ -453,7 +463,7 @@ export default function Clients() {
                   </td>
                 </tr>
               ))}
-              {clients.map(c => {
+              {!loading && clients.map(c => {
                 const st = c.account_status || 'active';
                 const deletedAt = c.deleted_at
                   ? new Date(c.deleted_at).toLocaleString('el-GR', {
@@ -567,7 +577,7 @@ export default function Clients() {
                   </tr>
                 );
               })}
-              {!clients.length && (!visibleJoinRequests.length || inTrash || (statusFilter !== '' && statusFilter !== 'pending')) && (
+              {!loading && !clients.length && (!visibleJoinRequests.length || inTrash || (statusFilter !== '' && statusFilter !== 'pending')) && (
                 <tr><td colSpan={9} className="loading">{inTrash ? 'Ο κάδος είναι άδειος' : 'Δεν υπάρχουν πελάτες'}</td></tr>
               )}
             </tbody>
