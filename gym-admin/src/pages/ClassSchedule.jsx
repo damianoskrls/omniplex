@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Calendar, Plus, Pencil, Trash2, X, Check } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Calendar, Plus, Pencil, Trash2, X, Check, MapPin, ChevronDown } from 'lucide-react';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import { useBranch } from '../context/BranchContext';
 
 const DAYS = ['', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
 
@@ -18,7 +19,7 @@ function colorForService(serviceId) {
 }
 
 const EMPTY_FORM = {
-  day_of_week: 1, start_time: '09:00', service_id: '', staff_id: '', max_capacity: '', room_id: '',
+  day_of_week: 1, start_time: '09:00', service_id: '', staff_id: '', max_capacity: '', room_id: '', location_id: '',
 };
 
 function calcEndTime(startTime, durationMins) {
@@ -30,7 +31,87 @@ function calcEndTime(startTime, durationMins) {
   return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
 }
 
+function StaffDropdown({ staff, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const selected = staff.find(s => s.id === value) || null;
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="form-input"
+        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left', width: '100%' }}
+      >
+        {selected ? (
+          <>
+            {selected.avatar_url ? (
+              <img src={selected.avatar_url} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+            ) : (
+              <div style={{ width: 22, height: 22, borderRadius: '50%', background: selected.color_hex || '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: '#fff', fontWeight: 700, flexShrink: 0 }}>
+                {selected.full_name?.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span style={{ flex: 1, fontSize: '0.875rem' }}>{selected.full_name}</span>
+          </>
+        ) : (
+          <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--text-secondary, #888)' }}>— Χωρίς εκπαιδευτή —</span>
+        )}
+        <ChevronDown size={14} style={{ color: 'var(--text-secondary, #888)', flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+          background: 'var(--card-bg, #fff)', border: '1px solid var(--border, #e5e7eb)',
+          borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', maxHeight: 220, overflowY: 'auto', marginTop: 2,
+        }}>
+          <button
+            type="button"
+            onClick={() => { onChange(''); setOpen(false); }}
+            style={{ width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, background: !value ? 'var(--bg-hover, #f3f4f6)' : 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-secondary, #888)' }}
+          >
+            — Χωρίς εκπαιδευτή —
+          </button>
+          {staff.map(s => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => { onChange(s.id); setOpen(false); }}
+              style={{ width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, background: value === s.id ? 'var(--bg-hover, #f3f4f6)' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+            >
+              {s.avatar_url ? (
+                <img src={s.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+              ) : (
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: s.color_hex || '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#fff', fontWeight: 700, flexShrink: 0 }}>
+                  {s.full_name?.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-primary, #111)' }}>{s.full_name}</span>
+              {value === s.id && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--tenant-primary, #16a34a)' }} />}
+            </button>
+          ))}
+          {staff.length === 0 && (
+            <div style={{ padding: '8px 12px', fontSize: '0.8rem', color: 'var(--text-secondary, #888)' }}>Δεν υπάρχουν εκπαιδευτές για αυτό το κατάστημα</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ClassSchedule() {
+  const { activeBranch, activeBranchId, branches } = useBranch();
   const [entries, setEntries]     = useState([]);
   const [services, setServices]   = useState([]);
   const [staff, setStaff]         = useState([]);
@@ -60,10 +141,19 @@ export default function ClassSchedule() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [activeBranchId]);
+
+  // Compute filtered staff/rooms for the currently open modal based on its location
+  const modalLocationId = form.location_id || activeBranchId || null;
+  const modalStaff = modalLocationId
+    ? staff.filter(s => !s.location_ids?.length || s.location_ids.includes(String(modalLocationId)))
+    : staff;
+  const modalRooms = modalLocationId
+    ? rooms.filter(r => !r.location_id || String(r.location_id) === String(modalLocationId))
+    : rooms;
 
   function openAdd() {
-    setForm({ ...EMPTY_FORM, day_of_week: activeDay });
+    setForm({ ...EMPTY_FORM, day_of_week: activeDay, location_id: activeBranchId || '' });
     setModal('add');
     setError(null);
   }
@@ -85,6 +175,7 @@ export default function ClassSchedule() {
       staff_id:     entry.staff_id || '',
       max_capacity: entry.max_capacity != null ? String(entry.max_capacity) : '',
       room_id:      entry.room_id || '',
+      location_id:  entry.location_id || activeBranchId || '',
     });
     setModal(entry);
     setError(null);
@@ -92,6 +183,8 @@ export default function ClassSchedule() {
 
   async function handleSave() {
     if (!form.service_id) { setError('Επίλεξε υπηρεσία'); return; }
+    const locId = form.location_id || activeBranchId || null;
+    if (!activeBranchId && !form.location_id) { setError('Επίλεξε κατάστημα'); return; }
     setSaving(true); setError(null);
     try {
       const payload = {
@@ -101,6 +194,7 @@ export default function ClassSchedule() {
         staff_id:     form.staff_id || null,
         max_capacity: form.max_capacity ? parseInt(form.max_capacity) : null,
         room_id:      form.room_id || null,
+        location_id:  locId,
       };
       if (modal === 'add') {
         await api.post('/client-admin/class-schedules', payload);
@@ -127,10 +221,18 @@ export default function ClassSchedule() {
   return (
     <Layout title="Εβδομαδιαίο Πρόγραμμα">
       <div className="page-header">
-        <h1 className="page-title">
-          <Calendar size={20} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-          Εβδομαδιαίο Πρόγραμμα
-        </h1>
+        <div>
+          <h1 className="page-title">
+            <Calendar size={20} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+            Εβδομαδιαίο Πρόγραμμα
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <MapPin size={13} style={{ color: 'var(--text-secondary, #888)' }} />
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary, #888)' }}>
+              {activeBranch ? activeBranch.name : 'Όλα τα καταστήματα'}
+            </span>
+          </div>
+        </div>
         <button className="btn btn-primary" onClick={openAdd}>
           <Plus size={16} /> Νέο Μάθημα
         </button>
@@ -199,8 +301,13 @@ export default function ClassSchedule() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, marginBottom: 2 }}>{e.class_name}</div>
-                <div className="text-muted" style={{ fontSize: '0.8rem' }}>
+                <div className="text-muted" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                   {[e.trainer_name, e.room_display_name || e.room_name, e.max_capacity ? `${e.max_capacity} άτομα` : null].filter(Boolean).join(' · ')}
+                  {!activeBranch && e.location_name && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'var(--bg-hover, #f3f4f6)', borderRadius: 4, padding: '1px 6px', fontSize: '0.72rem' }}>
+                      <MapPin size={10} /> {e.location_name}
+                    </span>
+                  )}
                 </div>
               </div>
               <button className="btn btn-secondary btn-sm" onClick={() => openEdit(e)} title="Επεξεργασία">
@@ -224,6 +331,21 @@ export default function ClassSchedule() {
                 <X size={18} />
               </button>
             </div>
+
+            {/* Branch picker — visible only in "all branches" view */}
+            {!activeBranchId && branches.length > 1 && (
+              <div className="form-group">
+                <label className="form-label">Κατάστημα *</label>
+                <select
+                  className="form-input"
+                  value={form.location_id}
+                  onChange={e => setForm(f => ({ ...f, location_id: e.target.value, staff_id: '', room_id: '' }))}
+                >
+                  <option value="">— Επίλεξε κατάστημα —</option>
+                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-group">
@@ -275,16 +397,11 @@ export default function ClassSchedule() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-group">
                 <label className="form-label">Εκπαιδευτής</label>
-                <select
-                  className="form-input"
+                <StaffDropdown
+                  staff={modalStaff}
                   value={form.staff_id}
-                  onChange={e => setForm(f => ({ ...f, staff_id: e.target.value }))}
-                >
-                  <option value="">— Χωρίς εκπαιδευτή —</option>
-                  {staff.map(s => (
-                    <option key={s.id} value={s.id}>{s.full_name}</option>
-                  ))}
-                </select>
+                  onChange={v => setForm(f => ({ ...f, staff_id: v }))}
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Αίθουσα</label>
@@ -294,7 +411,7 @@ export default function ClassSchedule() {
                   onChange={e => setForm(f => ({ ...f, room_id: e.target.value }))}
                 >
                   <option value="">— Χωρίς αίθουσα —</option>
-                  {rooms.map(r => (
+                  {modalRooms.map(r => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
