@@ -800,6 +800,7 @@ class _HomeTab extends StatelessWidget {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (_) => GymProfileScreen(
                                 slug: gym.slug,
+                                locationId: gym.locations.length == 1 ? gym.locations.first.id : null,
                                 globalAuth: globalAuth,
                                 onPurchaseComplete: onPurchaseComplete,
                               ),
@@ -3120,6 +3121,7 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (_) => GymProfileScreen(
                                 slug: gym.slug,
+                                locationId: gym.locations.length == 1 ? gym.locations.first.id : null,
                                 globalAuth: widget.globalAuth,
                                 onPurchaseComplete: widget.onPurchaseComplete,
                               ),
