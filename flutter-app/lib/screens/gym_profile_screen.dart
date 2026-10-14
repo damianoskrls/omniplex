@@ -41,6 +41,40 @@ String _checkoutError(Object raw) {
   return text;
 }
 
+class _SlotDetail {
+  const _SlotDetail({
+    required this.name,
+    required this.description,
+    required this.category,
+    required this.imageUrl,
+    required this.start,
+    required this.end,
+    required this.mins,
+    required this.room,
+    required this.capacity,
+    required this.color,
+    required this.trainerName,
+    required this.trainerSpecialty,
+    required this.trainerBio,
+    required this.trainerPhoto,
+  });
+
+  final String name;
+  final String description;
+  final String category;
+  final String imageUrl;
+  final String start;
+  final String end;
+  final int? mins;
+  final String room;
+  final int? capacity;
+  final Color color;
+  final String trainerName;
+  final String trainerSpecialty;
+  final String trainerBio;
+  final String trainerPhoto;
+}
+
 class GymProfileScreen extends StatefulWidget {
   const GymProfileScreen({
     super.key,
@@ -1494,57 +1528,227 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     return s;
   }
 
-  Widget _buildClassCard(Map<String, dynamic> entry) {
-    final color = _parseClassColor(entry['color'] as String?);
-    final start = _hhmm(entry['start_time']);
-    final end = _hhmm(entry['end_time']);
-    final name = (entry['service_name'] ?? entry['class_name'] ?? '').toString().trim();
-    final trainer = (entry['trainer_name'] ?? '').toString().trim();
-    final room = (entry['room_name'] ?? '').toString().trim();
-    final minsRaw = entry['duration_mins'];
-    final mins = minsRaw is num ? minsRaw.toInt() : int.tryParse('${minsRaw ?? ''}');
-    final details = <String>[
-      if (trainer.isNotEmpty) trainer,
-      if (mins != null && mins > 0) '$mins ${tr('λεπτά')}',
-      if (room.isNotEmpty) room,
-    ];
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _kCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorder),
+  String? _mediaUrl(String? path) {
+    final raw = (path ?? '').trim();
+    if (raw.isEmpty) return null;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    final origin = _apiBase.replaceFirst(RegExp(r'/api/?$'), '');
+    return raw.startsWith('/') ? '$origin$raw' : '$origin/$raw';
+  }
+
+  Map<String, dynamic>? _matchNamed(List? rows, {String? id, String? name, String nameKey = 'name'}) {
+    final wantId = (id ?? '').trim();
+    final wantName = (name ?? '').trim().toLowerCase();
+    Map<String, dynamic>? byName;
+    for (final raw in rows ?? const []) {
+      if (raw is! Map) continue;
+      final row = Map<String, dynamic>.from(raw);
+      if (wantId.isNotEmpty && '${row['id'] ?? ''}' == wantId) return row;
+      final rowName = '${row[nameKey] ?? ''}'.trim().toLowerCase();
+      if (wantName.isNotEmpty && rowName == wantName) byName ??= row;
+    }
+    return byName;
+  }
+
+  _SlotDetail _slotDetail(Map<String, dynamic> entry) {
+    final service = _matchNamed(
+      _gym?['services'] as List?,
+      id: '${entry['service_id'] ?? ''}',
+      name: '${entry['service_name'] ?? entry['class_name'] ?? ''}',
+    );
+    final trainer = _matchNamed(
+      _gym?['trainers'] as List?,
+      id: '${entry['trainer_id'] ?? ''}',
+      name: '${entry['trainer_name'] ?? ''}',
+    );
+    String pick(dynamic primary, dynamic fallback) {
+      final a = (primary ?? '').toString().trim();
+      if (a.isNotEmpty) return a;
+      return (fallback ?? '').toString().trim();
+    }
+    final minsRaw = entry['duration_mins'] ?? service?['duration_mins'];
+    return _SlotDetail(
+      name: pick(entry['service_name'] ?? entry['class_name'], service?['name']),
+      description: pick(entry['service_description'] ?? entry['slot_subtitle'], service?['description']),
+      category: pick(entry['service_category'], service?['category']),
+      imageUrl: pick(entry['service_image_url'], service?['image_url']),
+      start: _hhmm(entry['start_time']),
+      end: _hhmm(entry['end_time']),
+      mins: minsRaw is num ? minsRaw.toInt() : int.tryParse('${minsRaw ?? ''}'),
+      room: (entry['room_name'] ?? '').toString().trim(),
+      capacity: entry['max_capacity'] is num ? (entry['max_capacity'] as num).toInt() : int.tryParse('${entry['max_capacity'] ?? ''}'),
+      color: _parseClassColor(entry['color'] as String?),
+      trainerName: pick(entry['trainer_name'], trainer?['name']),
+      trainerSpecialty: pick(entry['trainer_specialty'], trainer?['specialty']),
+      trainerBio: pick(entry['trainer_bio'], trainer?['bio']),
+      trainerPhoto: pick(entry['trainer_photo_url'], trainer?['photo_url']),
+    );
+  }
+
+  Widget _thumb(String? url, {double size = 48, IconData icon = Icons.fitness_center, double radius = 12}) {
+    final resolved = _mediaUrl(url);
+    final fallback = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: _kBorder, borderRadius: BorderRadius.circular(radius)),
+      child: Icon(icon, color: Colors.white38, size: size * 0.42),
+    );
+    if (resolved == null) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Image.network(
+        resolved,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
       ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        Container(
-          width: 4, height: 52,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
-        ),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 52,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(start,
-              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-            if (end.isNotEmpty && end != start)
-              Text(end,
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: _kGray)),
+    );
+  }
+
+  void _openSlotSheet(_SlotDetail slot) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _kCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) {
+        final time = slot.end.isNotEmpty && slot.end != slot.start
+            ? '${slot.start} – ${slot.end}'
+            : slot.start;
+        final meta = <String>[
+          if (time.isNotEmpty) time,
+          if (slot.mins != null && slot.mins! > 0) '${slot.mins} ${tr('λεπτά')}',
+          if (slot.room.isNotEmpty) slot.room,
+          if (slot.capacity != null && slot.capacity! > 0) '${slot.capacity} ${tr('θέσεις')}',
+        ];
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.86),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 36),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Center(child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(color: _kBorder, borderRadius: BorderRadius.circular(2)),
+              )),
+              const SizedBox(height: 16),
+              if (_mediaUrl(slot.imageUrl) != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    _mediaUrl(slot.imageUrl)!,
+                    height: 168,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              Text(slot.name.isEmpty ? tr('Υπηρεσία') : tr(slot.name),
+                style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+              if (slot.category.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(tr(slot.category),
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: slot.color)),
+              ],
+              if (meta.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(meta.join(' · '),
+                  style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
+              ],
+              if (slot.description.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text(tr(slot.description),
+                  style: GoogleFonts.inter(fontSize: 14, color: Colors.white, height: 1.55)),
+              ],
+              if (slot.trainerName.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text(tr('Εκπαιδευτής'),
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: _kGray, letterSpacing: 0.4)),
+                const SizedBox(height: 10),
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _thumb(slot.trainerPhoto, size: 52, radius: 26, icon: Icons.person),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(tr(slot.trainerName),
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                    if (slot.trainerSpecialty.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(tr(slot.trainerSpecialty),
+                        style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
+                    ],
+                    if (slot.trainerBio.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(tr(slot.trainerBio),
+                        style: GoogleFonts.inter(fontSize: 14, color: Colors.white, height: 1.5)),
+                    ],
+                  ])),
+                ]),
+              ],
+            ]),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildClassCard(Map<String, dynamic> entry) {
+    final slot = _slotDetail(entry);
+    final details = <String>[
+      if (slot.trainerName.isNotEmpty) slot.trainerName,
+      if (slot.mins != null && slot.mins! > 0) '${slot.mins} ${tr('λεπτά')}',
+      if (slot.room.isNotEmpty) slot.room,
+    ];
+    return Material(
+      color: _kCard,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _openSlotSheet(slot),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Container(
+              width: 4, height: 52,
+              decoration: BoxDecoration(color: slot.color, borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 48,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(slot.start,
+                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                if (slot.end.isNotEmpty && slot.end != slot.start)
+                  Text(slot.end,
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: _kGray)),
+              ]),
+            ),
+            const SizedBox(width: 8),
+            _thumb(slot.imageUrl, size: 44, radius: 10),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(slot.name.isEmpty ? '' : tr(slot.name),
+                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                if (details.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(details.join(' · '),
+                      style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
+                  ),
+              ]),
+            ),
+            const Icon(Icons.chevron_right, color: _kGray, size: 18),
           ]),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name.isEmpty ? '' : tr(name),
-              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-            if (details.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(details.join(' · '),
-                  style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
-              ),
-          ]),
-        ),
-      ]),
+      ),
     );
   }
 
