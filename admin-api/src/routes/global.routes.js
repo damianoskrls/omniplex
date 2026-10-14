@@ -1061,23 +1061,31 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
       [biz.id, locationId, locationId, locationId, locationId],
     );
     const [schedule] = await db.query(
-      `SELECT sss.id, sss.weekday AS day_of_week, sss.start_time,
-              COALESCE(sss.label, s.name) AS class_name,
+      `SELECT sss.id,
+              (sss.weekday + 1) AS day_of_week,
+              DATE_FORMAT(sss.start_time, '%H:%i') AS start_time,
+              CASE WHEN s.duration_mins > 0
+                THEN DATE_FORMAT(ADDTIME(sss.start_time, SEC_TO_TIME(s.duration_mins * 60)), '%H:%i')
+                ELSE NULL END AS end_time,
+              s.name AS class_name,
+              s.name AS service_name,
+              s.duration_mins,
               st.full_name AS trainer_name,
-              sss.icon_key AS color,
-              sss.subtitle AS equipment,
-              sss.max_capacity, sss.image_url
+              st.color_hex AS color,
+              COALESCE(r.name, NULLIF(sss.room_name, '')) AS room_name,
+              COALESCE(sss.max_capacity, s.default_capacity) AS max_capacity
        FROM service_slot_schedules sss
        JOIN services s ON s.id = sss.service_id
        LEFT JOIN staff st ON st.id = sss.staff_id
-       WHERE sss.business_id = ? AND sss.is_active = 1
+       LEFT JOIN rooms r ON r.id = sss.room_id
+       WHERE sss.business_id = ? AND sss.is_active = 1 AND s.is_active = 1
          AND (? IS NULL
            OR sss.location_id = ?
            OR (sss.location_id IS NULL AND NOT EXISTS (
              SELECT 1 FROM service_slot_schedules owned
              WHERE owned.business_id = sss.business_id AND owned.location_id = ? AND owned.is_active = 1
            )))
-       ORDER BY sss.weekday, sss.start_time`,
+       ORDER BY sss.weekday, sss.start_time, s.name`,
       [biz.id, locationId, locationId, locationId],
     );
 
