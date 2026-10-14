@@ -203,6 +203,10 @@ class ApiService {
     await _patch('/api/mobile/staff/trials/$bookingId/note', {'notes': notes});
   }
 
+  Future<void> updateBookingNote(String bookingId, String notes) async {
+    await _patch('/api/mobile/staff/bookings/$bookingId/note', {'notes': notes});
+  }
+
   Future<Map<String, dynamic>> fetchStaffTrialSummary() async {
     final res = await _get('/api/mobile/staff/trials/summary');
     return _decode(res) as Map<String, dynamic>;

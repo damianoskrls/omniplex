@@ -779,6 +779,21 @@ router.patch('/staff/trials/:id/note', requireMobileStaff, async (req, res) => {
   }
 });
 
+// PATCH /api/mobile/staff/bookings/:id/note — add "how it went" note to any booking
+router.patch('/staff/bookings/:id/note', requireMobileStaff, async (req, res) => {
+  const { notes } = req.body;
+  try {
+    const [result] = await db.query(
+      'UPDATE bookings SET notes = ? WHERE id = ? AND business_id = ?',
+      [notes || null, req.params.id, req.businessId],
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Booking not found' });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/mobile/staff/leaves — includes status and annual balance
 router.get('/staff/leaves', requireMobileStaff, async (req, res) => {
   try {

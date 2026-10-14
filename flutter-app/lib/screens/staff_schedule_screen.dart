@@ -17,8 +17,7 @@ class StaffScheduleScreen extends StatefulWidget {
   State<StaffScheduleScreen> createState() => _StaffScheduleScreenState();
 }
 
-class _StaffScheduleScreenState extends State<StaffScheduleScreen>
-    with SingleTickerProviderStateMixin {
+class _StaffScheduleScreenState extends State<StaffScheduleScreen> {
   DateTime _selectedDate = DateTime.now();
   List<Map<String, dynamic>> _bookings = [];
   List<Map<String, dynamic>> _trials = [];
@@ -26,22 +25,14 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
   DateTime? _upcomingDay;
   bool _loading = true;
   String? _error;
-  late final TabController _tabController;
   String? _myStaffId;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     final auth = context.read<AuthService>();
     _myStaffId = auth.staffId;
     _load();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -167,6 +158,29 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
     }
   }
 
+  Future<void> _editBookingNote(Map<String, dynamic> booking) async {
+    final notesCtrl = TextEditingController(text: booking['notes'] as String? ?? '');
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => _NoteSheet(
+        title: booking['service_name'] as String? ?? '',
+        notesCtrl: notesCtrl,
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await context.read<AuthService>().api.updateBookingNote(
+        booking['id'] as String, notesCtrl.text.trim(),
+      );
+      _load();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr(e.message))));
+    }
+  }
+
   Future<void> _editTrialNote(Map<String, dynamic> trial) async {
     final notesCtrl = TextEditingController(text: trial['notes'] as String? ?? '');
     final confirmed = await showModalBottomSheet<bool>(
@@ -229,11 +243,24 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
               myStaffId: _myStaffId,
               onToggleAttendance: () => _toggleAttendance(booking),
               onClaim: () => _claimBooking(booking['id'] as String),
+              onEditNote: () => _editBookingNote(booking),
             ),
           )),
         ],
       ),
     );
+  }
+
+  List<Map<String, dynamic>> get _trialsForDay {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    return _trials.where((t) {
+      final sa = t['starts_at'] as String?;
+      if (sa == null) return false;
+      try {
+        final d = DateTime.parse(sa.replaceFirst(' ', 'T')).toLocal();
+        return DateFormat('yyyy-MM-dd').format(d) == dateStr;
+      } catch (_) { return false; }
+    }).toList();
   }
 
   @override
@@ -242,6 +269,9 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
     final dayLabel = _isToday(_selectedDate)
         ? AppStrings.of(context).staffScheduleToday
         : DateFormat('EEEE, d MMM', locale).format(_selectedDate);
+
+    final trialsForDay = _trialsForDay;
+    final totalItems = _bookings.length + trialsForDay.length;
 
     return Column(
       children: [
@@ -287,102 +317,66 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
           ),
         ),
 
-        // Tabs
-        Container(
-          color: AppColors.surface,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: AppColors.lime,
-            unselectedLabelColor: AppColors.textSecondary,
-            indicatorColor: AppColors.lime,
-            indicatorSize: TabBarIndicatorSize.tab,
-            tabs: [
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.calendar_today_outlined, size: 16),
-                    const SizedBox(width: 6),
-                    Text(tr('Κρατήσεις${_bookings.isNotEmpty ? ' (${_bookings.length})' : ''}')),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.person_search_outlined, size: 16),
-                    const SizedBox(width: 6),
-                    Text(tr('Δοκιμαστικά${_trials.isNotEmpty ? ' (${_trials.length})' : ''}')),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Tab views
+        // Single list — bookings + trials for the day
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator(color: AppColors.lime))
               : _error != null
                   ? Center(child: Text(tr(_error!)))
-                  : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        // ── Bookings tab ──
-                        _bookings.isEmpty
-                            ? _upcomingDay != null && _nextDayBookings.isNotEmpty
-                                ? _nextAppointmentView(locale)
-                                : EmptyState(
-                                    icon: Icons.calendar_today_outlined,
-                                    title: AppStrings.of(context).staffScheduleNoBookings,
-                                    subtitle: tr(_isToday(_selectedDate)
-                                        ? AppStrings.of(context).staffScheduleNoneToday
-                                        : AppStrings.of(context).staffScheduleNoneDay),
-                                  )
-                            : RefreshIndicator(
-                                onRefresh: _load,
-                                color: AppColors.lime,
-                                child: ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                                  itemCount: _bookings.length,
-                                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                                  itemBuilder: (_, i) => _BookingCard(
-                                    booking: _bookings[i],
-                                    myStaffId: _myStaffId,
-                                    onToggleAttendance: () => _toggleAttendance(_bookings[i]),
-                                    onClaim: () => _claimBooking(_bookings[i]['id'] as String),
-                                  ),
-                                ),
-                              ),
-
-                        // ── Trials tab ──
-                        _trials.isEmpty
-                            ? EmptyState(
-                                icon: Icons.person_search_outlined,
-                                title: tr('Δεν υπάρχουν δοκιμαστικά'),
-                                subtitle: tr('Τα δοκιμαστικά του γυμναστηρίου εμφανίζονται εδώ.'),
-                              )
-                            : RefreshIndicator(
-                                onRefresh: _load,
-                                color: AppColors.lime,
-                                child: ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                                  itemCount: _trials.length,
-                                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                                  itemBuilder: (_, i) => _TrialCard(
-                                    trial: _trials[i],
-                                    myStaffId: _myStaffId,
-                                    onClaim: () => _claimTrial(_trials[i]),
-                                    onEditNote: () => _editTrialNote(_trials[i]),
-                                  ),
-                                ),
-                              ),
-                      ],
-                    ),
+                  : totalItems == 0
+                      ? (_upcomingDay != null && _nextDayBookings.isNotEmpty
+                          ? _nextAppointmentView(locale)
+                          : EmptyState(
+                              icon: Icons.calendar_today_outlined,
+                              title: AppStrings.of(context).staffScheduleNoBookings,
+                              subtitle: tr(_isToday(_selectedDate)
+                                  ? AppStrings.of(context).staffScheduleNoneToday
+                                  : AppStrings.of(context).staffScheduleNoneDay),
+                            ))
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          color: AppColors.lime,
+                          child: _buildMergedList(trialsForDay),
+                        ),
         ),
       ],
+    );
+  }
+
+  Widget _buildMergedList(List<Map<String, dynamic>> trialsForDay) {
+    // Build merged + sorted list: bookings and trials by starts_at
+    final items = <({bool isTrial, Map<String, dynamic> data})>[
+      for (final b in _bookings) (isTrial: false, data: b),
+      for (final t in trialsForDay) (isTrial: true, data: t),
+    ];
+    items.sort((a, b) {
+      final sa = a.data['starts_at'] as String? ?? '';
+      final sb = b.data['starts_at'] as String? ?? '';
+      return sa.compareTo(sb);
+    });
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (_, i) {
+        final item = items[i];
+        if (item.isTrial) {
+          return _TrialCard(
+            trial: item.data,
+            myStaffId: _myStaffId,
+            onClaim: () => _claimTrial(item.data),
+            onEditNote: () => _editTrialNote(item.data),
+          );
+        }
+        return _BookingCard(
+          booking: item.data,
+          myStaffId: _myStaffId,
+          onToggleAttendance: () => _toggleAttendance(item.data),
+          onClaim: () => _claimBooking(item.data['id'] as String),
+          onEditNote: () => _editBookingNote(item.data),
+        );
+      },
     );
   }
 }
@@ -394,11 +388,13 @@ class _BookingCard extends StatelessWidget {
     required this.booking,
     required this.onToggleAttendance,
     required this.onClaim,
+    required this.onEditNote,
     this.myStaffId,
   });
   final Map<String, dynamic> booking;
   final VoidCallback onToggleAttendance;
   final VoidCallback onClaim;
+  final VoidCallback onEditNote;
   final String? myStaffId;
 
   String _timeRange(String? startsAt, String? endsAt) {
@@ -502,7 +498,6 @@ class _BookingCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              // Claim button (only if not assigned to me)
               if (!isMine) ...[
                 Expanded(
                   child: OutlinedButton.icon(
@@ -518,7 +513,6 @@ class _BookingCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
               ],
-              // Attendance toggle
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onToggleAttendance,
@@ -535,6 +529,22 @@ class _BookingCard extends StatelessWidget {
               ),
             ],
           ),
+          if (confirmed) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onEditNote,
+                icon: const Icon(Icons.edit_note_outlined, size: 16),
+                label: Text(tr((notes != null && notes.isNotEmpty) ? 'Επεξεργασία σχολίου' : 'Πώς πήγε;')),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -705,6 +715,55 @@ class _TrialCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Generic Note Sheet ─────────────────────────────────────────────────────────
+
+class _NoteSheet extends StatelessWidget {
+  const _NoteSheet({required this.title, required this.notesCtrl});
+  final String title;
+  final TextEditingController notesCtrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(tr('Πώς πήγε;'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+          const SizedBox(height: 4),
+          Text(tr(title), style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+          const SizedBox(height: 20),
+          TextField(
+            controller: notesCtrl,
+            maxLines: 4,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: tr('Σχόλιο / Παρατήρηση'),
+              hintText: tr('π.χ. Πήγε πολύ καλά, θέλει να συνεχίσει...'),
+              prefixIcon: const Icon(Icons.notes_outlined, color: AppColors.textSecondary),
+              alignLabelWithHint: true,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.lime,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: Text(tr('Αποθήκευση'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
           ),
         ],
       ),

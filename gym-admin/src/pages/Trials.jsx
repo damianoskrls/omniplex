@@ -235,7 +235,7 @@ function TrialModal({ trial, staffList, services, clients, locations = [], defau
             <div><label style={lbl}>Ώρα</label><TimeInput value={form.trial_time} onChange={val => set('trial_time', val)} /></div>
           </div>
         )}
-        {stores.length > 0 && (
+        {stores.length > 0 && !defaultLocationId && (
           <div style={{ marginTop: 14 }}>
             <label style={lbl}>Κατάστημα</label>
             <select value={form.location_id} onChange={e => set('location_id', e.target.value)} style={inp}>
