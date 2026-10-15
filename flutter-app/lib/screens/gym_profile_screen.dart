@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/global_auth_service.dart';
 import '../services/biometric_auth_service.dart';
 import '../services/stripe_checkout.dart';
@@ -16,11 +17,16 @@ import 'phone_otp_login_screen.dart';
 import '../l10n/tr.dart';
 
 
-const _kBg     = Color(0xFF0A0A0A);
-const _kCard   = Color(0xFF16171B);
-const _kBorder = Color(0xFF2A2B30);
-const _kGray   = Color(0xFF9A9CA3);
-const _kLime   = Color(0xFFC6FF3D);
+const _kBg      = Color(0xFF090A0F);
+const _kCard    = Color(0xFF14161F);
+const _kBorder  = Color(0xFF2B2E3D);
+const _kText    = Color(0xFFF5F5FA);
+const _kGray    = Color(0xFFA7ABBE);
+const _kAccent  = Color(0xFF9A9DFF);
+const _kPrimary = Color(0xFF565CE4);
+const _kGuideBg = Color(0xFF242642);
+const _kGold    = Color(0xFFF0CC85);
+const _kLime    = Color(0xFF9A9DFF); // alias kept for kBrandGradient callsites
 
 typedef PurchaseComplete = void Function({
   required String message,
@@ -89,6 +95,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   bool _joiningGym = false;
   bool _memberPending = false;
   bool _staffPending = false;
+  bool _isFavorite = false;
 
   String? get _slug => widget.slug ?? _gym?['slug'] as String?;
 
@@ -144,12 +151,28 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     _loadAll().then((_) {
       if (mounted) _loadJoinStatus();
     });
+    _loadFavorite();
   }
 
   @override
   void dispose() {
     _tabCtrl.dispose();
     super.dispose();
+  }
+
+  String get _favoriteKey => 'fav_gym_${widget.slug ?? _gym?['slug'] ?? ''}';
+
+  Future<void> _loadFavorite() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() => _isFavorite = prefs.getBool(_favoriteKey) ?? false);
+  }
+
+  Future<void> _toggleFavorite() async {
+    final next = !_isFavorite;
+    setState(() => _isFavorite = next);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_favoriteKey, next);
   }
 
   Future<void> _loadAll() async {
@@ -395,7 +418,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
               _RoleOption(
                 icon: Icons.sports_rounded,
                 color: const Color(0xFF3EE6FF),
-                title: tr('Trainer'),
+                title: tr('Προπονητής'),
                 subtitle: tr(_canEnter ? 'Θέλω και ρόλο trainer στο ίδιο γυμναστήριο' : tr('Εργάζομαι ως γυμναστής')),
                 onTap: () => Navigator.pop(sheetCtx, 'staff:trainer'),
               ),
@@ -514,9 +537,9 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
   Color _accentColor() {
     final hex = _gym?['primary_color'] as String?;
-    if (hex == null) return _kLime;
+    if (hex == null) return _kAccent;
     try { return Color(int.parse(hex.replaceFirst('#', '0xFF'))); }
-    catch (_) { return _kLime; }
+    catch (_) { return _kAccent; }
   }
 
   Future<void> _enterGym() async {
@@ -901,11 +924,14 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                 children: [
                   _glassBtn(onTap: () => Navigator.maybePop(context),
                     child: const Icon(Icons.arrow_back, color: Colors.white, size: 20)),
-                  Row(children: [
-                    _glassBtn(child: const Icon(Icons.bookmark_border, color: Colors.white, size: 20)),
-                    const SizedBox(width: 10),
-                    _glassBtn(child: const Icon(Icons.share_outlined, color: Colors.white, size: 20)),
-                  ]),
+                  _glassBtn(
+                    onTap: _toggleFavorite,
+                    child: Icon(
+                      _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      color: _isFavorite ? Colors.redAccent : Colors.white,
+                      size: 20,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -941,18 +967,18 @@ class _GymProfileScreenState extends State<GymProfileScreen>
         _loadingGym
           ? _shimmer(220, 26)
           : Text(tr(name), style: GoogleFonts.inter(
-              fontSize: 24, fontWeight: FontWeight.w700,
-              color: Colors.white, letterSpacing: -0.6)),
+              fontSize: 26, fontWeight: FontWeight.w800,
+              color: _kText, letterSpacing: -0.6)),
         const SizedBox(height: 6),
         if (rating != null)
           Row(children: [
-            const Icon(Icons.star_rounded, color: Colors.white, size: 14),
+            const Icon(Icons.star_rounded, color: _kGold, size: 14),
             const SizedBox(width: 4),
             Text(tr(rating), style: GoogleFonts.inter(
-              fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+              fontSize: 14, fontWeight: FontWeight.w700, color: _kGold)),
             if (reviews > 0) ...[
               const SizedBox(width: 6),
-              Text(tr('($reviews αξιολογήσεις)'), style: GoogleFonts.inter(
+              Text(tr('($reviews reviews)'), style: GoogleFonts.inter(
                 fontSize: 12, color: _kGray)),
             ],
           ]),
@@ -972,25 +998,22 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: _kCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorder),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _kBorder)),
       ),
       child: TabBar(
         controller: _tabCtrl,
         isScrollable: true,
         tabAlignment: TabAlignment.start,
-        indicatorSize: TabBarIndicatorSize.tab,
+        indicatorSize: TabBarIndicatorSize.label,
         dividerColor: Colors.transparent,
-        indicator: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+        indicator: const UnderlineTabIndicator(
+          borderSide: BorderSide(color: _kAccent, width: 2),
+          insets: EdgeInsets.symmetric(horizontal: 4),
         ),
-        labelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
-        labelColor: _kBg,
+        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
+        labelColor: _kAccent,
         unselectedLabelColor: _kGray,
         tabs: [
           Tab(text: tr('Επισκόπηση')),
@@ -1007,44 +1030,53 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   Widget _buildOverviewTab() {
     final desc     = _gym?['description'] as String?;
     final services = (_gym?['services'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final photos   = (_gym?['photos'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final rawPhotos = (_gym?['photos'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final photos = rawPhotos
+        .where((p) => (p['url'] as String? ?? '').isNotEmpty)
+        .toList();
+    final serviceTags = ((_gym?['service_tags'] as List?) ?? const [])
+        .whereType<String>().take(6).toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // Photo carousel
-        if (photos.isNotEmpty) ...[
-          SizedBox(
-            height: 190,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: photos.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (_, i) => ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  photos[i]['url'] as String,
-                  width: photos.length == 1 ? double.infinity : 260,
-                  height: 190,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 260, height: 190, color: _kCard,
-                    child: const Icon(Icons.broken_image_outlined, color: _kGray)),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 28),
-        ],
+        // ── Compact info card (address + today hours + drop-in) ──
+        _buildQuickInfoCard(),
+        const SizedBox(height: 24),
 
+        // ── Description ──
         if (desc != null && desc.isNotEmpty) ...[
-          _sectionTitle(tr('Σχετικά')),
-          const SizedBox(height: 8),
-          Text(tr(desc), style: GoogleFonts.inter(fontSize: 14, color: _kGray, height: 1.625)),
-          const SizedBox(height: 28),
+          Text(tr(desc),
+            style: GoogleFonts.inter(fontSize: 14, color: _kGray, height: 1.65)),
+          const SizedBox(height: 16),
         ],
 
+        // ── Service tags ──
+        if (serviceTags.isNotEmpty) ...[
+          Wrap(
+            spacing: 8, runSpacing: 8,
+            children: serviceTags.map((t) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _kCard,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _kBorder),
+              ),
+              child: Text(tr(t),
+                style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
+            )).toList(),
+          ),
+          const SizedBox(height: 24),
+        ],
+
+        // ── Photo gallery (no blank space on error) ──
+        if (photos.isNotEmpty) ...[
+          _PhotoGallery(photos: photos),
+          const SizedBox(height: 24),
+        ],
+
+        // ── Services list ──
         if (services.isNotEmpty) ...[
           _sectionTitle(tr('Υπηρεσίες')),
           const SizedBox(height: 14),
@@ -1153,6 +1185,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           const SizedBox(height: 28),
         ],
 
+        // ── Full hours card ──
         _sectionTitle(tr('Ώρες Λειτουργίας')),
         const SizedBox(height: 14),
         _buildHoursCard(),
@@ -1160,6 +1193,106 @@ class _GymProfileScreenState extends State<GymProfileScreen>
 
         _buildContactSection(),
       ]),
+    );
+  }
+
+  // Compact summary row: address + today hours + drop-in badge
+  Widget _buildQuickInfoCard() {
+    final address = [_gym?['address'], _gym?['area'], _gym?['city']]
+        .whereType<String>().where((s) => s.trim().isNotEmpty).join(', ');
+    final hasAddress = address.isNotEmpty;
+    final canDirect  = _coord(_gym?['latitude']) != null || hasAddress;
+    final dropIn     = _dropInOn;
+    final dropInPrice= _dropins.isNotEmpty
+        ? (_dropins.first['priceCents'] as int? ?? ((_dropins.first['drop_in_price_cents'] as num?)?.toInt() ?? 0))
+        : 0;
+
+    // Today's hours
+    final today = DateTime.now().weekday - 1; // 0=Mon
+    final todayHours = _hours.cast<Map<String, dynamic>?>().firstWhere(
+      (h) => h != null && ((h['day_index'] as int?) ?? (h['day_of_week'] as int?) ?? -1) == today,
+      orElse: () => null,
+    );
+    String todayStr = '';
+    if (todayHours != null) {
+      final closed = todayHours['closed'] == true || todayHours['is_closed'] == true || todayHours['is_closed'] == 1;
+      if (closed) {
+        todayStr = tr('Κλειστό σήμερα');
+      } else {
+        final open  = (todayHours['open']  as String?) ?? (todayHours['open_time']  as String?) ?? '';
+        final close = (todayHours['close'] as String?) ?? (todayHours['close_time'] as String?) ?? '';
+        if (open.isNotEmpty && close.isNotEmpty) {
+          final fmt = (String t) => t.length >= 5 ? t.substring(0, 5) : t;
+          todayStr = tr('Ανοιχτό σήμερα · ${fmt(open)}–${fmt(close)}');
+        }
+      }
+    }
+
+    if (!hasAddress && todayStr.isEmpty && !dropIn) return const SizedBox.shrink();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorder),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        children: [
+          if (hasAddress)
+            InkWell(
+              onTap: canDirect ? _openDirections : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                child: Row(children: [
+                  const Icon(Icons.location_on_outlined, color: _kGray, size: 17),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(address,
+                    style: GoogleFonts.inter(fontSize: 13, color: _kText))),
+                  if (canDirect) ...[
+                    Text(tr('Οδηγίες'),
+                      style: GoogleFonts.inter(fontSize: 12, color: _kAccent, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.arrow_outward, color: _kAccent, size: 12),
+                  ],
+                ]),
+              ),
+            ),
+          if (hasAddress && todayStr.isNotEmpty)
+            Container(height: 1, color: _kBorder),
+          if (todayStr.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              child: Row(children: [
+                const Icon(Icons.access_time_rounded, color: _kGray, size: 17),
+                const SizedBox(width: 10),
+                Expanded(child: Text(todayStr,
+                  style: GoogleFonts.inter(fontSize: 13, color: _kText))),
+              ]),
+            ),
+          if (dropIn) ...[
+            Container(height: 1, color: _kBorder),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF17332B),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Text(
+                    dropInPrice > 0
+                        ? tr('Drop-in · €${(dropInPrice / 100).toStringAsFixed(0)} / συνεδρία')
+                        : tr('Drop-in διαθέσιμο'),
+                    style: GoogleFonts.inter(
+                      fontSize: 12, fontWeight: FontWeight.w700,
+                      color: const Color(0xFF8DE2BB))),
+                ),
+              ]),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1184,15 +1317,34 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       _gym?['area'],
       _gym?['city'],
     ].whereType<String>().where((part) => part.trim().isNotEmpty).join(', ');
-    final Uri uri;
+
+    // Try Apple Maps first (native on iOS), then fall back to Google Maps web
+    final List<Uri> candidates = [];
     if (lat != null && lng != null) {
-      uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+      candidates.add(Uri.parse('maps://?daddr=$lat,$lng'));
+      candidates.add(Uri.parse('https://maps.apple.com/?daddr=$lat,$lng'));
+      candidates.add(Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng'));
     } else if (address.isNotEmpty) {
-      uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(address)}');
+      final enc = Uri.encodeComponent(address);
+      candidates.add(Uri.parse('maps://?daddr=$enc'));
+      candidates.add(Uri.parse('https://maps.apple.com/?daddr=$enc'));
+      candidates.add(Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$enc'));
     } else {
       return;
     }
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    for (final uri in candidates) {
+      try {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      } catch (_) {}
+    }
+    // Last resort — plain https fallback
+    try {
+      await launchUrl(candidates.last, mode: LaunchMode.platformDefault);
+    } catch (_) {}
   }
 
   Widget _buildContactSection() {
@@ -1733,10 +1885,10 @@ class _GymProfileScreenState extends State<GymProfileScreen>
   }
 
   Color _parseClassColor(String? hex) {
-    if (hex == null) return _kLime;
+    if (hex == null) return _kAccent;
     try {
       return Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
-    } catch (_) { return _kLime; }
+    } catch (_) { return _kAccent; }
   }
 
   // ── Packages Tab ──
@@ -1768,7 +1920,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
       children: [
         if (_dropins.isNotEmpty) ...[
-          Text(tr('Drop-in'), style: GoogleFonts.inter(
+          Text(tr('Μεμονωμένες συνεδρίες'), style: GoogleFonts.inter(
             fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
           const SizedBox(height: 6),
           Text(tr('Μία συνεδρία, χωρίς πακέτο. Ισχύει και αν είσαι ήδη πελάτης, για υπηρεσία που δεν έχεις.'),
@@ -1983,7 +2135,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           Row(children: [
             if (_dropInOn) ...[
               Expanded(
-                child: _outlineButton('Drop-in', () => _tabCtrl.animateTo(2)),
+                child: _outlineButton(tr('Drop-in'), () => _tabCtrl.animateTo(2)),
               ),
               const SizedBox(width: 12),
             ],
@@ -2141,9 +2293,69 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       case 'biannual':  return tr('Εξαμηνιαία');
       case 'annual':    return tr('Ετήσια');
       case 'one_time':  return tr('Εφάπαξ');
-      case 'drop_in':   return 'Drop-in';
+      case 'drop_in':   return tr('Μεμονωμένη');
       default:          return billing;
     }
+  }
+}
+
+// Horizontal photo gallery that collapses to nothing if every image fails.
+class _PhotoGallery extends StatefulWidget {
+  const _PhotoGallery({required this.photos});
+  final List<Map<String, dynamic>> photos;
+
+  @override
+  State<_PhotoGallery> createState() => _PhotoGalleryState();
+}
+
+class _PhotoGalleryState extends State<_PhotoGallery> {
+  late final List<bool?> _loaded; // null=pending, true=ok, false=failed
+
+  @override
+  void initState() {
+    super.initState();
+    _loaded = List.filled(widget.photos.length, null);
+  }
+
+  bool get _anyVisible => _loaded.any((v) => v == true || v == null);
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_anyVisible) return const SizedBox.shrink();
+    return SizedBox(
+      height: 190,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: widget.photos.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          if (_loaded[i] == false) return const SizedBox.shrink();
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.network(
+              widget.photos[i]['url'] as String,
+              width: widget.photos.length == 1 ? 340 : 260,
+              height: 190,
+              fit: BoxFit.cover,
+              frameBuilder: (ctx, child, frame, _) {
+                if (frame != null && _loaded[i] != true) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) setState(() => _loaded[i] = true);
+                  });
+                }
+                return child;
+              },
+              errorBuilder: (_, __, ___) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() => _loaded[i] = false);
+                });
+                return const SizedBox.shrink();
+              },
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -2433,7 +2645,7 @@ class _DropInBookSheetState extends State<_DropInBookSheet> {
               Text(tr('Σύνοψη'), style: GoogleFonts.inter(
                 fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF9A9CA3))),
               const SizedBox(height: 8),
-              Text(tr('Drop-in · ${widget.serviceName}'), style: GoogleFonts.inter(
+              Text(tr('Μεμονωμένη · ${widget.serviceName}'), style: GoogleFonts.inter(
                 fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
               const SizedBox(height: 4),
               Text(tr(widget.gymName), style: GoogleFonts.inter(fontSize: 14, color: Colors.white)),

@@ -22,6 +22,7 @@ import 'gym_entry_splash.dart';
 import 'gym_profile_screen.dart';
 import 'phone_otp_login_screen.dart';
 import '../l10n/tr.dart';
+import 'global_bookings_screen.dart';
 
 
 const _kBg     = Color(0xFF0A0A0A);
@@ -394,8 +395,9 @@ class _GlobalMemberHomeScreenState extends State<GlobalMemberHomeScreen> {
             onRequestSent: _onJoinRequestSent,
             onGymAdded: _onGymAdded,
             onPurchaseComplete: _onPurchaseComplete,
+            onEnterGym: widget.onEnterGym,
           ),
-          _ScheduleTab(
+          GlobalBookingsScreen(
             globalAuth: widget.globalAuth,
             gyms: widget.globalAuth.gyms,
             onEnterGym: _enterGym,
@@ -2005,11 +2007,13 @@ class _DiscoverTab extends StatelessWidget {
     required this.onRequestSent,
     required this.onGymAdded,
     required this.onPurchaseComplete,
+    this.onEnterGym,
   });
   final GlobalAuthService globalAuth;
   final VoidCallback onRequestSent;
   final VoidCallback onGymAdded;
   final PurchaseComplete onPurchaseComplete;
+  final void Function(TenantConfig)? onEnterGym;
 
   @override
   Widget build(BuildContext context) {
@@ -2019,6 +2023,7 @@ class _DiscoverTab extends StatelessWidget {
       onRequestSent: onRequestSent,
       onGymAdded: onGymAdded,
       onPurchaseComplete: onPurchaseComplete,
+      onEnterGym: onEnterGym,
       hideHeader: true,
     );
   }
