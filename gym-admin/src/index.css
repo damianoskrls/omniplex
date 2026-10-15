@@ -554,6 +554,26 @@ input, select, textarea, button {
   justify-content: flex-end;
 }
 
+.topbar-branch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.topbar-branch-btn:hover { background: var(--surface-2); border-color: var(--border-2); }
+.topbar-branch-btn__label { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .topbar-title {
   font-size: 1rem;
   font-weight: 700;
@@ -4512,26 +4532,30 @@ select option { background: var(--surface-2); color: var(--text); }
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.sidebar .sidebar-accordion { margin: 6px 8px 2px; }
+.sidebar .sidebar-accordion { margin: 2px 8px; }
 
 .sidebar .sidebar-accordion__header,
 .sidebar .sidebar-group__title {
-  color: rgba(255, 255, 255, 0.38);
-  letter-spacing: 0.1em;
-  font-size: 0.66rem;
-  padding: 12px 14px 4px;
+  color: rgba(255, 255, 255, 0.72);
+  letter-spacing: -0.01em;
+  font-size: 0.93rem;
+  font-weight: 500;
+  text-transform: none;
+  padding: 9px 14px;
   background: transparent;
 }
 
 .sidebar .sidebar-accordion__header:hover,
 .sidebar .sidebar-group__title:hover {
-  background: transparent;
-  color: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.92);
+  border-radius: 10px;
 }
 
 .sidebar .sidebar-accordion__header--active,
 .sidebar .sidebar-group--active .sidebar-group__title {
-  color: rgba(255, 255, 255, 0.78);
+  color: #fff;
+  font-weight: 600;
 }
 
 .sidebar .sidebar-accordion__chevron { opacity: 0.7; color: rgba(255, 255, 255, 0.45); }
