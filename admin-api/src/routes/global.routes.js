@@ -221,16 +221,15 @@ async function getGymsForGlobalUser(globalUserId) {
 
 function staffKindsFromRow(row) {
   const role = String(row.staff_role || row.role || row.specialty || '').trim();
-  const nutrition = Number(row.is_nutritionist) === 1 || /διατροφ|nutri/i.test(role);
+  // is_nutritionist flag only applies when the role itself is not a plain trainer title
+  const roleIsTrainer = /trainer|γυμναστ|coach|personal/i.test(role);
+  const nutrition = /διατροφ|nutri/i.test(role) ||
+    (Number(row.is_nutritionist) === 1 && !roleIsTrainer);
   const physio = /φυσιο|physio/i.test(role);
-  const genericTrainer = /^(trainer|γυμναστής|γυμναστης)$/i.test(role);
   const kinds = [];
   if (nutrition) kinds.push('nutritionist');
   if (physio) kinds.push('physiotherapist');
-  // "Trainer" is the default staff title. It must not cover a nutritionist.
-  if (/trainer|γυμναστ|coach|personal/i.test(role) && !(nutrition && genericTrainer)) {
-    kinds.push('trainer');
-  }
+  if (roleIsTrainer) kinds.push('trainer');
   if (!kinds.length) kinds.push('trainer');
   return kinds;
 }
