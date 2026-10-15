@@ -944,7 +944,7 @@ router.get('/staff/trials', requireMobileStaff, async (req, res) => {
       SELECT b.id, b.starts_at, b.ends_at, b.status, b.notes,
              b.user_id, b.service_id, b.staff_id, b.location_id,
              b.trial_became_member, b.trial_considering, b.trial_satisfied,
-             COALESCE(u.full_name, b.guest_name) AS user_name, u.phone AS user_phone,
+             u.full_name AS user_name, u.phone AS user_phone,
              s.name AS service_name,
              loc.name AS location_name,
              st.full_name AS staff_name
