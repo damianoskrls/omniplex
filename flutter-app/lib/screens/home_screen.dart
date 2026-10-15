@@ -75,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _hasWorkoutPrograms = true;
   bool _switchingRole = false;
   Timer? _unreadTimer;
+  String? _gymLocationLabel;
 
   static void selectTab(int index) {
     final state = _active;
@@ -444,6 +445,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _refreshUnread();
       _loadNutritionAccess();
       _loadWorkoutNav();
+      _loadGymLocation();
       final openedFromPurchase = GymLaunch.tabKey != null;
       _openLaunchTab();
       if (!openedFromPurchase) MemberIntakeScreen.promptIfNeeded(context);
@@ -475,6 +477,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final name = (program['service_name'] ?? '').toString().trim().toLowerCase();
     if (name == 'συνεδρία διατροφολόγου') return false;
     return true;
+  }
+
+  Future<void> _loadGymLocation() async {
+    final auth = context.read<AuthService>();
+    if (!auth.isLoggedIn) return;
+    try {
+      final info = await auth.api.fetchGymInfo();
+      if (!mounted) return;
+      final locations = info.locations;
+      if (locations.isNotEmpty) {
+        setState(() => _gymLocationLabel = locations.first.name);
+      }
+    } on ApiException catch (_) {}
   }
 
   Future<void> _loadWorkoutNav() async {
@@ -658,6 +673,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               greeting: greetingForHour(),
               name: firstName,
               subtitle: tr(config.appName),
+              locationLabel: _gymLocationLabel,
               avatarLetter: user.fullName.isNotEmpty ? user.fullName[0] : '?',
               roleLabel: _roleLabelForUser(user),
               onLogoTap: _openGymInfo,

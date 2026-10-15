@@ -11,6 +11,7 @@ class GreetingHeader extends StatelessWidget {
     required this.greeting,
     required this.name,
     this.subtitle,
+    this.locationLabel,
     this.avatarLetter,
     this.onAvatarTap,
     this.roleLabel,
@@ -26,6 +27,7 @@ class GreetingHeader extends StatelessWidget {
   final String greeting;
   final String name;
   final String? subtitle;
+  final String? locationLabel;
   final String? avatarLetter;
   final VoidCallback? onAvatarTap;
   final String? roleLabel;
@@ -88,10 +90,28 @@ class GreetingHeader extends StatelessWidget {
           // Row 1: gym logo (left) + action icons + avatar (right)
           Row(
             children: [
-              // Gym logo — tappable
+              // Gym logo — tappable, with optional location label below
               GestureDetector(
                 onTap: onLogoTap,
-                child: const TenantLogo(size: 104, borderRadius: 18, showShadow: false),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const TenantLogo(size: 104, borderRadius: 18, showShadow: false),
+                    if (locationLabel != null && locationLabel!.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        locationLabel!,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               const Spacer(),
               // Action icons row

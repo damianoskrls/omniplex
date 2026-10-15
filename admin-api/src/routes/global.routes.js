@@ -1070,7 +1070,10 @@ router.get('/discovery/gyms/:slug', async (req, res) => {
               s.name AS class_name,
               s.name AS service_name,
               s.duration_mins,
+              s.description AS service_description,
+              s.image_url AS service_image_url,
               st.full_name AS trainer_name,
+              st.avatar_url AS trainer_avatar_url,
               st.color_hex AS color,
               COALESCE(r.name, NULLIF(sss.room_name, '')) AS room_name,
               COALESCE(sss.max_capacity, s.default_capacity) AS max_capacity

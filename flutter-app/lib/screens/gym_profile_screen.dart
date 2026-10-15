@@ -1501,6 +1501,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
     final name = (entry['service_name'] ?? entry['class_name'] ?? '').toString().trim();
     final trainer = (entry['trainer_name'] ?? '').toString().trim();
     final room = (entry['room_name'] ?? '').toString().trim();
+    final imageUrl = (entry['service_image_url'] ?? '').toString().trim();
     final minsRaw = entry['duration_mins'];
     final mins = minsRaw is num ? minsRaw.toInt() : int.tryParse('${minsRaw ?? ''}');
     final details = <String>[
@@ -1508,43 +1509,226 @@ class _GymProfileScreenState extends State<GymProfileScreen>
       if (mins != null && mins > 0) '$mins ${tr('λεπτά')}',
       if (room.isNotEmpty) room,
     ];
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _kCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorder),
-      ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        Container(
-          width: 4, height: 52,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+    return GestureDetector(
+      onTap: () => _showClassDetails(entry),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _kCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _kBorder),
         ),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 52,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(start,
-              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-            if (end.isNotEmpty && end != start)
-              Text(end,
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: _kGray)),
-          ]),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name.isEmpty ? '' : tr(name),
-              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-            if (details.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(details.join(' · '),
-                  style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Container(
+            width: 4, height: 52,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 52,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(start,
+                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+              if (end.isNotEmpty && end != start)
+                Text(end,
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: _kGray)),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name.isEmpty ? '' : tr(name),
+                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+              if (details.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(details.join(' · '),
+                    style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
+                ),
+            ]),
+          ),
+          if (imageUrl.isNotEmpty) ...[
+            const SizedBox(width: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                imageUrl,
+                width: 48, height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox(),
               ),
-          ]),
+            ),
+          ] else ...[
+            const SizedBox(width: 10),
+            Container(
+              width: 48, height: 48,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.fitness_center_rounded, color: color, size: 22),
+            ),
+          ],
+          const SizedBox(width: 4),
+          Icon(Icons.chevron_right_rounded, color: _kGray, size: 18),
+        ]),
+      ),
+    );
+  }
+
+  void _showClassDetails(Map<String, dynamic> entry) {
+    final color = _parseClassColor(entry['color'] as String?);
+    final start = _hhmm(entry['start_time']);
+    final end = _hhmm(entry['end_time']);
+    final name = (entry['service_name'] ?? entry['class_name'] ?? '').toString().trim();
+    final trainer = (entry['trainer_name'] ?? '').toString().trim();
+    final trainerAvatar = (entry['trainer_avatar_url'] ?? '').toString().trim();
+    final room = (entry['room_name'] ?? '').toString().trim();
+    final imageUrl = (entry['service_image_url'] ?? '').toString().trim();
+    final description = (entry['service_description'] ?? '').toString().trim();
+    final minsRaw = entry['duration_mins'];
+    final mins = minsRaw is num ? minsRaw.toInt() : int.tryParse('${minsRaw ?? ''}');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        builder: (_, scrollCtrl) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF18181E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: ListView(
+            controller: scrollCtrl,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 16),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              // Service image
+              if (imageUrl.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    imageUrl,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(),
+                  ),
+                )
+              else
+                Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.fitness_center_rounded, color: color, size: 48),
+                ),
+              const SizedBox(height: 20),
+              // Color bar + name
+              Row(children: [
+                Container(
+                  width: 4, height: 24,
+                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(name.isEmpty ? '' : tr(name),
+                    style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              // Time
+              Row(children: [
+                const Icon(Icons.access_time_rounded, color: _kGray, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  end.isNotEmpty && end != start ? '$start – $end' : start,
+                  style: GoogleFonts.inter(fontSize: 14, color: Colors.white70),
+                ),
+                if (mins != null && mins > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text('$mins ${tr('λεπτά')}',
+                      style: GoogleFonts.inter(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ]),
+              if (room.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  const Icon(Icons.room_outlined, color: _kGray, size: 16),
+                  const SizedBox(width: 6),
+                  Text(room, style: GoogleFonts.inter(fontSize: 14, color: Colors.white70)),
+                ]),
+              ],
+              // Trainer
+              if (trainer.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _kCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _kBorder),
+                  ),
+                  child: Row(children: [
+                    if (trainerAvatar.isNotEmpty)
+                      ClipOval(child: Image.network(trainerAvatar, width: 40, height: 40, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _trainerInitialAvatar(trainer)))
+                    else
+                      _trainerInitialAvatar(trainer),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(tr('Προπονητής'),
+                        style: GoogleFonts.inter(fontSize: 11, color: _kGray, fontWeight: FontWeight.w500)),
+                      Text(trainer,
+                        style: GoogleFonts.inter(fontSize: 14, color: Colors.white, fontWeight: FontWeight.w700)),
+                    ])),
+                  ]),
+                ),
+              ],
+              // Description
+              if (description.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(tr('Περιγραφή'),
+                  style: GoogleFonts.inter(fontSize: 13, color: _kGray, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Text(description,
+                  style: GoogleFonts.inter(fontSize: 14, color: Colors.white70, height: 1.5)),
+              ],
+            ],
+          ),
         ),
-      ]),
+      ),
+    );
+  }
+
+  Widget _trainerInitialAvatar(String name) {
+    return Container(
+      width: 40, height: 40,
+      decoration: BoxDecoration(color: _kCard, shape: BoxShape.circle, border: Border.all(color: _kBorder)),
+      alignment: Alignment.center,
+      child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
     );
   }
 
@@ -1794,7 +1978,8 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           const SizedBox(height: 10),
           _pendingJoinBanner(),
         ],
-        if (_dropInOn || (!_canEnter && !_memberPending && !_staffPending))
+        if (_dropInOn || (!_canEnter && !_memberPending && !_staffPending)) ...[
+          const SizedBox(height: 16),
           Row(children: [
             if (_dropInOn) ...[
               Expanded(
@@ -1807,8 +1992,9 @@ class _GymProfileScreenState extends State<GymProfileScreen>
                 child: _outlineButton(tr('Δες Πακέτα'), () => _tabCtrl.animateTo(2)),
               ),
           ]),
+        ],
         if (_showAddGym) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           _limeButton(
             tr('Προσθήκη στα γυμναστήριά μου'),
             _joiningGym ? null : _addToMyGyms,
@@ -1816,7 +2002,7 @@ class _GymProfileScreenState extends State<GymProfileScreen>
           ),
         ],
         if (_canEnter && _canRequest) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           GestureDetector(
             onTap: _joiningGym ? null : _requestJoin,
             child: Container(
