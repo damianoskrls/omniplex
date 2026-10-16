@@ -632,7 +632,7 @@ class _BookingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final role     = booking['role']?.toString() ?? 'member';
     final rawTime  = booking['booking_time']?.toString() ?? '';
-    final durationMins = (booking['duration_mins'] as num?)?.toInt() ?? 0;
+    final durationMins = int.tryParse(booking['duration_mins']?.toString() ?? '') ?? 0;
     final timeStr  = durationMins > 0
         ? _fmtTimeRange(rawTime, durationMins)
         : _fmtTime(rawTime);
@@ -1137,7 +1137,7 @@ class _ProgrammeScreenState extends State<_ProgrammeScreen> {
     final roles = bookings.map((b) => b['role']?.toString() ?? 'member').toSet();
     int totalMins = 0;
     for (final b in bookings) {
-      totalMins += (b['duration_mins'] as num?)?.toInt() ?? 45;
+      totalMins += int.tryParse(b['duration_mins']?.toString() ?? '') ?? 45;
     }
     final h = totalMins ~/ 60;
     final m = totalMins % 60;
@@ -1424,7 +1424,7 @@ class _BookingDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final role     = booking['role']?.toString() ?? 'member';
     final rawTime  = booking['booking_time']?.toString() ?? '';
-    final durationMins = (booking['duration_mins'] as num?)?.toInt() ?? 0;
+    final durationMins = int.tryParse(booking['duration_mins']?.toString() ?? '') ?? 0;
     final timeStr  = durationMins > 0
         ? _fmtTimeRange(rawTime, durationMins)
         : _fmtTime(rawTime);
