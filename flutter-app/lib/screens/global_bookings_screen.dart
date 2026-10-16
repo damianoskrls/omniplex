@@ -128,17 +128,17 @@ class _GlobalBookingsScreenState extends State<GlobalBookingsScreen> {
       return true;
     }).toList()
       ..sort((a, b) {
-        final dateA = (a['booking_date'] as String? ?? '');
-        final dateB = (b['booking_date'] as String? ?? '');
+        final dateA = (a['booking_date']?.toString() ?? '');
+        final dateB = (b['booking_date']?.toString() ?? '');
         if (dateA != dateB) return dateA.compareTo(dateB);
-        return (a['booking_time'] as String? ?? '').compareTo(b['booking_time'] as String? ?? '');
+        return (a['booking_time']?.toString() ?? '').compareTo(b['booking_time']?.toString() ?? '');
       });
   }
 
   Map<String, List<Map<String, dynamic>>> get _grouped {
     final map = <String, List<Map<String, dynamic>>>{};
     for (final b in _filteredUpcoming) {
-      final key = b['booking_date'] as String? ?? '';
+      final key = b['booking_date']?.toString() ?? '';
       map.putIfAbsent(key, () => []).add(b);
     }
     return map;
@@ -162,7 +162,7 @@ class _GlobalBookingsScreenState extends State<GlobalBookingsScreen> {
       (x) => x['business_id']?.toString() == bizId,
       orElse: () => {},
     );
-    return b['app_name'] as String? ?? b['business_name'] as String? ?? bizId;
+    return b['app_name']?.toString() ?? b['business_name']?.toString() ?? bizId;
   }
 
   GlobalGym? _gymFor(String? bizId) {
@@ -324,11 +324,11 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Text(tr('Ένα πρόγραμμα.\nΌλες οι πλευρές σου.'),
+          Text(tr('Όλες οι δραστηριότητές σου σε έναν ρυθμό.'),
             style: GoogleFonts.inter(
               fontSize: 28, fontWeight: FontWeight.w800, color: _kText, height: 1.1)),
           const SizedBox(height: 6),
-          Text(tr('Όλα τα γυμναστήρια, οι ρόλοι και οι επερχόμενες δεσμεύσεις σου.'),
+          Text(tr('Μαθήματα, & κρατήσεις σε απόλυτη ισορροπία.'),
             style: GoogleFonts.inter(fontSize: 13, color: _kGray, height: 1.45)),
           const SizedBox(height: 16),
         ],
@@ -352,7 +352,7 @@ class _TabRow extends StatelessWidget {
       child: Row(
         children: [
           _Tab(
-            label: tr('Επερχόμενα · $upcomingCount'),
+            label: tr('Επόμενα · $upcomingCount'),
             active: tab == 0,
             onTap: () => onTab(0),
           ),
@@ -630,19 +630,19 @@ class _BookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final role     = booking['role'] as String? ?? 'member';
-    final rawTime  = booking['booking_time'] as String? ?? '';
+    final role     = booking['role']?.toString() ?? 'member';
+    final rawTime  = booking['booking_time']?.toString() ?? '';
     final durationMins = (booking['duration_mins'] as num?)?.toInt() ?? 0;
     final timeStr  = durationMins > 0
         ? _fmtTimeRange(rawTime, durationMins)
         : _fmtTime(rawTime);
-    final service  = booking['service_name'] as String? ?? '';
-    final status   = booking['status'] as String? ?? 'confirmed';
-    final location = booking['location_name'] as String?;
+    final service  = booking['service_name']?.toString() ?? '';
+    final status   = booking['status']?.toString() ?? 'confirmed';
+    final location = booking['location_name']?.toString();
     final isTrainer = role == 'staff';
     final who = isTrainer
-        ? (booking['client_name'] as String? ?? '')
-        : (booking['staff_name'] as String? ?? '');
+        ? (booking['client_name']?.toString() ?? '')
+        : (booking['staff_name']?.toString() ?? '');
     final isCancel = status == 'cancelled';
     final barColor = isCancel ? _kBorder : _roleBar(role);
     final isStaffBooking = booking['booking_type']?.toString() == 'appointment' ||
@@ -1007,13 +1007,13 @@ class _PastTabState extends State<_PastTab> {
       final all = results.expand((r) => r).toList();
       final today = _dateKey(DateTime.now());
       final past = all.where((b) {
-        final d = b['booking_date'] as String? ?? '';
-        final s = b['status'] as String? ?? '';
+        final d = b['booking_date']?.toString() ?? '';
+        final s = b['status']?.toString() ?? '';
         return d.compareTo(today) < 0 || s == 'cancelled' || s == 'completed';
       }).toList()
         ..sort((a, b) {
-          final da = a['booking_date'] as String? ?? '';
-          final db = b['booking_date'] as String? ?? '';
+          final da = a['booking_date']?.toString() ?? '';
+          final db = b['booking_date']?.toString() ?? '';
           return db.compareTo(da);
         });
       setState(() { _past = past; _loading = false; });
@@ -1048,7 +1048,7 @@ class _PastTabState extends State<_PastTab> {
 
     final grouped = <String, List<Map<String, dynamic>>>{};
     for (final b in _past) {
-      final key = b['booking_date'] as String? ?? '';
+      final key = b['booking_date']?.toString() ?? '';
       grouped.putIfAbsent(key, () => []).add(b);
     }
 
@@ -1060,9 +1060,9 @@ class _PastTabState extends State<_PastTab> {
           for (final booking in grouped[dateKey]!)
             _BookingCard(
               booking: booking,
-              gymName: booking['_gym_name'] as String? ??
-                  booking['app_name'] as String? ??
-                  booking['business_name'] as String? ?? '',
+              gymName: booking['_gym_name']?.toString() ??
+                  booking['app_name']?.toString() ??
+                  booking['business_name']?.toString() ?? '',
             ),
         ],
       ],
@@ -1105,7 +1105,7 @@ class _ProgrammeScreenState extends State<_ProgrammeScreen> {
     final key = _dateKey2(d);
     return widget.upcoming.where((b) => b['booking_date'] == key).toList()
       ..sort((a, b) =>
-          (a['booking_time'] as String? ?? '').compareTo(b['booking_time'] as String? ?? ''));
+          (a['booking_time']?.toString() ?? '').compareTo(b['booking_time']?.toString() ?? ''));
   }
 
 
@@ -1113,7 +1113,7 @@ class _ProgrammeScreenState extends State<_ProgrammeScreen> {
     final bookings = _bookingsForDay(d);
     final map = <String, List<Map<String, dynamic>>>{};
     for (final b in bookings) {
-      final role = b['role'] as String? ?? 'member';
+      final role = b['role']?.toString() ?? 'member';
       map.putIfAbsent(role, () => []).add(b);
     }
     return map;
@@ -1134,7 +1134,7 @@ class _ProgrammeScreenState extends State<_ProgrammeScreen> {
     final days = _weekDays;
     final keys = days.map(_dateKey2).toSet();
     final bookings = widget.upcoming.where((b) => keys.contains(b['booking_date'])).toList();
-    final roles = bookings.map((b) => b['role'] as String? ?? 'member').toSet();
+    final roles = bookings.map((b) => b['role']?.toString() ?? 'member').toSet();
     int totalMins = 0;
     for (final b in bookings) {
       totalMins += (b['duration_mins'] as num?)?.toInt() ?? 45;
@@ -1354,11 +1354,11 @@ class _ProgrammeScreenState extends State<_ProgrammeScreen> {
 
   String _gymNameFor(Map<String, dynamic> b) {
     final bizId = b['business_id']?.toString();
-    if (bizId == null) return b['app_name'] as String? ?? b['business_name'] as String? ?? '';
+    if (bizId == null) return b['app_name']?.toString() ?? b['business_name']?.toString() ?? '';
     for (final g in widget.gyms) {
       if (g.businessId == bizId) return g.appName;
     }
-    return b['app_name'] as String? ?? b['business_name'] as String? ?? '';
+    return b['app_name']?.toString() ?? b['business_name']?.toString() ?? '';
   }
 }
 
@@ -1370,7 +1370,7 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     final roleCounts = <String, int>{};
     for (final b in upcoming) {
-      final r = b['role'] as String? ?? 'member';
+      final r = b['role']?.toString() ?? 'member';
       roleCounts[r] = (roleCounts[r] ?? 0) + 1;
     }
     final entries = roleCounts.entries.toList();
@@ -1422,22 +1422,22 @@ class _BookingDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final role     = booking['role'] as String? ?? 'member';
-    final rawTime  = booking['booking_time'] as String? ?? '';
+    final role     = booking['role']?.toString() ?? 'member';
+    final rawTime  = booking['booking_time']?.toString() ?? '';
     final durationMins = (booking['duration_mins'] as num?)?.toInt() ?? 0;
     final timeStr  = durationMins > 0
         ? _fmtTimeRange(rawTime, durationMins)
         : _fmtTime(rawTime);
-    final service  = booking['service_name'] as String? ?? '';
-    final gym      = booking['app_name'] as String? ?? booking['business_name'] as String? ?? '';
-    final status   = booking['status'] as String? ?? 'confirmed';
-    final location = booking['location_name'] as String?;
+    final service  = booking['service_name']?.toString() ?? '';
+    final gym      = booking['app_name']?.toString() ?? booking['business_name']?.toString() ?? '';
+    final status   = booking['status']?.toString() ?? 'confirmed';
+    final location = booking['location_name']?.toString();
     final isTrainer = role == 'staff';
     final who      = isTrainer
-        ? (booking['client_name'] as String?)
-        : (booking['staff_name'] as String?);
-    final date     = booking['booking_date'] as String? ?? '';
-    final imgUrl   = booking['service_image_url'] as String?;
+        ? (booking['client_name']?.toString())
+        : (booking['staff_name']?.toString());
+    final date     = booking['booking_date']?.toString() ?? '';
+    final imgUrl   = booking['service_image_url']?.toString();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
