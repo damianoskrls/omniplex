@@ -85,17 +85,7 @@ class _GlobalAuthGateScreenState extends State<GlobalAuthGateScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                height: 56,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    tr('Καλωσήρθες στο Omniplex'),
-                    style: GoogleFonts.inter(
-                      color: _kText, fontSize: 16, fontWeight: FontWeight.w600, height: 1.45),
-                  ),
-                ),
-              ),
+              const SizedBox(height: 8),
 
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
@@ -103,13 +93,13 @@ class _GlobalAuthGateScreenState extends State<GlobalAuthGateScreen> {
               ),
 
               Text.rich(TextSpan(
-                text: tr('Το επόμενο κεφάλαιό σου\nξεκινά εδώ.'),
+                text: tr('Βρες τον χώρο σου.\nΞεκίνα σήμερα.'),
                 style: GoogleFonts.inter(
                   color: _kText, fontSize: 30, fontWeight: FontWeight.w800, height: 1.1),
               )),
               const SizedBox(height: 10),
               Text(
-                tr('Συνδέσου ή δημιούργησε λογαριασμό με τον αριθμό του κινητού σου. Εμείς θα φροντίσουμε τα υπόλοιπα.'),
+                tr('Κινητό → κωδικός → μέσα. Μόνο 30 δευτερόλεπτα.'),
                 style: GoogleFonts.inter(color: _kGray, fontSize: 14, height: 1.45),
               ),
               const SizedBox(height: 22),
@@ -169,7 +159,7 @@ class _GlobalAuthGateScreenState extends State<GlobalAuthGateScreen> {
                     const Icon(Icons.smartphone_outlined, color: _kAccent, size: 18),
                     const SizedBox(width: 10),
                     Expanded(child: Text(
-                      tr('Ήδη μέλος γυμναστηρίου; Θα βρούμε αυτόματα συνδρομές που συνδέονται με τον επαληθευμένο αριθμό σου.'),
+                      tr('Ήδη έχεις συνδρομή κάπου; Θα τη βρούμε αυτόματα με τον αριθμό σου.'),
                       style: GoogleFonts.inter(color: _kGray, fontSize: 12, height: 1.45))),
                   ],
                 ),
@@ -216,8 +206,8 @@ class _GlobalAuthGateScreenState extends State<GlobalAuthGateScreen> {
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(tr('Συνέχεια με κινητό'),
-                            style: GoogleFonts.inter(color: _kText, fontSize: 14)),
+                          Text(tr('Σύνδεση με κινητό'),
+                            style: GoogleFonts.inter(color: _kText, fontSize: 15, fontWeight: FontWeight.w600)),
                           const SizedBox(width: 8),
                           const Icon(Icons.arrow_forward, color: _kText, size: 16),
                         ],
@@ -241,10 +231,10 @@ class _GlobalAuthGateScreenState extends State<GlobalAuthGateScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(tr('Συνέχεια ως επισκέπτης'),
-                        style: GoogleFonts.inter(color: _kText, fontSize: 14)),
+                      Text(tr('Βρες το χώρο σου'),
+                        style: GoogleFonts.inter(color: _kText, fontSize: 15, fontWeight: FontWeight.w600)),
                       const SizedBox(width: 8),
-                      const Icon(Icons.explore_outlined, color: _kText, size: 16),
+                      const Icon(Icons.search_rounded, color: _kText, size: 16),
                     ],
                   ),
                 ),
@@ -252,13 +242,13 @@ class _GlobalAuthGateScreenState extends State<GlobalAuthGateScreen> {
               const SizedBox(height: 10),
 
               Text(
-                tr('Εξερεύνησε ελεύθερα. Συνδέσου όταν είσαι έτοιμος να γίνεις μέλος, να κλείσεις θέση ή να αγοράσεις.'),
+                tr('Εξερεύνησε χωρίς λογαριασμό. Συνδέσου όταν θέλεις.'),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(color: _kGray, fontSize: 12, height: 1.45),
               ),
               const SizedBox(height: 6),
               Text(
-                tr('Ο αριθμός σου παραμένει ιδιωτικός. Κανένα μήνυμα marketing.'),
+                tr('Χωρίς spam. Χωρίς marketing.'),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(color: _kGray2, fontSize: 10, height: 1.45),
               ),

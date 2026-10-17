@@ -780,12 +780,12 @@ class _HomeTab extends StatelessWidget {
                       if (homeGroups.isNotEmpty) ...[
                         Row(children: [
                           Expanded(
-                            child: Text(tr('Τα Γυμναστήριά Μου'),
+                            child: Text(tr('Οι Χώροι Μου'),
                               style: GoogleFonts.inter(
                                 fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
                           ),
                           Text(
-                            tr(homeGroups.length == 1 ? '1 ενεργό' : tr('${homeGroups.length} ενεργά')),
+                            tr(homeGroups.length == 1 ? '1 ενεργός' : '${homeGroups.length} ενεργοί'),
                             style: GoogleFonts.inter(fontSize: 13, color: _kGray, fontWeight: FontWeight.w600),
                           ),
                         ]),
@@ -944,12 +944,7 @@ class _HomeGymCarouselState extends State<_HomeGymCarousel> {
     super.dispose();
   }
 
-  double get _height {
-    final maxRoles = widget.groups.fold<int>(1, (max, roles) => roles.length > max ? roles.length : max);
-    final withPackage = widget.groups.any((roles) => widget.packageLine(roles.first.businessId) != null);
-    final withPlace = widget.groups.any((roles) => roles.first.locations.isNotEmpty);
-    return 92 + maxRoles * 118 + 72 + (withPackage ? 52 : 0) + (withPlace ? 18 : 0);
-  }
+  double get _height => 220.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1102,105 +1097,226 @@ class _HomeGymSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
+    final hasCover = gym.coverUrl != null && gym.coverUrl!.isNotEmpty;
+    return GestureDetector(
+      onTap: () {
+        if (roles.length == 1) {
+          onEnter(roles.first);
+        } else {
+          _showGymRolePicker(context, gymName: gym.appName, roles: roles, onEnter: onEnter);
+        }
+      },
       child: Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF17181D),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _kBorder),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-            child: Row(children: [
-              _GymLogo(url: gym.logoUrl, name: gym.appName, accent: accentColor),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(tr(gym.appName),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-                  if (gym.locations.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(tr(gym.locations.map((l) => l.name).join(' · ')),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: _kGray)),
-                  ],
-                ]),
-              ),
-              GestureDetector(
-                onTap: () => _showQr(context),
-                child: Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF14301C),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF3F8F55)),
-                  ),
-                  child: const Icon(Icons.qr_code_2_rounded, color: Color(0xFF86EFAC), size: 22),
-                ),
-              ),
-            ]),
-          ),
-          const Divider(color: _kBorder, height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final role in roles) ...[
-                  _HomeRoleButton(
-                    label: tr(_roleLabel(role)),
-                    tone: _tone(role),
-                    onTap: () => onEnter(role),
-                  ),
-                  if (!role.isStaff && packageLine != null) ...[
-                    const SizedBox(height: 8),
-                    Text(tr('Πακέτο'), style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
-                    const SizedBox(height: 2),
-                    Text(tr(packageLine!),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-                  ],
-                  const SizedBox(height: 8),
-                  _NextAppointment(
-                    booking: _nextFor(role),
-                    onTap: () {
-                      final booking = _nextFor(role);
-                      if (booking != null) onOpenBooking(booking);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                GestureDetector(
-                  onTap: onAddRole,
-                  child: Container(
-                    height: 46,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF12131A),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: _kBorder),
+        decoration: BoxDecoration(
+          color: const Color(0xFF17181D),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _kBorder),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            // ── Cover photo ──
+            SizedBox(
+              height: 140,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (hasCover)
+                    Image.network(
+                      gym.coverUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [accentColor.withValues(alpha: 0.5), const Color(0xFF17181D)],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [accentColor.withValues(alpha: 0.4), const Color(0xFF17181D)],
+                        ),
+                      ),
                     ),
-                    child: Text(tr('+  Νέος ρόλος'),
-                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                  // Bottom gradient overlay
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.25, 1.0],
+                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.78)],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                  // QR button top-right
+                  Positioned(
+                    top: 8, right: 8,
+                    child: GestureDetector(
+                      onTap: () => _showQr(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: 34, height: 34,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                        ),
+                        child: const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ),
+                  // Logo + name bottom-left
+                  Positioned(
+                    left: 12, right: 50, bottom: 10,
+                    child: Row(children: [
+                      _GymLogo(url: gym.logoUrl, name: gym.appName, accent: accentColor),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(tr(gym.appName),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                            if (gym.locations.isNotEmpty)
+                              Text(gym.locations.map((l) => l.name).join(' · '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(fontSize: 12, color: Colors.white.withValues(alpha: 0.75))),
+                          ],
+                        ),
+                      ),
+                    ]),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            // ── Role pills ──
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: roles.map((role) {
+                          final t = _tone(role);
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: t.bg,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: t.border),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(t.icon, size: 12, color: t.fg),
+                              const SizedBox(width: 4),
+                              Text(tr(_roleLabel(role)),
+                                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: t.fg)),
+                            ]),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right_rounded, color: _kGray, size: 20),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
+}
+
+void _showGymRolePicker(
+  BuildContext context, {
+  required String gymName,
+  required List<GlobalGym> roles,
+  required Future<void> Function(GlobalGym) onEnter,
+}) {
+  String _label(GlobalGym r) {
+    if (!r.isStaff) return tr('Ασκούμενος');
+    if (r.staffKind == 'nutritionist') return tr('Διατροφολόγος');
+    if (r.staffKind == 'physiotherapist') return tr('Φυσιοθεραπευτής');
+    return tr('Προπονητής');
+  }
+
+  _RoleTone _tone(GlobalGym r) {
+    if (!r.isStaff) return const _RoleTone(Color(0xFF2C2450), Color(0xFFC4B5FD), Color(0xFF6D5BD0), Icons.directions_run_rounded);
+    if (r.staffKind == 'nutritionist') return const _RoleTone(Color(0xFF16301C), Color(0xFF86EFAC), Color(0xFF3F8F55), Icons.apple_rounded);
+    if (r.staffKind == 'physiotherapist') return const _RoleTone(Color(0xFF142E30), Color(0xFF7DD3D0), Color(0xFF2F8A88), Icons.healing_rounded);
+    return const _RoleTone(Color(0xFF2A1824), Color(0xFFF9A8D4), Color(0xFFBE4B8A), Icons.person_rounded);
+  }
+
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: _kCard,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: _kGray.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(99)),
+            ),
+            const SizedBox(height: 16),
+            Text(tr('Είσοδος στο $gymName'),
+              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+            const SizedBox(height: 4),
+            Text(tr('Επίλεξε ρόλο'),
+              style: GoogleFonts.inter(fontSize: 13, color: _kGray)),
+            const SizedBox(height: 16),
+            for (final role in roles)
+              GestureDetector(
+                onTap: () { Navigator.pop(ctx); onEnter(role); },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: _tone(role).bg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _tone(role).border),
+                  ),
+                  child: Row(children: [
+                    Icon(_tone(role).icon, color: _tone(role).fg, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(tr(_label(role)),
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: _tone(role).fg))),
+                    Icon(Icons.arrow_forward_ios_rounded, color: _tone(role).fg.withValues(alpha: 0.5), size: 14),
+                  ]),
+                ),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _RoleTone {
@@ -1374,51 +1490,6 @@ class _GymEntryCard extends StatefulWidget {
 }
 
 class _GymEntryCardState extends State<_GymEntryCard> {
-  final _rolesScroll = ScrollController();
-  GlobalGym? _selected;
-  bool _rolesOverflow = false;
-  int _roleDot = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _rolesScroll.addListener(_syncOverflow);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncOverflow());
-  }
-
-  @override
-  void didUpdateWidget(covariant _GymEntryCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_selected != null && !widget.roles.any((role) => _sameRole(role, _selected!))) {
-      _selected = null;
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncOverflow());
-  }
-
-  @override
-  void dispose() {
-    _rolesScroll.dispose();
-    super.dispose();
-  }
-
-  void _syncOverflow() {
-    if (!mounted || !_rolesScroll.hasClients) return;
-    final max = _rolesScroll.position.maxScrollExtent;
-    final overflow = max > 8;
-    final dot = !overflow ? 0 : ((_rolesScroll.offset / max) * 2).round().clamp(0, 2);
-    if (overflow != _rolesOverflow || dot != _roleDot) {
-      setState(() {
-        _rolesOverflow = overflow;
-        _roleDot = dot;
-      });
-    }
-  }
-
-  bool _sameRole(GlobalGym a, GlobalGym b) {
-    if (a.isStaff != b.isStaff) return false;
-    if (!a.isStaff) return true;
-    return (a.staffKind ?? 'trainer') == (b.staffKind ?? 'trainer');
-  }
 
   String _label(GlobalGym gym) {
     if (!gym.isStaff) return tr('Ασκούμενος');
@@ -1477,7 +1548,6 @@ class _GymEntryCardState extends State<_GymEntryCard> {
     final accent = widget.accentColor;
     final onFill = accent.computeLuminance() > 0.62 ? const Color(0xFF111111) : Colors.white;
     final isPending = !gym.isStaff && gym.userStatus == 'pending';
-    final selected = _selected;
     final next = widget.nextBooking;
     final rawTime = next?['booking_time'] as String? ?? '';
     final nextStr = next == null
@@ -1589,118 +1659,30 @@ class _GymEntryCardState extends State<_GymEntryCard> {
                 ]),
               )
             else ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-              child: Row(children: [
-                const Icon(Icons.login_rounded, size: 15, color: _kGray),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text.rich(TextSpan(children: [
-                    TextSpan(text: tr('Βήμα 1: '), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
-                    TextSpan(text: tr('Επίλεξε ρόλο εισόδου'), style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
-                  ])),
-                ),
-                if (widget.roles.length > 2)
-                  Text(tr('${widget.roles.length} ρόλοι'),
-                    style: GoogleFonts.inter(fontSize: 12, color: _kGray, fontWeight: FontWeight.w600)),
-              ]),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 44,
-              child: ListView(
-                controller: _rolesScroll,
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                children: [
-                  for (final role in widget.roles) ...[
-                    _EntryRoleChip(
-                      label: tr(_label(role)),
-                      icon: _icon(role),
-                      selected: selected != null && _sameRole(role, selected),
-                      onTap: () => setState(() => _selected = role),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  _NewRoleChip(onTap: widget.onAddRole),
-                ],
-              ),
-            ),
-            if (_rolesOverflow)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(3, (i) {
-                    final active = _roleDot == i;
-                    return Container(
-                      width: active ? 14 : 6,
-                      height: 6,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: BoxDecoration(
-                        color: active ? Colors.white : _kGray.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    );
-                  }),
-                ),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(children: [
+                  _EntryConnectButton(
+                    enabled: true,
+                    color: accent,
+                    onFill: onFill,
+                    label: tr('Είσοδος'),
+                    onTap: () => _showGymRolePicker(context,
+                      gymName: gym.appName,
+                      roles: widget.roles,
+                      onEnter: widget.onEnter,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _NewRoleChip(onTap: widget.onAddRole),
+                  ),
+                ]),
               ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-              child: _EntryConnectButton(
-                enabled: selected != null,
-                color: accent,
-                onFill: onFill,
-                label: tr(selected == null ? 'Επίλεξε πρώτα ρόλο' : 'Σύνδεση ως ${_label(selected)}'),
-                onTap: selected == null ? null : () => widget.onEnter(selected),
-              ),
-            ),
             ],
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _EntryRoleChip extends StatelessWidget {
-  const _EntryRoleChip({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    const selectedColor = Color(0xFF7C5CFC);
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: selected ? selectedColor : const Color(0xFF12131A),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? selectedColor : _kBorder),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 16, color: selected ? Colors.white : _kGray),
-          const SizedBox(width: 6),
-          Text(tr(label), style: GoogleFonts.inter(
-            fontSize: 13, fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : Colors.white)),
-          if (selected) ...[
-            const SizedBox(width: 6),
-            const Icon(Icons.check_rounded, size: 16, color: Colors.white),
-          ],
-        ]),
       ),
     );
   }
@@ -3084,16 +3066,16 @@ class _MyGymsTabState extends State<_MyGymsTab> {
                 children: [
                   // Header
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(tr('Τα Γυμναστήριά Μου'),
+                    Text(tr('Οι Χώροι Μου'),
                       style: GoogleFonts.inter(
                         fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-                    Text(tr('$totalCount γυμναστήρια'),
+                    Text(tr('$totalCount χώροι'),
                       style: GoogleFonts.inter(fontSize: 12, color: _kGray)),
                   ]),
                   const SizedBox(height: 20),
 
                   if (gyms.isNotEmpty) ...[
-                    _sectionLabel(tr('Τα γυμναστήριά σου')),
+                    _sectionLabel(tr('Οι χώροι σου')),
                     ...() {
                       final seen = <String>{};
                       final cards = <Widget>[];

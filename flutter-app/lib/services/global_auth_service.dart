@@ -19,6 +19,7 @@ class GlobalGym {
   final String businessType;
   final String primaryColor;
   final String? logoUrl;
+  final String? coverUrl;
   final String userStatus;
   final String userType; // 'member' | 'staff'
   final String? staffId;
@@ -34,6 +35,7 @@ class GlobalGym {
     required this.businessType,
     required this.primaryColor,
     this.logoUrl,
+    this.coverUrl,
     required this.userStatus,
     this.userType = 'member',
     this.staffId,
@@ -53,6 +55,7 @@ class GlobalGym {
     businessType: j['business_type'] as String? ?? 'gym',
     primaryColor: j['primary_color'] as String? ?? '#B8F55E',
     logoUrl:      j['logo_url'] as String?,
+    coverUrl:     j['cover_url'] as String?,
     userStatus:   j['user_status'] as String? ?? 'active',
     userType:     j['user_type'] as String? ?? 'member',
     staffId:      j['staff_id'] as String?,
@@ -76,6 +79,7 @@ class GlobalGym {
     'business_type': businessType,
     'primary_color': primaryColor,
     'logo_url':      logoUrl,
+    'cover_url':     coverUrl,
     'user_status':   userStatus,
     'user_type':     userType,
     'staff_id':      staffId,
