@@ -3,13 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
-const FEATURES = [
-  { icon: '📅', text: 'Κρατήσεις & Ραντεβού' },
-  { icon: '👥', text: 'Διαχείριση Πελατών' },
-  { icon: '💳', text: 'Πληρωμές & Πακέτα' },
-  { icon: '📊', text: 'Αναφορές & Στατιστικά' },
-];
-
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -35,28 +28,27 @@ export default function Login() {
 
   return (
     <div className="login-split">
-      {/* ── Left hero panel ── */}
-      <div className="login-hero">
-        <div className="login-hero__inner">
-          <img src="/omniplex-logo.png" alt="OmniPlex" className="login-hero__mark" />
-          <div className="login-hero__wordmark">
-            Omni<span>Plex</span>
-          </div>
-          <div className="login-hero__tagline">Flow for all</div>
-          <p className="login-hero__desc">
-            Μία πλατφόρμα για κάθε επαγγελματία που διαχειρίζεται χρόνο, πελάτες και υπηρεσίες.
-          </p>
-          <ul className="login-hero__features">
-            {FEATURES.map(f => (
-              <li key={f.text}>
-                <span className="login-hero__feat-icon">{f.icon}</span>
-                {f.text}
-              </li>
-            ))}
-          </ul>
+      {/* ── Left photo panel ── */}
+      <div className="login-hero" style={{ padding: 0, background: '#0a0a0a' }}>
+        <img
+          src="/login-hero.webp"
+          alt="OmniPlex"
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+        {/* Logo overlay */}
+        <div style={{
+          position: 'absolute', top: 36, left: 36,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <img src="/omniplex-logo.png" alt="OmniPlex" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+          <span style={{
+            fontSize: 22, fontWeight: 700, color: '#fff',
+            textShadow: '0 1px 8px rgba(0,0,0,0.5)',
+            letterSpacing: '-0.3px',
+          }}>
+            Omni<span style={{ color: '#a78bfa' }}>Plex</span>
+          </span>
         </div>
-        <div className="login-hero__blur1" />
-        <div className="login-hero__blur2" />
       </div>
 
       {/* ── Right form panel ── */}
@@ -85,12 +77,6 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="text-muted" style={{ marginTop: 24, fontSize: '0.75rem', lineHeight: 1.7 }}>
-            <strong>Demo accounts:</strong><br />
-            owner@demo.com / admin123<br />
-            nutrition@demo.com / nutrition123<br />
-            trainer@demo.com / trainer123
-          </p>
         </div>
       </div>
     </div>

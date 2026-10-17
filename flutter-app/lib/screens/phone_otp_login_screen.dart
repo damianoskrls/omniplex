@@ -4,23 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/global_auth_service.dart';
 import '../services/push_service.dart';
-import 'global_role_picker_screen.dart';
 import 'global_profile_details_screen.dart';
 import '../l10n/tr.dart';
 
-
-const _kBg     = Color(0xFF0A0A0A);
-const _kCard   = Color(0xFF16171B);
-const _kBorder = Color(0xFF2A2B30);
-const _kGray   = Color(0xFF9A9CA3);
-const _kAccent = Color(0xFF7B3EAD);
-const _kLime   = _kAccent;
-
-const _kBrandGrad = LinearGradient(
-  transform: GradientRotation(3.396),
-  colors: [Color(0xFF4452D8), Color(0xFF4B50D3), Color(0xFF5D49C5), Color(0xFF7B3EAD), Color(0xFFA4308D), Color(0xFFC52473)],
-  stops: [0.1611, 0.2462, 0.3655, 0.5051, 0.6588, 0.7651],
-);
+const _kBg      = Color(0xFF090A0F);
+const _kCard    = Color(0xFF14161F);
+const _kBorder  = Color(0xFF2B2E3D);
+const _kText    = Color(0xFFF5F5FA);
+const _kGray    = Color(0xFFA7ABBE);
+const _kAccent  = Color(0xFF9A9DFF);
+const _kPrimary = Color(0xFF565CE4);
+const _kGuideBg = Color(0xFF242642);
 
 class PhoneOtpLoginScreen extends StatefulWidget {
   const PhoneOtpLoginScreen({
@@ -28,48 +22,40 @@ class PhoneOtpLoginScreen extends StatefulWidget {
     required this.globalAuth,
     required this.onLoggedIn,
     this.skipProfile = false,
+    this.initialPhone,
   });
 
   final GlobalAuthService globalAuth;
   final VoidCallback onLoggedIn;
   final bool skipProfile;
+  // When set, OTP was already sent by the caller — start directly in OTP phase
+  final String? initialPhone;
 
   @override
   State<PhoneOtpLoginScreen> createState() => _PhoneOtpLoginScreenState();
 }
 
 class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
-  // Phase: 'phone' | 'otp'
-  String _phase = 'phone';
+  late String _phase;
 
-  final _phoneCtrl    = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _otpCtrls     = List.generate(6, (_) => TextEditingController());
-  final _otpFocus     = List.generate(6, (_) => FocusNode());
+  final _phoneCtrl = TextEditingController();
+  final _otpCtrls  = List.generate(6, (_) => TextEditingController());
 
-  bool   _loading  = false;
+  bool   _loading = false;
   String? _error;
-
-  // Countdown for resend
-  int  _resendSeconds = 0;
+  int    _resendSeconds = 0;
+  int    _currentDigit = 0;
   Timer? _timer;
 
-  String get _phone => _phoneCtrl.text.trim();
+  String get _phone => widget.initialPhone ?? _phoneCtrl.text.trim();
   String get _otp   => _otpCtrls.map((c) => c.text).join();
 
   @override
   void initState() {
     super.initState();
-    // Select all text when a box gains focus so typing replaces existing digit
-    for (var i = 0; i < 6; i++) {
-      _otpFocus[i].addListener(() {
-        if (_otpFocus[i].hasFocus && _otpCtrls[i].text.isNotEmpty) {
-          Future.microtask(() {
-            _otpCtrls[i].selection = TextSelection(
-              baseOffset: 0, extentOffset: _otpCtrls[i].text.length);
-          });
-        }
-      });
+    _phase = widget.initialPhone != null ? 'otp' : 'phone';
+    if (_phase == 'otp') {
+      _startResendTimer();
     }
   }
 
@@ -77,9 +63,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
   void dispose() {
     _timer?.cancel();
     _phoneCtrl.dispose();
-    _passwordCtrl.dispose();
     for (final c in _otpCtrls) c.dispose();
-    for (final f in _otpFocus) f.dispose();
     super.dispose();
   }
 
@@ -96,7 +80,7 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
   }
 
   Future<void> _sendOtp() async {
-    final phone = _phone;
+    final phone = _phoneCtrl.text.trim();
     if (phone.isEmpty) {
       setState(() => _error = tr('Εισάγετε τον αριθμό τηλεφώνου σας'));
       return;
@@ -105,13 +89,23 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     try {
       await widget.globalAuth.sendOtp(phone);
       _startResendTimer();
-      setState(() { _phase = 'otp'; _loading = false; });
-      // Auto-focus first OTP box
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted) _otpFocus[0].requestFocus();
-      });
+      setState(() { _phase = 'otp'; _loading = false; _currentDigit = 0; });
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _resendOtp() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      await widget.globalAuth.sendOtp(_phone);
+      _startResendTimer();
+      for (final c in _otpCtrls) c.clear();
+      setState(() => _currentDigit = 0);
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -124,9 +118,8 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
       if (!mounted) return;
       _routeAfterLogin(result);
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() { _error = e.toString(); _loading = false; _currentDigit = 0; });
       for (final c in _otpCtrls) c.clear();
-      _otpFocus[0].requestFocus();
     }
   }
 
@@ -137,49 +130,9 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     } catch (_) {}
   }
 
-  void _onOtpChanged(int index, String v) {
-    final digits = v.replaceAll(RegExp(r'\D'), '');
-
-    if (digits.isEmpty) {
-      _otpCtrls[index].clear();
-      if (index > 0) _otpFocus[index - 1].requestFocus();
-      return;
-    }
-
-    if (digits.length == 1) {
-      _otpCtrls[index].text = digits;
-      _otpCtrls[index].selection = const TextSelection.collapsed(offset: 1);
-      if (index < 5) _otpFocus[index + 1].requestFocus();
-    } else {
-      for (var j = 0; j < digits.length && (index + j) < 6; j++) {
-        _otpCtrls[index + j].text = digits[j];
-      }
-      final next = (index + digits.length).clamp(0, 5);
-      _otpFocus[next].requestFocus();
-    }
-
-    final full = _otpCtrls.map((c) => c.text).join();
-    if (full.length == 6) _verifyOtp();
-  }
-
-  Future<void> _verifyPassword() async {
-    final pwd = _passwordCtrl.text.trim();
-    if (pwd.isEmpty) return;
-    setState(() { _loading = true; _error = null; });
-    try {
-      final result = await widget.globalAuth.verifyOtp(_phone, pwd);
-      await _registerFcmToken();
-      if (!mounted) return;
-      _routeAfterLogin(result);
-    } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
-    }
-  }
-
   void _routeAfterLogin(Map<String, dynamic> result) {
     final isNew = result['is_new'] == true;
     final name = (widget.globalAuth.user?.fullName ?? '').trim();
-    // Treat empty name or the default "Χρήστης XXXX" pattern as missing
     final hasName = name.isNotEmpty &&
         !RegExp(tr(r'^Χρήστης\s+\d+$')).hasMatch(name);
     if (!widget.skipProfile && (isNew || !hasName)) {
@@ -189,7 +142,6 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     }
   }
 
-  /// New user or incomplete profile: name and email. Role is chosen only on a gym join request.
   void _goProfileDetails() {
     Navigator.pushReplacement(context, MaterialPageRoute(
       builder: (_) => GlobalProfileDetailsScreen(
@@ -199,307 +151,390 @@ class _PhoneOtpLoginScreenState extends State<PhoneOtpLoginScreen> {
     ));
   }
 
-  /// Returning user without preferred role: optional role picker
-  void _goRolePicker() {
-    Navigator.pushReplacement(context, MaterialPageRoute(
-      builder: (_) => GlobalRolePickerScreen(
-        globalAuth: widget.globalAuth,
-        isOptional: true,
-        onDone: (_) => widget.onLoggedIn(),
-      ),
-    ));
+  void _keypadPress(String key) {
+    if (key == '⌫') {
+      for (var i = 5; i >= 0; i--) {
+        if (_otpCtrls[i].text.isNotEmpty) {
+          _otpCtrls[i].clear();
+          setState(() => _currentDigit = i);
+          return;
+        }
+      }
+      return;
+    }
+    for (var i = 0; i < 6; i++) {
+      if (_otpCtrls[i].text.isEmpty) {
+        _otpCtrls[i].text = key;
+        setState(() => _currentDigit = i < 5 ? i + 1 : 5);
+        final full = _otpCtrls.map((c) => c.text).join();
+        if (full.length == 6) _verifyOtp();
+        return;
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _kBg,
-      appBar: AppBar(
-        backgroundColor: _kBg,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-          onPressed: () {
-            if (_phase == 'otp') {
-              setState(() { _phase = 'phone'; _error = null; });
-            } else {
-              Navigator.of(context).pop();
-            }
-          },
-        ),
-      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: _phase == 'phone' ? _buildPhasePhone() : _buildPhaseOtp(),
-        ),
+        child: _phase == 'phone' ? _buildPhasePhone() : _buildPhaseOtp(),
       ),
     );
   }
 
   Widget _buildPhasePhone() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-        Text(tr('Σύνδεση'), style: GoogleFonts.inter(
-          color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700,
-        )),
-        const SizedBox(height: 8),
-        Text(tr('Εισάγετε τον αριθμό τηλεφώνου σας\nγια να λάβετε κωδικό επαλήθευσης.'),
-          style: GoogleFonts.inter(color: _kGray, fontSize: 14, height: 1.5),
-        ),
-        const SizedBox(height: 40),
-
-        // Phone field
-        Text(tr('Τηλέφωνο'), style: GoogleFonts.inter(
-          color: _kGray, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5,
-        )),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: _kCard,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _kBorder),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                decoration: BoxDecoration(
-                  border: Border(right: BorderSide(color: _kBorder)),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: const Icon(Icons.arrow_back_ios_new, color: _kText, size: 18),
                 ),
-                child: Text(tr('+30'), style: GoogleFonts.inter(
-                  color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500,
-                )),
-              ),
-              Expanded(
-                child: TextField(
+                const SizedBox(width: 12),
+                Text(tr('Σύνδεση'),
+                  style: GoogleFonts.inter(
+                    color: _kText, fontSize: 16, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(tr('Το επόμενο κεφάλαιό σου\nξεκινά εδώ.'),
+            style: GoogleFonts.inter(
+              color: _kText, fontSize: 30, fontWeight: FontWeight.w800, height: 1.1)),
+          const SizedBox(height: 10),
+          Text(tr('Συνδέσου ή δημιούργησε λογαριασμό με τον αριθμό του κινητού σου.'),
+            style: GoogleFonts.inter(color: _kGray, fontSize: 14, height: 1.45)),
+          const SizedBox(height: 22),
+          Text(tr('Κινητό τηλέφωνο'),
+            style: GoogleFonts.inter(color: _kGray, fontSize: 12, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          Container(
+            height: 56,
+            decoration: BoxDecoration(
+              color: _kCard, borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _kBorder)),
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text('🇬🇷  +30',
+                    style: GoogleFonts.inter(color: _kText, fontSize: 15)),
+                ),
+                Container(width: 1, height: 28, color: _kBorder),
+                Expanded(child: TextField(
                   controller: _phoneCtrl,
                   keyboardType: TextInputType.phone,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   autofocus: true,
-                  style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
+                  style: GoogleFonts.inter(color: _kText, fontSize: 15),
                   decoration: InputDecoration(
                     hintText: tr('6xxxxxxxxx'),
                     hintStyle: GoogleFonts.inter(color: _kGray),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
                   onSubmitted: (_) => _sendOtp(),
+                )),
+              ],
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            _ErrorBanner(_error!),
+          ],
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: _loading ? null : _sendOtp,
+            child: Container(
+              width: double.infinity, height: 52,
+              decoration: BoxDecoration(
+                color: _kPrimary, borderRadius: BorderRadius.circular(12)),
+              child: _loading
+                ? const Center(child: SizedBox(width: 20, height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(tr('Συνέχεια με κινητό'),
+                        style: GoogleFonts.inter(color: _kText, fontSize: 14)),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward, color: _kText, size: 16),
+                    ],
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhaseOtp() {
+    final maskedPhone = _phone.length > 4
+      ? '+30 ••• ••• ${_phone.substring(_phone.length - 4)}'
+      : '+30 $_phone';
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    if (widget.initialPhone != null) {
+                      Navigator.of(context).pop();
+                    } else {
+                      setState(() { _phase = 'phone'; _error = null; });
+                    }
+                  },
+                  child: const Icon(Icons.arrow_back_ios_new, color: _kText, size: 18),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Text(tr('Επαλήθευση αριθμού'),
+                  style: GoogleFonts.inter(
+                    color: _kText, fontSize: 16, fontWeight: FontWeight.w600)),
+              ],
+            ),
           ),
         ),
 
-        if (_error != null) ...[
-          const SizedBox(height: 12),
-          _ErrorBanner(_error!),
-        ],
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 18),
+                Text('ΜΙΑ ΓΡΗΓΟΡΗ ΕΠΑΛΗΘΕΥΣΗ',
+                  style: GoogleFonts.inter(
+                    color: _kAccent, fontSize: 10, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 10),
+                Text(tr('Ο κωδικός σου. Η πρόσβασή σου.'),
+                  style: GoogleFonts.inter(
+                    color: _kText, fontSize: 30, fontWeight: FontWeight.w800, height: 1.1)),
+                const SizedBox(height: 10),
+                Text('Εισάγετε τον 6ψήφιο κωδικό που στάλθηκε στο $maskedPhone.',
+                  style: GoogleFonts.inter(color: _kGray, fontSize: 14, height: 1.45)),
+                const SizedBox(height: 22),
 
-        const SizedBox(height: 28),
-        GestureDetector(
-          onTap: _loading ? null : _sendOtp,
-          child: Container(
-            width: double.infinity,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: _loading ? null : _kBrandGrad,
-              color: _loading ? _kBorder : null,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: _loading ? null : [
-                BoxShadow(color: const Color(0xFF7B3EAD).withValues(alpha: 0.35), blurRadius: 16, offset: const Offset(0, 6)),
+                // OTP digit boxes
+                Row(
+                  children: List.generate(6, (i) => Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(right: i < 5 ? 8 : 0),
+                      child: _OtpBox(
+                        controller: _otpCtrls[i],
+                        isActive: i == _currentDigit,
+                      ),
+                    ),
+                  )),
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(child: Text(
+                      _resendSeconds > 0
+                        ? tr('Επαναποστολή σε ${_formatTime(_resendSeconds)}')
+                        : tr('Ο κωδικός έληξε'),
+                      style: GoogleFonts.inter(color: _kGray, fontSize: 12))),
+                    GestureDetector(
+                      onTap: () {
+                        if (widget.initialPhone != null) {
+                          Navigator.of(context).pop();
+                        } else {
+                          setState(() { _phase = 'phone'; _error = null; });
+                        }
+                      },
+                      child: Text(tr('Αλλαγή αριθμού'),
+                        style: GoogleFonts.inter(color: _kAccent, fontSize: 12)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                if (_error != null) ...[
+                  _ErrorBanner(_error!),
+                  const SizedBox(height: 14),
+                ],
+
+                GestureDetector(
+                  onTap: _loading ? null : _verifyOtp,
+                  child: Container(
+                    width: double.infinity, height: 52,
+                    decoration: BoxDecoration(
+                      color: _kPrimary, borderRadius: BorderRadius.circular(12)),
+                    child: _loading
+                      ? const Center(child: SizedBox(width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(tr('Επαλήθευση & συνέχεια'),
+                              style: GoogleFonts.inter(color: _kText, fontSize: 14)),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward, color: _kText, size: 16),
+                          ],
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _kGuideBg, borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.shield_outlined, color: _kAccent, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(
+                        tr('Οι επαληθευμένοι αριθμοί σε συνδέουν με ασφάλεια με τις υπάρχουσες συνδρομές σου.'),
+                        style: GoogleFonts.inter(color: _kGray, fontSize: 12, height: 1.45))),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
               ],
             ),
-            alignment: Alignment.center,
-            child: _loading
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : Text(tr('Αποστολή κωδικού'), style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700, fontSize: 15, color: Colors.white)),
           ),
+        ),
+
+        _NumericKeypad(
+          onKey: _keypadPress,
+          onResend: _resendSeconds <= 0 && !_loading ? _resendOtp : null,
         ),
       ],
     );
   }
 
-  // true = use OTP boxes, false = use password field
-  bool _useOtpMode = true;
+  String _formatTime(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+}
 
-  Widget _buildPhaseOtp() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-        Text(tr('Κωδικός επαλήθευσης'), style: GoogleFonts.inter(
-          color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700,
-        )),
-        const SizedBox(height: 8),
-        if (_useOtpMode)
-          Text.rich(TextSpan(
-            children: [
-              TextSpan(text: tr('Στείλαμε 6-ψήφιο κωδικό στο '), style: GoogleFonts.inter(color: _kGray, fontSize: 14)),
-              TextSpan(text: '+30 $_phone', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-            ],
-          ))
-        else
-          Text(tr('Βάλτε τον κωδικό του λογαριασμού σας OmniPlex.'),
-            style: GoogleFonts.inter(color: _kGray, fontSize: 14, height: 1.5),
-          ),
-        const SizedBox(height: 40),
+// ── Custom numeric keypad ─────────────────────────────────────────────────────
 
-        if (_useOtpMode) ...[
-          // 6 OTP boxes
+class _NumericKeypad extends StatelessWidget {
+  const _NumericKeypad({required this.onKey, this.onResend});
+  final ValueChanged<String> onKey;
+  final VoidCallback? onResend;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: _kBg,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        children: [
+          _KeyRow(keys: const ['1', '2', '3'], onKey: onKey),
+          const SizedBox(height: 8),
+          _KeyRow(keys: const ['4', '5', '6'], onKey: onKey),
+          const SizedBox(height: 8),
+          _KeyRow(keys: const ['7', '8', '9'], onKey: onKey),
+          const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(6, (i) => Padding(
-              padding: EdgeInsets.only(right: i < 5 ? 10 : 0),
-              child: _OtpBox(
-                controller: _otpCtrls[i],
-                focusNode: _otpFocus[i],
-                onChanged: (v) => _onOtpChanged(i, v),
+            children: [
+              Expanded(
+                child: onResend != null
+                  ? GestureDetector(
+                      onTap: onResend,
+                      child: Container(
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C1F2B),
+                          borderRadius: BorderRadius.circular(10)),
+                        child: Center(child: Text('Επαναποστολή',
+                          style: GoogleFonts.inter(color: _kAccent, fontSize: 12))),
+                      ))
+                  : const SizedBox(height: 52),
               ),
-            )),
-          ),
-        ] else ...[
-          // Password field
-          Container(
-            decoration: BoxDecoration(
-              color: _kCard,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _kBorder),
-            ),
-            child: TextField(
-              controller: _passwordCtrl,
-              obscureText: true,
-              autofocus: true,
-              style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
-              decoration: InputDecoration(
-                hintText: tr('Κωδικός OmniPlex'),
-                hintStyle: GoogleFonts.inter(color: _kGray),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-              ),
-              onSubmitted: (_) => _verifyPassword(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          GestureDetector(
-            onTap: _loading ? null : _verifyPassword,
-            child: Container(
-              width: double.infinity,
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: _loading ? null : _kBrandGrad,
-                color: _loading ? _kBorder : null,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: _loading ? null : [
-                  BoxShadow(color: const Color(0xFF7B3EAD).withValues(alpha: 0.35), blurRadius: 16, offset: const Offset(0, 6)),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: _loading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text(tr('Σύνδεση'), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.white)),
-            ),
+              const SizedBox(width: 8),
+              Expanded(child: _KeyButton(label: '0', onTap: () => onKey('0'))),
+              const SizedBox(width: 8),
+              Expanded(child: _KeyButton(label: '⌫', onTap: () => onKey('⌫'))),
+            ],
           ),
         ],
-
-        if (_error != null) ...[
-          const SizedBox(height: 20),
-          _ErrorBanner(_error!),
-        ],
-
-        const SizedBox(height: 24),
-
-        // Toggle between OTP and password
-        Center(
-          child: GestureDetector(
-            onTap: () => setState(() {
-              _useOtpMode = !_useOtpMode;
-              _error = null;
-            }),
-            child: Text(
-              tr(_useOtpMode
-                ? 'Έχω κωδικό λογαριασμού OmniPlex'
-                : tr('Χρήση κωδικού SMS')),
-              style: GoogleFonts.inter(
-                color: _kLime, fontSize: 13, fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-
-        if (_useOtpMode) ...[
-          const SizedBox(height: 16),
-          // Resend
-          Center(
-            child: _resendSeconds > 0
-              ? Text(tr('Αποστολή ξανά σε ${_resendSeconds}s'), style: GoogleFonts.inter(color: _kGray, fontSize: 13))
-              : GestureDetector(
-                  onTap: _loading ? null : _sendOtp,
-                  child: Text(tr('Αποστολή ξανά'), style: GoogleFonts.inter(
-                    color: _kGray, fontSize: 13, fontWeight: FontWeight.w600,
-                  )),
-                ),
-          ),
-        ],
-
-        if (_loading && _useOtpMode) ...[
-          const SizedBox(height: 24),
-          const Center(child: CircularProgressIndicator(color: _kLime)),
-        ],
-      ],
+      ),
     );
   }
 }
 
-class _OtpBox extends StatelessWidget {
-  const _OtpBox({
-    required this.controller,
-    required this.focusNode,
-    required this.onChanged,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final ValueChanged<String> onChanged;
+class _KeyRow extends StatelessWidget {
+  const _KeyRow({required this.keys, required this.onKey});
+  final List<String> keys;
+  final ValueChanged<String> onKey;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 46,
-      height: 56,
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: GoogleFonts.inter(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: const Color(0xFF16171B),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF2A2B30)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF2A2B30)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _kLime, width: 1.5),
-          ),
-          contentPadding: EdgeInsets.zero,
+    return Row(
+      children: keys.asMap().entries.map((e) => Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(right: e.key < keys.length - 1 ? 8 : 0),
+          child: _KeyButton(label: e.value, onTap: () => onKey(e.value)),
         ),
-        onTap: () {
-          // Select all so typing replaces existing digit
-          controller.selection = TextSelection(
-            baseOffset: 0, extentOffset: controller.text.length);
-        },
-        onChanged: onChanged,
+      )).toList(),
+    );
+  }
+}
+
+class _KeyButton extends StatelessWidget {
+  const _KeyButton({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 52,
+        decoration: BoxDecoration(
+          color: _kCard, borderRadius: BorderRadius.circular(10)),
+        child: Center(child: Text(label,
+          style: GoogleFonts.inter(color: _kText, fontSize: 22))),
+      ),
+    );
+  }
+}
+
+// ── OTP digit display box ─────────────────────────────────────────────────────
+
+class _OtpBox extends StatelessWidget {
+  const _OtpBox({required this.controller, required this.isActive});
+  final TextEditingController controller;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? _kAccent : _kBorder,
+          width: isActive ? 2 : 1),
+      ),
+      child: Center(
+        child: Text(
+          controller.text.isEmpty ? '' : controller.text,
+          style: GoogleFonts.inter(
+            color: _kText, fontSize: 25, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -516,13 +551,14 @@ class _ErrorBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF2A1414),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           const Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
           const SizedBox(width: 8),
-          Expanded(child: Text(tr(message), style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13))),
+          Expanded(child: Text(tr(message),
+            style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13))),
         ],
       ),
     );
